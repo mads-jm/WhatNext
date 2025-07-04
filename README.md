@@ -8,8 +8,11 @@ See the full project specification in `docs/whtnxt-nextspec.md`.
 ## Struture
 
 `/app` - The main Electron application
+
 `/service` - The helper service for P2P signaling
+
 `/docs` - The project specification -> to be moved to a isolated repo for use in Obsidian
+
 `/scripts` - Scripts for project initialization and development
 
 ## Stack
