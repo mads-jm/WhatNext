@@ -1,0 +1,22 @@
+# Node
+node_modules/
+dist/
+dist-electron/
+release/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# env
+*.env
+
+# ai
+*.cursor*
+*.vscode*
+*.cursorrules
+*.cursorignore
