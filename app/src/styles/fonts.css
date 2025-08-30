@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* JetBrains Mono via Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* Font Awesome (free) */
+@import url('/node_modules/@fortawesome/fontawesome-free/css/all.min.css');
+
+:root {
+	--wn-bg: #0b0f17;
+	--wn-panel: #111827; /* gray-900 */
+	--wn-text: #e5e7eb; /* gray-200 */
+	--wn-muted: #9ca3af; /* gray-400 */
+}
+
+html {
+	font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		'Liberation Mono', 'Courier New', monospace;
+}
+
+html.dark, body.dark {
+	background-color: var(--wn-bg);
+	color: var(--wn-text);
+}
+
+

@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+Component primitives aligned to dark theme with blue primary and pink accent.
+Use these classes via @apply to keep JSX clean and consistent.
+*/
+
+@layer base {
+	* { @apply outline-none; }
+
+	body { @apply bg-[#0b0f17] text-gray-200; }
+}
+
+@layer components {
+	.btn {
+		@apply inline-flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none;
+	}
+	.btn-primary {
+		@apply btn bg-primary-600 hover:bg-primary-500 text-white;
+	}
+	.btn-accent {
+		@apply btn bg-accent-600 hover:bg-accent-500 text-white;
+	}
+	.btn-ghost {
+		@apply btn bg-transparent text-gray-300 hover:bg-gray-800/60;
+	}
+
+	.input {
+		@apply w-full px-3 py-2 rounded-md bg-gray-900 text-gray-100 placeholder-gray-500 border border-gray-800 focus:border-primary-500 focus:ring-1 focus:ring-primary-500;
+	}
+
+	.card {
+		@apply rounded-lg bg-[#0f1623] border border-gray-800 shadow-sm;
+	}
+	.card-header { @apply px-4 py-3 border-b border-gray-800 text-gray-300; }
+	.card-body { @apply p-4; }
+
+	.badge {
+		@apply inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold;
+	}
+	.badge-primary { @apply badge bg-primary-600 text-white; }
+	.badge-accent { @apply badge bg-accent-600 text-white; }
+	.badge-muted { @apply badge bg-gray-800 text-gray-300; }
+
+	.toolbar {
+		@apply sticky top-0 z-20 flex items-center gap-2 px-3 py-2 bg-[#0b0f17]/80 backdrop-blur border-b border-gray-800;
+	}
+
+	.sidebar {
+		@apply h-full w-64 bg-[#0f1623] border-r border-gray-800;
+	}
+
+	.link {
+		@apply text-primary-400 hover:text-primary-300 underline-offset-4 hover:underline;
+	}
+}
+
+@layer utilities {
+	.container-page {
+		@apply mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8;
+	}
+}
+
+

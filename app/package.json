@@ -1,34 +1,99 @@
 {
-  "name": "app",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "simple-peer": "^9.11.1",
-    "uuid": "^11.1.0",
-    "webrtc-adapter": "^9.0.3",
-    "zustand": "^5.0.6"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.29.0",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "@types/uuid": "^10.0.0",
-    "@vitejs/plugin-react": "^4.5.2",
-    "eslint": "^9.29.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
-    "globals": "^16.2.0",
-    "typescript": "~5.8.3",
-    "typescript-eslint": "^8.34.1",
-    "vite": "^7.0.0"
-  }
+    "name": "app",
+    "private": true,
+    "version": "0.0.0",
+    "type": "commonjs",
+    "main": "dist/main.js",
+    "scripts": {
+        "dev": "concurrently -n RND,MAIN,PREL,ELCT \"vite --port 1313\" \"npm:watch:main\" \"npm:watch:preload\" \"npm:dev:electron\"",
+        "watch:main": "tsup src/main/main.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist --watch",
+        "watch:preload": "tsup src/main/preload.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist --watch",
+        "dev:electron": "wait-on dist/main.js dist/preload.js && cross-env NODE_ENV=development electron dist/main.js",
+        "build": "npm run build:renderer && npm run build:main && npm run build:preload",
+        "build:renderer": "vite build",
+        "build:main": "tsup src/main/main.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist",
+        "build:preload": "tsup src/main/preload.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist",
+        "start": "electron dist/main.js",
+        "lint": "eslint .",
+        "typecheck": "tsc --noEmit",
+        "postinstall": "echo skipping electron-builder install-app-deps (no native deps yet)",
+        "package": "npm run build && electron-builder build --publish never"
+    },
+    "browserslist": [],
+    "prettier": {
+        "singleQuote": true,
+        "tabWidth": 4,
+        "overrides": [
+            {
+                "files": [
+                    ".prettierrc",
+                    ".eslintrc"
+                ],
+                "options": {
+                    "parser": "json"
+                }
+            }
+        ]
+    },
+    "dependencies": {
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
+        "simple-peer": "^9.11.1",
+        "uuid": "^11.1.0",
+        "webrtc-adapter": "^9.0.3",
+        "zustand": "^5.0.6"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.29.0",
+        "@fortawesome/fontawesome-free": "^7.0.0",
+        "@types/node": "^24.1.0",
+        "@types/react": "^19.1.8",
+        "@types/react-dom": "^19.1.6",
+        "@types/uuid": "^10.0.0",
+        "@vitejs/plugin-react": "^4.5.2",
+        "autoprefixer": "^10.4.21",
+        "concurrently": "^9.0.1",
+        "cross-env": "^7.0.3",
+        "electron": "^37.4.0",
+        "electron-builder": "^25.1.8",
+        "eslint": "^9.29.0",
+        "eslint-plugin-react-hooks": "^5.2.0",
+        "eslint-plugin-react-refresh": "^0.4.20",
+        "globals": "^16.2.0",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^4.1.12",
+        "tsup": "^8.3.5",
+        "typescript": "~5.8.3",
+        "typescript-eslint": "^8.34.1",
+        "vite": "^7.0.0",
+        "wait-on": "^8.0.2"
+    },
+    "engines": {
+        "node": ">=20.19.0"
+    },
+    "build": {
+        "appId": "org.whatnext.app",
+        "productName": "WhatNext",
+        "copyright": "Copyright © 2025 WhatNext",
+        "asar": true,
+        "asarUnpack": "**\\*.{node,dll}",
+        "files": [
+            "dist",
+            "node_modules",
+            "package.json"
+        ],
+        "win": {
+            "target": [
+                "portable"
+            ],
+            "sign": false
+        },
+        "directories": {
+            "buildResources": "assets",
+            "output": "release/build"
+        },
+        "extraResources": [
+            "./assets/**"
+        ]
+    }
 }
