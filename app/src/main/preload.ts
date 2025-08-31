@@ -8,6 +8,24 @@ This adheres to Electron security guidance.
 import { contextBridge, ipcRenderer } from 'electron';
 
 const electronHandler = {
+    // app
+    getVersion: () => ipcRenderer.invoke('app:get-version'),
+
+    // window controls
+    minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
+    maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
+    unmaximizeWindow: () => ipcRenderer.invoke('unmaximize-window'),
+    closeWindow: () => ipcRenderer.invoke('close-window'),
+
+    // window maximize events
+    onWindowMaximize: (callback: () => void) =>
+        ipcRenderer.on('window-maximized', callback),
+    onWindowUnmaximize: (callback: () => void) =>
+        ipcRenderer.on('window-unmaximized', callback),
+    removeWindowMaximizeListeners: () => {
+        ipcRenderer.removeAllListeners('window-maximized');
+        ipcRenderer.removeAllListeners('window-unmaximized');
+    },
     ipcRenderer: {
         /**
          * Fire-and-forget to main.
@@ -42,9 +60,3 @@ if (typeof (window as any).electron === 'undefined') {
 }
 
 export type ElectronHandler = typeof electronHandler;
-
-declare global {
-    interface Window {
-        electron?: ElectronHandler;
-    }
-}

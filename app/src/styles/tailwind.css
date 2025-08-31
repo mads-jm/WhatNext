@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* Tell Tailwind v4 where to scan for class usage when using @apply, etc. */
+@source "../**/*.{ts,tsx,html,css}";
+
+/* Define brand tokens and fonts for Tailwind v4 */
+@theme {
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		"Liberation Mono", "Courier New", monospace;
+
+	/* Primary (blue) */
+	--color-primary-50:  #EFF6FF;
+	--color-primary-100: #DBEAFE;
+	--color-primary-200: #BFDBFE;
+	--color-primary-300: #93C5FD;
+	--color-primary-400: #60A5FA;
+	--color-primary-500: #3B82F6;
+	--color-primary-600: #2563EB;
+	--color-primary-700: #1D4ED8;
+	--color-primary-800: #1E40AF;
+	--color-primary-900: #1E3A8A;
+
+	/* Accent (pink) */
+	--color-accent-50:  #FDF2F8;
+	--color-accent-100: #FCE7F3;
+	--color-accent-200: #FBCFE8;
+	--color-accent-300: #F9A8D4;
+	--color-accent-400: #F472B6;
+	--color-accent-500: #EC4899;
+	--color-accent-600: #DB2777;
+	--color-accent-700: #BE185D;
+	--color-accent-800: #9D174D;
+	--color-accent-900: #831843;
+}
+
+

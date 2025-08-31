@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@reference "tailwindcss";
 
 /*
 Component primitives aligned to dark theme with blue primary and pink accent.

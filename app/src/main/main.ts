@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /*
-Main Process (main.ts): Node.js context. Manages lifecycle, windows, and OS-level capabilities.
-
-Why this shape:
-- Simplicity over framework-specific scaffolding (per @whtnxt-nextspec.md).
-- Works with our scripts: tsup builds main/preload into app/dist; Vite serves renderer on 1313 in dev.
+╔══════════════════════════════════════════════════════════╗
+  Main Process (main.ts): 
+  - Node.js context. 
+  - Manages lifecycle, windows, and OS-level capabilities.
+╚══════════════════════════════════════════════════════════╝
 */
 
 import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron';
@@ -19,12 +19,11 @@ let mainWindow: BrowserWindow | null = null;
  * so __dirname resolves to that same dist directory in both dev and packaged builds.
  */
 const preloadPath = path.join(__dirname, 'preload.js');
+// Resolve assets path for icons and static resources in dev and production
+const RESOURCES_PATH = app.isPackaged
+	? path.join(process.resourcesPath, 'assets')
+	: path.join(__dirname, '../../assets');
 
-/**
- * Create and configure the main BrowserWindow.
- * - In dev, loads the Vite dev server (fast refresh).
- * - In prod, loads the built index.html from app/dist.
- */
 const createMainWindow = (): BrowserWindow => {
     mainWindow = new BrowserWindow({
         width: 1280,
@@ -35,6 +34,7 @@ const createMainWindow = (): BrowserWindow => {
             contextIsolation: true,
             preload: preloadPath,
         },
+        icon: path.join(RESOURCES_PATH, 'wn-icon.ico'),
         show: false,
     });
 
@@ -45,7 +45,7 @@ const createMainWindow = (): BrowserWindow => {
     } else {
         // Vite build outputs to app/dist by default; __dirname points to that folder at runtime.
         // loadFile handles "file://" and escaping for local HTML.
-        mainWindow.loadFile(path.join(__dirname, 'index.ejs'));
+        mainWindow.loadFile(path.join(__dirname, 'index.html'));
     }
 
     // Prevent visual flash
@@ -82,20 +82,24 @@ const createMainWindow = (): BrowserWindow => {
         return { action: 'deny' };
     });
 
-    // Optional: auto-open DevTools in dev; comment out if you prefer the shortcut only
-    if (isDev) {
+    // Optional: auto-open DevTools in dev
+    const devToolsOpened = false; // true = auto-open DevTools in dev
+    if (isDev && !devToolsOpened) {
         mainWindow.webContents.openDevTools();
     }
 
     return mainWindow;
 };
 
-/**
- * App lifecycle
- * - Recreate a window on macOS when activating from the dock with no windows open.
- * - Quit on all windows closed (except macOS).
- * - Clean up global shortcuts on quit.
- */
+/*
+╔═════════════════════════════════════════════════════════════════════════════════╗
+  App lifecycle
+  - Recreate a window on macOS when activating from the dock with no windows open.
+  - Quit on all windows closed (except macOS).
+  - Clean up global shortcuts on quit.
+╚═════════════════════════════════════════════════════════════════════════════════╝
+*/
+
 app.whenReady().then(() => {
     createMainWindow();
 
@@ -123,14 +127,41 @@ app.on('web-contents-created', (_, contents) => {
     });
 });
 
-/**
- * IPC: Minimal examples (renderer -> main).
- * Keep surface area small; expand via preload-safe APIs as features land.
- */
+/*
+╔══════════════════════════════════════════════════════════════════════════╗
+  IPC Handlers
+  - Keep surface area small; expand via preload-safe APIs as features land.
+╚══════════════════════════════════════════════════════════════════════════╝
+*/
+
 ipcMain.handle('app:get-version', () => {
     return app.getVersion();
 });
 
 ipcMain.handle('app:get-platform', () => {
     return process.platform;
+});
+
+ipcMain.handle('minimize-window', () => {
+    mainWindow?.minimize();
+});
+
+ipcMain.handle('maximize-window', () => {
+    mainWindow?.maximize();
+});
+
+ipcMain.handle('unmaximize-window', () => {
+    mainWindow?.unmaximize();
+});
+
+ipcMain.handle('close-window', () => {
+    mainWindow?.close();
+});
+
+ipcMain.handle('window-maximized', () => {
+    mainWindow?.webContents.send('window-maximized');
+});
+
+ipcMain.handle('window-unmaximized', () => {
+    mainWindow?.webContents.send('window-unmaximized');
 });
