@@ -124,13 +124,97 @@ app.on('web-contents-created', (_, contents) => {
 });
 
 /**
- * IPC: Minimal examples (renderer -> main).
+ * IPC: Core functionality handlers (renderer -> main).
  * Keep surface area small; expand via preload-safe APIs as features land.
  */
+
+// ========================================
+// Application Info
+// ========================================
 ipcMain.handle('app:get-version', () => {
     return app.getVersion();
 });
 
 ipcMain.handle('app:get-platform', () => {
     return process.platform;
+});
+
+ipcMain.handle('app:get-path', (_event, name: string) => {
+    // Returns paths like 'userData', 'documents', 'downloads', etc.
+    return app.getPath(name as any);
+});
+
+// ========================================
+// Window Controls
+// ========================================
+ipcMain.handle('window:minimize', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    window?.minimize();
+});
+
+ipcMain.handle('window:maximize', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window?.isMaximized()) {
+        window.unmaximize();
+    } else {
+        window?.maximize();
+    }
+    return window?.isMaximized();
+});
+
+ipcMain.handle('window:close', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    window?.close();
+});
+
+ipcMain.handle('window:is-maximized', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    return window?.isMaximized() ?? false;
+});
+
+// ========================================
+// File System Operations
+// ========================================
+ipcMain.handle('dialog:open-file', async (_event, options) => {
+    if (!mainWindow) return { canceled: true, filePaths: [] };
+
+    const { dialog } = await import('electron');
+    return dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        ...options,
+    });
+});
+
+ipcMain.handle('dialog:open-directory', async (_event, options) => {
+    if (!mainWindow) return { canceled: true, filePaths: [] };
+
+    const { dialog } = await import('electron');
+    return dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory'],
+        ...options,
+    });
+});
+
+ipcMain.handle('dialog:save-file', async (_event, options) => {
+    if (!mainWindow) return { canceled: true, filePath: undefined };
+
+    const { dialog } = await import('electron');
+    return dialog.showSaveDialog(mainWindow, options);
+});
+
+// ========================================
+// External Links
+// ========================================
+ipcMain.handle('shell:open-external', async (_event, url: string) => {
+    // Security: validate URL before opening
+    try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+            await shell.openExternal(url);
+            return { success: true };
+        }
+        return { success: false, error: 'Invalid protocol' };
+    } catch (error) {
+        return { success: false, error: 'Invalid URL' };
+    }
 });

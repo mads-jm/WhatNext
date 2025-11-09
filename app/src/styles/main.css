@@ -1,10 +1,15 @@
+/* Fonts - must come first before Tailwind */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('/node_modules/@fortawesome/fontawesome-free/css/all.min.css');
+
 @import "tailwindcss";
 
 /*
-Component styles for WhatNext
-Tailwind v4 approach: Define base utilities, variants handled automatically
+Main stylesheet for WhatNext
+Tailwind v4 with custom utilities
 */
 
+/* Base styles */
 * {
 	outline: none;
 }
@@ -12,9 +17,12 @@ Tailwind v4 approach: Define base utilities, variants handled automatically
 body {
 	background-color: #0b0f17;
 	color: #e5e7eb;
+	font-family: 'JetBrains+Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		'Liberation Mono', 'Courier New', monospace;
 }
 
-/* Button base utility */
+/* Custom utilities using Tailwind v4 @utility directive */
+
 @utility btn {
 	display: inline-flex;
 	align-items: center;
@@ -46,7 +54,6 @@ body {
 	color: rgb(209 213 219);
 }
 
-/* Input utility */
 @utility input {
 	width: 100%;
 	padding: 0.5rem 0.75rem;
@@ -60,7 +67,6 @@ body {
 	}
 }
 
-/* Card utilities */
 @utility card {
 	border-radius: 0.5rem;
 	background-color: #0f1623;
@@ -78,7 +84,6 @@ body {
 	padding: 1rem;
 }
 
-/* Badge utilities */
 @utility badge {
 	display: inline-flex;
 	align-items: center;
@@ -103,7 +108,6 @@ body {
 	color: rgb(209 213 219);
 }
 
-/* Toolbar utility */
 @utility toolbar {
 	position: sticky;
 	top: 0;
@@ -117,7 +121,6 @@ body {
 	border-bottom: 1px solid rgb(31 41 55);
 }
 
-/* Sidebar utility */
 @utility sidebar {
 	height: 100%;
 	width: 16rem;
@@ -125,10 +128,7 @@ body {
 	border-right: 1px solid rgb(31 41 55);
 }
 
-/* Link utility */
 @utility link {
 	color: rgb(96 165 250);
 	text-underline-offset: 4px;
 }
-
-
