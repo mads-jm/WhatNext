@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "issues-2-6-summary.md",
+                "file": "notes/note-251110-libp2p-learning-roadmap.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "issues-2-6-summary"
+              "title": "note-251110-libp2p-learning-roadmap"
             }
           }
         ]
@@ -183,6 +183,30 @@
   },
   "active": "d05b4e908b87369d",
   "lastOpenFiles": [
+    "notes/note-251110-added-tcp-websocket-transports.md",
+    "notes/note-251110-added-tcp-websocket-transports.md.tmp.82545.1762798670820",
+    "notes/note-251110-barebones-test-peer-created.md",
+    "notes/note-251110-barebones-test-peer-created.md.tmp.82545.1762798123442",
+    "notes/note-251110-issue-10-complete.md",
+    "notes/note-251110-issue-10-complete.md.tmp.82545.1762790596901",
+    "notes/note-251110-webrtc-node-js-compatibility-resolved.md",
+    "notes/note-251110-webrtc-node-js-compatibility-resolved.md.tmp.82545.1762789230619",
+    "notes/note-251110-libp2p-first-implementation-learnings.md",
+    "notes/note-251110-p2p-utility-process-architecture.md",
+    "notes/note-251110-issue-10-session-summary.md",
+    "notes/note-251110-issue-10-session-summary.md.tmp.82545.1762788380542",
+    "notes/note-251110-libp2p-first-implementation-learnings.md.tmp.82545.1762788284156",
+    "notes/note-251110-libp2p-learning-roadmap.md",
+    "notes/note-251110-libp2p-learning-roadmap.md.tmp.82545.1762788023377",
+    "notes/adr-251110-libp2p-vs-simple-peer-analysis.md",
+    "notes/note-251110-libp2p-vs-simple-peer-analysis.md.tmp.82545.1762787560270",
+    "notes/note-251109-custom-protocol-barebones-peer.md",
+    "issues-2-6-summary.md",
+    "notes/note-251109-custom-protocol-barebones-peer.md.tmp.4888.1762729281906",
+    "notes/note-251109-database-location-architecture.md",
+    "notes/note-251109-database-location-architecture.md.tmp.4888.1762728788492",
+    "notes/note-251109-rxdb-dev-mode.md",
+    "notes/note-251109-tailwind-v4-migration.md",
     "whtnxt-nextspec.md"
   ]
 }

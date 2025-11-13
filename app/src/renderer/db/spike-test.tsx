@@ -92,6 +92,21 @@ export function RxDBSpikeTest() {
     const createSampleTrack = async () => {
         try {
             const db = await getDatabase();
+
+            // Get or create a local user to use as addedBy
+            let localUser = await db.users.findOne({ selector: { isLocal: true } }).exec();
+            if (!localUser) {
+                const userId = uuidv4();
+                await db.users.insert({
+                    id: userId,
+                    displayName: 'Local User',
+                    isLocal: true,
+                    lastSeenAt: new Date().toISOString(),
+                    createdAt: new Date().toISOString(),
+                });
+                localUser = await db.users.findOne({ selector: { isLocal: true } }).exec();
+            }
+
             const track = {
                 id: uuidv4(),
                 title: `Test Track ${Date.now()}`,
@@ -99,6 +114,7 @@ export function RxDBSpikeTest() {
                 album: 'Test Album',
                 durationMs: 180000,
                 addedAt: new Date().toISOString(),
+                addedBy: localUser!.id,
                 notes: 'Created during RxDB spike test',
             };
 
@@ -113,6 +129,21 @@ export function RxDBSpikeTest() {
     const createSamplePlaylist = async () => {
         try {
             const db = await getDatabase();
+
+            // Get or create a local user to use as owner
+            let localUser = await db.users.findOne({ selector: { isLocal: true } }).exec();
+            if (!localUser) {
+                const userId = uuidv4();
+                await db.users.insert({
+                    id: userId,
+                    displayName: 'Local User',
+                    isLocal: true,
+                    lastSeenAt: new Date().toISOString(),
+                    createdAt: new Date().toISOString(),
+                });
+                localUser = await db.users.findOne({ selector: { isLocal: true } }).exec();
+            }
+
             const playlist = {
                 id: uuidv4(),
                 playlistName: `Test Playlist ${Date.now()}`,
@@ -120,6 +151,10 @@ export function RxDBSpikeTest() {
                 trackIds: [],
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
+                ownerId: localUser!.id,
+                collaboratorIds: [],
+                isCollaborative: false,
+                isPublic: false,
                 tags: ['test', 'spike'],
             };
 

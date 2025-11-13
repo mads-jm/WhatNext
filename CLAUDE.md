@@ -14,10 +14,11 @@ The project is architected as an Electron desktop application with a separate he
 ## Repository Structure
 
 ```
-/app       - Main Electron application
-/service   - Helper service for P2P signaling and Spotify OAuth (not yet implemented)
-/docs      - Project specification (whtnxt-nextspec.md is the source of truth)
-/scripts   - Development and initialization scripts
+/app        - Main Electron application
+/test-peer  - Barebones libp2p test peer for P2P development
+/service    - Helper service for P2P signaling and Spotify OAuth (not yet implemented)
+/docs       - Project specification (whtnxt-nextspec.md is the source of truth)
+/scripts    - Development and initialization scripts
 ```
 
 ## Development Commands
@@ -28,9 +29,24 @@ The project is architected as an Electron desktop application with a separate he
 ```
 
 ### Running the Application
+
+**Recommended for P2P Development (starts both app + test-peer):**
+```bash
+./scripts/start-dev.sh              # Starts Electron app + test peer together
+./scripts/start-dev.sh --app-only   # Only start Electron app
+./scripts/start-dev.sh --test-peer-only  # Only start test peer
+```
+
+**Traditional (app only):**
 ```bash
 ./scripts/start-app.sh  # Starts the Electron app in dev mode
 cd app && npm run dev   # Alternative: runs concurrently with hot-reload
+```
+
+**Test Peer (for P2P connection testing):**
+```bash
+cd test-peer && npm start  # Interactive CLI for testing P2P connections
+cd test-peer && npm run dev # With auto-restart on file changes
 ```
 
 ### Building
