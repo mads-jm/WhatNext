@@ -10,7 +10,7 @@ In WhatNext, libp2p powers the entire P2P networking layer, enabling direct peer
 
 ## Why We Use It
 
-Chosen over simple-peer after comprehensive analysis (see [[adr-libp2p-vs-simple-peer]]):
+Chosen over simple-peer after comprehensive analysis (see [[adr-251110-libp2p-vs-simple-peer]]):
 
 - **Mesh networking**: Native support for multi-peer collaboration (N-to-N connections)
 - **Built-in security**: Automatic encryption via Noise protocol, cryptographic peer identity
@@ -285,7 +285,7 @@ export default {
 - [[P2P-Discovery]] - mDNS, DHT, and peer discovery mechanisms
 - [[Electron-IPC]] - Communication between main and utility process
 - [[RxDB]] - Database replication over libp2p streams
-- [[adr-libp2p-vs-simple-peer]] - Why we chose libp2p
+- [[adr-251110-libp2p-vs-simple-peer]] - Why we chose libp2p
 
 ## References
 
@@ -308,7 +308,7 @@ export default {
 - [IPFS Desktop](https://github.com/ipfs/ipfs-desktop) - Electron + libp2p in production
 - [OrbitDB](https://github.com/orbitdb/orbitdb) - P2P database on libp2p
 - [libp2p Discussion Forum](https://discuss.libp2p.io/)
-- [IPFS Discord](https://discord.gg/ipfs) - #libp2p channel
+- [IPFS Discord](https://discord.gg/ipfs) - #p2p/libp2p channel
 
 ---
 

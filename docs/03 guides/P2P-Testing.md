@@ -1,6 +1,6 @@
 # P2P Testing Guide
 
-#guides/testing #p2p #development
+#guides/testing #p2p #core/development
 
 ## Overview
 

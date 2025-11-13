@@ -4,7 +4,7 @@
 **Status**: ✅ Accepted
 **Issue**: #10 - P2P Integration
 
-#architecture/decisions #electron #p2p
+#architecture/decisions #core/electron #p2p
 
 ## Context
 
@@ -260,7 +260,7 @@ app.on('open-url', (event, url) => {
 - Renderer UI: `app/src/renderer/components/P2P/P2PStatus.tsx`
 
 ### Related ADRs
-- [[adr-libp2p-vs-simple-peer]] - Why libp2p chosen for P2P networking
+- [[adr-251110-libp2p-vs-simple-peer]] - Why libp2p chosen for P2P networking
 
 ### Specification
 - WhatNext spec §2.3: Helper Backend Service

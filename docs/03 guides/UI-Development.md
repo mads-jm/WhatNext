@@ -1,6 +1,6 @@
 # UI Development Guide
 
-#guides/ui #frontend #tailwind #react
+#guides/ui #frontend #frontend/styling/tailwind #frontend/react
 
 ## Overview
 
@@ -102,7 +102,7 @@ const toggleSection = (sectionId: string) => {
 **Usage:**
 - **Soon**: Planned features not yet implemented
 - **Dev**: Development/debug tools
-- **Issue #X**: Linked to GitHub issue tracking
+- **Issue X**: Linked to GitHub issue tracking
 
 ### Pattern 3: Active State Highlighting
 

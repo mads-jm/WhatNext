@@ -441,7 +441,7 @@ Once stable, publish learnings publicly:
 
 ### Community Resources
 - [libp2p Discussion Forum](https://discuss.libp2p.io/)
-- [IPFS Discord](https://discord.gg/ipfs) - #libp2p channel
+- [IPFS Discord](https://discord.gg/ipfs) - p2p/libp2p channel
 - [libp2p Blog](https://blog.libp2p.io/)
 
 ### Books & Papers

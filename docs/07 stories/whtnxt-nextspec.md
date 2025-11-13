@@ -1,4 +1,4 @@
-
+#core/vision
 # Project Specification: WhatNext (nextspec)
 
 ## 1. Introduction & Vision

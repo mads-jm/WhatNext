@@ -335,4 +335,4 @@ This architecture is successful if:
 - Spec §2.3: Backend & Network Architecture
 - CLAUDE.md: Architecture Principles (IPC Communication)
 - Electron Docs: [Utility Process](https://www.electronjs.org/docs/latest/api/utility-process)
-- [note-251109-custom-protocol-barebones-peer.md](./note-251109-custom-protocol-barebones-peer.md): Test peer architecture
+- [note-251109-custom-protocol-barebones-peer.md](note-251109-custom-protocol-barebones-peer.md): Test peer architecture

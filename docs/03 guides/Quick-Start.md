@@ -1,7 +1,6 @@
 # Quick Start Guide
 
-#guides/setup #getting-started
-
+#guides/setup
 **Last Updated**: 2025-11-12
 **For**: v0.0.0 Alpha - P2P Learning Build
 

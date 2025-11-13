@@ -1,6 +1,6 @@
 # RxDB
 
-#data/rxdb #local-first #reactive
+#data/rxdb #core/vision/local-first #reactive
 
 ## What It Is
 
@@ -378,7 +378,7 @@ useEffect(() => {
 - [[libp2p]] - P2P networking for RxDB replication
 - [[Electron-IPC]] - Database operations in renderer context
 - [[React-Patterns]] - Reactive query patterns with React hooks
-- [[adr-database-storage-location]] - Where RxDB data is stored
+- [[adr-251109-database-storage-location]] - Where RxDB data is stored
 
 ## References
 

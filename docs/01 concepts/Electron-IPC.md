@@ -1,6 +1,6 @@
 # Electron IPC
 
-#architecture/patterns/ipc #electron #security
+#architecture/patterns/ipc #core/electron #security
 
 ## What It Is
 
