@@ -1,3 +1,10 @@
+---
+tags:
+  - core/index
+date created: Thursday, November 13th 2025, 4:59:12 am
+date modified: Thursday, November 13th 2025, 5:19:55 am
+---
+
 # Notes Index
 
 `/docs/05 notes/` is intended as 'hot' storage for development notes and learnings.
@@ -11,11 +18,13 @@ These should be consolidated and distilled into concept pages (`/docs/01 concept
 ## Current Notes (Awaiting Integration)
 
 ### Database & Data Architecture
+
 - [[note-251109-database-location-architecture]]
 - [[note-251109-rxdb-dev-mode]]
 - [[note-251109-rxdb-schema-validation-dexie-constraints]]
 
 ### P2P Networking & libp2p
+
 - [[note-251109-custom-protocol-barebones-peer]]
 - [[note-251110-added-tcp-websocket-transports]]
 - [[note-251110-barebones-test-peer-created]]
@@ -26,6 +35,7 @@ These should be consolidated and distilled into concept pages (`/docs/01 concept
 - [[note-251110-webrtc-node-js-compatibility-resolved]]
 
 ### UI/UX Development
+
 - [[note-251109-tailwind-v4-migration]]
 - [[note-251112-modern-sidebar-navigation]]
 - [[note-251112-navigation-quick-reference]]
@@ -33,12 +43,14 @@ These should be consolidated and distilled into concept pages (`/docs/01 concept
 - [[note-251112-ui-modernization-complete]]
 
 ### Milestone Summaries
+
 - [[note-251110-issue-10-complete]]
 - [[note-251110-issue-10-session-summary]]
 - [[note-251112-p2p-development-interface-complete]]
 - [[note-251112-v0.0.0-release-summary]]
 
 ### Project Meta
+
 - [[issues-2-6-summary]]
 
 ---
@@ -47,14 +59,13 @@ These should be consolidated and distilled into concept pages (`/docs/01 concept
 
 When consolidating notes:
 
-1. **Concept Pages** (`/docs/01 concepts/`) - Extract technology explanations and patterns
-2. **Guides** (`/docs/03 guides/`) - Transform step-by-step learnings into how-to documentation
-3. **ADRs** (`/docs/04 architecture/`) - Document architectural decisions with context
-4. **Milestones** (`/docs/02 milestones/`) - Major release summaries and achievements
+1. __Concept Pages__ (`/docs/01 concepts/`) - Extract technology explanations and patterns
+2. __Guides__ (`/docs/03 guides/`) - Transform step-by-step learnings into how-to documentation
+3. __ADRs__ (`/docs/04 architecture/`) - Document architectural decisions with context
+4. __Milestones__ (`/docs/02 milestones/`) - Major release summaries and achievements
 
 After integration, move the note to an archive or delete it to keep this index clean.
 
 ---
 
-**Last Updated**: 2025-11-12
-#core/index
+__Last Updated__: 2025-11-12

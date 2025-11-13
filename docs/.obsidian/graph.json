@@ -5,7 +5,7 @@
   "showAttachments": false,
   "hideUnresolved": false,
   "showOrphans": true,
-  "collapse-color-groups": true,
+  "collapse-color-groups": false,
   "colorGroups": [
     {
       "query": "tag:#report",
@@ -64,14 +64,14 @@
       }
     },
     {
-      "query": "tag:#frontend  ",
+      "query": "tag:#ux",
       "color": {
         "a": 1,
         "rgb": 5395168
       }
     },
     {
-      "query": "tag:#p2p  ",
+      "query": "tag:#net",
       "color": {
         "a": 1,
         "rgb": 11621088
@@ -90,11 +90,11 @@
   "textFadeMultiplier": -2,
   "nodeSizeMultiplier": 1.51731346372762,
   "lineSizeMultiplier": 0.896636655283038,
-  "collapse-forces": true,
+  "collapse-forces": false,
   "centerStrength": 0.0483286763944945,
   "repelStrength": 13.2329504294733,
   "linkStrength": 1,
   "linkDistance": 107,
-  "scale": 0.39670845535563876,
-  "close": true
+  "scale": 0.5561784698117793,
+  "close": false
 }

@@ -1,10 +1,16 @@
+---
+tags:
+  - guides/roadmap
+  - net/protocols
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:22:32 am
+---
+
 # Protocol Implementation Roadmap
 
-#guides/roadmap #p2p/protocols
-
-**Date**: 2025-11-12
-**Status**: 📋 Planning Document
-**Purpose**: Step-by-step guide for implementing WhatNext P2P protocols
+__Date__: 2025-11-12
+__Status__: 📋 Planning Document
+__Purpose__: Step-by-step guide for implementing WhatNext P2P protocols
 
 ## Overview
 
@@ -13,9 +19,11 @@ This document provides a detailed roadmap for implementing custom libp2p protoco
 ## Protocol 1: Handshake (`/whatnext/handshake/1.0.0`)
 
 ### Purpose
+
 Establish peer identity and capabilities when connection is made.
 
 ### What You'll Learn
+
 - How to register a protocol handler in libp2p
 - Stream-based communication (read/write)
 - Message framing (length-prefix or newline-delimited)
@@ -24,7 +32,8 @@ Establish peer identity and capabilities when connection is made.
 
 ### Implementation Steps
 
-1. **Define Protocol in Config**
+1. __Define Protocol in Config__
+
    ```typescript
    // app/src/shared/p2p-config.ts
    PROTOCOLS: {
@@ -32,7 +41,8 @@ Establish peer identity and capabilities when connection is made.
    }
    ```
 
-2. **Create Protocol Handler Module**
+2. __Create Protocol Handler Module__
+
    ```typescript
    // app/src/utility/protocols/handshake.ts
    export async function handshakeProtocolHandler(stream) {
@@ -42,7 +52,8 @@ Establish peer identity and capabilities when connection is made.
    }
    ```
 
-3. **Register Handler in P2P Service**
+3. __Register Handler in P2P Service__
+
    ```typescript
    // app/src/utility/p2p-service.ts (in startNode)
    await this.libp2pNode.handle(
@@ -51,7 +62,8 @@ Establish peer identity and capabilities when connection is made.
    );
    ```
 
-4. **Initiate Handshake on Connection**
+4. __Initiate Handshake on Connection__
+
    ```typescript
    // In peer:connect event handler
    const stream = await this.libp2pNode.dialProtocol(
@@ -61,19 +73,21 @@ Establish peer identity and capabilities when connection is made.
    // Send our handshake, receive theirs
    ```
 
-5. **Update UI to Show Metadata**
+5. __Update UI to Show Metadata__
    - Display peer's app version
    - Display peer's display name (from handshake, not auto-generated)
    - Display peer's capabilities
 
 ### Success Criteria
+
 - [ ] Handshake sent immediately after connection
-- [ ] Peer display name shows real name (not "Peer 12D3...")
+- [ ] Peer display name shows real name (not "Peer 12D3…")
 - [ ] App version visible in peer details
 - [ ] Capabilities list populated
 - [ ] Error handling for handshake timeout/failure
 
 ### Example Message Format
+
 ```json
 {
   "type": "handshake",
@@ -88,6 +102,7 @@ Establish peer identity and capabilities when connection is made.
 ```
 
 ### Helpful Resources
+
 - [libp2p Stream Muxing](https://docs.libp2p.io/concepts/multiplex/overview/)
 - [Protocol Handlers](https://docs.libp2p.io/concepts/fundamentals/protocols-and-streams/)
 - [it-length-prefixed](https://github.com/alanshaw/it-length-prefixed) - Message framing library
@@ -97,9 +112,11 @@ Establish peer identity and capabilities when connection is made.
 ## Protocol 2: Data Test (`/whatnext/data-test/1.0.0`)
 
 ### Purpose
+
 Send arbitrary data between peers to understand streaming and chunking.
 
 ### What You'll Learn
+
 - Sending larger payloads (1KB - 10MB)
 - Stream backpressure handling
 - Progress callbacks
@@ -108,7 +125,8 @@ Send arbitrary data between peers to understand streaming and chunking.
 
 ### Implementation Steps
 
-1. **Add Data Test UI Controls**
+1. __Add Data Test UI Controls__
+
    ```typescript
    // In P2PStatus.tsx "Data Transfer Testing" section
    <button onClick={() => sendTestMessage(peer, size)}>
@@ -116,7 +134,8 @@ Send arbitrary data between peers to understand streaming and chunking.
    </button>
    ```
 
-2. **Create Protocol Handler**
+2. __Create Protocol Handler__
+
    ```typescript
    // app/src/utility/protocols/data-test.ts
    export async function dataTestHandler(stream) {
@@ -126,7 +145,8 @@ Send arbitrary data between peers to understand streaming and chunking.
    }
    ```
 
-3. **Implement Send Logic**
+3. __Implement Send Logic__
+
    ```typescript
    async function sendTestData(peerId, dataSize, echo = false) {
        const stream = await libp2p.dialProtocol(
@@ -141,13 +161,14 @@ Send arbitrary data between peers to understand streaming and chunking.
    }
    ```
 
-4. **Add Statistics Tracking**
+4. __Add Statistics Tracking__
    - Bytes sent/received per peer
    - Transfer time
    - Throughput (bytes/sec)
    - Display in UI
 
 ### Test Scenarios
+
 - [ ] Send 1KB message (small, instant)
 - [ ] Send 1MB message (medium, test chunking)
 - [ ] Send 10MB message (large, test progress)
@@ -155,6 +176,7 @@ Send arbitrary data between peers to understand streaming and chunking.
 - [ ] Concurrent sends (test backpressure)
 
 ### Success Criteria
+
 - [ ] Small messages send instantly
 - [ ] Large messages show progress
 - [ ] Statistics accurate (match actual data size)
@@ -162,6 +184,7 @@ Send arbitrary data between peers to understand streaming and chunking.
 - [ ] No memory leaks on large transfers
 
 ### Example UI Addition
+
 ```typescript
 const testSizes = [
     { label: '1 KB', bytes: 1024 },
@@ -176,9 +199,11 @@ const testSizes = [
 ## Protocol 3: File Transfer (`/whatnext/file-transfer/1.0.0`)
 
 ### Purpose
+
 Transfer actual files between peers with progress and error recovery.
 
 ### What You'll Learn
+
 - File reading/writing
 - Chunked transfer with resume support
 - Progress callbacks
@@ -187,14 +212,16 @@ Transfer actual files between peers with progress and error recovery.
 
 ### Implementation Steps
 
-1. **Add File Transfer UI**
+1. __Add File Transfer UI__
+
    ```typescript
    <button onClick={selectFileToSend}>
        Select File to Send
    </button>
    ```
 
-2. **File Metadata Exchange**
+2. __File Metadata Exchange__
+
    ```typescript
    // First message: metadata
    {
@@ -212,7 +239,8 @@ Transfer actual files between peers with progress and error recovery.
    }
    ```
 
-3. **Implement Chunking Logic**
+3. __Implement Chunking Logic__
+
    ```typescript
    const CHUNK_SIZE = 64 * 1024; // 64KB chunks
 
@@ -225,7 +253,7 @@ Transfer actual files between peers with progress and error recovery.
    }
    ```
 
-4. **Progress Tracking**
+4. __Progress Tracking__
    - Show file name, size
    - Progress bar (percent complete)
    - Transfer rate (MB/s)
@@ -233,6 +261,7 @@ Transfer actual files between peers with progress and error recovery.
    - Cancel button
 
 ### Test Scenarios
+
 - [ ] Send small file (< 1MB)
 - [ ] Send medium file (1-10 MB)
 - [ ] Send large file (> 10 MB)
@@ -241,6 +270,7 @@ Transfer actual files between peers with progress and error recovery.
 - [ ] Multiple concurrent transfers
 
 ### Success Criteria
+
 - [ ] File arrives intact (checksums match)
 - [ ] Progress updates smoothly
 - [ ] Can handle large files (100MB+)
@@ -248,6 +278,7 @@ Transfer actual files between peers with progress and error recovery.
 - [ ] No corrupted transfers
 
 ### Error Handling
+
 - Connection drops mid-transfer (resume or restart?)
 - Disk full on receiver
 - File permissions issues
@@ -258,9 +289,11 @@ Transfer actual files between peers with progress and error recovery.
 ## Protocol 4: Playlist Sync (`/whatnext/playlist-sync/1.0.0`)
 
 ### Purpose
+
 Synchronize playlist changes between peers in real-time.
 
 ### What You'll Learn
+
 - CRDT concepts (Conflict-Free Replicated Data Types)
 - RxDB replication protocol
 - Conflict resolution strategies
@@ -269,13 +302,15 @@ Synchronize playlist changes between peers in real-time.
 
 ### Implementation Steps
 
-1. **Integrate RxDB Replication**
+1. __Integrate RxDB Replication__
+
    ```typescript
    // Use RxDB's built-in P2P replication
    import { replicateRxCollection } from 'rxdb/plugins/replication';
    ```
 
-2. **Create Sync Protocol Handler**
+2. __Create Sync Protocol Handler__
+
    ```typescript
    // This might be simpler - RxDB handles most of it
    // You provide:
@@ -287,25 +322,27 @@ Synchronize playlist changes between peers in real-time.
    // - Eventual consistency
    ```
 
-3. **Test Scenarios**
+3. __Test Scenarios__
    - [ ] Create playlist on peer A, appears on peer B
    - [ ] Add track on peer A, appears on peer B
    - [ ] Concurrent adds (both peers add at same time)
    - [ ] Concurrent deletes (conflict resolution)
    - [ ] Rename playlist while other peer adds track
 
-4. **Observe CRDT Behavior**
+4. __Observe CRDT Behavior__
    - Add debug logging for sync events
    - Show "last synced" timestamp per peer
    - Display conflict resolution decisions
 
 ### Success Criteria
+
 - [ ] Changes replicate within 1-2 seconds
 - [ ] No data loss during conflicts
 - [ ] Order preserved for sequential ops
 - [ ] Convergence (all peers eventually agree)
 
-### This is Complex!
+### This is Complex
+
 Playlist sync is the most sophisticated protocol. It builds on all previous learnings:
 - Handshake → establishes peer identity
 - Data test → proves large data works
@@ -321,6 +358,7 @@ Don't rush to this one. Master the simpler protocols first.
 Every protocol follows this structure:
 
 ### 1. Protocol Registration
+
 ```typescript
 // In p2p-service.ts startNode()
 await this.libp2pNode.handle(
@@ -330,6 +368,7 @@ await this.libp2pNode.handle(
 ```
 
 ### 2. Protocol Handler
+
 ```typescript
 async function myProtocolHandler({ stream, connection }) {
     try {
@@ -352,6 +391,7 @@ async function myProtocolHandler({ stream, connection }) {
 ```
 
 ### 3. Protocol Dialing
+
 ```typescript
 async function initiateProtocol(peerId, data) {
     const stream = await this.libp2pNode.dialProtocol(
@@ -373,6 +413,7 @@ async function initiateProtocol(peerId, data) {
 ```
 
 ### 4. Stream Helpers
+
 You'll want to create utilities for:
 - Reading length-prefixed messages
 - Writing length-prefixed messages
@@ -380,6 +421,7 @@ You'll want to create utilities for:
 - Error handling/timeouts
 
 Example:
+
 ```typescript
 // app/src/utility/protocols/stream-utils.ts
 export async function readJSON(stream) {
@@ -406,26 +448,31 @@ export async function writeJSON(stream, obj) {
 ## Tips for Success
 
 ### Start Simple
+
 - Don't try to build all protocols at once
 - Each one teaches something new
 - Test thoroughly before moving on
 
 ### Use the Dev UI
+
 - Add protocol-specific sections as you go
 - Log every message sent/received
 - Display statistics
 
 ### Handle Errors
+
 - Streams can fail
 - Connections can drop
 - Timeouts are important
 
 ### Document Learnings
+
 - Keep writing notes
 - Capture "gotchas"
 - Share insights
 
 ### Test with Multiple Peers
+
 - Use test-peer CLI
 - Start multiple WhatNext instances
 - Test concurrent operations
@@ -434,17 +481,17 @@ export async function writeJSON(stream, obj) {
 
 ## Estimated Timeline
 
-**Realistic pace** (assuming 2-4 hours per protocol):
+__Realistic pace__ (assuming 2-4 hours per protocol):
 
-- **Week 1**: Handshake protocol (simplest, learn foundations)
-- **Week 2**: Data test protocol (build on handshake, learn performance)
-- **Week 3**: File transfer protocol (chunking, progress, error handling)
-- **Week 4-5**: Playlist sync (most complex, integrates everything)
+- __Week 1__: Handshake protocol (simplest, learn foundations)
+- __Week 2__: Data test protocol (build on handshake, learn performance)
+- __Week 3__: File transfer protocol (chunking, progress, error handling)
+- __Week 4-5__: Playlist sync (most complex, integrates everything)
 
-**Aggressive pace** (full-time work):
+__Aggressive pace__ (full-time work):
 - Could complete all in 1-2 weeks
 
-**No rush!** The goal is understanding, not speed.
+__No rush!__ The goal is understanding, not speed.
 
 ---
 

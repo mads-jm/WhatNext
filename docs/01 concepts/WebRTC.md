@@ -1,6 +1,13 @@
-# WebRTC
+---
+tags:
+  - net/webrtc
+  - net
+  - net/transports
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:22:27 am
+---
 
-#p2p/webrtc #networking #transports
+# WebRTC
 
 ## What It Is
 
@@ -10,19 +17,19 @@ In WhatNext, WebRTC serves as one of the primary P2P transports through libp2p's
 
 ## Why We Use It
 
-- **NAT traversal**: ICE/STUN protocols enable connections behind routers and firewalls
-- **Browser compatibility**: Future web client can connect to desktop peers
-- **Low latency**: Direct peer-to-peer connections without relay overhead
-- **Industry standard**: Battle-tested in production (Google Meet, Discord, Zoom)
-- **libp2p integration**: Native transport in libp2p ecosystem
+- __NAT traversal__: ICE/STUN protocols enable connections behind routers and firewalls
+- __Browser compatibility__: Future web client can connect to desktop peers
+- __Low latency__: Direct peer-to-peer connections without relay overhead
+- __Industry standard__: Battle-tested in production (Google Meet, Discord, Zoom)
+- __libp2p integration__: Native transport in libp2p ecosystem
 
-**In multi-transport setup**: WebRTC complements TCP (local testing) and WebSocket (fallback) for network diversity and robustness.
+__In multi-transport setup__: WebRTC complements TCP (local testing) and WebSocket (fallback) for network diversity and robustness.
 
 ## How It Works
 
 ### WebRTC in libp2p Architecture
 
-```
+```ts
 Desktop Peer A                     Desktop Peer B
 ┌─────────────────┐               ┌─────────────────┐
 │  libp2p Node    │               │  libp2p Node    │
@@ -43,16 +50,16 @@ libp2p automatically selects WebRTC transport when:
 
 ### Connection Establishment Flow
 
-1. **Discovery**: Peer A discovers Peer B via mDNS or DHT
-2. **Signaling**: Exchange SDP offers/answers via Circuit Relay
-3. **ICE Candidates**: Exchange network endpoint candidates
-4. **STUN**: Query public STUN server for NAT-translated addresses
-5. **Connection**: Establish direct encrypted data channel
-6. **Relay Discarded**: Direct connection replaces relay path
+1. __Discovery__: Peer A discovers Peer B via mDNS or DHT
+2. __Signaling__: Exchange SDP offers/answers via Circuit Relay
+3. __ICE Candidates__: Exchange network endpoint candidates
+4. __STUN__: Query public STUN server for NAT-translated addresses
+5. __Connection__: Establish direct encrypted data channel
+6. __Relay Discarded__: Direct connection replaces relay path
 
 ### Node.js Compatibility
 
-**Critical Discovery**: `@libp2p/webrtc` works in Node.js WITHOUT polyfills!
+__Critical Discovery__: `@libp2p/webrtc` works in Node.js WITHOUT polyfills!
 
 Initial concern was that WebRTC requires browser APIs. Testing revealed:
 
@@ -71,9 +78,9 @@ const node = await createLibp2p({
 });
 ```
 
-**Why it works**: libp2p's WebRTC implementation uses Node.js-compatible libraries internally (likely `node-datachannel` or similar), not browser-only APIs.
+__Why it works__: libp2p's WebRTC implementation uses Node.js-compatible libraries internally (likely `node-datachannel` or similar), not browser-only APIs.
 
-**No `wrtc` polyfill needed**: Simplifies installation (no native compilation).
+__No `wrtc` polyfill needed__: Simplifies installation (no native compilation).
 
 ## Key Patterns
 
@@ -97,7 +104,7 @@ const node = await createLibp2p({
 });
 ```
 
-**Transport priority**: libp2p tries transports in order:
+__Transport priority__: libp2p tries transports in order:
 1. TCP (fastest for local)
 2. WebSocket (reliable fallback)
 3. WebRTC (NAT traversal)
@@ -123,12 +130,13 @@ const node = await createLibp2p({
 });
 ```
 
-**Why**:
+__Why__:
 - `identify`: Peer identification exchange during handshake
 - `circuitRelayTransport`: Signaling mechanism for SDP exchange
 
-**Error if missing**:
-```
+__Error if missing__:
+
+```ts
 Service "@libp2p/webrtc" required capability "@libp2p/identify" but it was not provided
 Service "@libp2p/webrtc" required capability "@libp2p/circuit-relay-v2-transport" but it was not provided
 ```
@@ -167,7 +175,7 @@ libp2p automatically selects best transport based on peer multiaddrs:
 
 ### Pitfall 1: WebRTC Has No Listening Addresses in Node.js
 
-**Problem**: WebRTC-only config shows "Multiaddrs: 0" in Node.js environment.
+__Problem__: WebRTC-only config shows "Multiaddrs: 0" in Node.js environment.
 
 ```bash
 whatnext> status
@@ -175,9 +183,9 @@ whatnext> status
   Multiaddrs: 0  # ❌ No listening addresses
 ```
 
-**Root Cause**: WebRTC is designed for browser contexts where listening addresses don't make sense (browser can't accept incoming connections). In Node.js, WebRTC transport doesn't create traditional listening sockets.
+__Root Cause__: WebRTC is designed for browser contexts where listening addresses don't make sense (browser can't accept incoming connections). In Node.js, WebRTC transport doesn't create traditional listening sockets.
 
-**Solution**: Add TCP or WebSocket transports for local network connections:
+__Solution__: Add TCP or WebSocket transports for local network connections:
 
 ```typescript
 transports: [
@@ -187,7 +195,8 @@ transports: [
 ]
 ```
 
-**Result**:
+__Result__:
+
 ```bash
 whatnext> status
 📊 Node Status:
@@ -200,14 +209,15 @@ whatnext> status
 
 ### Pitfall 2: Missing circuitRelayTransport
 
-**Problem**: WebRTC transport fails to initialize with cryptic error.
+__Problem__: WebRTC transport fails to initialize with cryptic error.
 
-**Error**:
-```
+__Error__:
+
+```ts
 Service "@libp2p/webrtc" required capability "@libp2p/circuit-relay-v2-transport" but it was not provided
 ```
 
-**Solution**: Always include Circuit Relay transport:
+__Solution__: Always include Circuit Relay transport:
 
 ```typescript
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2';
@@ -218,16 +228,17 @@ transports: [
 ]
 ```
 
-### Pitfall 3: Missing identify Service
+### Pitfall 3: Missing Identify Service
 
-**Problem**: Similar failure with identify service.
+__Problem__: Similar failure with identify service.
 
-**Error**:
-```
+__Error__:
+
+```ts
 Service "@libp2p/webrtc" required capability "@libp2p/identify" but it was not provided
 ```
 
-**Solution**: Always include identify service:
+__Solution__: Always include identify service:
 
 ```typescript
 import { identify } from '@libp2p/identify';
@@ -237,21 +248,21 @@ services: {
 }
 ```
 
-### Pitfall 4: Expecting wrtc Polyfill
+### Pitfall 4: Expecting Wrtc Polyfill
 
-**Problem**: Thinking Node.js needs `wrtc` package for WebRTC.
+__Problem__: Thinking Node.js needs `wrtc` package for WebRTC.
 
-**Reality**: `@libp2p/webrtc` works natively in Node.js without polyfills!
+__Reality__: `@libp2p/webrtc` works natively in Node.js without polyfills!
 
-**Action**: Don't add `wrtc` as a dependency (unnecessary and complicates installation).
+__Action__: Don't add `wrtc` as a dependency (unnecessary and complicates installation).
 
 ### Pitfall 5: Same-Machine Testing with WebRTC Only
 
-**Problem**: Two libp2p nodes on same machine can't connect with WebRTC-only config.
+__Problem__: Two libp2p nodes on same machine can't connect with WebRTC-only config.
 
-**Root Cause**: WebRTC doesn't create listening addresses, so peers can't find each other locally.
+__Root Cause__: WebRTC doesn't create listening addresses, so peers can't find each other locally.
 
-**Solution**: Use TCP transport for same-machine testing:
+__Solution__: Use TCP transport for same-machine testing:
 
 ```typescript
 // Development config
@@ -276,27 +287,31 @@ transports: [
 ## References
 
 ### Official Documentation
+
 - [WebRTC Official](https://webrtc.org/)
 - [MDN WebRTC API](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API)
 - [libp2p WebRTC Transport](https://github.com/libp2p/js-libp2p/tree/master/packages/transport-webrtc)
 - [libp2p Circuit Relay v2](https://www.npmjs.com/package/@libp2p/circuit-relay-v2)
 
 ### WhatNext Implementation
+
 - Utility process: `app/src/utility/p2p-service.ts`
 - Test peer: `test-peer/src/index.js`
 - Test script: `app/test-libp2p-webrtc.mjs` (validation)
 
 ### Related Issues
-- Issue #10: libp2p Integration
+
+- Issue 10: libp2p Integration
 - Testing: WebRTC compatibility in Node.js resolved
 
 ### Learning Resources
+
 - [WebRTC for the Curious](https://webrtcforthecurious.com/)
 - [STUN/TURN Server Setup](https://www.metered.ca/tools/openrelay/)
 - [ICE Candidate Types](https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate)
 
 ---
 
-**Status**: ✅ Production-ready, verified working in Node.js
-**Transport Priority**: 3rd (after TCP, WebSocket)
-**Last Updated**: 2025-11-12
+__Status__: ✅ Production-ready, verified working in Node.js
+__Transport Priority__: 3rd (after TCP, WebSocket)
+__Last Updated__: 2025-11-12

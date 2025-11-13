@@ -1,6 +1,13 @@
-# P2P Testing Guide
+---
+tags:
+  - guides/testing
+  - net
+  - core/development
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:22:31 am
+---
 
-#guides/testing #p2p #core/development
+# P2P Testing Guide
 
 ## Overview
 
@@ -20,7 +27,7 @@ cd test-peer
 npm install
 ```
 
-**One-time setup complete!**
+__One-time setup complete!__
 
 ## Testing Scenarios
 
@@ -35,8 +42,9 @@ cd test-peer
 npm start
 ```
 
-**Expected output:**
-```
+__Expected output:__
+
+```ts
 ✅ Node started successfully!
 Your Peer ID: 12D3KooW...
 👂 Listening for mDNS peer discovery...
@@ -49,18 +57,19 @@ cd app
 npm run dev
 ```
 
-**In Electron window:**
-1. Navigate to **"P2P Network"** in sidebar
+__In Electron window:__
+1. Navigate to __"P2P Network"__ in sidebar
 2. Wait 1-2 seconds for mDNS discovery
 
-**Expected in test peer terminal:**
-```
+__Expected in test peer terminal:__
+
+```ts
 🔍 Peer discovered!
    Peer ID: 12D3KooW[ElectronPeerID]...
    Type 'connect 1' to connect
 ```
 
-**Expected in Electron UI:**
+__Expected in Electron UI:__
 - Green "Connected" status indicator
 - "Discovered Peers (1)" showing test peer
 - Your Peer ID displayed
@@ -71,17 +80,18 @@ npm run dev
 whatnext> connect 1
 ```
 
-**Expected:**
-```
+__Expected:__
+
+```ts
 ✅ CONNECTED to peer!
    Total connections: 1
 ```
 
-**In Electron UI:**
+__In Electron UI:__
 - "Active Connections (1)"
 - Green "Connected" button next to test peer
 
-✅ **Success**: Bidirectional connection established via mDNS discovery!
+✅ __Success__: Bidirectional connection established via mDNS discovery!
 
 ---
 
@@ -89,11 +99,11 @@ whatnext> connect 1
 
 Test connection initiation from the app.
 
-**Setup:** Follow Scenario 1 steps until peers are discovered.
+__Setup:__ Follow Scenario 1 steps until peers are discovered.
 
-**In Electron UI:** Click the **"Connect"** button next to discovered test peer.
+__In Electron UI:__ Click the __"Connect"__ button next to discovered test peer.
 
-**Expected:**
+__Expected:__
 - Button changes to green "Connected"
 - Test peer terminal shows: `✅ CONNECTED to peer!`
 
@@ -120,12 +130,12 @@ open "whtnxt://connect/<PEER_ID>"      # macOS
 start "whtnxt://connect/<PEER_ID>"     # Windows
 ```
 
-**Expected:**
+__Expected:__
 - Electron app launches (or brings to front if running)
 - Connection initiated automatically
 - Test peer shows: `✅ CONNECTED to peer!`
 
-✅ **Success**: Protocol URL handled correctly!
+✅ __Success__: Protocol URL handled correctly!
 
 ---
 
@@ -144,24 +154,26 @@ start "whtnxt://connect/<PEER_ID>"     # Windows
 
 ### Problem: No Peers Discovered
 
-**Check 1: Same Network**
+__Check 1: Same Network__
 - Ensure both devices on same WiFi network
 - Check firewall isn't blocking mDNS (port 5353/UDP)
 
-**Check 2: Node Started**
-- Test peer: Look for "👂 Listening for mDNS..."
+__Check 2: Node Started__
+- Test peer: Look for "👂 Listening for mDNS…"
 - Electron app: Check console for "[P2P Service] libp2p node started"
 
-**Check 3: Logs**
+__Check 3: Logs__
 
 In Electron DevTools console (Ctrl+Shift+I):
-```
+
+```ts
 [Main] P2P utility process spawned
 [P2P Utility] libp2p node started with PeerID: 12D3KooW...
 ```
 
 In test peer terminal:
-```
+
+```ts
 whatnext> status
 ```
 
@@ -171,7 +183,7 @@ Verify multiaddrs are listed (should show TCP and WebSocket addresses).
 
 ### Problem: Connection Fails
 
-**Check 1: Peer in List**
+__Check 1: Peer in List__
 
 ```bash
 whatnext> list
@@ -179,12 +191,12 @@ whatnext> list
 
 Ensure peer is discovered before attempting connection.
 
-**Check 2: NAT/Firewall**
+__Check 2: NAT/Firewall__
 - WebRTC may fail behind strict NAT/firewall
 - Try on same subnet without VPN
 - Future: Relay servers will enable NAT traversal
 
-**Check 3: Logs**
+__Check 3: Logs__
 
 Look for error messages in:
 - Test peer terminal
@@ -195,12 +207,12 @@ Look for error messages in:
 
 ### Problem: Connection Drops
 
-**Check Network Stability**
+__Check Network Stability__
 - WiFi interference
 - Router issues
 - Move closer to router
 
-**Check Status**
+__Check Status__
 
 ```bash
 whatnext> status
@@ -208,7 +220,7 @@ whatnext> status
 
 Verify "Active Connections" count. If 0, connection was dropped.
 
-**Check Logs**
+__Check Logs__
 
 Both test peer and Electron should log disconnect events.
 
@@ -218,7 +230,7 @@ Both test peer and Electron should log disconnect events.
 
 ### Test Peer Startup
 
-```
+```ts
 WhatNext Test Peer
 ==================
 
@@ -240,7 +252,7 @@ whatnext>
 
 ### Electron Main Process (Terminal 2)
 
-```
+```ts
 [Main] Spawning P2P utility process
 [Main] P2P utility process spawned
 [P2P Utility] [P2P Service 2025-11-10T...] [INFO] Starting libp2p node...
@@ -252,7 +264,7 @@ whatnext>
 
 ### Electron Renderer (DevTools Console)
 
-```
+```ts
 [P2PStatus] Node started: { peerId: '12D3KooW...', multiaddrs: [...] }
 [P2PStatus] Peer discovered: { peer: {...}, multiaddrs: [...] }
 [P2PStatus] Connection established: { peerId: '12D3KooW...', connection: {...} }
@@ -263,15 +275,18 @@ whatnext>
 ## Success Indicators
 
 ### ✅ mDNS Discovery (within 1-2 seconds)
+
 - Test peer shows "🔍 Peer discovered!"
 - Electron UI shows "Discovered Peers (1)"
 
 ### ✅ Connection Established
+
 - Green "Connected" status in both
 - "Active Connections (1)" displayed
 - No error messages
 
 ### ✅ Stability (after 30 seconds)
+
 - Connection remains active
 - No disconnection events
 - Both peers still show "Connected"
@@ -280,7 +295,7 @@ whatnext>
 
 ## Architecture
 
-```
+```ts
 ┌─────────────────────┐         ┌──────────────────────┐
 │   Test Peer         │         │  Electron App        │
 │   (Node.js)         │         │  (Utility Process)   │
@@ -294,25 +309,28 @@ whatnext>
 └─────────────────────┘         └──────────────────────┘
 ```
 
-**Key Point**: Both use IDENTICAL libp2p configuration for parity.
+__Key Point__: Both use IDENTICAL libp2p configuration for parity.
 
 ---
 
 ## Benefits of Test Peer
 
 ### Development
-✅ **Fast iteration**: 1-second restart (vs 5-10 seconds for Electron)
-✅ **Easy debugging**: Single terminal, clear logs
-✅ **No UI overhead**: Pure P2P testing
+
+✅ __Fast iteration__: 1-second restart (vs 5-10 seconds for Electron)
+✅ __Easy debugging__: Single terminal, clear logs
+✅ __No UI overhead__: Pure P2P testing
 
 ### Testing
-✅ **Automated tests**: Spawn test peer programmatically
-✅ **CI/CD ready**: No Electron required for P2P tests
-✅ **Multi-peer testing**: Spawn 10+ peers easily
+
+✅ __Automated tests__: Spawn test peer programmatically
+✅ __CI/CD ready__: No Electron required for P2P tests
+✅ __Multi-peer testing__: Spawn 10+ peers easily
 
 ### Documentation
-✅ **Living example**: Test peer code documents P2P usage
-✅ **Onboarding**: Experiment without Electron complexity
+
+✅ __Living example__: Test peer code documents P2P usage
+✅ __Onboarding__: Experiment without Electron complexity
 
 ---
 
@@ -381,15 +399,17 @@ Then move to Phase 2:
 ## References
 
 ### Implementation
+
 - Test peer: `/test-peer/src/index.js`
 - Utility process: `/app/src/utility/p2p-service.ts`
 - P2P UI: `/app/src/renderer/components/P2P/P2PStatus.tsx`
 
 ### Documentation
+
 - Test peer README: `/test-peer/README.md`
 - Quick start: [[Quick-Start]]
 
 ---
 
-**Status**: ✅ Test peer production-ready for development workflows
-**Last Updated**: 2025-11-12
+__Status__: ✅ Test peer production-ready for development workflows
+__Last Updated__: 2025-11-12

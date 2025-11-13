@@ -1,8 +1,13 @@
+---
+tags: guides/setup
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:22:33 am
+---
+
 # Quick Start Guide
 
-#guides/setup
-**Last Updated**: 2025-11-12
-**For**: v0.0.0 Alpha - P2P Learning Build
+__Last Updated__: 2025-11-12
+__For__: v0.0.0 Alpha - P2P Learning Build
 
 ## TL;DR
 
@@ -24,7 +29,7 @@ Navigate to "P2P Network" tab in the app. You should see:
 
 ### Workflow 1: Testing Basic Discovery
 
-**Goal**: Verify mDNS discovery works
+__Goal__: Verify mDNS discovery works
 
 ```bash
 # Start app
@@ -36,7 +41,7 @@ Navigate to "P2P Network" tab in the app. You should see:
 
 ### Workflow 2: Testing Manual Connection
 
-**Goal**: Connect via `whtnxt://` URL
+__Goal__: Connect via `whtnxt://` URL
 
 ```bash
 # In app: Click "Copy URL" in Node Status section
@@ -46,7 +51,7 @@ Navigate to "P2P Network" tab in the app. You should see:
 
 ### Workflow 3: Multi-Instance Testing
 
-**Goal**: Connect two WhatNext instances
+__Goal__: Connect two WhatNext instances
 
 ```bash
 # Terminal 1: Start first instance
@@ -61,7 +66,7 @@ cd app && PORT=1314 npm run dev
 
 ### Workflow 4: Exploring Peer Details
 
-**Goal**: See maximum peer information
+__Goal__: See maximum peer information
 
 ```bash
 # Connect to a peer
@@ -71,7 +76,7 @@ cd app && PORT=1314 npm run dev
 
 ### Workflow 5: Watching Debug Logs
 
-**Goal**: Understand event timeline
+__Goal__: Understand event timeline
 
 ```bash
 # Watch "Debug Log" section as you:
@@ -83,21 +88,22 @@ cd app && PORT=1314 npm run dev
 
 ## Troubleshooting
 
-### Problem: Peer not discovered
+### Problem: Peer not Discovered
 
-**Symptoms**: "Discovered Peers" section stays empty
+__Symptoms__: "Discovered Peers" section stays empty
 
-**Causes**:
+__Causes__:
 1. Firewall blocking mDNS (port 5353/UDP)
 2. Different network/VLAN
 3. mDNS not supported on network
 
-**Solutions**:
+__Solutions__:
 1. Check firewall allows mDNS
 2. Use manual connection via URL instead
 3. Check debug logs for "Discovered peer" messages
 
-**Test**:
+__Test__:
+
 ```bash
 # Check if mDNS is working at OS level
 # Linux:
@@ -107,21 +113,22 @@ avahi-browse _whatnext._udp
 dns-sd -B _whatnext._udp
 ```
 
-### Problem: Connection fails
+### Problem: Connection Fails
 
-**Symptoms**: Click "Connect", nothing happens or "Connection failed" in logs
+__Symptoms__: Click "Connect", nothing happens or "Connection failed" in logs
 
-**Causes**:
+__Causes__:
 1. Peer discovered but not reachable
 2. Firewall blocking TCP/WebSocket ports
 3. Peer address changed (mobile IP)
 
-**Solutions**:
+__Solutions__:
 1. Check debug logs for specific error
 2. Try copying fresh URL (peer may have restarted)
 3. Check firewall allows TCP ports in range 49152-65535
 
-**Debug**:
+__Debug__:
+
 ```bash
 # Check what ports libp2p is listening on
 # (Look in "Listening Addresses" section)
@@ -131,42 +138,42 @@ dns-sd -B _whatnext._udp
 nc -zv <peer-ip> <port>
 ```
 
-### Problem: Node won't start
+### Problem: Node Won't Start
 
-**Symptoms**: "Status: Starting..." doesn't change to "Online"
+__Symptoms__: "Status: Starting…" doesn't change to "Online"
 
-**Causes**:
+__Causes__:
 1. Utility process failed to spawn
 2. Error in p2p-service.ts
 3. Build is stale
 
-**Solutions**:
+__Solutions__:
 1. Check Electron DevTools console for errors
 2. Rebuild: `cd app && npm run build`
 3. Check main process logs in terminal
 
-### Problem: Debug logs empty
+### Problem: Debug Logs Empty
 
-**Symptoms**: "Debug Log" section shows "No logs yet"
+__Symptoms__: "Debug Log" section shows "No logs yet"
 
-**Causes**:
+__Causes__:
 1. Node hasn't started yet (wait 500ms)
 2. JavaScript error preventing component mount
 
-**Solutions**:
+__Solutions__:
 1. Check browser DevTools console
 2. Verify React app loaded correctly
 3. Try refreshing app (Ctrl+R / Cmd+R)
 
 ## Keyboard Shortcuts
 
-- **Ctrl/Cmd + Shift + I**: Toggle DevTools
-- **Ctrl/Cmd + R**: Refresh app (useful after code changes)
-- **Enter**: In connection URL field, trigger connect
+- __Ctrl/Cmd + Shift + I__: Toggle DevTools
+- __Ctrl/Cmd + R__: Refresh app (useful after code changes)
+- __Enter__: In connection URL field, trigger connect
 
 ## Directory Structure Quick Reference
 
-```
+```ts
 /app
   /src
     /main
@@ -254,11 +261,11 @@ window.electron.p2p.onNodeError(callback)
 
 ## Next Steps After Setup
 
-1. **Verify everything works**: Follow Workflow 1-5 above
-2. **Read the notes**: Start with `note-251112-p2p-development-interface-complete.md`
-3. **Explore libp2p docs**: https://docs.libp2p.io/
-4. **Plan first protocol**: Handshake is recommended (see v0.0.0 release summary)
-5. **Document learnings**: Continue the notes pattern in `/docs/notes/`
+1. __Verify everything works__: Follow Workflow 1-5 above
+2. __Read the notes__: Start with `note-251112-p2p-development-interface-complete.md`
+3. __Explore libp2p docs__: <https://docs.libp2p.io/>
+4. __Plan first protocol__: Handshake is recommended (see v0.0.0 release summary)
+5. __Document learnings__: Continue the notes pattern in `/docs/notes/`
 
 ## Getting Help
 
@@ -268,7 +275,7 @@ If you encounter issues:
 2. Check browser DevTools console (renderer errors)
 3. Check terminal output (main process & utility process logs)
 4. Review notes in `/docs/notes/` for similar issues
-5. Consult libp2p docs: https://docs.libp2p.io/
+5. Consult libp2p docs: <https://docs.libp2p.io/>
 
 ## Related Documentation
 
@@ -280,4 +287,4 @@ If you encounter issues:
 
 ---
 
-**Happy exploring!** The P2P layer is yours to master now. 🚀
+__Happy exploring!__ The P2P layer is yours to master now. 🚀

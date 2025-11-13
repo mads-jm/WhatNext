@@ -1,6 +1,14 @@
-# UI Development Guide
+---
+tags:
+  - guides/ui
+  - ux
+  - ux/styling/tailwind
+  - ux/react
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:22:36 am
+---
 
-#guides/ui #frontend #frontend/styling/tailwind #frontend/react
+# UI Development Guide
 
 ## Overview
 
@@ -10,24 +18,24 @@ Guide for developing UI components in WhatNext following established patterns, d
 
 ### Obsidian-Inspired Principles
 
-1. **Local-First Indicators**: UI constantly reinforces local-first architecture
-2. **Information Density**: Compact yet readable, maximizing screen real estate
-3. **Visual Hierarchy**: Clear parent/child relationships via indentation and borders
-4. **Developer-Focused**: Tools and workflows prominently featured
-5. **Progressive Disclosure**: Collapse sections to focus, expand for detail
+1. __Local-First Indicators__: UI constantly reinforces local-first architecture
+2. __Information Density__: Compact yet readable, maximizing screen real estate
+3. __Visual Hierarchy__: Clear parent/child relationships via indentation and borders
+4. __Developer-Focused__: Tools and workflows prominently featured
+5. __Progressive Disclosure__: Collapse sections to focus, expand for detail
 
 ### Visual Identity
 
-**Color Palette:**
-- **Primary Blue** (#3B82F6): Active states, highlights
-- **Purple Accent** (#9333EA): Brand gradient, special features
-- **Gray Scale**: Dark sidebar (900), subtle borders (800), muted text (400-600)
-- **Semantic Colors**:
+__Color Palette:__
+- __Primary Blue__ (#3B82F6): Active states, highlights
+- __Purple Accent__ (#9333EA): Brand gradient, special features
+- __Gray Scale__: Dark sidebar (900), subtle borders (800), muted text (400-600)
+- __Semantic Colors__:
   - Green: Online/active status
   - Orange: Development/in-progress
   - Gray: Coming soon/inactive
 
-**Typography:**
+__Typography:__
 - Section headers: Uppercase, tracked, small (`text-xs`)
 - Nav items: Normal case, medium (`text-sm`)
 - Badges: Tiny, bold (`text-[10px]`)
@@ -37,7 +45,7 @@ Guide for developing UI components in WhatNext following established patterns, d
 
 ### Pattern 1: Hierarchical Navigation
 
-**Example:** Sidebar with collapsible sections
+__Example:__ Sidebar with collapsible sections
 
 ```tsx
 const [expandedSections, setExpandedSections] = useState<Set<string>>(
@@ -73,14 +81,14 @@ const toggleSection = (sectionId: string) => {
 )}
 ```
 
-**Key Features:**
+__Key Features:__
 - Set-based state for O(1) lookup
 - Smooth rotation animation on chevron
 - Clear visual hierarchy with indentation
 
 ### Pattern 2: Status Badges
 
-**Three badge types:**
+__Three badge types:__
 
 ```tsx
 // "Soon" badge (gray)
@@ -99,10 +107,10 @@ const toggleSection = (sectionId: string) => {
 </span>
 ```
 
-**Usage:**
-- **Soon**: Planned features not yet implemented
-- **Dev**: Development/debug tools
-- **Issue X**: Linked to GitHub issue tracking
+__Usage:__
+- __Soon__: Planned features not yet implemented
+- __Dev__: Development/debug tools
+- __Issue X__: Linked to GitHub issue tracking
 
 ### Pattern 3: Active State Highlighting
 
@@ -121,11 +129,11 @@ const toggleSection = (sectionId: string) => {
 </button>
 ```
 
-**Parent highlighting:** When child is active, highlight parent section too.
+__Parent highlighting:__ When child is active, highlight parent section too.
 
 ### Pattern 4: Scrolling Container Pattern
 
-**Main content area is the scroll container:**
+__Main content area is the scroll container:__
 
 ```tsx
 // App.tsx - Main layout
@@ -141,7 +149,7 @@ const toggleSection = (sectionId: string) => {
 </div>
 ```
 
-**Component pattern:**
+__Component pattern:__
 
 ```tsx
 // Individual components - no height constraints
@@ -154,14 +162,16 @@ function MyComponent() {
 }
 ```
 
-**❌ Avoid:**
+__❌ Avoid:__
+
 ```tsx
 // Don't set heights on components in scrollable containers
 <div className="h-full overflow-y-auto">  // ❌ Conflicts with parent scrolling
 <div className="min-h-screen">            // ❌ Forces tall content
 ```
 
-**✅ Use:**
+__✅ Use:__
+
 ```tsx
 <div className="min-h-[400px]">  // ✅ Minimum height for centering
 <div className="space-y-4">       // ✅ Natural flow
@@ -194,7 +204,7 @@ function PlaceholderView({ icon: Icon, title, description, features }) {
 
 ### Pitfall 1: Conflicting Heights in Scroll Containers
 
-**Problem:** Setting `h-full` or `min-h-screen` on components inside scrollable containers prevents scrolling.
+__Problem:__ Setting `h-full` or `min-h-screen` on components inside scrollable containers prevents scrolling.
 
 ```tsx
 // ❌ Wrong
@@ -205,7 +215,7 @@ function PlaceholderView({ icon: Icon, title, description, features }) {
 </main>
 ```
 
-**Solution:** Remove height constraints from children, let parent handle scrolling.
+__Solution:__ Remove height constraints from children, let parent handle scrolling.
 
 ```tsx
 // ✅ Correct
@@ -218,7 +228,7 @@ function PlaceholderView({ icon: Icon, title, description, features }) {
 
 ### Pitfall 2: Multiple Scroll Containers
 
-**Problem:** Nested scroll containers create confusing scroll behavior.
+__Problem:__ Nested scroll containers create confusing scroll behavior.
 
 ```tsx
 // ❌ Avoid nested scrolling
@@ -229,7 +239,7 @@ function PlaceholderView({ icon: Icon, title, description, features }) {
 </main>
 ```
 
-**Solution:** Single scroll container at parent level.
+__Solution:__ Single scroll container at parent level.
 
 ```tsx
 // ✅ Single scroller
@@ -242,9 +252,9 @@ function PlaceholderView({ icon: Icon, title, description, features }) {
 
 ### Pitfall 3: Lost Padding in Components
 
-**Problem:** Removing component padding after parent already provides it.
+__Problem:__ Removing component padding after parent already provides it.
 
-**Rule:** Main content area (`<main>`) provides `p-6`. Components shouldn't add more.
+__Rule:__ Main content area (`<main>`) provides `p-6`. Components shouldn't add more.
 
 ```tsx
 // App.tsx provides padding
@@ -259,9 +269,9 @@ function PlaceholderView({ icon: Icon, title, description, features }) {
 
 ### Pitfall 4: Forgetting Active Parent Highlighting
 
-**Problem:** Parent section doesn't highlight when child is active.
+__Problem:__ Parent section doesn't highlight when child is active.
 
-**Solution:** Check if any child is active when determining parent state.
+__Solution:__ Check if any child is active when determining parent state.
 
 ```tsx
 const sections = [
@@ -287,7 +297,7 @@ const isParentActive = (section) => {
 
 ### Pitfall 5: Hardcoded Colors Instead of Semantic Classes
 
-**Problem:** Using arbitrary color values instead of Tailwind's semantic classes.
+__Problem:__ Using arbitrary color values instead of Tailwind's semantic classes.
 
 ```tsx
 // ❌ Hardcoded
@@ -297,7 +307,7 @@ const isParentActive = (section) => {
 <div className="bg-gray-800">
 ```
 
-**Benefits:**
+__Benefits:__
 - Consistent with design system
 - Responsive to theme changes
 - Better IntelliSense support
@@ -320,18 +330,22 @@ When adding/modifying UI components:
 ## File Locations
 
 ### Key UI Components
+
 - Sidebar: `app/src/renderer/components/Layout/Sidebar.tsx`
 - Toolbar: `app/src/renderer/components/Layout/Toolbar.tsx`
 - App layout: `app/src/renderer/App.tsx`
 
 ### P2P Components
+
 - P2P Status: `app/src/renderer/components/P2P/P2PStatus.tsx`
 
 ### Playlist Components
+
 - Playlist List: `app/src/renderer/components/Playlist/PlaylistList.tsx`
 - Playlist View: `app/src/renderer/components/Playlist/PlaylistView.tsx`
 
 ### Styles
+
 - Main CSS: `app/src/styles/main.css`
 - Tailwind config: `app/tailwind.config.js`
 
@@ -344,17 +358,19 @@ When adding/modifying UI components:
 ## References
 
 ### Design Inspiration
+
 - Obsidian: Local-first, developer-focused aesthetics
 - VS Code: Sidebar navigation patterns
 - Linear: Badge and status indicator design
 
 ### Implementation
+
 - React 19 documentation
 - Tailwind CSS v4 documentation
 - clsx for conditional classes
 
 ---
 
-**Status**: ✅ Patterns established in v0.0.0
-**Design System**: Obsidian-inspired, local-first aesthetic
-**Last Updated**: 2025-11-12
+__Status__: ✅ Patterns established in v0.0.0
+__Design System__: Obsidian-inspired, local-first aesthetic
+__Last Updated__: 2025-11-12

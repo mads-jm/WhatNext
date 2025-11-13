@@ -1,10 +1,16 @@
-# ADR: Database Storage Location (Renderer vs Main Process)
+---
+tags:
+  - architecture/decisions
+  - data
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:22:40 am
+---
 
-**Date**: 2025-11-09
-**Status**: ✅ Accepted
-**Context**: Initial RxDB integration
+# ADR: Database Storage Location (Renderer Vs Main Process)
 
-#architecture/decisions #data
+__Date__: 2025-11-09
+__Status__: ✅ Accepted
+__Context__: Initial RxDB integration
 
 ## Context
 
@@ -12,17 +18,17 @@ During initial RxDB integration, we needed to decide where the database logic sh
 
 ## Decision
 
-**RxDB database runs in the renderer process (`/app/src/renderer/db/`), not the main process.**
+__RxDB database runs in the renderer process (`/app/src/renderer/db/`), not the main process.__
 
 ## Rationale
 
 ### 1. Technical Necessity: RxDB Requires Browser APIs
 
-**Critical blocker**: RxDB fundamentally requires browser APIs that don't exist in Node.js:
+__Critical blocker__: RxDB fundamentally requires browser APIs that don't exist in Node.js:
 
-- **IndexedDB**: Browser-only storage API (not available in Node.js main process)
-- **WebRTC**: Required for P2P replication (browser-only)
-- **Reactive observables**: Optimized for browser event loop
+- __IndexedDB__: Browser-only storage API (not available in Node.js main process)
+- __WebRTC__: Required for P2P replication (browser-only)
+- __Reactive observables__: Optimized for browser event loop
 
 ```javascript
 // In Renderer (Browser Context) ✅
@@ -38,27 +44,29 @@ To use RxDB in main process would require:
 - Implementing custom replication protocol
 - Abandoning P2P WebRTC sync
 
-**Conclusion**: RxDB is designed for renderer/browser environments.
+__Conclusion__: RxDB is designed for renderer/browser environments.
 
 ### 2. Local-First = UI-First
 
 In WhatNext's local-first architecture:
 
-- **The database IS the application state**
+- __The database IS the application state__
 - React components should directly query/mutate data
 - Reactive updates are the core feature
 - No "backend" layer needed between UI and data
 
 ### 3. Zero-Latency Performance
 
-**Renderer database**:
-```
+__Renderer database__:
+
+```ts
 React → RxDB → IndexedDB
 (0ms latency, direct function calls)
 ```
 
-**Main process database**:
-```
+__Main process database__:
+
+```ts
 React → IPC → Main Process → Database → IPC → React
 (5-50ms latency per query, serialization overhead)
 ```
@@ -98,7 +106,7 @@ RxDB's P2P replication uses WebRTC (browser-only API):
 
 ## Architecture
 
-```
+```ts
 ┌─────────────────────────────────────────────┐
 │        RENDERER PROCESS (Chromium)          │
 │  ┌─────────────────────────────────────┐   │
@@ -132,13 +140,13 @@ RxDB's P2P replication uses WebRTC (browser-only API):
 
 ### Alternative 1: Database in Main Process
 
-**Pros**:
+__Pros__:
 - Single source of truth for multi-window apps
 - Better perceived security (more isolated)
 - Centralized lifecycle management
 - Access to Node.js storage options (SQLite, LevelDB)
 
-**Cons**:
+__Cons__:
 - ❌ IndexedDB doesn't exist in Node.js (incompatible with RxDB/Dexie)
 - ❌ IPC overhead for every query (5-50ms latency)
 - ❌ Lost reactive query streams (can't emit observables across IPC)
@@ -146,47 +154,47 @@ RxDB's P2P replication uses WebRTC (browser-only API):
 - ❌ Performance degradation for UI updates
 - ❌ WebRTC P2P replication unavailable (browser API)
 
-**Rejected**: Technical incompatibility with RxDB and unacceptable performance impact.
+__Rejected__: Technical incompatibility with RxDB and unacceptable performance impact.
 
 ### Alternative 2: Hybrid (Split Data Layer)
 
-**Idea**: IndexedDB in renderer for UI state, SQLite in main for persistence.
+__Idea__: IndexedDB in renderer for UI state, SQLite in main for persistence.
 
-**Pros**:
+__Pros__:
 - Best of both worlds?
 
-**Cons**:
+__Cons__:
 - ❌ Massive complexity (two databases to sync)
 - ❌ Dual source of truth (conflict resolution nightmares)
 - ❌ Double storage overhead
 - ❌ Abandons RxDB benefits for persistence layer
 - ❌ No clear wins over single-location approach
 
-**Rejected**: Complexity outweighs any benefits.
+__Rejected__: Complexity outweighs any benefits.
 
 ## Consequences
 
 ### Positive
 
-✅ **Zero-latency UI updates** - Direct function calls, no IPC
-✅ **Reactive queries work natively** - RxJS observables → React hooks
-✅ **P2P replication enabled** - WebRTC available in renderer
-✅ **Simpler architecture** - Fewer moving parts, less code
-✅ **RxDB design alignment** - Using library as intended
+✅ __Zero-latency UI updates__ - Direct function calls, no IPC
+✅ __Reactive queries work natively__ - RxJS observables → React hooks
+✅ __P2P replication enabled__ - WebRTC available in renderer
+✅ __Simpler architecture__ - Fewer moving parts, less code
+✅ __RxDB design alignment__ - Using library as intended
 
 ### Negative
 
-⚠️ **Multi-window complexity** - Each window has own DB instance (acceptable for MVP)
-⚠️ **Renderer attack surface** - Database in sandboxed but less isolated process (mitigated, see below)
+⚠️ __Multi-window complexity__ - Each window has own DB instance (acceptable for MVP)
+⚠️ __Renderer attack surface__ - Database in sandboxed but less isolated process (mitigated, see below)
 
 ### Mitigation Strategies
 
-**Multi-window (future)**:
+__Multi-window (future)__:
 - Use RxDB's `multiInstance: true` with leader election
 - Or implement single-window constraint (current MVP approach)
 - Or migrate to main process DB if multi-window becomes critical
 
-**Security**:
+__Security__:
 - Renderer properly sandboxed (`nodeIntegration: false`, `contextIsolation: true`)
 - IndexedDB isolated per-origin (can't access other apps' data)
 - Schema validation via AJV prevents invalid data
@@ -252,34 +260,37 @@ async function exportPlaylist(playlistId: string) {
 ## Comparison with Similar Apps
 
 ### Obsidian (Similar Architecture)
-- **Vault data in renderer** (React + CodeMirror)
+
+- __Vault data in renderer__ (React + CodeMirror)
 - Markdown files synced via main process
 - Plugin system runs in renderer
-- **Why it works**: Local-first, user-owned data, renderer-native features
+- __Why it works__: Local-first, user-owned data, renderer-native features
 
 ### VS Code (Different Architecture)
-- **Main-process-heavy** with renderer UI
+
+- __Main-process-heavy__ with renderer UI
 - Language servers in main process (need Node.js)
 - File system access via main
-- **Why different**: Code editor needs Node.js APIs for tooling
+- __Why different__: Code editor needs Node.js APIs for tooling
 
 ### Discord/Slack (Different Architecture)
-- **IndexedDB cache in renderer**
-- API client in renderer
-- **Why different**: Cloud-first, server is source of truth (local DB is cache)
 
-**WhatNext aligns with Obsidian** (local-first, renderer-centric) not Discord (cloud-first, cache-centric).
+- __IndexedDB cache in renderer__
+- API client in renderer
+- __Why different__: Cloud-first, server is source of truth (local DB is cache)
+
+__WhatNext aligns with Obsidian__ (local-first, renderer-centric) not Discord (cloud-first, cache-centric).
 
 ## When to Reconsider
 
 Move to main process ONLY if:
 
-1. **Switching from RxDB** to SQLite/LevelDB (unlikely - defeats RxDB benefits)
-2. **Multi-window requirement** becomes critical (Phase 3+, can use RxDB multi-instance first)
-3. **Security model changes** dramatically (not planned)
-4. **Adding server-side sync hub** (contradicts local-first principle)
+1. __Switching from RxDB__ to SQLite/LevelDB (unlikely - defeats RxDB benefits)
+2. __Multi-window requirement__ becomes critical (Phase 3+, can use RxDB multi-instance first)
+3. __Security model changes__ dramatically (not planned)
+4. __Adding server-side sync hub__ (contradicts local-first principle)
 
-**Review date**: 2026-01-09 (after 2 months production use)
+__Review date__: 2026-01-09 (after 2 months production use)
 
 ## Related Concepts
 
@@ -290,21 +301,24 @@ Move to main process ONLY if:
 ## References
 
 ### Official Documentation
+
 - [RxDB Electron Integration](https://rxdb.info/electron.html)
 - [Electron Process Model](https://www.electronjs.org/docs/latest/tutorial/process-model)
 - [Electron Security](https://www.electronjs.org/docs/latest/tutorial/security)
 
 ### WhatNext Implementation
+
 - Database: `app/src/renderer/db/database.ts`
 - Schemas: `app/src/renderer/db/schemas.ts`
 - Services: `app/src/renderer/db/services/`
 
 ### Specification
+
 - WhatNext spec §2.1: Local-First Data with User-Accessible Storage
 - CLAUDE.md: Security Posture
 
 ---
 
-**Status**: ✅ Implemented and validated in production
-**Performance**: Sub-millisecond query latency, instant UI updates
-**Security**: Renderer properly sandboxed, IndexedDB isolated
+__Status__: ✅ Implemented and validated in production
+__Performance__: Sub-millisecond query latency, instant UI updates
+__Security__: Renderer properly sandboxed, IndexedDB isolated

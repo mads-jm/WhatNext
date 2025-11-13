@@ -1,6 +1,13 @@
-# RxDB
+---
+tags:
+  - data/rxdb
+  - core/vision/local-first
+  - ux/reactive
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:21:46 am
+---
 
-#data/rxdb #core/vision/local-first #reactive
+# RxDB
 
 ## What It Is
 
@@ -10,16 +17,16 @@ In WhatNext, RxDB serves as the local-first data layer—the canonical source of
 
 ## Why We Use It
 
-Chosen after successful spike evaluation (Issue #4):
+Chosen after successful spike evaluation (Issue):
 
-- **Local-first**: Database is the source of truth, fully functional offline
-- **Reactive streams**: Query results update automatically when data changes (perfect for React)
-- **Schema validation**: Built-in JSON Schema validation prevents invalid data
-- **P2P replication**: Native support for replicating over custom transports (libp2p)
-- **Migration path**: Start with IndexedDB (Dexie), migrate to SQLite for premium features
-- **Excellent DX**: TypeScript-first, comprehensive docs, helpful error messages
+- __Local-first__: Database is the source of truth, fully functional offline
+- __Reactive streams__: Query results update automatically when data changes (perfect for React)
+- __Schema validation__: Built-in JSON Schema validation prevents invalid data
+- __P2P replication__: Native support for replicating over custom transports (libp2p)
+- __Migration path__: Start with IndexedDB (Dexie), migrate to SQLite for premium features
+- __Excellent DX__: TypeScript-first, comprehensive docs, helpful error messages
 
-**Performance**: Sub-millisecond indexed queries, instant writes, smooth 60fps UI updates.
+__Performance__: Sub-millisecond indexed queries, instant writes, smooth 60fps UI updates.
 
 ## How It Works
 
@@ -27,7 +34,7 @@ Chosen after successful spike evaluation (Issue #4):
 
 RxDB runs in the renderer process (React UI context):
 
-```
+```ts
 ┌─────────────────────────────────────┐
 │         Renderer Process            │
 │  ┌────────────┐      ┌──────────┐  │
@@ -42,7 +49,7 @@ RxDB runs in the renderer process (React UI context):
 └─────────────────────────────────────┘
 ```
 
-**Storage**: Dexie adapter (IndexedDB wrapper) for MVP, with migration path to SQLite for better performance and features.
+__Storage__: Dexie adapter (IndexedDB wrapper) for MVP, with migration path to SQLite for better performance and features.
 
 ### Database Initialization
 
@@ -142,7 +149,7 @@ function PlaylistList() {
 }
 ```
 
-**Result**: UI automatically updates when any playlist is created, updated, or deleted.
+__Result__: UI automatically updates when any playlist is created, updated, or deleted.
 
 ## Key Patterns
 
@@ -206,7 +213,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 ```
 
-**Usage**: Run `nukeRxDB()` in browser console when schema changes.
+__Usage__: Run `nukeRxDB()` in browser console when schema changes.
 
 ### Pattern 3: Storage Configuration
 
@@ -268,7 +275,7 @@ async function searchTracks(query: string): Promise<Track[]> {
 
 ### Pitfall 1: Optional Fields Cannot Be Indexed (Dexie)
 
-**Problem**: Dexie storage adapter doesn't support indexing optional fields.
+__Problem__: Dexie storage adapter doesn't support indexing optional fields.
 
 ```typescript
 // ❌ This fails with Dexie
@@ -278,13 +285,13 @@ indexes: ['spotifyId']  // spotifyId is optional
 indexes: ['addedAt']  // addedAt is required
 ```
 
-**Solution**: Only index required fields when using Dexie, or migrate to RxDB Premium storage.
+__Solution__: Only index required fields when using Dexie, or migrate to RxDB Premium storage.
 
-**Trade-off**: Queries on optional fields do full collection scans (slower but functional).
+__Trade-off__: Queries on optional fields do full collection scans (slower but functional).
 
 ### Pitfall 2: String Indexes Need maxLength
 
-**Problem**: RxDB requires `maxLength` on all indexed string fields.
+__Problem__: RxDB requires `maxLength` on all indexed string fields.
 
 ```typescript
 // ❌ Missing maxLength
@@ -301,15 +308,15 @@ interactionType: {
 }
 ```
 
-**Error**: `SC34 - Fields of type string that are used in an index, must have set the maxLength attribute`
+__Error__: `SC34 - Fields of type string that are used in an index, must have set the maxLength attribute`
 
 ### Pitfall 3: Schema Changes Require Migration
 
-**Problem**: Changing schemas causes hash mismatch (DB6 error).
+__Problem__: Changing schemas causes hash mismatch (DB6 error).
 
-**Solution**:
-- **Development**: Clear IndexedDB via `nukeRxDB()` helper
-- **Production**: Increment schema version and write migration:
+__Solution__:
+- __Development__: Clear IndexedDB via `nukeRxDB()` helper
+- __Production__: Increment schema version and write migration:
 
 ```typescript
 export const trackSchema: RxJsonSchema<Track> = {
@@ -334,9 +341,9 @@ await db.addCollections({
 
 ### Pitfall 4: Query Builder Plugin Required
 
-**Problem**: `.find()` and `.findOne()` methods don't exist.
+__Problem__: `.find()` and `.findOne()` methods don't exist.
 
-**Solution**: Import and register the query builder plugin:
+__Solution__: Import and register the query builder plugin:
 
 ```typescript
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
@@ -345,9 +352,9 @@ addRxPlugin(RxDBQueryBuilderPlugin);
 
 ### Pitfall 5: Dev-Mode Plugin Must Load First
 
-**Problem**: `ignoreDuplicate` option causes DB9 error.
+__Problem__: `ignoreDuplicate` option causes DB9 error.
 
-**Solution**: Load dev-mode plugin before calling `createRxDatabase()`:
+__Solution__: Load dev-mode plugin before calling `createRxDatabase()`:
 
 ```typescript
 // MUST be before createRxDatabase()
@@ -362,9 +369,9 @@ const db = await createRxDatabase({
 
 ### Pitfall 6: Forgetting to Unsubscribe
 
-**Problem**: Memory leaks from React subscriptions.
+__Problem__: Memory leaks from React subscriptions.
 
-**Solution**: Always return cleanup function in useEffect:
+__Solution__: Always return cleanup function in useEffect:
 
 ```typescript
 useEffect(() => {
@@ -383,29 +390,33 @@ useEffect(() => {
 ## References
 
 ### Official Documentation
+
 - [RxDB Documentation](https://rxdb.info/)
 - [RxDB Schema Guide](https://rxdb.info/rx-schema.html)
 - [Dexie Storage](https://rxdb.info/rx-storage-dexie.html)
 - [Replication Protocol](https://rxdb.info/replication.html)
 
 ### WhatNext Implementation
+
 - Database: `app/src/renderer/db/database.ts`
 - Schemas: `app/src/renderer/db/schemas.ts`
 - Services: `app/src/renderer/db/services/`
 - Spike test: `app/src/renderer/db/spike-test.tsx`
 
 ### Related Issues
-- Issue #4: RxDB Evaluation
-- Issue #5: Schema Integration
-- Issue #6: CRUD Operations
+
+- Issue: RxDB Evaluation
+- Issue: Schema Integration
+- Issue: CRUD Operations
 
 ### Learning Resources
+
 - [RxDB Examples](https://github.com/pubkey/rxdb/tree/master/examples)
 - [RxJS Documentation](https://rxjs.dev/)
 - [JSON Schema](https://json-schema.org/)
 
 ---
 
-**Status**: ✅ Production-ready, running in WhatNext v0.0.0
-**Storage**: Dexie (IndexedDB) for MVP, SQLite migration planned
-**Last Updated**: 2025-11-12
+__Status__: ✅ Production-ready, running in WhatNext v0.0.0
+__Storage__: Dexie (IndexedDB) for MVP, SQLite migration planned
+__Last Updated__: 2025-11-12

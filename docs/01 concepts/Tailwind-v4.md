@@ -1,6 +1,13 @@
-# Tailwind CSS v4
+---
+tags:
+  - ux/styling
+  - core/build-tools
+  - ux/styling/tailwind
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:22:00 am
+---
 
-#frontend/styling #build-tools
+# Tailwind CSS V4
 
 ## What It Is
 
@@ -10,13 +17,13 @@ In WhatNext, Tailwind v4 provides the styling foundation with utility classes ap
 
 ## Why We Use It
 
-- **Utility-first**: Rapid UI development without context-switching to CSS files
-- **Performance**: New Rust-based engine (Oxide) dramatically faster than v3
-- **Type safety**: IntelliSense works better with direct utility usage
-- **Vite integration**: First-class `@tailwindcss/vite` plugin
-- **Modern approach**: CSS-first configuration aligns with web standards
+- __Utility-first__: Rapid UI development without context-switching to CSS files
+- __Performance__: New Rust-based engine (Oxide) dramatically faster than v3
+- __Type safety__: IntelliSense works better with direct utility usage
+- __Vite integration__: First-class `@tailwindcss/vite` plugin
+- __Modern approach__: CSS-first configuration aligns with web standards
 
-**Migration from v3**: Breaking changes required updates to build config and custom utility patterns, but v4's philosophy aligns better with WhatNext's approach (no abstraction layers, direct utilities in JSX).
+__Migration from v3__: Breaking changes required updates to build config and custom utility patterns, but v4's philosophy aligns better with WhatNext's approach (no abstraction layers, direct utilities in JSX).
 
 ## How It Works
 
@@ -38,7 +45,7 @@ export default defineConfig({
 });
 ```
 
-**Why Vite plugin**: Direct integration is faster and more reliable than PostCSS processing chain.
+__Why Vite plugin__: Direct integration is faster and more reliable than PostCSS processing chain.
 
 ### CSS Entry Point
 
@@ -64,7 +71,7 @@ Single CSS file imports Tailwind:
 }
 ```
 
-**Import order matters**: External `@import` → `@import "tailwindcss"` → custom CSS
+__Import order matters__: External `@import` → `@import "tailwindcss"` → custom CSS
 
 ### Usage in Components
 
@@ -92,7 +99,7 @@ Tailwind v4 is in alpha and may have peer dependency conflicts:
 npm install @tailwindcss/vite --save-dev --legacy-peer-deps
 ```
 
-**Why `--legacy-peer-deps`**: Allows installation despite version mismatches with Vite 7.
+__Why `--legacy-peer-deps`__: Allows installation despite version mismatches with Vite 7.
 
 ### Pattern 2: Custom Utilities with @utility
 
@@ -113,14 +120,15 @@ For reusable component patterns:
 }
 ```
 
-**Usage**:
+__Usage__:
+
 ```tsx
 <div className="card card-hover">
     {/* Content */}
 </div>
 ```
 
-**Variants handled automatically**: Pseudo-selectors like `&:hover` work without manual variant definitions.
+__Variants handled automatically__: Pseudo-selectors like `&:hover` work without manual variant definitions.
 
 ### Pattern 3: Theme Configuration (Future)
 
@@ -135,7 +143,7 @@ v4 supports CSS-based theme configuration:
 }
 ```
 
-**Current approach**: WhatNext uses default Tailwind colors, custom theme planned for future.
+__Current approach__: WhatNext uses default Tailwind colors, custom theme planned for future.
 
 ### Pattern 4: Conditional Classes
 
@@ -155,15 +163,16 @@ import clsx from 'clsx';
 
 ### Pitfall 1: Using Wrong Plugin
 
-**Problem**: Using `@tailwindcss/postcss` instead of `@tailwindcss/vite`.
+__Problem__: Using `@tailwindcss/postcss` instead of `@tailwindcss/vite`.
 
-**Error**:
-```
+__Error__:
+
+```ts
 Missing field `negated` in query
 Cannot apply unknown utility class
 ```
 
-**Solution**: Use Vite plugin:
+__Solution__: Use Vite plugin:
 
 ```bash
 # ❌ Wrong
@@ -175,11 +184,11 @@ npm install @tailwindcss/vite
 
 ### Pitfall 2: Multiple Tailwind Imports
 
-**Problem**: Importing `@import "tailwindcss"` in multiple CSS files.
+__Problem__: Importing `@import "tailwindcss"` in multiple CSS files.
 
-**Error**: Build fails or duplicate CSS generated.
+__Error__: Build fails or duplicate CSS generated.
 
-**Solution**: Import Tailwind once in main CSS file only:
+__Solution__: Import Tailwind once in main CSS file only:
 
 ```css
 /* ✅ src/styles/main.css - single import */
@@ -190,11 +199,11 @@ npm install @tailwindcss/vite
 
 ### Pitfall 3: Wrong Import Order
 
-**Problem**: External `@import` after `@import "tailwindcss"`.
+__Problem__: External `@import` after `@import "tailwindcss"`.
 
-**Error**: External styles don't load or are overridden.
+__Error__: External styles don't load or are overridden.
 
-**Solution**: External imports FIRST:
+__Solution__: External imports FIRST:
 
 ```css
 /* ✅ Correct order */
@@ -206,9 +215,9 @@ npm install @tailwindcss/vite
 @import url('https://fonts.googleapis.com/...');
 ```
 
-### Pitfall 4: Using @layer components
+### Pitfall 4: Using @layer Components
 
-**Problem**: v3 pattern no longer works in v4.
+__Problem__: v3 pattern no longer works in v4.
 
 ```css
 /* ❌ v3 pattern (deprecated in v4) */
@@ -219,7 +228,7 @@ npm install @tailwindcss/vite
 }
 ```
 
-**Solution**: Use `@utility` directive:
+__Solution__: Use `@utility` directive:
 
 ```css
 /* ✅ v4 pattern */
@@ -229,13 +238,13 @@ npm install @tailwindcss/vite
 }
 ```
 
-**Or better**: Apply utilities directly in JSX (no custom CSS needed).
+__Or better__: Apply utilities directly in JSX (no custom CSS needed).
 
 ### Pitfall 5: Missing PostCSS Config
 
-**Problem**: Old `postcss.config.js` with Tailwind PostCSS plugin conflicts with Vite plugin.
+__Problem__: Old `postcss.config.js` with Tailwind PostCSS plugin conflicts with Vite plugin.
 
-**Solution**: Remove PostCSS Tailwind plugin (Vite plugin handles everything):
+__Solution__: Remove PostCSS Tailwind plugin (Vite plugin handles everything):
 
 ```javascript
 // postcss.config.js - remove Tailwind
@@ -255,22 +264,25 @@ export default {
 ## References
 
 ### Official Documentation
+
 - [Tailwind v4 Docs](https://tailwindcss.com/docs)
 - [Tailwind v4 Upgrade Guide](https://tailwindcss.com/docs/upgrade-guide)
 - [Tailwind v4 Alpha Announcement](https://tailwindcss.com/blog/tailwindcss-v4-alpha)
 - [@tailwindcss/vite Plugin](https://www.npmjs.com/package/@tailwindcss/vite)
 
 ### WhatNext Implementation
+
 - Vite config: `app/vite.config.ts`
 - Main CSS: `app/src/styles/main.css`
 - Components: `app/src/renderer/components/`
 
 ### Related Issues
+
 - Build failures during v4 migration
 - Resolution: Use Vite plugin, not PostCSS
 
 ---
 
-**Status**: ✅ Production-ready, running in WhatNext v0.0.0
-**Version**: v4.0.0-alpha.x (with Vite 7)
-**Last Updated**: 2025-11-12
+__Status__: ✅ Production-ready, running in WhatNext v0.0.0
+__Version__: v4.0.0-alpha.x (with Vite 7)
+__Last Updated__: 2025-11-12

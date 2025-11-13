@@ -1,6 +1,13 @@
-# Electron IPC
+---
+tags:
+  - architecture/patterns/ipc
+  - core/electron
+  - net/security
+date created: Thursday, November 13th 2025, 4:59:12 am
+date modified: Thursday, November 13th 2025, 5:20:36 am
+---
 
-#architecture/patterns/ipc #core/electron #security
+# Electron IPC
 
 ## What It Is
 
@@ -10,18 +17,18 @@ In WhatNext, IPC provides the bridge between the React UI (renderer) and system-
 
 ## Why We Use It
 
-- **Security**: Renderer sandbox enforced (no direct Node.js access)
-- **Type safety**: Strongly-typed API surface via TypeScript
-- **Modularity**: Clear separation between UI and system concerns
-- **Electron architecture**: Industry-standard pattern for desktop apps
+- __Security__: Renderer sandbox enforced (no direct Node.js access)
+- __Type safety__: Strongly-typed API surface via TypeScript
+- __Modularity__: Clear separation between UI and system concerns
+- __Electron architecture__: Industry-standard pattern for desktop apps
 
-**Critical security principle**: `nodeIntegration: false` and `contextIsolation: true` enforced. All system access must go through preload script.
+__Critical security principle__: `nodeIntegration: false` and `contextIsolation: true` enforced. All system access must go through preload script.
 
 ## How It Works
 
 ### Three-Process Architecture
 
-```
+```ts
 ┌──────────────────┐
 │ Renderer Process │  (React UI - sandboxed Chromium)
 │    (React)       │
@@ -48,12 +55,12 @@ In WhatNext, IPC provides the bridge between the React UI (renderer) and system-
 
 ### IPC Flow
 
-1. **Renderer** calls `window.electron.app.getVersion()`
-2. **Preload** translates to `ipcRenderer.invoke('app:get-version')`
-3. **Main** handles via `ipcMain.handle('app:get-version', ...)`
-4. **Main** returns result
-5. **Preload** forwards to renderer
-6. **Renderer** receives typed result
+1. __Renderer__ calls `window.electron.app.getVersion()`
+2. __Preload__ translates to `ipcRenderer.invoke('app:get-version')`
+3. __Main__ handles via `ipcMain.handle('app:get-version', …)`
+4. __Main__ returns result
+5. __Preload__ forwards to renderer
+6. __Renderer__ receives typed result
 
 ## Key Patterns
 
@@ -223,7 +230,7 @@ parentPort?.postMessage({
 
 ### Pitfall 1: Exposing Node.js Directly
 
-**Problem**: Enabling `nodeIntegration` in renderer.
+__Problem__: Enabling `nodeIntegration` in renderer.
 
 ```typescript
 // ❌ NEVER DO THIS
@@ -235,20 +242,21 @@ new BrowserWindow({
 });
 ```
 
-**Why dangerous**: Renderer has full Node.js access, including `require('child_process')`. Malicious code (XSS) can execute arbitrary system commands.
+__Why dangerous__: Renderer has full Node.js access, including `require('child_process')`. Malicious code (XSS) can execute arbitrary system commands.
 
-**Solution**: Keep `nodeIntegration: false`, `contextIsolation: true`. Use preload script.
+__Solution__: Keep `nodeIntegration: false`, `contextIsolation: true`. Use preload script.
 
 ### Pitfall 2: Forgetting to Register Handlers
 
-**Problem**: Calling IPC method without corresponding `ipcMain.handle()`.
+__Problem__: Calling IPC method without corresponding `ipcMain.handle()`.
 
-**Error**:
-```
+__Error__:
+
+```ts
 Error: No handler registered for 'app:get-version'
 ```
 
-**Solution**: Register handler in main process before renderer loads:
+__Solution__: Register handler in main process before renderer loads:
 
 ```typescript
 // main.ts - before createWindow()
@@ -257,7 +265,7 @@ ipcMain.handle('app:get-version', () => app.getVersion());
 
 ### Pitfall 3: Not Validating Input
 
-**Problem**: Accepting untrusted renderer input without validation.
+__Problem__: Accepting untrusted renderer input without validation.
 
 ```typescript
 // ❌ Dangerous
@@ -277,7 +285,7 @@ ipcMain.handle('file:delete', async (_, filePath) => {
 
 ### Pitfall 4: Memory Leaks from Event Listeners
 
-**Problem**: Adding event listeners without cleanup.
+__Problem__: Adding event listeners without cleanup.
 
 ```typescript
 // ❌ Memory leak
@@ -299,7 +307,7 @@ useEffect(() => {
 
 ### Pitfall 5: Synchronous IPC
 
-**Problem**: Using `ipcRenderer.sendSync()` blocks renderer.
+__Problem__: Using `ipcRenderer.sendSync()` blocks renderer.
 
 ```typescript
 // ❌ Blocks UI
@@ -318,6 +326,7 @@ const version = await ipcRenderer.invoke('app:get-version');
 ## References
 
 ### Official Documentation
+
 - [Electron IPC](https://www.electronjs.org/docs/latest/tutorial/ipc)
 - [contextBridge](https://www.electronjs.org/docs/latest/api/context-bridge)
 - [ipcMain](https://www.electronjs.org/docs/latest/api/ipc-main)
@@ -325,16 +334,18 @@ const version = await ipcRenderer.invoke('app:get-version');
 - [Electron Security](https://www.electronjs.org/docs/latest/tutorial/security)
 
 ### WhatNext Implementation
+
 - Preload script: `app/src/main/preload.ts`
 - Main handlers: `app/src/main/main.ts`
 - Utility process: `app/src/utility/p2p-service.ts`
 - Type definitions: `app/src/renderer/electron.d.ts`
 
 ### Related Issues
-- Issue #3: Setup Electron IPC for Core Functionality
+
+- Issue 3: Setup Electron IPC for Core Functionality
 
 ---
 
-**Status**: ✅ Production-ready, running in WhatNext v0.0.0
-**Security**: `nodeIntegration: false`, `contextIsolation: true` enforced
-**Last Updated**: 2025-11-12
+__Status__: ✅ Production-ready, running in WhatNext v0.0.0
+__Security__: `nodeIntegration: false`, `contextIsolation: true` enforced
+__Last Updated__: 2025-11-12

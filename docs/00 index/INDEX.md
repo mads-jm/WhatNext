@@ -1,69 +1,84 @@
+---
+tags:
+  - core/index
+date created: Thursday, November 13th 2025, 4:59:12 am
+date modified: Thursday, November 13th 2025, 5:19:30 am
+---
+
 # WhatNext Documentation Index
 
-> **For LLMs**: This index maps all documentation in the repository by concept. Use this for quick navigation and context gathering.
+> __For LLMs__: This index maps all documentation in the repository by concept. Use this for quick navigation and context gathering.
 
 ## Core Documentation
 
 ### Project Foundation
-- **[[whtnxt-nextspec]]** - Complete technical specification and architecture (source of truth)
-- **[[README]]** - High-level overview and stack
-- **[[CLAUDE]]** - Development instructions, commands, architecture principles
+
+- __[[whtnxt-nextspec]]__ - Complete technical specification and architecture (source of truth)
+- __[[README]]__ - High-level overview and stack
+- __[[CLAUDE]]__ - Development instructions, commands, architecture principles
 
 ### Development Workflows
-- **[[TESTING]]** - P2P connection testing procedures
-- **[[issues-2-6-summary]]** - Initial foundation implementation milestone
+
+- __[[TESTING]]__ - P2P connection testing procedures
+- __[[issues-2-6-summary]]__ - Initial foundation implementation milestone
 
 ---
 
 ## Concepts & Architecture
 
 ### P2P Networking
+
 [[Peer-to-Peer]] [[libp2p]] [[WebRTC]]
-- **[[adr-251110-libp2p-vs-simple-peer]]** - Architectural decision for P2P library
-- **[[note-251110-p2p-utility-process-architecture]]** - Electron process model for P2P
-- **[[note-251110-simplified-p2p-connection-architecture]]** - Connection flow patterns
-- **[[note-251110-libp2p-learning-roadmap]]** - Phase-by-phase learning plan
-- **[[note-251110-libp2p-first-implementation-learnings]]** - Practical lessons
-- **[[note-251110-webrtc-node-js-compatibility-resolved]]** - Node.js WebRTC integration
-- **[[note-251110-barebones-test-peer-created]]** - Test peer implementation
-- **[[note-251110-added-tcp-websocket-transports]]** - Transport layer expansion
-- **[[note-251109-custom-protocol-barebones-peer]]** - Protocol handler implementation
+- __[[adr-251110-libp2p-vs-simple-peer]]__ - Architectural decision for P2P library
+- __[[note-251110-p2p-utility-process-architecture]]__ - Electron process model for P2P
+- __[[note-251110-simplified-p2p-connection-architecture]]__ - Connection flow patterns
+- __[[note-251110-libp2p-learning-roadmap]]__ - Phase-by-phase learning plan
+- __[[note-251110-libp2p-first-implementation-learnings]]__ - Practical lessons
+- __[[note-251110-webrtc-node-js-compatibility-resolved]]__ - Node.js WebRTC integration
+- __[[note-251110-barebones-test-peer-created]]__ - Test peer implementation
+- __[[note-251110-added-tcp-websocket-transports]]__ - Transport layer expansion
+- __[[note-251109-custom-protocol-barebones-peer]]__ - Protocol handler implementation
 
 ### Data Architecture
+
 [[Local-First Data]] [[RxDB]]
-- **[[rxdb-spike-findings]]** - RxDB evaluation results (Issue #4)
-- **[[note-251109-rxdb-dev-mode]]** - Development configuration
-- **[[note-251109-rxdb-schema-validation-dexie-constraints]]** - Schema design patterns
-- **[[note-251109-database-location-architecture]]** - Storage location decisions
+- __[[rxdb-spike-findings]]__ - RxDB evaluation results (Issue 4)
+- __[[note-251109-rxdb-dev-mode]]__ - Development configuration
+- __[[note-251109-rxdb-schema-validation-dexie-constraints]]__ - Schema design patterns
+- __[[note-251109-database-location-architecture]]__ - Storage location decisions
 
 ### UI/UX
+
 [[Electron]] [[React]] [[Tailwind]]
-- **[[note-251112-ui-modernization-complete]]** - v0.0.0 UI polish session summary
-- **[[note-251112-modern-sidebar-navigation]]** - Navigation redesign
-- **[[note-251112-scrolling-fix]]** - Layout overflow resolution
-- **[[note-251109-tailwind-v4-migration]]** - Upgrading to Tailwind CSS v4
+- __[[note-251112-ui-modernization-complete]]__ - v0.0.0 UI polish session summary
+- __[[note-251112-modern-sidebar-navigation]]__ - Navigation redesign
+- __[[note-251112-scrolling-fix]]__ - Layout overflow resolution
+- __[[note-251109-tailwind-v4-migration]]__ - Upgrading to Tailwind CSS v4
 
 ---
 
 ## Development Milestones
 
-### Issue #10: libp2p Integration
-- **[[note-251110-issue-10-complete]]** - libp2p integration milestone
-- **[[note-251110-issue-10-session-summary]]** - Development session retrospective
+### Issue 10: libp2p Integration
 
-### v0.0.0 Release
-- **[[note-251112-v0.0.0-release-summary]]** - Alpha release overview
-- **[[note-251112-p2p-development-interface-complete]]** - Dev UI implementation
-- **[[Protocol-Implementation-Roadmap]]** - Next steps for protocol work
-- **[[Quick-Start]]** - Getting started with v0.0.0
-- **[[note-251112-navigation-quick-reference]]** - UI navigation guide
+- __[[note-251110-issue-10-complete]]__ - libp2p integration milestone
+- __[[note-251110-issue-10-session-summary]]__ - Development session retrospective
+
+### V0.0.0 Release
+
+- __[[note-251112-v0.0.0-release-summary]]__ - Alpha release overview
+- __[[note-251112-p2p-development-interface-complete]]__ - Dev UI implementation
+- __[[Protocol-Implementation-Roadmap]]__ - Next steps for protocol work
+- __[[Quick-Start]]__ - Getting started with v0.0.0
+- __[[note-251112-navigation-quick-reference]]__ - UI navigation guide
 
 ---
 
 ## Repository Structure
 
 ### Application Components
-```
+
+```ts
 /app                    Main Electron application
   /src/main            Main process (Node.js)
   /src/renderer        Renderer process (React)
@@ -80,47 +95,53 @@
 ```
 
 ### Key Configuration Files
-- **[[CLAUDE]]** - Instructions for AI assistants working on the codebase
-- **[[README]]** - Project overview
-- **[[TESTING]]** - Testing procedures
+
+- __[[CLAUDE]]__ - Instructions for AI assistants working on the codebase
+- __[[README]]__ - Project overview
+- __[[TESTING]]__ - Testing procedures
 
 ---
 
 ## Concept Map
 
 ### Core Principles
-- **[[User Sovereignty]]** → Local-first, user owns data
-- **[[Local-First Data]]** → Plaintext storage, offline-capable
-- **[[Peer-to-Peer]]** → Decentralized collaboration
-- **[[Plaintext Data Format]]** → Markdown + YAML frontmatter
+
+- __[[User Sovereignty]]__ → Local-first, user owns data
+- __[[Local-First Data]]__ → Plaintext storage, offline-capable
+- __[[Peer-to-Peer]]__ → Decentralized collaboration
+- __[[Plaintext Data Format]]__ → Markdown + YAML frontmatter
 
 ### Technology Stack
-- **[[Electron]]** → Desktop framework (main + renderer + preload)
-- **[[React]]** → UI framework (v19, functional components)
-- **[[TypeScript]]** → Type safety throughout
-- **[[Vite]]** → Build tool and dev server
-- **[[Tailwind CSS]]** → Styling (v4)
-- **[[RxDB]]** → Local reactive database
-- **[[libp2p]]** → P2P networking library
-- **[[WebRTC]]** → P2P transport layer
+
+- __[[Electron]]__ → Desktop framework (main + renderer + preload)
+- __[[React]]__ → UI framework (v19, functional components)
+- __[[TypeScript]]__ → Type safety throughout
+- __[[Vite]]__ → Build tool and dev server
+- __[[Tailwind CSS]]__ → Styling (v4)
+- __[[RxDB]]__ → Local reactive database
+- __[[libp2p]]__ → P2P networking library
+- __[[WebRTC]]__ → P2P transport layer
 
 ### Architecture Components
-- **[[Helper Backend Service]]** → Signaling + OAuth coordination
-- **[[Signaling Server]]** → P2P connection brokering
-- **[[Spotify Collaborative Sync Strategy]]** → External integration patterns
-- **[[Plugin Architecture]]** → Future extensibility (Obsidian-inspired)
+
+- __[[Helper Backend Service]]__ → Signaling + OAuth coordination
+- __[[Signaling Server]]__ → P2P connection brokering
+- __[[Spotify Collaborative Sync Strategy]]__ → External integration patterns
+- __[[Plugin Architecture]]__ → Future extensibility (Obsidian-inspired)
 
 ---
 
 ## Documentation Patterns
 
 ### Note Types
+
 - `note-YYMMDD-[topic].md` - Issue-specific learnings, problems solved
 - `adr-YYMMDD-[decision].md` - Architecture Decision Records
 - Session summaries - Milestone retrospectives
 - Concept explainers - Deep dives on specific technologies
 
 ### Status Indicators
+
 - ✅ Resolved/Complete
 - 🔄 In Progress
 - ⚠️ Blocked
@@ -131,6 +152,7 @@
 ## Quick Reference
 
 ### Common Commands
+
 ```bash
 # Initial setup
 ./scripts/dev-init.sh
@@ -148,6 +170,7 @@ cd app && npm run typecheck
 ```
 
 ### Key File Locations
+
 - Main process: `app/src/main/main.ts`
 - Renderer entry: `app/src/renderer/App.tsx`
 - IPC bridge: `app/src/main/preload.ts`
@@ -159,12 +182,13 @@ cd app && npm run typecheck
 ## For AI Assistants
 
 When working on WhatNext:
-1. **Start with**: [[CLAUDE]] for development context
-2. **Reference**: [[whtnxt-nextspec]] for architectural decisions
-3. **Check**: Recent notes in `/docs/05 notes/` for current state
-4. **Document**: New learnings following patterns in [[note-251110-libp2p-learning-roadmap]]
+1. __Start with__: [[CLAUDE]] for development context
+2. __Reference__: [[whtnxt-nextspec]] for architectural decisions
+3. __Check__: Recent notes in `/docs/05 notes/` for current state
+4. __Document__: New learnings following patterns in [[note-251110-libp2p-learning-roadmap]]
 
 ### Active Development Areas (as of 2025-11-12)
+
 - ✅ P2P networking foundation (libp2p integration complete)
 - ✅ UI modernization (v0.0.0 polished)
 - 🔄 Protocol implementation (next phase)
@@ -173,7 +197,5 @@ When working on WhatNext:
 
 ---
 
-**Last Updated**: 2025-11-12
-**Documentation Version**: v0.0.0
-
-#core/index
+__Last Updated__: 2025-11-12
+__Documentation Version__: v0.0.0

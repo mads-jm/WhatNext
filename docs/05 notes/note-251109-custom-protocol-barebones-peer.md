@@ -1,9 +1,15 @@
+---
+tags: 10
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:22:58 am
+---
+
 # Custom Protocol & Barebones Peer for Testing
 
-**Date**: 2025-11-09
-**Issue**: #10 - Handle `whtnxt://connect` Custom Protocol
-**Question**: Should we create a barebones peer for testing? Can it be auto-generated?
-**Status**: 📋 Design & Implementation Plan
+__Date__: 2025-11-09
+__Issue__: - Handle `whtnxt://connect` Custom Protocol
+__Question__: Should we create a barebones peer for testing? Can it be auto-generated?
+__Status__: 📋 Design & Implementation Plan
 
 ## Question from Developer
 
@@ -11,7 +17,7 @@
 
 ## Answer: Yes, Absolutely — With Smart Architecture
 
-Creating a **barebones test peer** is not just a good idea — it's **essential** for developing and testing the `whtnxt://` protocol and P2P networking features. And yes, it **can and should be automated**.
+Creating a __barebones test peer__ is not just a good idea — it's __essential__ for developing and testing the `whtnxt://` protocol and P2P networking features. And yes, it __can and should be automated__.
 
 Here's the strategic approach:
 
@@ -20,51 +26,55 @@ Here's the strategic approach:
 ## 1. Why We Need a Barebones Test Peer
 
 ### The Problem with Testing P2P in a Single Client
-- **You can't handshake with yourself**: P2P connections require at least 2 distinct peers
-- **Manual testing is painful**: Opening multiple Electron instances, managing state, clicking through flows
-- **Race conditions are invisible**: Without automated peers, timing bugs go undetected
-- **Regression testing is impossible**: Every protocol change requires manual re-testing
+
+- __You can't handshake with yourself__: P2P connections require at least 2 distinct peers
+- __Manual testing is painful__: Opening multiple Electron instances, managing state, clicking through flows
+- __Race conditions are invisible__: Without automated peers, timing bugs go undetected
+- __Regression testing is impossible__: Every protocol change requires manual re-testing
 
 ### What a Barebones Peer Solves
-✅ **Automated testing**: Spin up synthetic peers programmatically for integration tests
-✅ **Protocol validation**: Verify handshake, replication, and disconnect flows
-✅ **Load testing**: Simulate 5, 10, 50 peers to test scaling
-✅ **CI/CD integration**: Automated tests on every commit
-✅ **Developer ergonomics**: Quick feedback loop during development
+
+✅ __Automated testing__: Spin up synthetic peers programmatically for integration tests
+✅ __Protocol validation__: Verify handshake, replication, and disconnect flows
+✅ __Load testing__: Simulate 5, 10, 50 peers to test scaling
+✅ __CI/CD integration__: Automated tests on every commit
+✅ __Developer ergonomics__: Quick feedback loop during development
 
 ---
 
 ## 2. Architecture: Two-Tier Test Peer Strategy
 
 ### Tier 1: Headless Test Peer (Immediate Priority)
+
 A minimal Node.js process that speaks the P2P protocol without the Electron/UI overhead.
 
-**What it includes**:
+__What it includes__:
 - RxDB database (same schemas as client)
 - P2P networking layer (WebRTC via SimplePeer or similar)
 - Protocol handling (`whtnxt://` parsing)
 - Basic replication logic
 
-**What it excludes**:
+__What it excludes__:
 - Electron (no window management, no IPC)
 - React UI (headless)
 - Spotify integration (not needed for P2P testing)
 
-**Use cases**:
+__Use cases__:
 - Automated integration tests
 - CI/CD pipeline testing
 - Load/stress testing
 - Protocol development iteration
 
 ### Tier 2: Minimal Electron Test Client (Future)
+
 A stripped-down Electron app with minimal UI for visual debugging.
 
-**What it includes**:
+__What it includes__:
 - Full Electron stack (for protocol handler testing)
 - Bare-bones UI (connection status, peer list, simple playlist view)
 - Same P2P layer as production client
 
-**Use cases**:
+__Use cases__:
 - Visual debugging of P2P connections
 - Testing protocol handler registration
 - Cross-platform verification (Windows/Mac/Linux)
@@ -73,11 +83,11 @@ A stripped-down Electron app with minimal UI for visual debugging.
 
 ## 3. Code Sharing Strategy: Shared Core Library
 
-The key to automation is **extracting the P2P logic into a shared library** that both the main client and test peers consume.
+The key to automation is __extracting the P2P logic into a shared library__ that both the main client and test peers consume.
 
 ### Proposed Structure
 
-```
+```ts
 /app
   /src
     /main              # Electron main process
@@ -103,7 +113,8 @@ The key to automation is **extracting the P2P logic into a shared library** that
 
 ### What Goes in `/shared/core`?
 
-**Core P2P primitives** (environment-agnostic):
+__Core P2P primitives__ (environment-agnostic):
+
 ```typescript
 // Message protocol
 export interface P2PMessage {
@@ -129,7 +140,8 @@ export class WhatNextProtocol {
 }
 ```
 
-**Replication logic**:
+__Replication logic__:
+
 ```typescript
 // RxDB replication primitives
 export class P2PReplicationEngine {
@@ -145,9 +157,9 @@ export class P2PReplicationEngine {
 
 ### Auto-Generation: The Key to Staying in Sync
 
-**Problem**: When we update the client's P2P code, test peers become outdated.
+__Problem__: When we update the client's P2P code, test peers become outdated.
 
-**Solution**: Generate test peer code from shared primitives.
+__Solution__: Generate test peer code from shared primitives.
 
 #### Auto-Generation Script: `/test-peer/scripts/generate-peer.ts`
 
@@ -237,7 +249,8 @@ generateTestPeer().catch(console.error);
 
 #### Integration with Build Process
 
-**package.json** scripts:
+__package.json__ scripts:
+
 ```json
 {
   "scripts": {
@@ -248,14 +261,15 @@ generateTestPeer().catch(console.error);
 }
 ```
 
-**Husky pre-commit hook** (`.husky/pre-commit`):
+__Husky pre-commit hook__ (`.husky/pre-commit`):
+
 ```bash
 #!/bin/sh
 npm run generate:test-peer
 git add test-peer/src/generated-peer.ts
 ```
 
-This ensures **test peers always reflect latest client code**.
+This ensures __test peers always reflect latest client code__.
 
 ---
 
@@ -382,12 +396,14 @@ describe('P2P Protocol: Load Testing', () => {
 ## 5. Implementation Roadmap
 
 ### Phase 1: Extract P2P Core (Week 1)
+
 - [ ] Create `/app/src/shared/core` directory
 - [ ] Extract protocol types (`P2PMessage`, `P2PConnection`)
 - [ ] Extract `WhatNextProtocol` class (URL parsing)
 - [ ] Update client imports to use shared core
 
 ### Phase 2: Build Headless Test Peer (Week 1-2)
+
 - [ ] Create `/test-peer` directory structure
 - [ ] Implement `TestPeer` class (manually, first iteration)
 - [ ] Write basic handshake test
@@ -395,6 +411,7 @@ describe('P2P Protocol: Load Testing', () => {
 - [ ] Verify tests pass in CI
 
 ### Phase 3: Auto-Generation (Week 2-3)
+
 - [ ] Build AST parser for schema extraction
 - [ ] Implement `generate-peer.ts` script
 - [ ] Add pre-commit hook integration
@@ -402,6 +419,7 @@ describe('P2P Protocol: Load Testing', () => {
 - [ ] Validate generated code compiles and tests pass
 
 ### Phase 4: Advanced Test Scenarios (Week 3-4)
+
 - [ ] Multi-peer collaboration tests
 - [ ] Conflict resolution tests
 - [ ] Network partition simulation
@@ -409,6 +427,7 @@ describe('P2P Protocol: Load Testing', () => {
 - [ ] Protocol version compatibility tests
 
 ### Phase 5: Minimal Electron Test Client (Week 5+)
+
 - [ ] Scaffold minimal Electron app
 - [ ] Reuse shared P2P core
 - [ ] Build minimal UI (connection debugger)
@@ -419,19 +438,22 @@ describe('P2P Protocol: Load Testing', () => {
 ## 6. Benefits of This Approach
 
 ### For Development
-✅ **Instant feedback**: Test P2P changes without opening multiple Electron instances
-✅ **Regression prevention**: Automated tests catch protocol breaks immediately
-✅ **Faster iteration**: Change protocol → run tests → see results in seconds
+
+✅ __Instant feedback__: Test P2P changes without opening multiple Electron instances
+✅ __Regression prevention__: Automated tests catch protocol breaks immediately
+✅ __Faster iteration__: Change protocol → run tests → see results in seconds
 
 ### For Quality
-✅ **Protocol correctness**: Verify handshake, replication, disconnect flows automatically
-✅ **Edge case coverage**: Test race conditions, network failures, peer churn
-✅ **Cross-platform validation**: CI runs tests on Linux, Mac, Windows
+
+✅ __Protocol correctness__: Verify handshake, replication, disconnect flows automatically
+✅ __Edge case coverage__: Test race conditions, network failures, peer churn
+✅ __Cross-platform validation__: CI runs tests on Linux, Mac, Windows
 
 ### For Maintenance
-✅ **Single source of truth**: P2P logic lives in `/shared/core`
-✅ **Auto-sync**: Generated test peers always match production code
-✅ **Documentation**: Test scenarios serve as living protocol documentation
+
+✅ __Single source of truth__: P2P logic lives in `/shared/core`
+✅ __Auto-sync__: Generated test peers always match production code
+✅ __Documentation__: Test scenarios serve as living protocol documentation
 
 ---
 
@@ -513,64 +535,67 @@ describe('E2E: Collaborative Playlist Editing', () => {
 
 To make this "as procedural / automatable as possible":
 
-- [x] **Shared core library**: Extract P2P logic into `/shared/core`
-- [x] **Code generation**: Auto-generate test peer from schemas + protocol
-- [x] **Pre-commit hooks**: Regenerate test peer on every commit
-- [x] **CI/CD integration**: Run P2P tests on every push
-- [x] **Vitest integration**: Fast, modern test runner with watch mode
-- [x] **Test scenarios**: Pre-built handshake, replication, load tests
-- [x] **Documentation**: Tests serve as protocol documentation
-- [ ] **Visual regression**: Screenshot diffs for Electron test client (Phase 5)
-- [ ] **Performance benchmarks**: Track replication latency over time
+- [x] __Shared core library__: Extract P2P logic into `/shared/core`
+- [x] __Code generation__: Auto-generate test peer from schemas + protocol
+- [x] __Pre-commit hooks__: Regenerate test peer on every commit
+- [x] __CI/CD integration__: Run P2P tests on every push
+- [x] __Vitest integration__: Fast, modern test runner with watch mode
+- [x] __Test scenarios__: Pre-built handshake, replication, load tests
+- [x] __Documentation__: Tests serve as protocol documentation
+- [ ] __Visual regression__: Screenshot diffs for Electron test client (Phase 5)
+- [ ] __Performance benchmarks__: Track replication latency over time
 
 ---
 
 ## 9. Next Steps
 
-### Immediate (Issue #10 Implementation)
-1. **Implement protocol handler** in Electron main process (`protocol.registerStringProtocol('whtnxt', handler)`)
-2. **Extract protocol parsing** to `/shared/core/protocol.ts`
-3. **Write first test** using manual `TestPeer` implementation
-4. **Validate end-to-end** with 2 Electron instances (manual)
+### Immediate (Issue Implementation)
 
-### Short-term (Post-Issue #10)
-5. **Build auto-generation script** for test peer
-6. **Integrate with CI/CD** (GitHub Actions)
-7. **Add load tests** (10, 50, 100 peers)
+1. __Implement protocol handler__ in Electron main process (`protocol.registerStringProtocol('whtnxt', handler)`)
+2. __Extract protocol parsing__ to `/shared/core/protocol.ts`
+3. __Write first test__ using manual `TestPeer` implementation
+4. __Validate end-to-end__ with 2 Electron instances (manual)
+
+### Short-term (Post-Issue)
+
+5. __Build auto-generation script__ for test peer
+6. __Integrate with CI/CD__ (GitHub Actions)
+7. __Add load tests__ (10, 50, 100 peers)
 
 ### Long-term (Phase 2+)
-8. **Build minimal Electron test client** for visual debugging
-9. **Add protocol versioning** tests
-10. **Simulate network conditions** (latency, packet loss)
+
+8. __Build minimal Electron test client__ for visual debugging
+9. __Add protocol versioning__ tests
+10. __Simulate network conditions__ (latency, packet loss)
 
 ---
 
 ## 10. Conclusion
 
-**Yes, absolutely create a barebones test peer.**
+__Yes, absolutely create a barebones test peer.__
 
-**Yes, it should be auto-generated.**
+__Yes, it should be auto-generated.__
 
 The strategy is:
-1. **Extract P2P logic** into shared library (`/shared/core`)
-2. **Generate test peer** from shared primitives (AST parsing + code generation)
-3. **Automate regeneration** via pre-commit hooks
-4. **Write comprehensive tests** (handshake, replication, load)
-5. **Integrate with CI/CD** for continuous validation
+1. __Extract P2P logic__ into shared library (`/shared/core`)
+2. __Generate test peer__ from shared primitives (AST parsing + code generation)
+3. __Automate regeneration__ via pre-commit hooks
+4. __Write comprehensive tests__ (handshake, replication, load)
+5. __Integrate with CI/CD__ for continuous validation
 
 This gives you:
-- **Fast iteration** during P2P development
-- **Confidence** that protocol changes don't break existing behavior
-- **Documentation** via living test scenarios
-- **Future-proof** architecture as protocol evolves
+- __Fast iteration__ during P2P development
+- __Confidence__ that protocol changes don't break existing behavior
+- __Documentation__ via living test scenarios
+- __Future-proof__ architecture as protocol evolves
 
-**The test peer isn't just a nice-to-have — it's foundational infrastructure for building reliable P2P networking.**
+__The test peer isn't just a nice-to-have — it's foundational infrastructure for building reliable P2P networking.__
 
 ---
 
 ## References
 
-- Issue #10: Handle `whtnxt://connect` Custom Protocol
+- Issue: Handle `whtnxt://connect` Custom Protocol
 - Spec §2.3: Backend & Network Architecture (WebRTC P2P)
 - Spec §4.3: Collaborative & Social Features (Connection flow)
 - `/app/src/renderer/db/schemas.ts` - Data models to replicate

@@ -1,10 +1,17 @@
+---
+tags:
+  - architecture/decisions
+  - core/electron
+  - net
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:22:49 am
+---
+
 # ADR: Electron Process Model for P2P Architecture
 
-**Date**: 2025-11-10
-**Status**: ✅ Accepted
-**Issue**: #10 - P2P Integration
-
-#architecture/decisions #core/electron #p2p
+__Date__: 2025-11-10
+__Status__: ✅ Accepted
+__Issue__: - P2P Integration
 
 ## Context
 
@@ -12,13 +19,13 @@ While implementing the `whtnxt://` protocol handler for P2P connections, we need
 
 ## Decision
 
-**The P2P connection management service runs as a separate Electron utility process, isolated from both the main process (controller) and renderer process (view).**
+__The P2P connection management service runs as a separate Electron utility process, isolated from both the main process (controller) and renderer process (view).__
 
 ## Architecture
 
 ### Four-Process Model
 
-```
+```ts
 ┌──────────────────────────────────────────────┐
 │            Operating System                  │
 │  (Receives whtnxt:// URLs from browser)      │
@@ -48,64 +55,64 @@ While implementing the `whtnxt://` protocol handler for P2P connections, we need
 
 ### Communication Flow
 
-1. **Protocol URL received**: OS → Main Process
-2. **Connection initiation**: Main → Utility Process (via MessagePort)
-3. **P2P connection**: Utility Process → Remote Peer (libp2p)
-4. **State updates**: Renderer polls Main Process every 1s for status
+1. __Protocol URL received__: OS → Main Process
+2. __Connection initiation__: Main → Utility Process (via MessagePort)
+3. __P2P connection__: Utility Process → Remote Peer (libp2p)
+4. __State updates__: Renderer polls Main Process every 1s for status
 
 ## Rationale
 
 ### 1. Separation of Concerns (MVC Pattern)
 
-- **Main Process**: Controller - orchestration, lifecycle, protocol handling
-- **Utility Process**: Service - P2P networking, WebRTC, libp2p node
-- **Renderer Process**: View - UI rendering, user interactions
+- __Main Process__: Controller - orchestration, lifecycle, protocol handling
+- __Utility Process__: Service - P2P networking, WebRTC, libp2p node
+- __Renderer Process__: View - UI rendering, user interactions
 
-**Benefits**:
+__Benefits__:
 - Clear responsibilities
 - Easier to reason about data flow
 - Natural alignment with architectural boundaries
 
 ### 2. Process Isolation
 
-**Security**:
+__Security__:
 - P2P code runs in isolated Node.js process
 - Additional layer beyond renderer sandbox
 - Minimizes IPC attack surface
 
-**Stability**:
+__Stability__:
 - Crashes in P2P logic don't take down main window
 - Memory leaks in WebRTC are isolated
 - Utility process can be restarted without app restart
 
-**Performance**:
+__Performance__:
 - CPU-intensive P2P operations don't block UI thread
 - libp2p runs in dedicated process with full Node.js access
 
 ### 3. Clean IPC Boundaries
 
-**Main ↔ Utility** (MessagePort):
+__Main ↔ Utility__ (MessagePort):
 - Unidirectional commands from main to utility
 - State stored in main process, updated by utility
 - No circular dependencies
 
-**Main ↔ Renderer** (IPC via preload):
+__Main ↔ Renderer__ (IPC via preload):
 - Renderer polls for state (pull-based, not push-based)
 - No timing dependencies or race conditions
 - Type-safe API surface via contextBridge
 
 ### 4. Future Scalability
 
-**Alignment with spec §2.3**:
+__Alignment with spec §2.3__:
 - Utility process is MVP precursor to `/service` helper backend
 - Can be extracted to standalone Node.js service later
 - Same architecture works for desktop and web clients
 
-**Multi-instance support**:
+__Multi-instance support__:
 - Can spawn multiple utility processes for concurrent sessions
 - Each process manages its own libp2p node independently
 
-**Testing**:
+__Testing__:
 - Utility process can be tested without Electron overhead
 - libp2p logic tested via standalone Node.js scripts
 
@@ -113,79 +120,79 @@ While implementing the `whtnxt://` protocol handler for P2P connections, we need
 
 ### Alternative 1: P2P in Main Process
 
-**Pros**:
+__Pros__:
 - Simpler architecture (no utility process)
 - Direct IPC from main to renderer
 - No MessagePort complexity
 
-**Cons**:
+__Cons__:
 - ❌ P2P logic coupled to main process lifecycle
 - ❌ CPU-intensive operations block main thread
 - ❌ Harder to isolate for testing
 - ❌ Can't scale to multiple concurrent sessions
 
-**Rejected**: Violates separation of concerns, poor scalability
+__Rejected__: Violates separation of concerns, poor scalability
 
 ### Alternative 2: P2P in Renderer Process
 
-**Pros**:
+__Pros__:
 - Direct access to React state
 - No IPC for P2P operations
 - Simpler state management
 
-**Cons**:
+__Cons__:
 - ❌ Security risk (renderer has limited Node.js access)
 - ❌ libp2p requires full Node.js environment (not available in renderer)
 - ❌ Performance impact on UI responsiveness
 - ❌ Violates Electron security best practices
 
-**Rejected**: Security and compatibility issues
+__Rejected__: Security and compatibility issues
 
 ### Alternative 3: Separate Node.js Service (per spec)
 
-**Pros**:
+__Pros__:
 - ✅ True microservice architecture
 - ✅ Can be deployed independently
 - ✅ Scales horizontally
 
-**Cons**:
+__Cons__:
 - ⚠️ Overengineered for MVP
 - ⚠️ Requires network communication (HTTP/WebSocket)
 - ⚠️ Deployment complexity
 
-**Future consideration**: Utility process can be migrated to this pattern later
+__Future consideration__: Utility process can be migrated to this pattern later
 
 ## Consequences
 
 ### Positive
 
-✅ **Security**: Additional isolation layer for P2P networking
-✅ **Stability**: Process crashes don't affect main app
-✅ **Performance**: P2P operations don't block UI
-✅ **Testability**: libp2p logic can be tested independently
-✅ **Scalability**: Clear migration path to service architecture
-✅ **Maintainability**: Clean separation of concerns
+✅ __Security__: Additional isolation layer for P2P networking
+✅ __Stability__: Process crashes don't affect main app
+✅ __Performance__: P2P operations don't block UI
+✅ __Testability__: libp2p logic can be tested independently
+✅ __Scalability__: Clear migration path to service architecture
+✅ __Maintainability__: Clean separation of concerns
 
 ### Negative
 
-⚠️ **Complexity**: Four processes instead of two
-⚠️ **IPC overhead**: MessagePort communication adds latency (~1ms)
-⚠️ **Debugging**: Requires attaching to multiple processes
-⚠️ **State management**: P2P state must be synchronized across processes
+⚠️ __Complexity__: Four processes instead of two
+⚠️ __IPC overhead__: MessagePort communication adds latency (~1ms)
+⚠️ __Debugging__: Requires attaching to multiple processes
+⚠️ __State management__: P2P state must be synchronized across processes
 
 ### Mitigation Strategies
 
-**Complexity**:
+__Complexity__:
 - Well-documented IPC protocols
 - Clear process lifecycle management
 - Abstraction layers hide MessagePort details from business logic
 
-**State synchronization**:
+__State synchronization__:
 - Pull-based polling (renderer → main)
 - Single source of truth (main process holds P2P state)
 - 1-second poll interval balances freshness vs overhead
 
-**Debugging**:
+__Debugging__:
 - Comprehensive logging in each process
 - Development helpers (`window.p2pDebug()`)
 - Test peer for isolated testing
@@ -229,7 +236,7 @@ const pollStatus = async () => {
 };
 ```
 
-**Why pull-based**: Avoids timing dependencies where events arrive before listeners are registered. Renderer always pulls when ready.
+__Why pull-based__: Avoids timing dependencies where events arrive before listeners are registered. Renderer always pulls when ready.
 
 ### Protocol URL Handling
 
@@ -254,19 +261,22 @@ app.on('open-url', (event, url) => {
 ## References
 
 ### Implementation Files
+
 - Main process: `app/src/main/main.ts`
 - Utility process: `app/src/utility/p2p-service.ts`
 - Preload script: `app/src/main/preload.ts`
 - Renderer UI: `app/src/renderer/components/P2P/P2PStatus.tsx`
 
 ### Related ADRs
+
 - [[adr-251110-libp2p-vs-simple-peer]] - Why libp2p chosen for P2P networking
 
 ### Specification
+
 - WhatNext spec §2.3: Helper Backend Service
 - CLAUDE.md: Security Posture (sandbox enforcement)
 
 ---
 
-**Status**: ✅ Implemented and production-ready in v0.0.0
-**Review Date**: 2026-01-10 (re-evaluate after 2 months of production use)
+__Status__: ✅ Implemented and production-ready in v0.0.0
+__Review Date__: 2026-01-10 (re-evaluate after 2 months of production use)

@@ -1,6 +1,12 @@
-# libp2p
+---
+tags:
+  - net/libp2p
+  - net
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:20:50 am
+---
 
-#p2p/libp2p #networking
+# libp2p
 
 ## What It Is
 
@@ -12,14 +18,14 @@ In WhatNext, libp2p powers the entire P2P networking layer, enabling direct peer
 
 Chosen over simple-peer after comprehensive analysis (see [[adr-251110-libp2p-vs-simple-peer]]):
 
-- **Mesh networking**: Native support for multi-peer collaboration (N-to-N connections)
-- **Built-in security**: Automatic encryption via Noise protocol, cryptographic peer identity
-- **Local discovery**: mDNS enables offline/local-network collaboration without signaling servers
-- **Stream multiplexing**: Multiple logical streams over one connection (RxDB + presence + metadata)
-- **NAT traversal**: Circuit relay and DCUtR for connections behind firewalls
-- **Production-ready**: Battle-tested in IPFS Desktop, OrbitDB, Textile
+- __Mesh networking__: Native support for multi-peer collaboration (N-to-N connections)
+- __Built-in security__: Automatic encryption via Noise protocol, cryptographic peer identity
+- __Local discovery__: mDNS enables offline/local-network collaboration without signaling servers
+- __Stream multiplexing__: Multiple logical streams over one connection (RxDB + presence + metadata)
+- __NAT traversal__: Circuit relay and DCUtR for connections behind firewalls
+- __Production-ready__: Battle-tested in IPFS Desktop, OrbitDB, Textile
 
-**Trade-off accepted**: Higher complexity and larger bundle size (~500KB) vs simple-peer (~30KB). Bundle size is negligible for desktop Electron apps.
+__Trade-off accepted__: Higher complexity and larger bundle size (~500KB) vs simple-peer (~30KB). Bundle size is negligible for desktop Electron apps.
 
 ## How It Works
 
@@ -27,7 +33,7 @@ Chosen over simple-peer after comprehensive analysis (see [[adr-251110-libp2p-vs
 
 libp2p runs in an Electron utility process (isolated from main and renderer):
 
-```
+```ts
 ┌─────────────┐         IPC          ┌──────────────────┐
 │   Renderer  │ ←─────────────────→ │  Main Process    │
 │   (React)   │                      │  (Node.js)       │
@@ -39,14 +45,15 @@ libp2p runs in an Electron utility process (isolated from main and renderer):
                                      └──────────────────┘
 ```
 
-**Why utility process?**
+__Why utility process?__
 - Isolates CPU-intensive P2P operations from UI thread
 - Allows libp2p to run in Node.js environment (full transport support)
 - Survives renderer crashes/reloads
 
 ### Core Components
 
-#### 1. Transports (How peers connect)
+#### 1. Transports (How Peers connect)
+
 WhatNext uses multiple transports for robustness:
 
 ```typescript
@@ -58,16 +65,18 @@ transports: [
 ]
 ```
 
-**Transport selection**: libp2p automatically chooses the best transport based on network topology and peer capabilities.
+__Transport selection__: libp2p automatically chooses the best transport based on network topology and peer capabilities.
 
 #### 2. Connection Encryption
+
 ```typescript
 connectionEncryption: [noise()]
 ```
 
-All connections encrypted via **Noise Protocol Framework**. No plaintext data ever sent on the wire.
+All connections encrypted via __Noise Protocol Framework__. No plaintext data ever sent on the wire.
 
 #### 3. Stream Multiplexing
+
 ```typescript
 streamMuxers: [yamux()]
 ```
@@ -78,31 +87,33 @@ Multiple logical streams over a single connection. WhatNext will use:
 - Stream 3: Real-time queue updates
 
 #### 4. Peer Discovery
+
 ```typescript
 peerDiscovery: [mdns()]
 ```
 
-**mDNS (Multicast DNS)**: Automatic peer discovery on local networks. No internet or signaling server required.
+__mDNS (Multicast DNS)__: Automatic peer discovery on local networks. No internet or signaling server required.
 
-**Future**: Add DHT for global peer discovery.
+__Future__: Add DHT for global peer discovery.
 
 #### 5. Services
+
 ```typescript
 services: {
     identify: identify()  // Required for peer identification
 }
 ```
 
-**Identify service**: Peers exchange identity information during connection handshake.
+__Identify service__: Peers exchange identity information during connection handshake.
 
 ### Connection Lifecycle
 
-1. **Discovery**: mDNS broadcasts presence on local network
-2. **Dial**: libp2p dials peer using multiaddr (e.g., `/ip4/192.168.1.100/tcp/54321/p2p/12D3KooW...`)
-3. **Handshake**: Noise protocol establishes encrypted tunnel
-4. **Identify**: Peers exchange supported protocols and transports
-5. **Stream**: Open custom protocol streams (e.g., `/whatnext/rxdb/1.0.0`)
-6. **Data**: Application-level data flows over encrypted streams
+1. __Discovery__: mDNS broadcasts presence on local network
+2. __Dial__: libp2p dials peer using multiaddr (e.g., `/ip4/192.168.1.100/tcp/54321/p2p/12D3KooW…`)
+3. __Handshake__: Noise protocol establishes encrypted tunnel
+4. __Identify__: Peers exchange supported protocols and transports
+5. __Stream__: Open custom protocol streams (e.g., `/whatnext/rxdb/1.0.0`)
+6. __Data__: Application-level data flows over encrypted streams
 
 ## Key Patterns
 
@@ -157,7 +168,7 @@ const peerIdStr = peerId.toString();
 
 ### Pattern 3: Dialing Peers
 
-**Requires multiaddr, not just PeerId**:
+__Requires multiaddr, not just PeerId__:
 
 ```typescript
 // ❌ Doesn't work
@@ -216,9 +227,10 @@ node.addEventListener('peer:disconnect', (evt) => {
 
 ### Pitfall 1: WebRTC Hidden Dependencies
 
-**Problem**: `@libp2p/webrtc` fails with cryptic error about missing capabilities.
+__Problem__: `@libp2p/webrtc` fails with cryptic error about missing capabilities.
 
-**Solution**: WebRTC transport requires two additional packages:
+__Solution__: WebRTC transport requires two additional packages:
+
 ```bash
 npm install @libp2p/circuit-relay-v2 @libp2p/identify
 ```
@@ -227,27 +239,29 @@ Both must be included in config even if not explicitly used. See [[WebRTC]] for 
 
 ### Pitfall 2: ESM-Only Packages
 
-**Problem**: libp2p packages are ES modules, not CommonJS.
+__Problem__: libp2p packages are ES modules, not CommonJS.
 
-**Solution**:
+__Solution__:
 - Use `.mjs` extension for entry points, OR
 - Bundle with tsup/esbuild which handles ESM → CommonJS conversion
 - WhatNext uses tsup bundling in utility process
 
 ### Pitfall 3: WebRTC No Listening Addresses
 
-**Problem**: WebRTC-only config shows "Multiaddrs: 0" in Node.js.
+__Problem__: WebRTC-only config shows "Multiaddrs: 0" in Node.js.
 
-**Solution**: WebRTC is designed for browsers and doesn't create listening addresses. Add TCP/WebSocket transports for local testing and fallback:
+__Solution__: WebRTC is designed for browsers and doesn't create listening addresses. Add TCP/WebSocket transports for local testing and fallback:
+
 ```typescript
 transports: [tcp(), webSockets(), webRTC(), circuitRelayTransport()]
 ```
 
 ### Pitfall 4: mDNS Discovers All libp2p Peers
 
-**Problem**: mDNS will discover IPFS Desktop, OrbitDB, and other libp2p apps on the network.
+__Problem__: mDNS will discover IPFS Desktop, OrbitDB, and other libp2p apps on the network.
 
-**Solution**: Filter discovered peers by checking protocol support:
+__Solution__: Filter discovered peers by checking protocol support:
+
 ```typescript
 node.addEventListener('peer:discovery', async (evt) => {
     const protocols = await node.peerStore.protoBook.get(evt.detail.id);
@@ -257,13 +271,14 @@ node.addEventListener('peer:discovery', async (evt) => {
 });
 ```
 
-**MVP alternative**: Post-connection handshake (connect, verify, disconnect if not WhatNext).
+__MVP alternative__: Post-connection handshake (connect, verify, disconnect if not WhatNext).
 
 ### Pitfall 5: Utility Process Build Config
 
-**Problem**: Utility process won't start if libp2p bundle is misconfigured.
+__Problem__: Utility process won't start if libp2p bundle is misconfigured.
 
-**Solution**: Configure tsup to bundle utility process separately:
+__Solution__: Configure tsup to bundle utility process separately:
+
 ```typescript
 // tsup.config.ts
 export default {
@@ -290,27 +305,31 @@ export default {
 ## References
 
 ### Official Documentation
+
 - [libp2p Documentation](https://docs.libp2p.io/)
 - [js-libp2p GitHub](https://github.com/libp2p/js-libp2p)
 - [libp2p Examples](https://github.com/libp2p/js-libp2p-examples)
 - [libp2p Concepts](https://docs.libp2p.io/concepts/)
 
 ### WhatNext Implementation
+
 - Utility process: `app/src/utility/p2p-service.ts`
 - Test peer: `test-peer/src/index.js`
 - Protocol handler: `app/src/main/protocol.ts`
 
 ### Related Issues
-- Issue #10: libp2p Integration
+
+- Issue: libp2p Integration
 - Future: Protocol implementation roadmap
 
 ### Learning Resources
+
 - [IPFS Desktop](https://github.com/ipfs/ipfs-desktop) - Electron + libp2p in production
 - [OrbitDB](https://github.com/orbitdb/orbitdb) - P2P database on libp2p
 - [libp2p Discussion Forum](https://discuss.libp2p.io/)
-- [IPFS Discord](https://discord.gg/ipfs) - #p2p/libp2p channel
+- [IPFS Discord](https://discord.gg/ipfs) - channel
 
 ---
 
-**Status**: ✅ Production-ready, running in WhatNext v0.0.0
-**Last Updated**: 2025-11-12
+__Status__: ✅ Production-ready, running in WhatNext v0.0.0
+__Last Updated__: 2025-11-12

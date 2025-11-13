@@ -1,20 +1,27 @@
-**00 index** - Index files for the vault; Act both as a hub for 'spokes' of knowledge but also enforce knowledge mapping structure. [[INDEX]] captures the documentation structure
+---
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Thursday, November 13th 2025, 5:18:42 am
+---
 
-**01 concepts** - persistent atomic notes, permanent broad knowledges acting as an ever expanding wiki of knowledge gathered working on this project. Seeks to accelerate onboarding but also help existing developers maintain and upkeep their knowledge.
+# README.md
 
-**02 milestones** - Development milestones, eventual `patch notes` will live here
+__00 index__ - Index files for the vault; Act both as a hub for 'spokes' of knowledge but also enforce knowledge mapping structure. [[INDEX]] captures the documentation structure
 
-**03 guides** - DX guides, 'permanent' developer knowledge furthering dev teams future value add
+__01 concepts__ - persistent atomic notes, permanent broad knowledges acting as an ever expanding wiki of knowledge gathered working on this project. Seeks to accelerate onboarding but also help existing developers maintain and upkeep their knowledge.
 
-**04 architecture** - [[ADR]]s and broader architectural persistence / diagrams
+__02 milestones__ - Development milestones, eventual `patch notes` will live here
 
-**05 notes** - 'fleeting' development notes; precursor to atomic notes in persistent vault above
+__03 guides__ - DX guides, 'permanent' developer knowledge furthering dev teams future value add
 
-**06 reports** - Critical reports
+__04 architecture__ - [[ADR]]s and broader architectural persistence / diagrams
 
-**07 stories** - User stories / Dev notes on intent
+__05 notes__ - 'fleeting' development notes; precursor to atomic notes in persistent vault above
+
+__06 reports__ - Critical reports
+
+__07 stories__ - User stories / Dev notes on intent
 	[[whtnxt-nextspec]] encapsulates initial project vision
 
-**99 meta** -
+__99 meta__ -
 - 00 templates - obsidian templates
 - 01 agents - md files persisting agents to be used specific to the codebase / vault
