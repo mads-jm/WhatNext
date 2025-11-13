@@ -18,8 +18,18 @@ The project is architected as an Electron desktop application with a separate he
 /test-peer  - Barebones libp2p test peer for P2P development
 /service    - Helper service for P2P signaling and Spotify OAuth (not yet implemented)
 /docs       - Project specification (whtnxt-nextspec.md is the source of truth)
+  /notes    - Development notes and learnings (indexed in docs/INDEX.md)
+  INDEX.md  - Complete documentation map organized by concept
 /scripts    - Development and initialization scripts
 ```
+
+## Documentation Navigation
+
+All project documentation is indexed in **[docs/INDEX.md](docs/INDEX.md)**, organized by concept for efficient LLM interaction. This index:
+- Maps all markdown files by architectural concept
+- Links documentation using Obsidian-style `[[WikiLinks]]` for future vault integration
+- Provides quick reference for common commands and file locations
+- Must be maintained when new documentation is created
 
 ## Development Commands
 
@@ -179,34 +189,135 @@ Three modes planned (see `docs/whtnxt-nextspec.md` §8.1):
 4. **Security Hardened**: Renderer sandbox enforced; minimize IPC surface
 5. **Extensibility**: Design for future plugin architecture (inspired by Obsidian)
 
-## Development Notes & Learning
+## Knowledge Management: Obsidian-First Documentation
 
-When encountering novel or interesting errors, issues, or architectural decisions, document them in `/docs/notes/` following this template:
+The `/docs` directory is structured as an **Obsidian vault** optimized for concept-based knowledge growth, not chronological logging. This approach prioritizes enduring knowledge over ephemeral notes.
+
+### Documentation Philosophy
+
+**Concept Pages Over Timelines**: Document knowledge by concept (e.g., `[[libp2p]]`, `[[RxDB]]`, `[[Electron-IPC]]`), not by date. Learning accumulates in living documents that grow with the project.
+
+**Timestamped Notes Are Rare**: Reserve `note-YYMMDD-[topic].md` format ONLY for:
+- Critical production issues with significant impact
+- Major architectural pivot points (worth preserving as historical context)
+- Landmark learning moments that shaped project direction
+
+**Use ADRs for Decisions**: Architectural Decision Records (`adr-YYMMDD-[decision].md`) capture the "why" behind major technical choices with their historical context.
+
+### Directory Structure (Wide, Not Deep)
 
 ```
-note-YYMMDD-[topic].md
+/docs
+  INDEX.md              Documentation map organized by concept
+  whtnxt-nextspec.md    Technical specification (source of truth)
+
+  /concepts             Core technology and pattern explanations
+  /architecture         System design and ADRs
+  /guides               How-to documents and workflows
+  /reports              Critical issues, bugs, technology assessments
+  /milestones           Release summaries and major achievements
 ```
 
-**Template structure**:
-- **Date**: When the issue occurred
-- **Issue**: Brief description of the problem
-- **Status**: ✅ Resolved / 🔄 In Progress / ⚠️ Blocked
-- **Problem**: Detailed description
-- **Root Cause**: Why it happened
-- **Key Learnings**: What we learned
-- **Solution Applied**: How we fixed it
-- **References**: Links to docs, issues, etc.
-- **Next Steps**: Future work if any
+**Flat folders with semantic depth via nested tags**: Use tags like `#architecture/patterns/ipc`, `#p2p/discovery/mdns`, `#data/rxdb/replication` to convey hierarchical relationships without deep nesting.
 
-These notes serve as:
-- Learning documentation for the team
-- Reference for similar future issues
-- Context for architectural decisions
-- Onboarding material for new developers
+### Concept Page Template
+
+When documenting a technology or pattern, create a concept page:
+
+**Filename**: `concepts/[Concept-Name].md` (e.g., `concepts/libp2p.md`)
+
+**Structure**:
+```markdown
+# Concept Name
+
+#category/subcategory/specific
+
+## What It Is
+Brief, clear definition
+
+## Why We Use It
+How it serves WhatNext's architecture
+
+## How It Works
+Technical implementation details
+
+## Key Patterns
+Code patterns, best practices we've established
+
+## Common Pitfalls
+Mistakes to avoid, lessons learned
+
+## Related Concepts
+- [[Related-Concept-1]]
+- [[Related-Concept-2]]
+
+## References
+- Official docs
+- Relevant issue numbers
+- External resources
+```
+
+### ADR Template (for major decisions)
+
+**Filename**: `architecture/adr-YYMMDD-[decision].md`
+
+**Structure**:
+```markdown
+# ADR: Decision Title
+
+**Date**: YYYY-MM-DD
+**Status**: Accepted | Superseded | Deprecated
+
+#architecture/decisions
+
+## Context
+What situation led to this decision?
+
+## Decision
+What did we choose and why?
+
+## Consequences
+Trade-offs accepted, benefits gained
+
+## Alternatives Considered
+What we didn't choose and why
+
+## References
+- Related concepts: [[Concept-1]], [[Concept-2]]
+- Issues: #10, #23
+```
+
+### When to Create Documentation
+
+**Always document**:
+- New technologies integrated (create concept page)
+- Architecture decisions (create ADR)
+- Patterns established (add to relevant concept page)
+- Major milestones (create milestone summary)
+
+**Update existing docs instead of creating new ones** unless the topic genuinely deserves its own page.
+
+### Maintenance Discipline
+
+1. **Update `/docs/INDEX.md`** when creating new documentation
+2. **Use `[[WikiLinks]]`** liberally to connect related concepts
+3. **Apply nested tags** (`#category/subcategory`) for graph visualization in Obsidian
+4. **Consolidate learning** into concept pages rather than scattering across timestamped notes
+5. **Archive or delete** notes that have been consolidated into concept pages
+
+### For AI Assistants
+
+When working on WhatNext:
+- **Prioritize updating existing concept pages** over creating new timestamped notes
+- **Check `/docs/INDEX.md`** for relevant existing documentation before creating new files
+- **Use WikiLink syntax** `[[Concept-Name]]` when referencing other documentation
+- **Apply appropriate nested tags** to new documentation for Obsidian graph navigation
+- **Propose consolidation** when you notice scattered information that should be unified
 
 ## Reference Documentation
 
-- Full specification: `docs/whtnxt-nextspec.md`
-- README: High-level structure and stack overview
-- Development notes: `docs/notes/` for lessons learned and troubleshooting
-- Electron docs: https://www.electronjs.org/docs/latest/
+- **Documentation Index**: `docs/INDEX.md` - Complete map of all project documentation
+- **Full specification**: `docs/whtnxt-nextspec.md` - Technical specification (source of truth)
+- **README**: High-level structure and stack overview
+- **Development notes**: `docs/notes/` for lessons learned and troubleshooting
+- **Electron docs**: https://www.electronjs.org/docs/latest/
