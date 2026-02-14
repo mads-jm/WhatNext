@@ -14,6 +14,7 @@ date modified: Thursday, November 13th 2025, 5:19:30 am
 ### Project Foundation
 
 - __[[whtnxt-nextspec]]__ - Complete technical specification and architecture (source of truth)
+- __[[the-walled-garden-cracks]]__ - Vision supplement: Spotify API crackdown, coordinator model, translation layer architecture (2026-02)
 - __[[README]]__ - High-level overview and stack
 - __[[CLAUDE]]__ - Development instructions, commands, architecture principles
 
@@ -126,7 +127,8 @@ date modified: Thursday, November 13th 2025, 5:19:30 am
 
 - __[[Helper Backend Service]]__ → Signaling + OAuth coordination
 - __[[Signaling Server]]__ → P2P connection brokering
-- __[[Spotify Collaborative Sync Strategy]]__ → External integration patterns
+- __[[Spotify Collaborative Sync Strategy]]__ → External integration patterns (pre-2026 model)
+- __[[the-walled-garden-cracks]]__ → Coordinator model, service abstraction, revised strategy
 - __[[Plugin Architecture]]__ → Future extensibility (Obsidian-inspired)
 
 ---
@@ -187,15 +189,17 @@ When working on WhatNext:
 3. __Check__: Recent notes in `/docs/05 notes/` for current state
 4. __Document__: New learnings following patterns in [[note-251110-libp2p-learning-roadmap]]
 
-### Active Development Areas (as of 2025-11-12)
+### Active Development Areas (as of 2026-02-14)
 
 - ✅ P2P networking foundation (libp2p integration complete)
 - ✅ UI modernization (v0.0.0 polished)
 - 🔄 Protocol implementation (next phase)
+- 🔄 Spotify adapter migration (Feb 2026 API changes — see [[the-walled-garden-cracks]])
 - 🔜 RxDB replication over libp2p
-- 🔜 Spotify integration
+- 🔜 Import adapter architecture (service abstraction layer)
+- 🔜 Open metadata enrichment (MusicBrainz/ListenBrainz)
 
 ---
 
-__Last Updated__: 2025-11-12
+__Last Updated__: 2026-02-14
 __Documentation Version__: v0.0.0

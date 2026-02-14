@@ -294,6 +294,38 @@ export default {
 }
 ```
 
+### Pitfall 6: Windows Utility Process Listen Restrictions
+
+__Problem__: TCP listen on `0.0.0.0` throws `listen UNKNOWN: unknown error` inside Electron's utility process on Windows. The default `faultTolerance: FATAL_ALL` causes the entire node to crash even though WebRTC could still work. A separate `WSALookupServiceBegin failed with: 10108` warning may also appear — this is a harmless Windows DNS service message.
+
+__Root cause__: Electron's `utilityProcess.fork()` on Windows restricts raw TCP server socket binding to all interfaces (`0.0.0.0`).
+
+__Solution__:
+
+1. Bind to `127.0.0.1` instead of `0.0.0.0` in listen addresses:
+
+```typescript
+LISTEN_ADDRESSES: [
+    '/ip4/127.0.0.1/tcp/0',
+    '/ip4/127.0.0.1/tcp/0/ws',
+]
+```
+
+2. Set fault tolerance to `NO_FATAL` so the node starts even if some transports fail:
+
+```typescript
+import { FaultTolerance } from '@libp2p/interface';
+
+const node = await createLibp2p({
+    transportManager: {
+        faultTolerance: FaultTolerance.NO_FATAL,
+    },
+    // ... rest of config
+});
+```
+
+__Trade-off__: Localhost-only TCP means LAN peers can't connect via direct TCP — they use WebRTC/relay instead (already the intended path for remote connections). `NO_FATAL` means the node starts silently even if transports fail, but existing error logging mitigates this.
+
 ## Related Concepts
 
 - [[WebRTC]] - WebRTC transport configuration and Node.js compatibility
