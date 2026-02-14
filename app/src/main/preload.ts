@@ -1,12 +1,25 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
 Preload runs in an isolated, privileged context.
 Expose a minimal, explicit API to the renderer via contextBridge.
 This adheres to Electron security guidance.
 */
 
-import { contextBridge, ipcRenderer, OpenDialogOptions, SaveDialogOptions } from 'electron';
-import { IPC_CHANNELS } from '../shared/core';
+import { contextBridge, ipcRenderer, IpcRendererEvent, OpenDialogOptions, SaveDialogOptions } from 'electron';
+import {
+    IPC_CHANNELS,
+    type NodeStartedPayload,
+    type PeerDiscoveredPayload,
+    type ConnectionRequestPayload,
+    type ConnectionEstablishedPayload,
+    type ConnectionFailedPayload,
+    type ConnectionClosedPayload,
+    type NodeErrorPayload,
+    type P2PStatusPayload,
+    type ReplicationChangesPayload,
+    type ReplicationStatePayload,
+} from '../shared/core';
+import type { SpotifyPlaylistItem } from './types';
+import type { MappedTrack } from './spotify/spotify-mapper';
 
 const electronHandler = {
     // ========================================
@@ -74,36 +87,21 @@ const electronHandler = {
     // P2P Connection Management
     // ========================================
     p2p: {
-        /**
-         * Connect to a peer by peer ID
-         */
         connect: (peerId: string): Promise<{ success: boolean }> =>
             ipcRenderer.invoke(IPC_CHANNELS.P2P_CONNECT, peerId),
 
-        /**
-         * Disconnect from a peer
-         */
         disconnect: (peerId: string): Promise<{ success: boolean }> =>
             ipcRenderer.invoke(IPC_CHANNELS.P2P_DISCONNECT, peerId),
 
-        /**
-         * Get list of connected peers
-         */
-        getConnections: (): Promise<any[]> =>
+        getConnections: (): Promise<string[]> =>
             ipcRenderer.invoke(IPC_CHANNELS.P2P_GET_CONNECTIONS),
 
-        /**
-         * Get current P2P status (pull-based, more reliable than push events)
-         */
-        getStatus: (): Promise<any> =>
+        getStatus: (): Promise<P2PStatusPayload> =>
             ipcRenderer.invoke('p2p:get-status'),
 
-        /**
-         * Subscribe to P2P node started event
-         */
-        onNodeStarted: (callback: (data: any) => void) => {
+        onNodeStarted: (callback: (data: NodeStartedPayload) => void) => {
             console.log('[Preload] Setting up listener for channel:', IPC_CHANNELS.P2P_NODE_STARTED);
-            const listener = (_: any, data: any) => {
+            const listener = (_event: IpcRendererEvent, data: NodeStartedPayload) => {
                 console.log('[Preload] ← Received on channel', IPC_CHANNELS.P2P_NODE_STARTED, data);
                 callback(data);
             };
@@ -111,12 +109,9 @@ const electronHandler = {
             return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_NODE_STARTED, listener);
         },
 
-        /**
-         * Subscribe to peer discovered events
-         */
-        onPeerDiscovered: (callback: (data: any) => void) => {
+        onPeerDiscovered: (callback: (data: PeerDiscoveredPayload) => void) => {
             console.log('[Preload] Setting up listener for channel:', IPC_CHANNELS.P2P_PEER_DISCOVERED);
-            const listener = (_: any, data: any) => {
+            const listener = (_event: IpcRendererEvent, data: PeerDiscoveredPayload) => {
                 console.log('[Preload] ← Received on channel', IPC_CHANNELS.P2P_PEER_DISCOVERED, data);
                 callback(data);
             };
@@ -124,49 +119,86 @@ const electronHandler = {
             return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_PEER_DISCOVERED, listener);
         },
 
-        /**
-         * Subscribe to connection request events
-         */
-        onConnectionRequest: (callback: (data: any) => void) => {
-            const listener = (_: any, data: any) => callback(data);
+        onConnectionRequest: (callback: (data: ConnectionRequestPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: ConnectionRequestPayload) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_CONNECTION_REQUEST, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_CONNECTION_REQUEST, listener);
         },
 
-        /**
-         * Subscribe to connection established events
-         */
-        onConnectionEstablished: (callback: (data: any) => void) => {
-            const listener = (_: any, data: any) => callback(data);
+        onConnectionEstablished: (callback: (data: ConnectionEstablishedPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: ConnectionEstablishedPayload) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED, listener);
         },
 
-        /**
-         * Subscribe to connection failed events
-         */
-        onConnectionFailed: (callback: (data: any) => void) => {
-            const listener = (_: any, data: any) => callback(data);
+        onConnectionFailed: (callback: (data: ConnectionFailedPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: ConnectionFailedPayload) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_CONNECTION_FAILED, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_CONNECTION_FAILED, listener);
         },
 
-        /**
-         * Subscribe to connection closed events
-         */
-        onConnectionClosed: (callback: (data: any) => void) => {
-            const listener = (_: any, data: any) => callback(data);
+        onConnectionClosed: (callback: (data: ConnectionClosedPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: ConnectionClosedPayload) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_CONNECTION_CLOSED, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_CONNECTION_CLOSED, listener);
         },
 
-        /**
-         * Subscribe to node error events
-         */
-        onNodeError: (callback: (data: any) => void) => {
-            const listener = (_: any, data: any) => callback(data);
+        onNodeError: (callback: (data: NodeErrorPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: NodeErrorPayload) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_NODE_ERROR, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_NODE_ERROR, listener);
+        },
+    },
+
+    // ========================================
+    // Replication
+    // ========================================
+    replication: {
+        pushChanges: (collection: string, documents: Array<{ id: string; data: Record<string, unknown>; updatedAt: string; deleted?: boolean }>): Promise<{ success: boolean }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.REPLICATION_PUSH, { collection, documents }),
+
+        pullChanges: (collection: string, checkpoint: string | null): Promise<{ success: boolean }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.REPLICATION_PULL, { collection, checkpoint }),
+
+        onReplicationChanges: (callback: (data: ReplicationChangesPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: ReplicationChangesPayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.REPLICATION_CHANGES, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.REPLICATION_CHANGES, listener);
+        },
+
+        onReplicationState: (callback: (data: ReplicationStatePayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: ReplicationStatePayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.REPLICATION_STATE, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.REPLICATION_STATE, listener);
+        },
+    },
+
+    // ========================================
+    // Spotify Integration
+    // ========================================
+    spotify: {
+        startAuth: (): Promise<{ success: boolean; error?: string }> =>
+            ipcRenderer.invoke('spotify:auth-start'),
+
+        getAuthStatus: (): Promise<{ authenticated: boolean; hasStoredTokens: boolean }> =>
+            ipcRenderer.invoke('spotify:auth-status'),
+
+        getPlaylists: (): Promise<{ success: boolean; playlists?: SpotifyPlaylistItem[]; total?: number; error?: string }> =>
+            ipcRenderer.invoke('spotify:get-playlists'),
+
+        getTracks: (playlistId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
+            ipcRenderer.invoke('spotify:get-tracks', playlistId),
+
+        onAuthComplete: (callback: (data: { success: boolean }) => void) => {
+            const listener = (_event: IpcRendererEvent, data: { success: boolean }) => callback(data);
+            ipcRenderer.on('spotify:auth-complete', listener);
+            return () => ipcRenderer.removeListener('spotify:auth-complete', listener);
+        },
+
+        onAuthError: (callback: (data: { error: string }) => void) => {
+            const listener = (_event: IpcRendererEvent, data: { error: string }) => callback(data);
+            ipcRenderer.on('spotify:auth-error', listener);
+            return () => ipcRenderer.removeListener('spotify:auth-error', listener);
         },
     },
 
@@ -174,30 +206,21 @@ const electronHandler = {
     // Low-level IPC (for advanced use cases)
     // ========================================
     ipcRenderer: {
-        /**
-         * Fire-and-forget to main.
-         */
-        sendMessage(channel: string, args: any[]): void {
+        sendMessage(channel: string, args: unknown[]): void {
             ipcRenderer.send(channel, args);
         },
-        /**
-         * Request/response to main (matches ipcMain.handle).
-         */
-        invoke<T = any>(channel: string, ...args: any[]): Promise<T> {
+        invoke<T = unknown>(channel: string, ...args: unknown[]): Promise<T> {
             return ipcRenderer.invoke(channel, ...args);
         },
-        /**
-         * Subscribe to async events from main.
-         */
-        on(channel: string, listener: (event: any, ...args: any[]) => void) {
-            ipcRenderer.on(channel, listener as any);
-            return () => ipcRenderer.removeListener(channel, listener as any);
+        on(channel: string, listener: (event: IpcRendererEvent, ...args: unknown[]) => void) {
+            ipcRenderer.on(channel, listener);
+            return () => ipcRenderer.removeListener(channel, listener);
         },
     },
 };
 
 // Expose once; fail-soft if already present (dev hot reloads).
-if (typeof (window as any).electron === 'undefined') {
+if (typeof window.electron === 'undefined') {
     contextBridge.exposeInMainWorld('electron', electronHandler);
 } else {
     // eslint-disable-next-line no-console

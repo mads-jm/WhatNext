@@ -49,7 +49,7 @@ export function RxDBSpikeTest() {
                 const playlistsSub = db.playlists
                     .find()
                     .sort({ updatedAt: 'desc' })
-                    .$.subscribe((docs) => {
+                    .$.subscribe((docs: PlaylistDocument[]) => {
                         if (isMounted) {
                             setPlaylists(docs);
                             addLog(`Playlists updated: ${docs.length} total`);
@@ -60,7 +60,7 @@ export function RxDBSpikeTest() {
                 const tracksSub = db.tracks
                     .find()
                     .sort({ addedAt: 'desc' })
-                    .$.subscribe((docs) => {
+                    .$.subscribe((docs: TrackDocument[]) => {
                         if (isMounted) {
                             setTracks(docs);
                             addLog(`Tracks updated: ${docs.length} total`);

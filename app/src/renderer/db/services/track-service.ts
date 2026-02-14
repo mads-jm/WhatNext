@@ -7,25 +7,11 @@
 
 import { getDatabase } from '../database';
 import type { TrackDocType, TrackDocument } from '../schemas';
+import type { CreateTrackInput, UpdateTrackInput } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
-export interface CreateTrackInput {
-    title: string;
-    artists: string[];
-    album: string;
-    durationMs: number;
-    spotifyId?: string;
-    notes?: string;
-}
-
-export interface UpdateTrackInput {
-    title?: string;
-    artists?: string[];
-    album?: string;
-    durationMs?: number;
-    spotifyId?: string;
-    notes?: string;
-}
+// Re-export for consumers that imported from here
+export type { CreateTrackInput, UpdateTrackInput };
 
 /**
  * Create a new track
@@ -38,6 +24,7 @@ export async function createTrack(
     const track: TrackDocType = {
         id: uuidv4(),
         ...input,
+        addedBy: input.addedBy || 'local-user',
         addedAt: new Date().toISOString(),
     };
 
@@ -125,10 +112,8 @@ export async function getTracksByIds(
     ids: string[]
 ): Promise<TrackDocument[]> {
     const db = await getDatabase();
-    return db.tracks
-        .findByIds(ids)
-        .exec()
-        .then((map) => Array.from(map.values()));
+    const map: Map<string, TrackDocument> = await db.tracks.findByIds(ids).exec();
+    return Array.from(map.values());
 }
 
 /**
@@ -142,6 +127,7 @@ export async function bulkImportTracks(
     const trackDocs: TrackDocType[] = tracks.map((track) => ({
         id: uuidv4(),
         ...track,
+        addedBy: track.addedBy || 'local-user',
         addedAt: new Date().toISOString(),
     }));
 

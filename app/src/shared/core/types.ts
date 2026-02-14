@@ -30,6 +30,9 @@ export interface PeerMetadata {
     avatarUrl?: string;
     lastSeenAt: string; // ISO timestamp
     discovered: 'manual' | 'mdns' | 'relay' | 'dht';
+    multiaddrs?: string[];
+    protocols?: string[];
+    discoveredAt?: string; // ISO timestamp
 }
 
 /**

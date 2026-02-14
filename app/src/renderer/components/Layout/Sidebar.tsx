@@ -16,7 +16,8 @@ const navigationItems: NavItem[] = [
         children: [
             { id: 'playlists', label: 'Playlists', icon: 'fa-solid fa-list-music' },
             { id: 'library', label: 'Library', icon: 'fa-solid fa-music', badge: 'Soon' },
-            { id: 'sessions', label: 'Sessions', icon: 'fa-solid fa-users', badge: 'Soon' },
+            { id: 'sessions', label: 'Sessions', icon: 'fa-solid fa-users' },
+            { id: 'spotify', label: 'Spotify Import', icon: 'fa-brands fa-spotify' },
         ],
     },
     {
@@ -25,8 +26,6 @@ const navigationItems: NavItem[] = [
         icon: 'fa-solid fa-network-wired',
         children: [
             { id: 'p2p-status', label: 'Network Status', icon: 'fa-solid fa-signal' },
-            { id: 'p2p-peers', label: 'Peer Management', icon: 'fa-solid fa-users-gear', badge: 'Soon' },
-            { id: 'p2p-protocols', label: 'Protocols', icon: 'fa-solid fa-code', badge: 'Dev' },
         ],
     },
     {
@@ -34,9 +33,7 @@ const navigationItems: NavItem[] = [
         label: 'Development',
         icon: 'fa-solid fa-code-branch',
         children: [
-            { id: 'rxdb-spike', label: 'RxDB Evaluation', icon: 'fa-solid fa-flask', badge: '#4' },
-            { id: 'protocol-testing', label: 'Protocol Testing', icon: 'fa-solid fa-vial', badge: 'Soon' },
-            { id: 'debug-console', label: 'Debug Console', icon: 'fa-solid fa-terminal', badge: 'Soon' },
+            { id: 'dev-dashboard', label: 'Dev Dashboard', icon: 'fa-solid fa-flask', badge: 'Dev' },
         ],
     },
     {

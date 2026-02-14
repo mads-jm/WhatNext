@@ -7,21 +7,12 @@
 
 import { getDatabase } from '../database';
 import type { PlaylistDocType, PlaylistDocument } from '../schemas';
+import type { CreatePlaylistInput, UpdatePlaylistInput, PlaylistWithTracks } from '../types';
+import { findTracksByIds } from '../query-helpers';
 import { v4 as uuidv4 } from 'uuid';
 
-export interface CreatePlaylistInput {
-    playlistName: string;
-    description?: string;
-    tags?: string[];
-    linkedSpotifyId?: string;
-}
-
-export interface UpdatePlaylistInput {
-    playlistName?: string;
-    description?: string;
-    tags?: string[];
-    linkedSpotifyId?: string;
-}
+// Re-export for consumers that imported from here
+export type { CreatePlaylistInput, UpdatePlaylistInput };
 
 /**
  * Create a new playlist
@@ -39,8 +30,14 @@ export async function createPlaylist(
         trackIds: [],
         createdAt: now,
         updatedAt: now,
+        ownerId: input.ownerId || 'local-user',
+        collaboratorIds: input.collaboratorIds || [],
+        isCollaborative: input.isCollaborative ?? false,
+        isPublic: input.isPublic ?? false,
         linkedSpotifyId: input.linkedSpotifyId,
         tags: input.tags || [],
+        queueMode: input.queueMode,
+        currentTurnUserId: input.queueMode === 'turn_taking' ? (input.ownerId || 'local-user') : undefined,
     };
 
     return db.playlists.insert(playlist);
@@ -146,7 +143,33 @@ export async function addTrackToPlaylist(
         },
     });
 
+    // Auto-advance turn for turn_taking playlists
+    const updated = await db.playlists.findOne(playlistId).exec();
+    if (updated && updated.queueMode === 'turn_taking') {
+        await advanceTurn(playlistId);
+    }
+
     return playlist;
+}
+
+/**
+ * Advance turn to next collaborator after a track is added
+ */
+export async function advanceTurn(playlistId: string): Promise<void> {
+    const db = await getDatabase();
+    const playlist = await db.playlists.findOne(playlistId).exec();
+    if (!playlist || playlist.queueMode !== 'turn_taking') return;
+
+    const allUsers = [playlist.ownerId, ...playlist.collaboratorIds];
+    const currentIndex = allUsers.indexOf(playlist.currentTurnUserId || allUsers[0]);
+    const nextIndex = (currentIndex + 1) % allUsers.length;
+
+    await playlist.update({
+        $set: {
+            currentTurnUserId: allUsers[nextIndex],
+            updatedAt: new Date().toISOString(),
+        },
+    });
 }
 
 /**
@@ -165,7 +188,7 @@ export async function removeTrackFromPlaylist(
 
     await playlist.update({
         $set: {
-            trackIds: playlist.trackIds.filter((id) => id !== trackId),
+            trackIds: playlist.trackIds.filter((id: string) => id !== trackId),
             updatedAt: new Date().toISOString(),
         },
     });
@@ -257,10 +280,7 @@ export async function clearPlaylist(
 /**
  * Get playlist with populated track data
  */
-export async function getPlaylistWithTracks(playlistId: string): Promise<{
-    playlist: PlaylistDocument;
-    tracks: any[]; // Will be TrackDocument[] once we implement population
-} | null> {
+export async function getPlaylistWithTracks(playlistId: string): Promise<PlaylistWithTracks | null> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
 
@@ -268,11 +288,7 @@ export async function getPlaylistWithTracks(playlistId: string): Promise<{
         return null;
     }
 
-    // Get track documents by IDs
-    const trackMap = await db.tracks.findByIds(playlist.trackIds).exec();
-    const tracks = playlist.trackIds
-        .map((id) => trackMap.get(id))
-        .filter((track) => track !== undefined);
+    const tracks = await findTracksByIds(db, playlist.trackIds);
 
     return {
         playlist,

@@ -25,6 +25,10 @@ export enum MainToUtilityMessageType {
     // Discovery
     GET_DISCOVERED_PEERS = 'get_discovered_peers',
     GET_CONNECTED_PEERS = 'get_connected_peers',
+
+    // Replication
+    REPLICATION_PUSH = 'replication_push',
+    REPLICATION_PULL = 'replication_pull',
 }
 
 /**
@@ -48,6 +52,13 @@ export enum UtilityToMainMessageType {
     NODE_STARTED = 'node_started',
     NODE_STOPPED = 'node_stopped',
     NODE_ERROR = 'node_error',
+
+    // Replication
+    REPLICATION_CHANGES = 'replication_changes',
+    REPLICATION_STATE = 'replication_state',
+
+    // Handshake
+    HANDSHAKE_COMPLETE = 'handshake_complete',
 }
 
 /**
@@ -150,7 +161,76 @@ export const IPC_CHANNELS = {
     P2P_NODE_STARTED: 'p2p:node-started',
     P2P_NODE_STOPPED: 'p2p:node-stopped',
     P2P_NODE_ERROR: 'p2p:node-error',
+
+    // Replication (renderer ↔ main ↔ utility)
+    REPLICATION_PUSH: 'replication:push',
+    REPLICATION_PULL: 'replication:pull',
+    REPLICATION_CHANGES: 'replication:changes',
+    REPLICATION_STATE: 'replication:state',
+
+    // Spotify integration (renderer -> main)
+    SPOTIFY_AUTH_START: 'spotify:auth-start',
+    SPOTIFY_AUTH_STATUS: 'spotify:auth-status',
+    SPOTIFY_GET_PLAYLISTS: 'spotify:get-playlists',
+    SPOTIFY_GET_TRACKS: 'spotify:get-tracks',
 } as const;
+
+// ========================================
+// Replication Payloads
+// ========================================
+
+export interface ReplicationPushPayload {
+    collection: string;
+    documents: Array<{
+        id: string;
+        data: Record<string, unknown>;
+        updatedAt: string;
+        deleted?: boolean;
+    }>;
+}
+
+export interface ReplicationPullPayload {
+    collection: string;
+    checkpoint: string | null; // ISO timestamp of last sync
+    limit?: number;
+}
+
+export interface ReplicationChangesPayload {
+    collection: string;
+    documents: Array<{
+        id: string;
+        data: Record<string, unknown>;
+        updatedAt: string;
+        deleted?: boolean;
+    }>;
+    checkpoint: string; // New checkpoint after these changes
+}
+
+export interface ReplicationStatePayload {
+    peerId: string;
+    state: 'idle' | 'pulling' | 'pushing' | 'error';
+    collections: Record<string, {
+        lastCheckpoint: string | null;
+        documentCount: number;
+    }>;
+    error?: string;
+}
+
+export interface HandshakeCompletePayload {
+    peerId: string;
+    displayName: string;
+    version: string;
+    capabilities: string[];
+}
+
+export interface P2PStatusPayload {
+    nodeStarted: boolean;
+    peerId: string | null;
+    multiaddrs: string[];
+    connectedPeers: string[];
+    discoveredPeers: PeerMetadata[];
+    protocols?: string[];
+}
 
 /**
  * Type-safe IPC message creator

@@ -18,6 +18,15 @@ import {
     UtilityToMainMessageType,
     IPC_CHANNELS,
     type IPCMessage,
+    type PeerMetadata,
+    type NodeStartedPayload,
+    type PeerDiscoveredPayload,
+    type ConnectionEstablishedPayload,
+    type ConnectionFailedPayload,
+    type ConnectionClosedPayload,
+    type NodeErrorPayload,
+    type HandshakeCompletePayload,
+    type P2PStatusPayload,
 } from '../shared/core';
 
 let mainWindow: BrowserWindow | null = null;
@@ -116,6 +125,7 @@ function spawnP2PUtilityProcess(): void {
         p2pUtilityProcess = utilityProcess.fork(utilityPath, [], {
             stdio: 'pipe',
             env: {
+                ...process.env,
                 NODE_ENV: process.env.NODE_ENV || 'production',
             },
         });
@@ -183,7 +193,7 @@ function spawnP2PUtilityProcess(): void {
 /**
  * Send message to utility process
  */
-function sendToUtilityProcess(type: string, payload: any): void {
+function sendToUtilityProcess(type: string, payload: Record<string, unknown>): void {
     if (!p2pUtilityProcess) {
         console.error('[Main] Cannot send to utility process: not spawned');
         return;
@@ -219,52 +229,76 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
     console.log('[Main] Renderer is loading:', mainWindow.webContents.isLoading());
 
     switch (message.type) {
-        case UtilityToMainMessageType.NODE_STARTED:
-            console.log('[Main] Sending NODE_STARTED to renderer:', message.payload);
-            // Store state
+        case UtilityToMainMessageType.NODE_STARTED: {
+            const payload = message.payload as NodeStartedPayload;
+            console.log('[Main] Sending NODE_STARTED to renderer:', payload);
             p2pState.nodeStarted = true;
-            p2pState.peerId = message.payload.peerId;
-            p2pState.multiaddrs = message.payload.multiaddrs;
-            // Send event
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_STARTED, message.payload);
+            p2pState.peerId = payload.peerId;
+            p2pState.multiaddrs = payload.multiaddrs;
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_STARTED, payload);
             break;
+        }
 
-        case UtilityToMainMessageType.PEER_DISCOVERED:
-            console.log('[Main] Sending PEER_DISCOVERED to renderer:', message.payload);
-            // Store state
-            const exists = p2pState.discoveredPeers.some(p => p.peerId === message.payload.peer.peerId);
+        case UtilityToMainMessageType.PEER_DISCOVERED: {
+            const payload = message.payload as PeerDiscoveredPayload;
+            console.log('[Main] Sending PEER_DISCOVERED to renderer:', payload);
+            const exists = p2pState.discoveredPeers.some(p => p.peerId === payload.peer.peerId);
             if (!exists) {
-                p2pState.discoveredPeers.push(message.payload.peer);
+                p2pState.discoveredPeers.push(payload.peer);
             }
-            // Send event
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_PEER_DISCOVERED, message.payload);
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_PEER_DISCOVERED, payload);
             break;
+        }
 
         case UtilityToMainMessageType.CONNECTION_REQUEST:
             mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_REQUEST, message.payload);
             break;
 
-        case UtilityToMainMessageType.CONNECTION_ESTABLISHED:
-            // Track connected peer
-            if (!p2pState.connectedPeers.includes(message.payload.peerId)) {
-                p2pState.connectedPeers.push(message.payload.peerId);
+        case UtilityToMainMessageType.CONNECTION_ESTABLISHED: {
+            const payload = message.payload as ConnectionEstablishedPayload;
+            if (!p2pState.connectedPeers.includes(payload.peerId)) {
+                p2pState.connectedPeers.push(payload.peerId);
             }
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED, message.payload);
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED, payload);
             break;
+        }
 
         case UtilityToMainMessageType.CONNECTION_FAILED:
             mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_FAILED, message.payload);
             break;
 
-        case UtilityToMainMessageType.CONNECTION_CLOSED:
-            // Remove from connected peers
-            p2pState.connectedPeers = p2pState.connectedPeers.filter(id => id !== message.payload.peerId);
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_CLOSED, message.payload);
+        case UtilityToMainMessageType.CONNECTION_CLOSED: {
+            const payload = message.payload as ConnectionClosedPayload;
+            p2pState.connectedPeers = p2pState.connectedPeers.filter(id => id !== payload.peerId);
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_CLOSED, payload);
             break;
+        }
 
         case UtilityToMainMessageType.NODE_ERROR:
             mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_ERROR, message.payload);
             break;
+
+        case UtilityToMainMessageType.REPLICATION_CHANGES:
+            console.log('[Main] Relaying replication changes to renderer');
+            mainWindow.webContents.send(IPC_CHANNELS.REPLICATION_CHANGES, message.payload);
+            break;
+
+        case UtilityToMainMessageType.REPLICATION_STATE:
+            mainWindow.webContents.send(IPC_CHANNELS.REPLICATION_STATE, message.payload);
+            break;
+
+        case UtilityToMainMessageType.HANDSHAKE_COMPLETE: {
+            const payload = message.payload as HandshakeCompletePayload;
+            console.log('[Main] Handshake complete:', payload);
+            const discoveredPeer = p2pState.discoveredPeers.find(
+                (p) => p.peerId === payload.peerId
+            );
+            if (discoveredPeer) {
+                discoveredPeer.displayName = payload.displayName;
+            }
+            mainWindow.webContents.send('p2p:handshake-complete', payload);
+            break;
+        }
 
         default:
             console.warn('[Main] Unknown utility message type:', message.type);
@@ -276,6 +310,12 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
  */
 function handleProtocolUrl(url: string): void {
     console.log('[Main] Handling protocol URL:', url);
+
+    // Handle Spotify callback
+    if (url.startsWith('whtnxt://spotify-callback')) {
+        handleSpotifyCallbackUrl(url);
+        return;
+    }
 
     try {
         const parsed = parseProtocolUrl(url);
@@ -297,14 +337,71 @@ function handleProtocolUrl(url: string): void {
     }
 }
 
+async function handleSpotifyCallbackUrl(url: string): Promise<void> {
+    try {
+        const parsed = new URL(url);
+        const code = parsed.searchParams.get('code');
+        const error = parsed.searchParams.get('error');
+
+        if (error) {
+            console.error('[Main] Spotify auth error:', error);
+            mainWindow?.webContents.send('spotify:auth-error', { error });
+            return;
+        }
+
+        if (!code) {
+            console.error('[Main] Spotify callback missing code');
+            return;
+        }
+
+        const { handleSpotifyCallback } = await import('./spotify/spotify-auth');
+        const result = await handleSpotifyCallback(code);
+
+        if (result.success && result.tokens) {
+            const { saveTokens } = await import('./spotify/token-store');
+            const { initSpotifyClient } = await import('./spotify/spotify-client');
+            saveTokens(result.tokens);
+            initSpotifyClient(result.tokens);
+            console.log('[Main] Spotify auth complete!');
+            mainWindow?.webContents.send('spotify:auth-complete', { success: true });
+        } else {
+            console.error('[Main] Spotify auth failed:', result.error);
+            mainWindow?.webContents.send('spotify:auth-error', { error: result.error });
+        }
+
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+        }
+    } catch (err) {
+        console.error('[Main] Spotify callback handling failed:', err);
+    }
+}
+
 /**
  * Register whtnxt:// protocol handler
+ *
+ * In dev mode, Electron is launched as: electron dist/main.js
+ * setAsDefaultProtocolClient must be told the full launch command,
+ * otherwise Windows registers just "electron.exe" with no app path,
+ * and protocol URLs get interpreted as the app entry point.
  */
 function registerProtocolHandler(): void {
-    // Set as default protocol client
-    if (!app.isDefaultProtocolClient('whtnxt')) {
-        app.setAsDefaultProtocolClient('whtnxt');
-        console.log('[Main] Registered as handler for whtnxt:// protocol');
+    if (isDev) {
+        // In dev: process.execPath = electron.exe, process.argv[1] = dist/main.js
+        // We need to register both so Windows re-launches correctly.
+        const appPath = path.resolve(process.argv[1]);
+        if (!app.isDefaultProtocolClient('whtnxt', process.execPath, [appPath])) {
+            app.setAsDefaultProtocolClient('whtnxt', process.execPath, [appPath]);
+            console.log('[Main] Registered whtnxt:// protocol (dev mode)');
+            console.log('[Main]   execPath:', process.execPath);
+            console.log('[Main]   appPath:', appPath);
+        }
+    } else {
+        if (!app.isDefaultProtocolClient('whtnxt')) {
+            app.setAsDefaultProtocolClient('whtnxt');
+            console.log('[Main] Registered as handler for whtnxt:// protocol');
+        }
     }
 
     // Handle protocol URLs on startup (Windows/Linux)
@@ -314,6 +411,33 @@ function registerProtocolHandler(): void {
             handleProtocolUrl(url);
         }
     }
+}
+
+/**
+ * Single Instance Lock
+ * On Windows/Linux, clicking a whtnxt:// link launches a second app instance.
+ * We grab the lock so only one instance runs; the second instance's argv
+ * (containing the protocol URL) is forwarded to us via 'second-instance'.
+ */
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    // We are the second instance — the first instance will handle our argv.
+    app.quit();
+} else {
+    app.on('second-instance', (_event, argv) => {
+        // On Windows/Linux the protocol URL arrives as a command-line argument
+        const url = argv.find((arg) => arg.startsWith('whtnxt://'));
+        if (url) {
+            handleProtocolUrl(url);
+        }
+
+        // Bring existing window to front
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+        }
+    });
 }
 
 /**
@@ -388,7 +512,7 @@ ipcMain.handle('app:get-platform', () => {
 
 ipcMain.handle('app:get-path', (_event, name: string) => {
     // Returns paths like 'userData', 'documents', 'downloads', etc.
-    return app.getPath(name as any);
+    return app.getPath(name as Parameters<typeof app.getPath>[0]);
 });
 
 // ========================================
@@ -471,13 +595,13 @@ ipcMain.handle('shell:open-external', async (_event, url: string) => {
 // ========================================
 
 // Store P2P state that the renderer can pull
-let p2pState = {
+let p2pState: P2PStatusPayload = {
     nodeStarted: false,
     peerId: '',
-    multiaddrs: [] as string[],
-    discoveredPeers: [] as any[],
-    connectedPeers: [] as string[],
-    protocols: [] as string[],
+    multiaddrs: [],
+    discoveredPeers: [],
+    connectedPeers: [],
+    protocols: [],
 };
 
 ipcMain.handle(IPC_CHANNELS.P2P_CONNECT, async (_event, peerId: string) => {
@@ -500,6 +624,77 @@ ipcMain.handle(IPC_CHANNELS.P2P_GET_CONNECTIONS, async () => {
 ipcMain.handle('p2p:get-status', async () => {
     console.log('[Main] Renderer requesting P2P status:', p2pState);
     return p2pState;
+});
+
+// ========================================
+// Replication Relay (renderer ↔ utility)
+// ========================================
+
+ipcMain.handle(IPC_CHANNELS.REPLICATION_PUSH, async (_event, payload) => {
+    console.log('[Main] Replication push:', payload.collection, payload.documents?.length, 'docs');
+    sendToUtilityProcess(MainToUtilityMessageType.REPLICATION_PUSH, payload);
+    return { success: true };
+});
+
+ipcMain.handle(IPC_CHANNELS.REPLICATION_PULL, async (_event, payload) => {
+    console.log('[Main] Replication pull:', payload.collection);
+    sendToUtilityProcess(MainToUtilityMessageType.REPLICATION_PULL, payload);
+    return { success: true };
+});
+
+// ========================================
+// Spotify Integration
+// ========================================
+
+let spotifyInitialized = false;
+
+async function ensureSpotifyModules(): Promise<void> {
+    if (!spotifyInitialized) {
+        try {
+            const { loadStoredTokens } = await import('./spotify/spotify-client');
+            loadStoredTokens();
+            spotifyInitialized = true;
+        } catch (e) {
+            console.log('[Main] Spotify modules not ready yet');
+        }
+    }
+}
+
+ipcMain.handle('spotify:auth-start', async () => {
+    const { startSpotifyAuth } = await import('./spotify/spotify-auth');
+    return startSpotifyAuth();
+});
+
+ipcMain.handle('spotify:auth-status', async () => {
+    const { isAuthenticated } = await import('./spotify/spotify-client');
+    const { hasTokens } = await import('./spotify/token-store');
+    await ensureSpotifyModules();
+    return {
+        authenticated: isAuthenticated(),
+        hasStoredTokens: hasTokens(),
+    };
+});
+
+ipcMain.handle('spotify:get-playlists', async () => {
+    try {
+        const { getUserPlaylists } = await import('./spotify/spotify-client');
+        const result = await getUserPlaylists();
+        return { success: true, playlists: result.items, total: result.total };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle('spotify:get-tracks', async (_event, playlistId: string) => {
+    try {
+        const { getPlaylistTracks } = await import('./spotify/spotify-client');
+        const { mapSpotifyTracks } = await import('./spotify/spotify-mapper');
+        const result = await getPlaylistTracks(playlistId);
+        const mapped = mapSpotifyTracks(result.items, 'local-user');
+        return { success: true, tracks: mapped, total: result.total };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
 });
 
 // Handle protocol URLs on macOS (open-url event)

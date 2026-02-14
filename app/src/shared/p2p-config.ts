@@ -84,14 +84,18 @@ export const P2P_CONFIG = {
      * Where the libp2p node will accept incoming connections.
      *
      * Format: multiaddr string
-     * - /ip4/0.0.0.0/tcp/0 = Listen on all IPv4 interfaces, random TCP port
-     * - /ip4/0.0.0.0/tcp/0/ws = Listen on all IPv4 interfaces, random TCP port with WebSocket
+     * - /ip4/127.0.0.1/tcp/0 = Listen on localhost, random TCP port
+     * - /ip4/127.0.0.1/tcp/0/ws = Listen on localhost, random TCP port with WebSocket
      *
      * Port 0 = OS assigns random available port (avoids conflicts)
+     *
+     * NOTE: We bind to 127.0.0.1 instead of 0.0.0.0 because Electron's
+     * utility process on Windows restricts binding to all interfaces.
+     * Remote peers connect via WebRTC/relay, not direct TCP.
      */
     LISTEN_ADDRESSES: [
-        '/ip4/0.0.0.0/tcp/0',           // TCP transport
-        '/ip4/0.0.0.0/tcp/0/ws',        // WebSocket transport
+        '/ip4/127.0.0.1/tcp/0',         // TCP transport (localhost only; remote peers use WebRTC/relay)
+        '/ip4/127.0.0.1/tcp/0/ws',      // WebSocket transport (localhost only)
     ],
 
     /**
@@ -103,6 +107,24 @@ export const P2P_CONFIG = {
         name: 'WhatNext',
         version: '0.1.0', // TODO: Read from package.json
         protocolVersion: '1.0.0',
+    },
+
+    /**
+     * Relay Server Configuration
+     * Circuit relay v2 addresses for NAT traversal
+     * These are tried in order when connecting to remote peers
+     */
+    RELAY: {
+        /** Default relay addresses (configure with your deployed relay) */
+        ADDRESSES: [
+            // Example: '/ip4/YOUR_VPS_IP/tcp/4001/p2p/RELAY_PEER_ID',
+            // Example: '/ip4/YOUR_VPS_IP/tcp/4002/ws/p2p/RELAY_PEER_ID',
+        ] as string[],
+        /** Auto-connect to relay on startup */
+        AUTO_CONNECT: true,
+        /** Retry connecting to relay after failure */
+        RETRY_INTERVAL: 10000,
+        MAX_RETRIES: 5,
     },
 } as const;
 

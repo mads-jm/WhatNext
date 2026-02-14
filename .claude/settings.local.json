@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh issue list:*)",
+      "Bash(ls:*)",
+      "Bash(npm run typecheck:*)"
+    ]
+  }
+}

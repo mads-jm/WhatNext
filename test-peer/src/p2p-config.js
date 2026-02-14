@@ -45,8 +45,8 @@ export const P2P_CONFIG = {
      * Listen Addresses
      */
     LISTEN_ADDRESSES: [
-        '/ip4/0.0.0.0/tcp/0',       // TCP transport
-        '/ip4/0.0.0.0/tcp/0/ws',    // WebSocket transport
+        '/ip4/127.0.0.1/tcp/0',     // TCP transport (localhost only; remote peers use WebRTC/relay)
+        '/ip4/127.0.0.1/tcp/0/ws',  // WebSocket transport (localhost only)
     ],
 
     /**

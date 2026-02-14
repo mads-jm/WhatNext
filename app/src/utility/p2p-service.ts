@@ -16,6 +16,7 @@
 
 import process from 'node:process';
 import { createLibp2p, Libp2p } from 'libp2p';
+import { FaultTolerance } from '@libp2p/interface';
 import { noise } from '@chainsafe/libp2p-noise';
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { tcp } from '@libp2p/tcp';
@@ -24,7 +25,6 @@ import { webRTC } from '@libp2p/webrtc';
 import { mdns } from '@libp2p/mdns';
 import { identify } from '@libp2p/identify';
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2';
-import type { PeerId as LibP2PPeerId } from '@libp2p/interface';
 import { peerIdFromString } from '@libp2p/peer-id';
 import {
     type IPCMessage,
@@ -35,6 +35,15 @@ import {
     type DisconnectFromPeerPayload,
 } from '../shared/core';
 import { P2P_CONFIG } from '../shared/p2p-config';
+import { registerHandshakeProtocol, initiateHandshake, type HandshakeData } from './protocols/handshake';
+import { registerReplicationProtocol, pushToRemotePeer, pullFromRemotePeer, type ReplicationDocument } from './protocols/replication';
+import type {
+    PeerDiscoveryEvent,
+    PeerConnectionEvent,
+    MultiaddrLike,
+    PeerStoreEntry,
+    UtilityProcessMessageEvent,
+} from './types';
 
 /**
  * P2P Service class
@@ -43,6 +52,8 @@ import { P2P_CONFIG } from '../shared/p2p-config';
 class P2PService {
     private libp2pNode: Libp2p | null = null;
     private isStarted = false;
+    private connectedPeerNames: Map<string, string> = new Map();
+    private replicationCheckpoints: Map<string, string> = new Map(); // "peerId:collection" -> checkpoint
 
     constructor() {
         this.setupMessageListener();
@@ -64,7 +75,7 @@ class P2PService {
 
         this.log('info', 'Found parentPort, setting up message listener');
 
-        parentPort.on('message', async (event: any) => {
+        parentPort.on('message', async (event: UtilityProcessMessageEvent) => {
             const message = event.data as IPCMessage;
             try {
                 await this.handleMessage(message);
@@ -110,6 +121,46 @@ class P2PService {
                     );
                     break;
 
+                case MainToUtilityMessageType.REPLICATION_PUSH: {
+                    const pushPayload = message.payload as { collection: string; documents: ReplicationDocument[] };
+                    if (this.libp2pNode) {
+                        const connections = this.libp2pNode.getConnections();
+                        for (const conn of connections) {
+                            try {
+                                await pushToRemotePeer(
+                                    this.libp2pNode,
+                                    conn.remotePeer.toString(),
+                                    pushPayload.collection,
+                                    pushPayload.documents
+                                );
+                            } catch (error) {
+                                this.log('error', `Failed to push to ${conn.remotePeer.toString()}: ${error}`);
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case MainToUtilityMessageType.REPLICATION_PULL: {
+                    const pullPayload = message.payload as { collection: string; checkpoint: string | null };
+                    if (this.libp2pNode) {
+                        const connections = this.libp2pNode.getConnections();
+                        for (const conn of connections) {
+                            try {
+                                await pullFromRemotePeer(
+                                    this.libp2pNode,
+                                    conn.remotePeer.toString(),
+                                    pullPayload.collection,
+                                    pullPayload.checkpoint
+                                );
+                            } catch (error) {
+                                this.log('error', `Failed to pull from ${conn.remotePeer.toString()}: ${error}`);
+                            }
+                        }
+                    }
+                    break;
+                }
+
                 case MainToUtilityMessageType.GET_DISCOVERED_PEERS:
                     await this.getDiscoveredPeers();
                     break;
@@ -146,11 +197,23 @@ class P2PService {
             // 1. @libp2p/identify service (peer identification)
             // 2. @libp2p/circuit-relay-v2 transport (signaling mechanism)
             // See: /docs/notes/note-251110-webrtc-node-js-compatibility-resolved.md
+            // LEARNING: createLibp2p auto-starts the node unless start: false.
+            // We pass start: false so we can set up event listeners BEFORE
+            // the node starts, avoiding missed peer:discovery events.
             this.libp2pNode = await createLibp2p({
+                start: false,
+
                 // Listen addresses - where this node accepts connections
                 // Configured via shared P2P_CONFIG
                 addresses: {
                     listen: P2P_CONFIG.LISTEN_ADDRESSES,
+                },
+
+                // LEARNING: Allow node to start even if some listen addresses fail.
+                // On Windows, Electron utility processes may reject TCP bind on 0.0.0.0.
+                // With NO_FATAL, WebRTC and other transports still work.
+                transportManager: {
+                    faultTolerance: FaultTolerance.NO_FATAL,
                 },
 
                 // Connection encryption (required)
@@ -191,11 +254,17 @@ class P2PService {
                 },
             });
 
-            // Setup event listeners
+            // Setup event listeners BEFORE starting so we don't miss early events
             this.setupLibp2pEventListeners();
 
-            // Start the node
+            // Now start the node
             await this.libp2pNode.start();
+
+            // Register protocols
+            this.registerProtocols();
+
+            // Connect to relay servers
+            await this.connectToRelays();
 
             this.isStarted = true;
 
@@ -203,7 +272,7 @@ class P2PService {
             const peerId = this.libp2pNode.peerId.toString();
             const multiaddrs = this.libp2pNode
                 .getMultiaddrs()
-                .map((ma) => ma.toString());
+                .map((ma: MultiaddrLike) => ma.toString());
 
             this.log('info', `libp2p node started with PeerID: ${peerId}`);
             this.log('info', `Listening on: ${multiaddrs.join(', ')}`);
@@ -246,6 +315,83 @@ class P2PService {
     }
 
     /**
+     * Register WhatNext-specific protocol handlers
+     */
+    private registerProtocols(): void {
+        if (!this.libp2pNode) return;
+
+        const localHandshakeData: HandshakeData = {
+            displayName: `WhatNext User ${Math.random().toString(36).slice(2, 6)}`,
+            version: P2P_CONFIG.APP_INFO.protocolVersion,
+            capabilities: ['playlist-sync', 'rxdb-replication'],
+            peerId: this.libp2pNode.peerId.toString(),
+        };
+
+        // Register handshake handler
+        registerHandshakeProtocol(
+            this.libp2pNode,
+            localHandshakeData,
+            (remotePeerId, data) => {
+                this.connectedPeerNames.set(remotePeerId, data.displayName);
+                this.sendToMain(UtilityToMainMessageType.HANDSHAKE_COMPLETE, {
+                    peerId: remotePeerId,
+                    displayName: data.displayName,
+                    version: data.version,
+                    capabilities: data.capabilities,
+                });
+            }
+        );
+
+        // Register replication handler
+        registerReplicationProtocol(
+            this.libp2pNode,
+            // onPullRequest: forward to main to get data from renderer's RxDB
+            async (collection, checkpoint, _limit) => {
+                // For now, return empty - data lives in renderer process
+                // In full implementation, main would relay to renderer
+                this.log('info', `Pull request for ${collection} (checkpoint: ${checkpoint})`);
+                return { documents: [], checkpoint: checkpoint || new Date().toISOString() };
+            },
+            // onPushReceived: forward changes to main -> renderer
+            async (collection, documents) => {
+                this.log('info', `Received ${documents.length} docs for ${collection}`);
+                this.sendToMain(UtilityToMainMessageType.REPLICATION_CHANGES, {
+                    collection,
+                    documents,
+                    checkpoint: new Date().toISOString(),
+                });
+            }
+        );
+
+        this.log('info', 'Protocols registered: handshake, replication');
+    }
+
+    /**
+     * Connect to configured relay servers for NAT traversal
+     */
+    private async connectToRelays(): Promise<void> {
+        if (!this.libp2pNode) return;
+
+        const relayAddresses = P2P_CONFIG.RELAY.ADDRESSES;
+        if (relayAddresses.length === 0) {
+            this.log('info', 'No relay addresses configured, skipping relay connection');
+            return;
+        }
+
+        for (const addr of relayAddresses) {
+            try {
+                this.log('info', `Connecting to relay: ${addr}`);
+                const { multiaddr } = await import('@multiformats/multiaddr');
+                const ma = multiaddr(addr);
+                await this.libp2pNode.dial(ma);
+                this.log('info', `Connected to relay: ${addr}`);
+            } catch (error) {
+                this.log('warn', `Failed to connect to relay ${addr}: ${error}`);
+            }
+        }
+    }
+
+    /**
      * Setup libp2p event listeners
      */
     private setupLibp2pEventListeners(): void {
@@ -255,9 +401,9 @@ class P2PService {
         // See: https://docs.libp2p.io/concepts/fundamentals/protocols-and-streams/
 
         // Peer discovered via mDNS
-        this.libp2pNode.addEventListener('peer:discovery', (evt) => {
+        this.libp2pNode.addEventListener('peer:discovery', (evt: PeerDiscoveryEvent) => {
             const peerId = evt.detail.id.toString();
-            const multiaddrs = evt.detail.multiaddrs.map((ma) => ma.toString());
+            const multiaddrs = evt.detail.multiaddrs.map((ma: MultiaddrLike) => ma.toString());
 
             this.log('info', `Discovered peer: ${peerId}`);
 
@@ -278,7 +424,7 @@ class P2PService {
         });
 
         // Peer connection established
-        this.libp2pNode.addEventListener('peer:connect', (evt) => {
+        this.libp2pNode.addEventListener('peer:connect', (evt: PeerConnectionEvent) => {
             const peerId = evt.detail.toString();
             this.log('info', `Connected to peer: ${peerId}`);
 
@@ -296,7 +442,7 @@ class P2PService {
         });
 
         // Peer disconnected
-        this.libp2pNode.addEventListener('peer:disconnect', (evt) => {
+        this.libp2pNode.addEventListener('peer:disconnect', (evt: PeerConnectionEvent) => {
             const peerId = evt.detail.toString();
             this.log('info', `Disconnected from peer: ${peerId}`);
 
@@ -332,10 +478,23 @@ class P2PService {
             try {
                 peer = await this.libp2pNode.peerStore.get(targetPeerId);
                 this.log('info', `Found peer in peerStore with ${peer.addresses.length} address(es)`);
-            } catch (error) {
-                throw new Error(
-                    `Peer not found in peerStore. Discovery hasn't happened yet, or peer is offline.`
+            } catch {
+                this.log('info', 'Peer not found in peerStore');
+                // Will try relay hint below if available
+            }
+
+            // If we have a relay hint, add relay address to peerStore
+            if (payload.relay) {
+                this.log('info', `Using relay hint: ${payload.relay}`);
+                const { multiaddr } = await import('@multiformats/multiaddr');
+                const relayAddr = multiaddr(
+                    `${payload.relay}/p2p-circuit/p2p/${payload.peerId}`
                 );
+                await this.libp2pNode.peerStore.merge(targetPeerId, {
+                    multiaddrs: [relayAddr],
+                });
+                // Re-fetch peer after merge
+                peer = await this.libp2pNode.peerStore.get(targetPeerId);
             }
 
             if (!peer || peer.addresses.length === 0) {
@@ -346,7 +505,7 @@ class P2PService {
 
             // Log multiaddrs we're trying to dial
             this.log('info', `Attempting to dial ${peer.addresses.length} address(es):`);
-            peer.addresses.forEach((addr, i) => {
+            peer.addresses.forEach((addr: PeerStoreEntry['addresses'][number], i: number) => {
                 this.log('info', `  [${i}] ${addr.multiaddr.toString()}`);
             });
 
@@ -357,6 +516,19 @@ class P2PService {
 
             this.log('info', `✓ Successfully dialed peer: ${payload.peerId}`);
             this.log('info', `  Remote address: ${connection.remoteAddr.toString()}`);
+
+            // Initiate handshake after connection
+            try {
+                const localData: HandshakeData = {
+                    displayName: `WhatNext User ${this.libp2pNode.peerId.toString().slice(-4)}`,
+                    version: P2P_CONFIG.APP_INFO.protocolVersion,
+                    capabilities: ['playlist-sync', 'rxdb-replication'],
+                    peerId: this.libp2pNode.peerId.toString(),
+                };
+                await initiateHandshake(this.libp2pNode, payload.peerId, localData);
+            } catch (err) {
+                this.log('warn', `Handshake failed (non-fatal): ${err}`);
+            }
 
             // Connection established event will be emitted by libp2p's peer:connect listener
         } catch (error) {
@@ -417,7 +589,7 @@ class P2PService {
      * Send message to main process
      * Electron utility processes use process.parentPort.postMessage()
      */
-    private sendToMain(type: UtilityToMainMessageType, payload: any): void {
+    private sendToMain(type: UtilityToMainMessageType, payload: Record<string, unknown>): void {
         const parentPort = (process as any).parentPort;
 
         if (!parentPort) {

@@ -24,6 +24,7 @@ import { webRTC } from '@libp2p/webrtc';
 import { mdns } from '@libp2p/mdns';
 import { identify } from '@libp2p/identify';
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2';
+import { FaultTolerance } from '@libp2p/interface';
 import { peerIdFromString } from '@libp2p/peer-id';
 import chalk from 'chalk';
 import readline from 'readline';
@@ -53,6 +54,11 @@ async function startNode() {
             // Listen addresses - configured via P2P_CONFIG
             addresses: {
                 listen: P2P_CONFIG.LISTEN_ADDRESSES,
+            },
+
+            // Allow node to start even if some transports fail to bind
+            transportManager: {
+                faultTolerance: FaultTolerance.NO_FATAL,
             },
 
             // Connection encryption

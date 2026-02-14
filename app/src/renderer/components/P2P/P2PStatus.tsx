@@ -9,20 +9,11 @@
  */
 
 import { useEffect, useState } from 'react';
-import type { DetailedPeerInfo } from '../../../shared/core';
-
-interface P2PStatus {
-    nodeStarted: boolean;
-    peerId: string;
-    multiaddrs: string[];
-    discoveredPeers: DetailedPeerInfo[];
-    connectedPeers: string[];
-    protocols: string[];
-}
+import type { PeerMetadata, P2PStatusPayload } from '../../../shared/core';
 
 export function P2PStatus() {
     // === STATE ===
-    const [status, setStatus] = useState<P2PStatus>({
+    const [status, setStatus] = useState<P2PStatusPayload>({
         nodeStarted: false,
         peerId: '',
         multiaddrs: [],
@@ -31,7 +22,7 @@ export function P2PStatus() {
         protocols: [],
     });
 
-    const [selectedPeer, setSelectedPeer] = useState<DetailedPeerInfo | null>(null);
+    const [selectedPeer, setSelectedPeer] = useState<PeerMetadata | null>(null);
     const [connectUrl, setConnectUrl] = useState<string>('');
     const [logs, setLogs] = useState<Array<{ time: string; level: string; message: string }>>([]);
     const [expandedSections, setExpandedSections] = useState({
@@ -69,12 +60,12 @@ export function P2PStatus() {
 
                 // Log first-time events
                 if (newStatus.nodeStarted && !status.nodeStarted) {
-                    addLog('success', `Node started: ${newStatus.peerId.slice(0, 20)}...`);
+                    addLog('success', `Node started: ${(newStatus.peerId ?? '').slice(0, 20)}...`);
                     addLog('info', `Listening on ${newStatus.multiaddrs?.length || 0} addresses`);
                 }
 
                 // Log newly discovered peers
-                newStatus.discoveredPeers?.forEach((peer: DetailedPeerInfo) => {
+                newStatus.discoveredPeers?.forEach((peer: PeerMetadata) => {
                     if (!knownPeerIds.has(peer.peerId)) {
                         addLog('info', `🔍 Peer discovered: ${peer.displayName} (${peer.peerId.slice(0, 12)}...)`);
                         knownPeerIds.add(peer.peerId);
@@ -202,24 +193,24 @@ export function P2PStatus() {
                         <>
                             <InfoRow
                                 label="Peer ID"
-                                value={status.peerId}
+                                value={status.peerId ?? ''}
                                 mono
                                 copyable
-                                onCopy={() => copyToClipboard(status.peerId, 'Peer ID')}
+                                onCopy={() => copyToClipboard(status.peerId ?? '', 'Peer ID')}
                             />
 
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-gray-600 font-semibold text-xs">Connection URL:</span>
                                     <button
-                                        onClick={() => copyToClipboard(`whtnxt://connect/${status.peerId}`, 'Connection URL')}
+                                        onClick={() => copyToClipboard(`whtnxt://connect/${status.peerId ?? ''}`, 'Connection URL')}
                                         className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
                                     >
                                         Copy URL
                                     </button>
                                 </div>
                                 <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs font-mono text-blue-900 break-all">
-                                    whtnxt://connect/{status.peerId}
+                                    whtnxt://connect/{status.peerId ?? ''}
                                 </div>
                             </div>
 
@@ -238,13 +229,13 @@ export function P2PStatus() {
                                 </div>
                             )}
 
-                            {status.protocols.length > 0 && (
+                            {(status.protocols?.length ?? 0) > 0 && (
                                 <div>
                                     <span className="text-gray-600 font-semibold text-xs">
-                                        Supported Protocols ({status.protocols.length}):
+                                        Supported Protocols ({status.protocols?.length ?? 0}):
                                     </span>
                                     <div className="mt-1 flex flex-wrap gap-1">
-                                        {status.protocols.map((protocol) => (
+                                        {(status.protocols ?? []).map((protocol) => (
                                             <span key={protocol} className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs">
                                                 {protocol}
                                             </span>
@@ -465,7 +456,7 @@ function InfoRow({ label, value, mono, copyable, onCopy }: InfoRowProps) {
 }
 
 interface PeerCardProps {
-    peer: DetailedPeerInfo;
+    peer: PeerMetadata;
     isConnected: boolean;
     onConnect: () => void;
     onDisconnect: () => void;
@@ -480,7 +471,7 @@ function PeerCard({ peer, isConnected, onConnect, onDisconnect, onSelectDetails 
                     <div className="font-bold text-sm text-gray-800">{peer.displayName}</div>
                     <div className="text-xs text-gray-500 font-mono">{peer.peerId.slice(0, 20)}...</div>
                     <div className="text-xs text-gray-400 mt-1">
-                        via {peer.discovered} • {peer.multiaddrs.length} addr(s)
+                        via {peer.discovered} • {peer.multiaddrs?.length ?? 0} addr(s)
                     </div>
                 </div>
                 <div className="flex gap-1">
@@ -514,7 +505,7 @@ function PeerCard({ peer, isConnected, onConnect, onDisconnect, onSelectDetails 
 }
 
 interface PeerDetailsProps {
-    peer: DetailedPeerInfo;
+    peer: PeerMetadata;
     onClose: () => void;
 }
 
@@ -534,29 +525,14 @@ function PeerDetails({ peer, onClose }: PeerDetailsProps) {
             <div className="space-y-2 text-xs">
                 <InfoRow label="Peer ID" value={peer.peerId} mono />
                 <InfoRow label="Display Name" value={peer.displayName} />
-                <InfoRow label="Discovered" value={`${peer.discovered} at ${new Date(peer.discoveredAt).toLocaleTimeString()}`} />
+                <InfoRow label="Discovered" value={`${peer.discovered}${peer.discoveredAt ? ` at ${new Date(peer.discoveredAt).toLocaleTimeString()}` : ''}`} />
                 <InfoRow label="Last Seen" value={new Date(peer.lastSeenAt).toLocaleTimeString()} />
 
-                {peer.connection && (
-                    <>
-                        <div className="border-t pt-2 mt-2">
-                            <span className="font-semibold text-gray-700">Connection Info:</span>
-                        </div>
-                        <InfoRow label="State" value={peer.connection.state} />
-                        <InfoRow label="Direction" value={peer.connection.direction} />
-                        <InfoRow label="Transport" value={peer.connection.transport} />
-                        <InfoRow label="Streams" value={String(peer.connection.streams)} />
-                        {peer.connection.latency && (
-                            <InfoRow label="Latency" value={`${peer.connection.latency}ms`} />
-                        )}
-                    </>
-                )}
-
-                {peer.protocols.length > 0 && (
+                {(peer.protocols?.length ?? 0) > 0 && (
                     <div>
-                        <span className="font-semibold text-gray-700">Protocols ({peer.protocols.length}):</span>
+                        <span className="font-semibold text-gray-700">Protocols ({peer.protocols!.length}):</span>
                         <div className="mt-1 space-y-1">
-                            {peer.protocols.map((protocol: string) => (
+                            {peer.protocols!.map((protocol: string) => (
                                 <div key={protocol} className="bg-purple-50 rounded px-2 py-1 font-mono">
                                     {protocol}
                                 </div>
@@ -565,55 +541,17 @@ function PeerDetails({ peer, onClose }: PeerDetailsProps) {
                     </div>
                 )}
 
-                {peer.multiaddrs.length > 0 && (
+                {(peer.multiaddrs?.length ?? 0) > 0 && (
                     <div>
-                        <span className="font-semibold text-gray-700">Multiaddrs ({peer.multiaddrs.length}):</span>
+                        <span className="font-semibold text-gray-700">Multiaddrs ({peer.multiaddrs!.length}):</span>
                         <div className="mt-1 space-y-1">
-                            {peer.multiaddrs.map((addr: string, i: number) => (
+                            {peer.multiaddrs!.map((addr: string, i: number) => (
                                 <div key={i} className="bg-gray-100 rounded px-2 py-1 font-mono break-all">
                                     {addr}
                                 </div>
                             ))}
                         </div>
                     </div>
-                )}
-
-                {peer.metadata && (
-                    <>
-                        <div className="border-t pt-2 mt-2">
-                            <span className="font-semibold text-gray-700">Metadata:</span>
-                        </div>
-                        {peer.metadata.appVersion && (
-                            <InfoRow label="App Version" value={peer.metadata.appVersion} />
-                        )}
-                        {peer.metadata.protocolVersion && (
-                            <InfoRow label="Protocol Version" value={peer.metadata.protocolVersion} />
-                        )}
-                        {peer.metadata.capabilities && peer.metadata.capabilities.length > 0 && (
-                            <div>
-                                <span className="font-semibold text-gray-700">Capabilities:</span>
-                                <div className="mt-1 flex flex-wrap gap-1">
-                                    {peer.metadata.capabilities.map((cap: string) => (
-                                        <span key={cap} className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                            {cap}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </>
-                )}
-
-                {peer.stats && (
-                    <>
-                        <div className="border-t pt-2 mt-2">
-                            <span className="font-semibold text-gray-700">Statistics:</span>
-                        </div>
-                        <InfoRow label="Bytes Sent" value={formatBytes(peer.stats.bytesSent)} />
-                        <InfoRow label="Bytes Received" value={formatBytes(peer.stats.bytesReceived)} />
-                        <InfoRow label="Messages Sent" value={String(peer.stats.messagesSent)} />
-                        <InfoRow label="Messages Received" value={String(peer.stats.messagesReceived)} />
-                    </>
                 )}
             </div>
         </div>
