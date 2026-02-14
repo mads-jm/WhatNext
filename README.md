@@ -11,6 +11,10 @@ See the full project specification in `docs/whtnxt-nextspec.md`.
 
 `/service` - The helper service for P2P signaling
 
+`/relay` - The relay service for P2P signaling
+
+`/test-peer` - The test peer for P2P development
+
 `/docs` - The project specification -> to be moved to a isolated repo for use in Obsidian
 
 `/scripts` - Scripts for project initialization and development
@@ -28,6 +32,6 @@ See the full project specification in `docs/whtnxt-nextspec.md`.
 
 ## Dev
 - `./scripts/dev-init.sh` - Initializes the dev environment and installs dependencies via nvm and npm
-- `./scripts/start-app.sh` - Starts the Electron app
-- `./scripts/start-service.sh` - Starts the helper service (not yet implemented)
-- `./scripts/build-app.sh` - Builds the Electron app (not yet configured)
+- `node scripts/start-app.mjs` - Starts the Electron app
+- `node scripts/start-dev.mjs` - Starts both Electron app + test peer for P2P development
+- `node scripts/start-service.mjs` - Starts the helper service (not yet implemented)

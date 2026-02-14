@@ -42,15 +42,15 @@ All project documentation is indexed in **[docs/INDEX.md](docs/INDEX.md)**, orga
 
 **Recommended for P2P Development (starts both app + test-peer):**
 ```bash
-./scripts/start-dev.sh              # Starts Electron app + test peer together
-./scripts/start-dev.sh --app-only   # Only start Electron app
-./scripts/start-dev.sh --test-peer-only  # Only start test peer
+node scripts/start-dev.mjs              # Starts Electron app + test peer together
+node scripts/start-dev.mjs --app-only   # Only start Electron app
+node scripts/start-dev.mjs --test-peer-only  # Only start test peer
 ```
 
 **Traditional (app only):**
 ```bash
-./scripts/start-app.sh  # Starts the Electron app in dev mode
-cd app && npm run dev   # Alternative: runs concurrently with hot-reload
+node scripts/start-app.mjs  # Starts the Electron app in dev mode
+cd app && npm run dev        # Alternative: runs concurrently with hot-reload
 ```
 
 **Test Peer (for P2P connection testing):**
