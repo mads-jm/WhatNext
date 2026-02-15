@@ -1,7 +1,7 @@
 ---
 tags: guides/setup
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:27:23 pm
+date modified: Sunday, February 15th 2026, 8:37:12 pm
 ---
 
 # Quick Start Guide

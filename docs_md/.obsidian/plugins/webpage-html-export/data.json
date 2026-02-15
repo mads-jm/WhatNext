@@ -10,7 +10,7 @@
     "postProcess": true,
     "displayProgress": true,
     "inlineHTML": false,
-    "exportPath": "D:\\dev\\mads\\whatnext\\docs_html",
+    "exportPath": "D:\\dev\\mads\\whatnext\\docs",
     "filesToExport": [],
     "useFallbackRenderer": false,
     "addBodyClasses": true,

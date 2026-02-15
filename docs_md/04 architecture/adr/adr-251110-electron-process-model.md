@@ -4,7 +4,7 @@ tags:
   - core/electron
   - net
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:27:25 pm
+date modified: Sunday, February 15th 2026, 8:37:10 pm
 ---
 
 # ADR: Electron Process Model for P2P Architecture

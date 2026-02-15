@@ -6,7 +6,7 @@ tags:
   - architecture/decisions
 date created: Saturday, February 14th 2026, 4:27:24 pm
 relates to: "[[whtnxt-nextspec]]"
-date modified: Sunday, February 15th 2026, 8:27:28 pm
+date modified: Sunday, February 15th 2026, 8:37:07 pm
 ---
 
 # The Walled Garden Cracks

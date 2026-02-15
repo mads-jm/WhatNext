@@ -13,7 +13,7 @@ tags:
   - architecture/design
   - core/architecture
 date created: Sunday, February 15th 2026, 7:36:38 am
-date modified: Sunday, February 15th 2026, 8:27:28 pm
+date modified: Sunday, February 15th 2026, 8:37:07 pm
 ---
 
 # WhatNext Architecture Design Document

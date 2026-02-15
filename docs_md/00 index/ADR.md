@@ -2,7 +2,7 @@
 tags:
   - core/index
 date created: Thursday, November 13th 2025, 4:59:12 am
-date modified: Sunday, February 15th 2026, 8:27:28 pm
+date modified: Sunday, February 15th 2026, 8:37:07 pm
 ---
 
 # ADR

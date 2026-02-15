@@ -7,7 +7,7 @@ aliases:
     - SRS
     - Requirements Spec
 date created: Sunday, February 15th 2026, 7:33:39 am
-date modified: Sunday, February 15th 2026, 8:27:29 pm
+date modified: Sunday, February 15th 2026, 8:37:06 pm
 ---
 
 # Software Requirements Specification: WhatNext

@@ -1,7 +1,7 @@
 ---
 tags: p2p/protocols/handshake
 date created: Saturday, February 14th 2026, 11:36:56 am
-date modified: Sunday, February 15th 2026, 8:27:27 pm
+date modified: Sunday, February 15th 2026, 8:37:08 pm
 ---
 
 # Handshake Protocol

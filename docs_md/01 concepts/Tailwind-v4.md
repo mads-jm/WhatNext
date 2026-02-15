@@ -4,7 +4,7 @@ tags:
   - core/build-tools
   - ux/styling/tailwind
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:27:27 pm
+date modified: Sunday, February 15th 2026, 8:37:08 pm
 ---
 
 # Tailwind CSS V4
