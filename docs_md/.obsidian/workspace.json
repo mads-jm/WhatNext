@@ -279,6 +279,7 @@
   },
   "active": "215681c894935d7c",
   "lastOpenFiles": [
+    "CNAME",
     "99 meta/00 templates/(TEMPLATE) Unique.md",
     "04 architecture/srs-whatnext.md",
     "04 architecture/adr/adr-251110-libp2p-vs-simple-peer.md",
@@ -304,7 +305,6 @@
     "05 notes/note-251109-custom-protocol-barebones-peer.md",
     "04 architecture/adr/adr-251109-database-storage-location.md",
     "03 guides/Quick-Start.md",
-    "01 concepts/Electron.md",
     "site-lib/search-index.json",
     "site-lib/metadata.json",
     "site-lib/styles/supported-plugins.css",
