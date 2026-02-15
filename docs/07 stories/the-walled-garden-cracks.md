@@ -1,7 +1,12 @@
 ---
-tags: core/vision, stories/origin, spotify/api, architecture/decisions
-date created: 2026-02-14
+tags:
+  - core/vision
+  - stories/origin
+  - spotify/api
+  - architecture/decisions
+date created: Saturday, February 14th 2026, 4:27:24 pm
 relates to: "[[whtnxt-nextspec]]"
+date modified: Sunday, February 15th 2026, 8:05:29 pm
 ---
 
 # The Walled Garden Cracks
@@ -34,7 +39,7 @@ This frustration isn't really about Spotify. It's about what happens when your c
 
 The streaming era sold us a bargain: access to everything, ownership of nothing. For a while, that felt like a good trade. But "access to everything" was always conditional. Songs disappear from catalogs. Playlists break when licenses expire. Recommendation algorithms optimize for engagement, not taste. And now, the APIs that let you build around these platforms are being pulled back too.
 
-The local-first movement understood this years ago. The insight wasn't nostalgia for MP3s and folder hierarchies. It was a recognition that **data you control is data that lasts**. A playlist stored as a plaintext file on your machine doesn't evaporate when a company pivots its business model. A P2P connection between friends doesn't require a corporation's permission to exist.
+The local-first movement understood this years ago. The insight wasn't nostalgia for MP3s and folder hierarchies. It was a recognition that __data you control is data that lasts__. A playlist stored as a plaintext file on your machine doesn't evaporate when a company pivots its business model. A P2P connection between friends doesn't require a corporation's permission to exist.
 
 Cloud and streaming got in the way of this truth for a while. The convenience was real. But convenience built on someone else's terms has an expiration date, and we're watching it tick down.
 
@@ -42,11 +47,11 @@ Cloud and streaming got in the way of this truth for a while. The convenience wa
 
 Strip away the technology, the architecture diagrams, the sync strategies. There is one story at the center of all of this:
 
-> **"I want to be more connected with my friends, through deeper collaboration on our collaborative playlists."**
+> __"I want to be more connected with my friends, through deeper collaboration on our collaborative playlists."__
 
 This story wouldn't exist without Spotify's collaborative playlist feature — it planted the seed. But it also wouldn't exist without everything that feature lacks: presence, ritual, conversation, turn-taking, the feeling that you're building something together rather than appending to a list.
 
-And critically, this story **does not belong to Spotify**. It's a human desire that predates any platform. People have been making mixtapes for each other since cassettes. The medium changes; the impulse doesn't.
+And critically, this story __does not belong to Spotify__. It's a human desire that predates any platform. People have been making mixtapes for each other since cassettes. The medium changes; the impulse doesn't.
 
 ## Accessory Mode, Reimagined
 
@@ -54,7 +59,7 @@ The original vision of Accessory Mode was modest: WhatNext as a social companion
 
 The February 2026 changes demand we think bigger.
 
-Accessory Mode shouldn't just accessorize Spotify. It should be a **translation layer** — a bridge between the walled gardens. The playlist creator acts as the **coordinator**: they set up the session, they connect to the source (Spotify today, Apple Music or YouTube Music or Tidal tomorrow), and the collaborative experience lives in WhatNext, independent of any single service.
+Accessory Mode shouldn't just accessorize Spotify. It should be a __translation layer__ — a bridge between the walled gardens. The playlist creator acts as the __coordinator__: they set up the session, they connect to the source (Spotify today, Apple Music or YouTube Music or Tidal tomorrow), and the collaborative experience lives in WhatNext, independent of any single service.
 
 Not everyone needs to download the app. Not everyone needs a Client ID. The coordinator imports the playlist. The P2P session is where the collaboration happens. The source platform is just that — a source. One of many.
 
@@ -62,27 +67,27 @@ This reframing turns Spotify's API restrictions from a blocker into a catalyst. 
 
 ### The Coordinator Model
 
-1. **One person connects to the source** (Spotify, Apple Music, a folder of local files, a URL to a public playlist)
-2. **They import the playlist into WhatNext**, which normalizes it into the local-first format
-3. **They open a P2P session** and share the link
-4. **Friends join the session** — no accounts, no API keys, no OAuth flows
-5. **The collaboration happens in WhatNext** — turn-taking, queue management, reactions, conversation
-6. **Changes flow back to the source** only if the coordinator has write access, and only if they choose to sync
+1. __One person connects to the source__ (Spotify, Apple Music, a folder of local files, a URL to a public playlist)
+2. __They import the playlist into WhatNext__, which normalizes it into the local-first format
+3. __They open a P2P session__ and share the link
+4. __Friends join the session__ — no accounts, no API keys, no OAuth flows
+5. __The collaboration happens in WhatNext__ — turn-taking, queue management, reactions, conversation
+6. __Changes flow back to the source__ only if the coordinator has write access, and only if they choose to sync
 
 The coordinator is a bridge, not a bottleneck. The session is sovereign. The source is optional.
 
 ## Service Abstraction: The Translation Layer
 
-The path forward is clear: **abstract away the streaming service entirely**.
+The path forward is clear: __abstract away the streaming service entirely__.
 
 Instead of building around Spotify's data model, WhatNext defines its own. A track is a track — it has a title, artists, an album, a duration. Whether it came from Spotify, Apple Music, a MusicBrainz lookup, or a local FLAC file is metadata, not identity.
 
 This means:
 
-- **Import adapters** for each source (Spotify adapter exists; others follow)
-- **A canonical internal format** that owns no allegiance to any platform (already designed: the plaintext model)
-- **Optional sync-back** to the source, handled by the coordinator's adapter
-- **Metadata enrichment** from open sources (MusicBrainz, ListenBrainz, Discogs) that don't require API keys or premium accounts
+- __Import adapters__ for each source (Spotify adapter exists; others follow)
+- __A canonical internal format__ that owns no allegiance to any platform (already designed: the plaintext model)
+- __Optional sync-back__ to the source, handled by the coordinator's adapter
+- __Metadata enrichment__ from open sources (MusicBrainz, ListenBrainz, Discogs) that don't require API keys or premium accounts
 
 The February 2026 Spotify changes removed artist popularity, album labels, track popularity, external IDs. They throttled search results. They stripped the API of the very data that made it useful for discovery. But MusicBrainz has all of this. Discogs has all of this. The open music metadata ecosystem has been quietly building in parallel, waiting for exactly this moment.
 
@@ -96,7 +101,7 @@ P2P networking brings that back, with modern capabilities. A WhatNext session be
 
 The data flows directly between the people who care about it. The playlists live on their machines, in plaintext, readable and portable. The social layer — the turn-taking, the reactions, the shared listening experience — exists in the space between peers, not in a cloud database.
 
-This is not a step backward. This is the original promise of the internet, finally applied to music: **people connecting directly with each other, sharing what matters to them, on their own terms**.
+This is not a step backward. This is the original promise of the internet, finally applied to music: __people connecting directly with each other, sharing what matters to them, on their own terms__.
 
 ## What Changes in the Roadmap
 
@@ -104,48 +109,54 @@ This is not a step backward. This is the original promise of the internet, final
 
 The core MVP story remains the same — collaborative playlist sessions between friends — but the emphasis shifts:
 
-1. **P2P session experience is the product**, not Spotify integration
-2. **Coordinator model** replaces "everyone needs API access"
-3. **Import adapter architecture** from day one, even if Spotify is the only adapter at launch
-4. **Zero-friction join flow**: the person joining a session should never see an OAuth screen
-5. **Open metadata enrichment** (MusicBrainz) as a complement or fallback to Spotify metadata
+1. __P2P session experience is the product__, not Spotify integration
+2. __Coordinator model__ replaces "everyone needs API access"
+3. __Import adapter architecture__ from day one, even if Spotify is the only adapter at launch
+4. __Zero-friction join flow__: the person joining a session should never see an OAuth screen
+5. __Open metadata enrichment__ (MusicBrainz) as a complement or fallback to Spotify metadata
 
 ### What This Unlocks
 
-- **Lower barrier to entry**: only the coordinator needs platform credentials
-- **Platform resilience**: if Spotify further restricts, swap the adapter, keep the experience
-- **Broader audience**: users of any streaming service (or none) can participate
-- **True sovereignty**: the collaborative experience is fully owned by the participants
+- __Lower barrier to entry__: only the coordinator needs platform credentials
+- __Platform resilience__: if Spotify further restricts, swap the adapter, keep the experience
+- __Broader audience__: users of any streaming service (or none) can participate
+- __True sovereignty__: the collaborative experience is fully owned by the participants
 
 ## The Specific API Damage (February 2026)
 
 For the record, here's what Spotify pulled:
 
 ### Removed Endpoints (16)
+
 - Artist top tracks, browse categories, new releases
 - Multi-get for albums, artists, tracks, shows, episodes, audiobooks, chapters
 - User profile and user playlist access for other users
 - Create playlist for another user
 
 ### Removed Response Fields
-- **Album**: album_group, available_markets, external_ids, label, popularity
-- **Artist**: followers, popularity
-- **Track**: available_markets, external_ids, linked_from, popularity
-- **User**: country, email, explicit_content, followers, product
+
+- __Album__: album_group, available_markets, external_ids, label, popularity
+- __Artist__: followers, popularity
+- __Track__: available_markets, external_ids, linked_from, popularity
+- __User__: country, email, explicit_content, followers, product
 
 ### Modified Endpoints
+
 - Search: max results reduced from 50 to 10, default from 20 to 5
 
 ### Renamed Endpoints
+
 - `/playlists/{id}/tracks` -> `/playlists/{id}/items` (and related fields)
 
 ### New Restrictions
+
 - Premium account required for Development Mode
 - 1 Client ID per developer (was unlimited)
 - 5 authorized users per app (was 25)
 - Extended Quota requires 250K MAU and organizational status
 
 ### WhatNext-Specific Impact
+
 - `GET /playlists/{id}/tracks` must migrate to `/playlists/{id}/items`
 - Response field `tracks` must be read as `items`
 - Track `external_ids` removal affects cross-platform matching (shifts this to MusicBrainz/ISRC lookups)
