@@ -15,6 +15,8 @@ date modified: Thursday, November 13th 2025, 5:19:30 am
 
 - __[[whtnxt-nextspec]]__ - Complete technical specification and architecture (source of truth)
 - __[[the-walled-garden-cracks]]__ - Vision supplement: Spotify API crackdown, coordinator model, translation layer architecture (2026-02)
+- __[[srs-whatnext]]__ - Software Requirements Specification (MVP baseline v0.1.0)
+- __[[architecture-whatnext]]__ - Architecture Design Document (MVP baseline v0.1.0)
 - __[[README]]__ - High-level overview and stack
 - __[[CLAUDE]]__ - Development instructions, commands, architecture principles
 
@@ -125,6 +127,8 @@ date modified: Thursday, November 13th 2025, 5:19:30 am
 
 ### Architecture Components
 
+- __[[srs-whatnext]]__ → Formal requirements specification (MVP)
+- __[[architecture-whatnext]]__ → Formal architecture design (MVP)
 - __[[Helper Backend Service]]__ → Signaling + OAuth coordination
 - __[[Signaling Server]]__ → P2P connection brokering
 - __[[Spotify Collaborative Sync Strategy]]__ → External integration patterns (pre-2026 model)
@@ -189,10 +193,11 @@ When working on WhatNext:
 3. __Check__: Recent notes in `/docs/05 notes/` for current state
 4. __Document__: New learnings following patterns in [[note-251110-libp2p-learning-roadmap]]
 
-### Active Development Areas (as of 2026-02-14)
+### Active Development Areas (as of 2026-02-15)
 
 - ✅ P2P networking foundation (libp2p integration complete)
 - ✅ UI modernization (v0.0.0 polished)
+- ✅ Formal documentation (SRS + Architecture Design — see [[srs-whatnext]], [[architecture-whatnext]])
 - 🔄 Protocol implementation (next phase)
 - 🔄 Spotify adapter migration (Feb 2026 API changes — see [[the-walled-garden-cracks]])
 - 🔜 RxDB replication over libp2p
@@ -201,5 +206,5 @@ When working on WhatNext:
 
 ---
 
-__Last Updated__: 2026-02-14
-__Documentation Version__: v0.0.0
+__Last Updated__: 2026-02-15
+__Documentation Version__: v0.1.0

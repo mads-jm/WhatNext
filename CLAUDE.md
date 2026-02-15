@@ -9,27 +9,37 @@ WhatNext is a resilient, user-centric music management platform built on three c
 - **Decentralized Collaboration**: P2P networking for playlist management without central servers
 - **Rich Music Experience**: Deep metadata, intelligent discovery, and powerful organization
 
-The project is architected as an Electron desktop application with a separate helper service for P2P signaling and external API management.
+The project is architected as an Electron desktop application with a circuit relay server for P2P NAT traversal and a planned helper service for OAuth coordination.
 
 ## Repository Structure
 
 ```
-/app        - Main Electron application
+/app        - Main Electron application (Electron + React + RxDB)
+/relay      - Circuit relay server for P2P NAT traversal
 /test-peer  - Barebones libp2p test peer for P2P development
-/service    - Helper service for P2P signaling and Spotify OAuth (not yet implemented)
-/docs       - Project specification (whtnxt-nextspec.md is the source of truth)
-  /notes    - Development notes and learnings (indexed in docs/INDEX.md)
-  INDEX.md  - Complete documentation map organized by concept
+/service    - Helper service for OAuth coordination and API proxying (planned)
+/docs       - Obsidian vault: project documentation organized by concept
+  /00 index     - INDEX.md and documentation maps
+  /01 concepts  - Core technology and pattern explanations
+  /03 guides    - How-to documents and workflows
+  /04 architecture - System design, ADRs, SRS, and architecture docs
+  /05 notes     - Development notes and learnings
+  /07 stories   - Vision documents and project narratives
+  /99 meta      - Templates and vault configuration
 /scripts    - Development and initialization scripts
 ```
 
 ## Documentation Navigation
 
-All project documentation is indexed in **[docs/INDEX.md](docs/INDEX.md)**, organized by concept for efficient LLM interaction. This index:
+All project documentation is indexed in **[docs/00 index/INDEX.md](docs/00%20index/INDEX.md)**, organized by concept for efficient LLM interaction. This index:
 - Maps all markdown files by architectural concept
-- Links documentation using Obsidian-style `[[WikiLinks]]` for future vault integration
+- Links documentation using Obsidian-style `[[WikiLinks]]`
 - Provides quick reference for common commands and file locations
 - Must be maintained when new documentation is created
+
+Key formal documents:
+- **[SRS](docs/04%20architecture/srs-whatnext.md)** — Software Requirements Specification (MVP baseline)
+- **[Architecture](docs/04%20architecture/architecture-whatnext.md)** — Architecture Design Document
 
 ## Development Commands
 
@@ -106,14 +116,14 @@ cd app && npm run package   # Creates distributable with electron-builder
 - **Tailwind CSS**: Styling
 - **Zustand**: Lightweight state management (non-persistent UI state)
 
-### Planned Core Dependencies (from spec)
+### P2P & Data Stack
+- **libp2p**: P2P networking library (mDNS discovery, Noise encryption, Yamux multiplexing)
 - **RxDB**: Reactive local database with P2P replication support
-- **Simple-Peer/WebRTC**: P2P networking layer
-- **WebRTC Adapter**: Cross-browser WebRTC compatibility
+- **WebRTC**: NAT traversal via circuit relay
 
-### Service Stack (Future)
-- **Express/Fastify**: Lightweight HTTP server
-- **WebSocket**: Signaling server for P2P connection brokering
+### Service Stack (Planned)
+- **Circuit Relay**: libp2p relay server for NAT traversal (implemented in `/relay`)
+- **Express/Fastify**: Helper service for OAuth coordination (planned)
 
 ## Architecture Principles
 
@@ -142,11 +152,27 @@ Main process handles OS-level tasks (file dialogs, system integration). Renderer
 
 ## Important Implementation Notes
 
-### Spotify Integration Strategy
-Three modes planned (see `docs/whtnxt-nextspec.md` §8.1):
-1. **Accessory Mode** (MVP): Read-only polling of Spotify playlists
-2. **True Collaborate Mode**: Each user makes API calls (requires collaborative playlist)
-3. **Proxy Owner Mode**: Designated user proxies all Spotify writes
+### Spotify Integration Strategy — The Coordinator Model
+
+Spotify's February 2026 API restrictions (Premium required, 5-user cap, 16 endpoints gutted) validated WhatNext's user-sovereignty thesis and catalyzed the **Coordinator Model** (see `docs/07 stories/the-walled-garden-cracks.md`):
+
+**Primary approach (MVP):**
+- **One person** (the coordinator) connects to Spotify, imports the playlist, and opens a P2P session
+- **Participants join the session** with zero OAuth friction — no Spotify account needed
+- **The collaboration happens in WhatNext's P2P layer**, independent of the source platform
+
+**Sync modes** (on the playlist schema as `spotifySyncMode`):
+1. **Accessory Mode** (MVP): Coordinator reads Spotify playlist, normalizes to canonical format, shares via P2P
+2. **True Collaborate Mode**: Each participant with API access makes their own calls (requires collaborative playlist)
+3. **Proxy Owner Mode**: Coordinator proxies writes back to Spotify on behalf of participants
+
+### Import Adapter Architecture
+
+WhatNext abstracts streaming services behind a **translation layer** pattern:
+- **Adapter interface**: Each source (Spotify, Apple Music, local files, MusicBrainz) implements a common import adapter
+- **Canonical format**: Tracks are normalized into WhatNext's internal model (see `app/src/renderer/db/schemas.ts`) — a track is a track regardless of source
+- **Metadata enrichment**: Open sources (MusicBrainz, ListenBrainz) supplement or replace platform-specific metadata
+- **Spotify adapter**: Currently implemented via OAuth PKCE (`app/src/main/spotify/spotify-auth.ts`)
 
 ### Conflict Resolution
 - Target architecture: CRDTs for eventual consistency
@@ -158,21 +184,25 @@ Three modes planned (see `docs/whtnxt-nextspec.md` §8.1):
 
 ## Development Roadmap
 
-**Phase 1 (MVP)**: Collaborative Playlist Accessory
-- P2P connection flow (`whtnxt://` protocol)
-- Accessory Mode Spotify sync
-- Social layer for turn-taking/shared queue
-- RxDB integration
+**Phase 1 (MVP)**: Collaborative Playlist Sessions — "The Walled Garden Cracks"
+- **P2P session is the product**: session creation, sharing, zero-friction join flow
+- **Coordinator model**: one person imports, everyone collaborates
+- **Import adapter architecture**: Spotify adapter at launch, interface designed for extensibility
+- **Social layer**: turn-taking, queue management, reactions, presence
+- **RxDB replication over libp2p**: checkpoint-based sync with LWW conflict resolution
+- **Open metadata enrichment**: MusicBrainz as complement/fallback for Spotify metadata
 
-**Phase 2**: Active Management & Advanced Sync
+**Phase 2**: Active Management & Platform Resilience
 - Direct playlist management in WhatNext UI
-- True Collaborate and Proxy Mode sync strategies
-- Local-only playlists
+- True Collaborate and Proxy Owner sync modes
+- Additional import adapters (Apple Music, YouTube Music, local files)
+- Local-only playlists (no source platform)
+- CRDT migration from LWW
 
 **Phase 3**: Sovereign Music Platform
 - Local audio file management
 - Privacy-preserving local LLM for semantic search
-- Public plugin architecture
+- Public plugin architecture (Obsidian-inspired)
 
 ## Code Style
 
@@ -208,14 +238,13 @@ The `/docs` directory is structured as an **Obsidian vault** optimized for conce
 
 ```
 /docs
-  INDEX.md              Documentation map organized by concept
-  whtnxt-nextspec.md    Technical specification (source of truth)
-
-  /concepts             Core technology and pattern explanations
-  /architecture         System design and ADRs
-  /guides               How-to documents and workflows
-  /reports              Critical issues, bugs, technology assessments
-  /milestones           Release summaries and major achievements
+  /00 index         Documentation maps and indexes (INDEX.md)
+  /01 concepts      Core technology and pattern explanations
+  /03 guides        How-to documents and workflows
+  /04 architecture  System design, ADRs, SRS, and architecture docs
+  /05 notes         Development notes and learnings
+  /07 stories       Vision documents and project narratives (whtnxt-nextspec.md)
+  /99 meta          Templates and vault configuration
 ```
 
 **Flat folders with semantic depth via nested tags**: Use tags like `#architecture/patterns/ipc`, `#p2p/discovery/mdns`, `#data/rxdb/replication` to convey hierarchical relationships without deep nesting.
@@ -316,8 +345,11 @@ When working on WhatNext:
 
 ## Reference Documentation
 
-- **Documentation Index**: `docs/INDEX.md` - Complete map of all project documentation
-- **Full specification**: `docs/whtnxt-nextspec.md` - Technical specification (source of truth)
+- **Documentation Index**: `docs/00 index/INDEX.md` - Complete map of all project documentation
+- **Full specification**: `docs/07 stories/whtnxt-nextspec.md` - Technical specification (source of truth)
+- **SRS**: `docs/04 architecture/srs-whatnext.md` - Software Requirements Specification
+- **Architecture**: `docs/04 architecture/architecture-whatnext.md` - Architecture Design Document
+- **Vision supplement**: `docs/07 stories/the-walled-garden-cracks.md` - Coordinator model and service abstraction
 - **README**: High-level structure and stack overview
-- **Development notes**: `docs/notes/` for lessons learned and troubleshooting
+- **Development notes**: `docs/05 notes/` for lessons learned and troubleshooting
 - **Electron docs**: https://www.electronjs.org/docs/latest/
