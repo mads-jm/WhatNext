@@ -1,8 +1,14 @@
+---
+tags: 10
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Sunday, February 15th 2026, 8:27:14 pm
+---
+
 # Barebones Test Peer Created
 
-**Date**: 2025-11-10
-**Issue**: #10 - P2P Testing Infrastructure
-**Status**: ✅ Complete
+__Date__: 2025-11-10
+__Issue__: - P2P Testing Infrastructure
+__Status__: ✅ Complete
 
 ## Problem
 
@@ -15,11 +21,11 @@ Testing P2P connections with two Electron instances is cumbersome:
 ## Solution: Standalone Test Peer
 
 Created a lightweight Node.js test peer (`/test-peer`) with:
-- ✅ **Exact same libp2p config** as Electron app
-- ✅ **mDNS auto-discovery** (finds Electron app automatically)
-- ✅ **Interactive CLI** for manual testing
-- ✅ **Detailed logging** for debugging
-- ✅ **Fast startup** (~1 second vs Electron's ~5 seconds)
+- ✅ __Exact same libp2p config__ as Electron app
+- ✅ __mDNS auto-discovery__ (finds Electron app automatically)
+- ✅ __Interactive CLI__ for manual testing
+- ✅ __Detailed logging__ for debugging
+- ✅ __Fast startup__ (~1 second vs Electron's ~5 seconds)
 
 ## Usage
 
@@ -41,14 +47,15 @@ npm run dev
 
 ### Test Connection
 
-**From test peer:**
+__From test peer:__
+
 ```bash
 whatnext> list              # See discovered peers
 whatnext> connect 1         # Connect to first peer
 whatnext> connections       # Verify connection
 ```
 
-**From Electron app:**
+__From Electron app:__
 - Click "Connect" button next to discovered test peer
 
 ## CLI Commands
@@ -64,7 +71,7 @@ whatnext> connections       # Verify connection
 
 ## Architecture
 
-```
+```ts
 ┌─────────────────────┐         ┌──────────────────────┐
 │   Test Peer         │         │  Electron App        │
 │   (Node.js)         │         │  (Utility Process)   │
@@ -77,23 +84,26 @@ whatnext> connections       # Verify connection
 └─────────────────────┘         └──────────────────────┘
 ```
 
-**Key Point**: Both use IDENTICAL libp2p configuration, ensuring parity.
+__Key Point__: Both use IDENTICAL libp2p configuration, ensuring parity.
 
 ## Benefits
 
 ### Development
-- ✅ **Fast iteration**: Restart in 1 second (vs 5-10 seconds for Electron)
-- ✅ **Easy debugging**: Single terminal, clear logs
-- ✅ **No UI overhead**: Pure P2P testing
+
+- ✅ __Fast iteration__: Restart in 1 second (vs 5-10 seconds for Electron)
+- ✅ __Easy debugging__: Single terminal, clear logs
+- ✅ __No UI overhead__: Pure P2P testing
 
 ### Testing
-- ✅ **Automated tests**: Can spawn test peer programmatically
-- ✅ **CI/CD ready**: No Electron required for P2P tests
-- ✅ **Multi-peer testing**: Spawn 10+ peers easily
+
+- ✅ __Automated tests__: Can spawn test peer programmatically
+- ✅ __CI/CD ready__: No Electron required for P2P tests
+- ✅ __Multi-peer testing__: Spawn 10+ peers easily
 
 ### Documentation
-- ✅ **Living example**: Test peer code documents P2P usage
-- ✅ **Onboarding**: New devs can experiment without Electron
+
+- ✅ __Living example__: Test peer code documents P2P usage
+- ✅ __Onboarding__: New devs can experiment without Electron
 
 ## Example Session
 
@@ -153,7 +163,7 @@ whatnext> exit
 
 ## File Structure
 
-```
+```ts
 /test-peer
   /src
     index.js          # Main test peer implementation
@@ -163,7 +173,8 @@ whatnext> exit
 
 ## Configuration Parity
 
-**Test Peer** (`test-peer/src/index.js`):
+__Test Peer__ (`test-peer/src/index.js`):
+
 ```javascript
 createLibp2p({
     connectionEncrypters: [noise()],
@@ -175,7 +186,8 @@ createLibp2p({
 })
 ```
 
-**Electron App** (`app/src/utility/p2p-service.ts`):
+__Electron App__ (`app/src/utility/p2p-service.ts`):
+
 ```typescript
 createLibp2p({
     connectionEncrypters: [noise()],
@@ -187,33 +199,37 @@ createLibp2p({
 })
 ```
 
-✅ **IDENTICAL** - Ensures bugs found in one apply to the other.
+✅ __IDENTICAL__ - Ensures bugs found in one apply to the other.
 
 ## Next Steps
 
 ### Immediate
+
 - [x] Test peer connects to Electron app
 - [ ] Verify bidirectional connection (both can dial each other)
 - [ ] Test connection stability (long-running)
 
 ### Phase 2: Automated Testing
+
 - [ ] Spawn test peer programmatically in tests
 - [ ] Write integration tests using test peer
 - [ ] Add to CI/CD pipeline
 
 ### Phase 3: Protocol Testing
+
 - [ ] Add custom protocol handlers to test peer
 - [ ] Test RxDB replication protocol
 - [ ] Simulate network conditions (latency, packet loss)
 
 ### Phase 4: Load Testing
+
 - [ ] Spawn 10+ test peers simultaneously
 - [ ] Measure connection limits
 - [ ] Test mesh network scaling
 
 ## Maintenance
 
-**⚠️ IMPORTANT**: When updating Electron app's P2P config, **always update test peer**.
+__⚠️ IMPORTANT__: When updating Electron app's P2P config, __always update test peer__.
 
 Files to keep in sync:
 - `app/src/utility/p2p-service.ts`
@@ -221,22 +237,22 @@ Files to keep in sync:
 
 ## Success Metrics
 
-✅ **Test peer created**: Standalone Node.js implementation
-✅ **Dependencies installed**: Same libp2p packages as Electron
-✅ **Interactive CLI**: Commands for testing
-✅ **Documentation**: Comprehensive README
-✅ **Fast startup**: <1 second to running node
-✅ **mDNS discovery**: Auto-finds Electron app
+✅ __Test peer created__: Standalone Node.js implementation
+✅ __Dependencies installed__: Same libp2p packages as Electron
+✅ __Interactive CLI__: Commands for testing
+✅ __Documentation__: Comprehensive README
+✅ __Fast startup__: <1 second to running node
+✅ __mDNS discovery__: Auto-finds Electron app
 
 ## References
 
-- Issue #10: Handle `whtnxt://connect` Custom Protocol
+- Issue: Handle `whtnxt://connect` Custom Protocol
 - `/docs/notes/note-251109-custom-protocol-barebones-peer.md` (Original design doc)
 - Test Peer README: `/test-peer/README.md`
-- libp2p docs: https://docs.libp2p.io/
+- libp2p docs: <https://docs.libp2p.io/>
 
 ---
 
-**Status**: ✅ Test peer ready for use!
+__Status__: ✅ Test peer ready for use!
 
 Next: Test connection between test peer and Electron app.

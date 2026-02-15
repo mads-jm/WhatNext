@@ -1,8 +1,18 @@
-# Issue #10 Implementation Session Summary
+---
+tags:
+  - 10
+  - 1
+  - 2
+  - 3
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Sunday, February 15th 2026, 8:27:15 pm
+---
 
-**Date**: 2025-11-10
-**Issue**: #10 - Handle `whtnxt://connect` Custom Protocol
-**Status**: 🔄 In Progress - Foundation Complete, Integration Remaining
+# Issue Implementation Session Summary
+
+__Date__: 2025-11-10
+__Issue__: - Handle `whtnxt://connect` Custom Protocol
+__Status__: 🔄 In Progress - Foundation Complete, Integration Remaining
 
 ---
 
@@ -16,23 +26,23 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ### ✅ Decision 1: P2P Service as Utility Process
 
-**Decision**: Run P2P networking in a separate Electron utility process, isolated from main and renderer.
+__Decision__: Run P2P networking in a separate Electron utility process, isolated from main and renderer.
 
-**Rationale**:
+__Rationale__:
 - Clean separation of concerns (MVC-like pattern)
 - Process isolation prevents P2P crashes from taking down the app
 - Easier testing and debugging
 - Aligns with future migration to standalone `/service` directory
 
-**Documented**: `/docs/notes/note-251110-p2p-utility-process-architecture.md`
+__Documented__: `/docs/notes/note-251110-p2p-utility-process-architecture.md`
 
 ---
 
-### ✅ Decision 2: libp2p Over simple-peer
+### ✅ Decision 2: libp2p Over Simple-peer
 
-**Decision**: Commit to libp2p despite steeper learning curve.
+__Decision__: Commit to libp2p despite steeper learning curve.
 
-**Rationale**:
+__Rationale__:
 - Native mesh networking (essential for multi-peer collaboration)
 - Built-in security (Noise protocol, cryptographic peer identity)
 - mDNS auto-discovery (killer feature for local collaboration)
@@ -40,28 +50,28 @@ This session focused on establishing the architectural foundation for P2P connec
 - Long-term maintainability (Protocol Labs backing)
 - Aligns with user sovereignty principle (DHT-based peer discovery)
 
-**Trade-offs Accepted**:
+__Trade-offs Accepted__:
 - 2-3 week learning curve investment
 - 500KB bundle size (acceptable for desktop app)
 - Higher initial complexity
 
-**Documented**: `/docs/notes/note-251110-libp2p-vs-simple-peer-analysis.md`
+__Documented__: `/docs/notes/note-251110-libp2p-vs-simple-peer-analysis.md`
 
 ---
 
 ### ✅ Decision 3: Architecture-First Approach
 
-**Decision**: Build proper architectural foundations now, not after MVP.
+__Decision__: Build proper architectural foundations now, not after MVP.
 
-**Rationale**:
+__Rationale__:
 - Easier to refactor with clear abstractions
 - Shared core library enables future test peer infrastructure
 - Well-documented learnings serve as institutional knowledge
 - Reduces technical debt
 
-**Commitment**: Rigorously document all learnings, discoveries, and decisions.
+__Commitment__: Rigorously document all learnings, discoveries, and decisions.
 
-**Documented**: `/docs/notes/note-251110-libp2p-learning-roadmap.md`
+__Documented__: `/docs/notes/note-251110-libp2p-learning-roadmap.md`
 
 ---
 
@@ -69,21 +79,21 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ### 1. Shared Core Library (`/app/src/shared/core`)
 
-**Purpose**: Environment-agnostic code shared across main, utility, and renderer processes.
+__Purpose__: Environment-agnostic code shared across main, utility, and renderer processes.
 
-**Files Created**:
+__Files Created__:
 - ✅ `types.ts` - Core P2P type definitions (PeerId, ConnectionState, P2PMessage, etc.)
 - ✅ `protocol.ts` - `whtnxt://` URL parsing and generation utilities
 - ✅ `ipc-protocol.ts` - Message contracts for inter-process communication
 - ✅ `index.ts` - Barrel export
 
-**Key Features**:
-- Protocol URL parsing: `whtnxt://connect/<peerId>?relay=...`
+__Key Features__:
+- Protocol URL parsing: `whtnxt://connect/<peerId>?relay=…`
 - PeerID validation (supports CIDv0, CIDv1, base58, base32)
 - Type-safe IPC message creation
 - Extensible message protocol for future features
 
-**LEARNING NOTES**:
+__LEARNING NOTES__:
 - Inline comments explain "why" decisions were made
 - Functions are documented with their purpose and libp2p concepts
 - Validation functions include examples of valid/invalid inputs
@@ -92,12 +102,12 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ### 2. P2P Utility Process (`/app/src/utility`)
 
-**Purpose**: Runs libp2p node in isolated Node.js process.
+__Purpose__: Runs libp2p node in isolated Node.js process.
 
-**Files Created**:
+__Files Created__:
 - ✅ `p2p-service.ts` - Utility process entry point with libp2p node management
 
-**Key Features**:
+__Key Features__:
 - libp2p node lifecycle (start/stop)
 - MessagePort communication with main process
 - Event listeners for peer discovery and connections
@@ -105,7 +115,8 @@ This session focused on establishing the architectural foundation for P2P connec
 - Connection manager with limits
 - Comprehensive logging
 
-**Minimal libp2p Configuration**:
+__Minimal libp2p Configuration__:
+
 ```typescript
 {
   connectionEncryption: [noise()],       // Noise protocol for encryption
@@ -116,7 +127,7 @@ This session focused on establishing the architectural foundation for P2P connec
 }
 ```
 
-**LEARNING NOTES EMBEDDED**:
+__LEARNING NOTES EMBEDDED__:
 - Why each libp2p configuration option was chosen
 - Known limitations (e.g., WebRTC may need polyfill in Node.js)
 - Future improvements (add TCP/WebSocket transports)
@@ -126,7 +137,7 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ### 3. Documentation Created
 
-**Architecture Decision Records**:
+__Architecture Decision Records__:
 1. ✅ `note-251110-p2p-utility-process-architecture.md` - Utility process design
    - Process isolation rationale
    - IPC communication protocol
@@ -160,75 +171,75 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ## Key Learnings Documented
 
-### Learning #1: Dialing Peers Requires Multiaddrs
+### Learning: Dialing Peers Requires Multiaddrs
 
-**Problem**: `whtnxt://connect/<peerId>` URLs only contain peer ID, but libp2p's `dial()` requires full multiaddr (IP + port + transport).
+__Problem__: `whtnxt://connect/<peerId>` URLs only contain peer ID, but libp2p's `dial()` requires full multiaddr (IP + port + transport).
 
-**Solutions Identified**:
+__Solutions Identified__:
 1. mDNS discovery populates peerStore with multiaddrs (MVP approach)
 2. Include relay multiaddr in URL query params (Phase 2)
 3. DHT peer routing for global peer lookup (Phase 3)
 
 ---
 
-### Learning #2: WebRTC in Node.js Utility Process
+### Learning: WebRTC in Node.js Utility Process
 
-**Potential Blocker**: `@libp2p/webrtc` may require browser APIs not available in Node.js.
+__Potential Blocker__: `@libp2p/webrtc` may require browser APIs not available in Node.js.
 
-**Investigation Needed**:
+__Investigation Needed__:
 - Test if WebRTC works in utility process
 - Check if `wrtc` polyfill is needed
 - Consider `@libp2p/webrtc-direct` as alternative
 - Add TCP/WebSocket transports as fallbacks
 
-**Status**: ⚠️ Needs testing before proceeding
+__Status__: ⚠️ Needs testing before proceeding
 
 ---
 
-### Learning #3: mDNS Discovers All libp2p Peers
+### Learning: mDNS Discovers All libp2p Peers
 
-**Problem**: mDNS will discover IPFS Desktop and other libp2p apps on same network.
+__Problem__: mDNS will discover IPFS Desktop and other libp2p apps on same network.
 
-**Solution for MVP**: Post-connection handshake filtering
+__Solution for MVP__: Post-connection handshake filtering
 - Accept all discovered peers
 - Send WhatNext-specific handshake message
 - Disconnect if peer doesn't respond correctly
 
 ---
 
-## Remaining Work (Issue #10)
+## Remaining Work (Issue)
 
-### Immediate Next Steps:
+### Immediate Next Steps
 
-1. **⚠️ BLOCKER: Test libp2p WebRTC in Utility Process**
+1. __⚠️ BLOCKER: Test libp2p WebRTC in Utility Process__
    - Create minimal test script
    - Verify WebRTC transport works in Node.js
    - Add fallback transports if needed (TCP, WebSocket)
 
-2. **Update Build Configuration**
+2. __Update Build Configuration__
    - Add utility process as tsup entry point
    - Output to `dist/p2p-service.js`
    - Test bundled utility process can be spawned
 
-3. **Implement Main Process Integration**
+3. __Implement Main Process Integration__
    - Register `whtnxt://` protocol handler (`app.setAsDefaultProtocolClient()`)
    - Spawn utility process on app startup
    - Forward protocol URLs to utility process via MessagePort
    - Relay utility events to renderer via IPC
 
-4. **Update Preload Script**
+4. __Update Preload Script__
    - Expose P2P connection API to renderer:
      - `window.electron.p2p.connect(peerId)`
      - `window.electron.p2p.onConnectionRequest(callback)`
      - `window.electron.p2p.getConnectedPeers()`
 
-5. **Build Minimal UI (Renderer)**
+5. __Build Minimal UI (Renderer)__
    - Connection status indicator
    - List of discovered peers
    - Connection request dialog
    - Manual multiaddr input for testing
 
-6. **Test End-to-End**
+6. __Test End-to-End__
    - Start two Electron instances on same WiFi
    - Verify mDNS discovers both peers
    - Test manual connection via `whtnxt://` URL
@@ -240,23 +251,23 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ### ⚠️ High Priority Blockers
 
-1. **WebRTC in Node.js**: Needs immediate testing
+1. __WebRTC in Node.js__: Needs immediate testing
    - If WebRTC doesn't work, must add TCP/WebSocket transports
    - May need `wrtc` polyfill package
    - Could delay timeline by 1-2 days
 
-2. **Build Configuration**: Utility process bundling not tested
+2. __Build Configuration__: Utility process bundling not tested
    - tsup may need special config for worker threads
    - Dependencies (libp2p) may not bundle cleanly
    - Could require webpack/rollup instead of tsup
 
 ### Medium Priority Risks
 
-3. **PeerID Conversion**: Need `@libp2p/peer-id` package
+3. __PeerID Conversion__: Need `@libp2p/peer-id` package
    - Missing utility for string ↔ PeerId object conversion
    - Low risk: Well-documented libp2p API
 
-4. **MessagePort Communication**: Not tested in Electron
+4. __MessagePort Communication__: Not tested in Electron
    - Electron's utilityProcess API is relatively new
    - May have quirks or limitations
    - Fallback: Use traditional child_process.fork()
@@ -265,8 +276,9 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ## Architecture Artifacts Created
 
-### Directory Structure:
-```
+### Directory Structure
+
+```ts
 /app/src
   /shared               # 🆕 Shared across all processes
     /core
@@ -286,8 +298,9 @@ This session focused on establishing the architectural foundation for P2P connec
     # TODO: P2P UI components
 ```
 
-### Documentation Structure:
-```
+### Documentation Structure
+
+```ts
 /docs/notes
   note-251110-p2p-utility-process-architecture.md
   note-251110-libp2p-vs-simple-peer-analysis.md
@@ -300,14 +313,16 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ## Success Metrics
 
-### What We've Achieved:
+### What We've Achieved
+
 - ✅ Architectural foundation established
 - ✅ libp2p integration started with minimal config
 - ✅ Shared core library enables future test peers
 - ✅ Comprehensive documentation of decisions and learnings
 - ✅ Clear roadmap for remaining work
 
-### What Success Looks Like (Issue #10 Complete):
+### What Success Looks Like (Issue Complete)
+
 - [ ] `whtnxt://connect/<peerId>` URLs launch app
 - [ ] Two instances on same WiFi auto-discover via mDNS
 - [ ] User can click discovered peer to initiate connection
@@ -318,10 +333,11 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ## Timeline Estimate
 
-### Original Estimate: 1-2 weeks
-### Revised Estimate: 2-3 weeks (due to learning curve)
+### Original Estimate: 1-2 Weeks
 
-**Breakdown**:
+### Revised Estimate: 2-3 Weeks (due to Learning curve)
+
+__Breakdown__:
 - Foundation (this session): ✅ Complete (~2 days)
 - WebRTC testing & fixes: ⚠️ 1-2 days
 - Build config & spawning: 1 day
@@ -330,23 +346,23 @@ This session focused on establishing the architectural foundation for P2P connec
 - Testing & debugging: 2-3 days
 - Documentation polish: 1 day
 
-**Total**: ~10-14 days (2-3 weeks)
+__Total__: ~10-14 days (2-3 weeks)
 
 ---
 
 ## Next Session Priorities
 
-1. **Immediate**:
+1. __Immediate__:
    - Test WebRTC transport in utility process
    - Resolve any polyfill requirements
    - Update build scripts
 
-2. **Short-term**:
+2. __Short-term__:
    - Complete main process integration
    - Update preload script
    - Build minimal UI
 
-3. **Testing**:
+3. __Testing__:
    - Two-instance mDNS discovery
    - Connection lifecycle
    - Error handling
@@ -355,19 +371,19 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ## Questions for Maintainer
 
-1. **WebRTC Fallback**: If WebRTC doesn't work in Node.js, should we prioritize fixing it or adding TCP transport first?
+1. __WebRTC Fallback__: If WebRTC doesn't work in Node.js, should we prioritize fixing it or adding TCP transport first?
 
-2. **UI Scope**: For issue #10, should we build full UI (discovered peers list, connection dialogs) or minimal proof-of-concept?
+2. __UI Scope__: For issue, should we build full UI (discovered peers list, connection dialogs) or minimal proof-of-concept?
 
-3. **Testing Priority**: Should we write automated tests before completing E2E flow, or validate manually first?
+3. __Testing Priority__: Should we write automated tests before completing E2E flow, or validate manually first?
 
-4. **Documentation Cadence**: Is current documentation level appropriate, or should we document less and iterate faster?
+4. __Documentation Cadence__: Is current documentation level appropriate, or should we document less and iterate faster?
 
 ---
 
 ## References
 
-- Issue #10: Handle `whtnxt://connect` Custom Protocol
+- Issue: Handle `whtnxt://connect` Custom Protocol
 - Spec §2.3: Backend & Network Architecture
 - Spec §4.3: Collaborative & Social Features
 - CLAUDE.md: Development Commands, Architecture Principles
@@ -378,7 +394,7 @@ This session focused on establishing the architectural foundation for P2P connec
 
 ## Commit Message Template (for next commit)
 
-```
+```ts
 feat(p2p): Implement libp2p utility process foundation for issue #10
 
 - Add shared core library for P2P types, protocol parsing, IPC contracts
@@ -395,12 +411,12 @@ Refs: #10
 
 ## End of Session Summary
 
-**Status**: Foundation complete, ready for integration phase.
+__Status__: Foundation complete, ready for integration phase.
 
-**Confidence**: High on architecture, medium on WebRTC compatibility (needs testing).
+__Confidence__: High on architecture, medium on WebRTC compatibility (needs testing).
 
-**Next Steps**: Test WebRTC in utility process, update build config, implement main process integration.
+__Next Steps__: Test WebRTC in utility process, update build config, implement main process integration.
 
-**Documentation Quality**: Comprehensive - all major decisions captured with rationale.
+__Documentation Quality__: Comprehensive - all major decisions captured with rationale.
 
-**Learning Velocity**: On track - expected to hit stride as libp2p concepts solidify.
+__Learning Velocity__: On track - expected to hit stride as libp2p concepts solidify.

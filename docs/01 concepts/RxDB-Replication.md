@@ -1,6 +1,12 @@
-# RxDB Replication Protocol
+---
+tags:
+  - data/rxdb/replication
+  - p2p/protocols/replication
+date created: Saturday, February 14th 2026, 11:36:37 am
+date modified: Sunday, February 15th 2026, 8:27:27 pm
+---
 
-#data/rxdb/replication #p2p/protocols/replication
+# RxDB Replication Protocol
 
 ## What It Is
 
@@ -14,7 +20,7 @@ WhatNext's collaborative playlist feature requires peers to share and synchroniz
 
 ### Data Flow
 
-```
+```ts
 Renderer (RxDB)
     |
     | IPC invoke (replication:push / replication:pull)
@@ -95,9 +101,9 @@ window.electron.replication.onReplicationChanges((data) => {
 
 ## Common Pitfalls
 
-- **Data lives in renderer**: RxDB runs in the renderer process, but P2P runs in the utility process. All data must be relayed through IPC (renderer -> main -> utility and back).
-- **Stream-per-message**: Each replication message opens a new stream. This is simple but may not scale well for high-frequency updates. Future optimization: use persistent streams.
-- **Clock skew**: LWW depends on accurate timestamps. If peer clocks are significantly skewed, the wrong version may win.
+- __Data lives in renderer__: RxDB runs in the renderer process, but P2P runs in the utility process. All data must be relayed through IPC (renderer -> main -> utility and back).
+- __Stream-per-message__: Each replication message opens a new stream. This is simple but may not scale well for high-frequency updates. Future optimization: use persistent streams.
+- __Clock skew__: LWW depends on accurate timestamps. If peer clocks are significantly skewed, the wrong version may win.
 
 ## Related Concepts
 

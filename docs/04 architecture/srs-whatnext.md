@@ -6,6 +6,8 @@ tags:
 aliases:
     - SRS
     - Requirements Spec
+date created: Sunday, February 15th 2026, 7:33:39 am
+date modified: Sunday, February 15th 2026, 8:27:29 pm
 ---
 
 # Software Requirements Specification: WhatNext
@@ -30,20 +32,20 @@ WhatNext is a cross-platform desktop application that enables collaborative play
 
 > "I want to be more connected with my friends, through deeper collaboration on our collaborative playlists."
 
-The MVP delivers the **Collaborative Playlist Accessory** -- a system where one user (the Coordinator) bridges a streaming platform into a decentralized collaboration session that friends (Participants) can join with zero friction.
+The MVP delivers the __Collaborative Playlist Accessory__ -- a system where one user (the Coordinator) bridges a streaming platform into a decentralized collaboration session that friends (Participants) can join with zero friction.
 
 ### 1.3 Definitions and Acronyms
 
 | Term               | Definition |
 |--------------------|------------|
-| **Coordinator**    | A user who creates a session, connects to a source platform (e.g., Spotify), imports playlists, and manages sync-back to the source. |
-| **Participant**    | A user who joins an existing session via a shared link. Requires no platform accounts, API keys, or OAuth flows. |
-| **Session**        | A live P2P collaboration context in which peers share playlist state, track interactions, and presence information. |
-| **Adapter**        | A modular integration layer that normalizes data from an external source (Spotify, MusicBrainz, local files) into the canonical format. |
-| **Canonical Format** | The internal, platform-agnostic data representation used by WhatNext for tracks, playlists, and interactions. Stored as structured data in [[RxDB]] and exportable to plaintext (Markdown + YAML frontmatter). |
-| **CRDT**           | Conflict-free Replicated Data Type. A data structure that supports concurrent updates without coordination. |
-| **LWW**            | Last-Write-Wins. A conflict resolution strategy where the most recent write takes precedence. |
-| **PKCE**           | Proof Key for Code Exchange. An OAuth 2.0 extension for public clients. |
+| __Coordinator__    | A user who creates a session, connects to a source platform (e.g., Spotify), imports playlists, and manages sync-back to the source. |
+| __Participant__    | A user who joins an existing session via a shared link. Requires no platform accounts, API keys, or OAuth flows. |
+| __Session__        | A live P2P collaboration context in which peers share playlist state, track interactions, and presence information. |
+| __Adapter__        | A modular integration layer that normalizes data from an external source (Spotify, MusicBrainz, local files) into the canonical format. |
+| __Canonical Format__ | The internal, platform-agnostic data representation used by WhatNext for tracks, playlists, and interactions. Stored as structured data in [[RxDB]] and exportable to plaintext (Markdown + YAML frontmatter). |
+| __CRDT__           | Conflict-free Replicated Data Type. A data structure that supports concurrent updates without coordination. |
+| __LWW__            | Last-Write-Wins. A conflict resolution strategy where the most recent write takes precedence. |
+| __PKCE__           | Proof Key for Code Exchange. An OAuth 2.0 extension for public clients. |
 
 ### 1.4 References
 
@@ -58,7 +60,7 @@ The MVP delivers the **Collaborative Playlist Accessory** -- a system where one 
 
 ### 2.1 Product Perspective
 
-WhatNext occupies a unique position: it is not a streaming service, not a social network, and not a cloud application. It is a **local-first desktop tool** that treats external streaming platforms as data sources rather than dependencies. The Coordinator model (documented in `the-walled-garden-cracks.md`) defines the interaction pattern:
+WhatNext occupies a unique position: it is not a streaming service, not a social network, and not a cloud application. It is a __local-first desktop tool__ that treats external streaming platforms as data sources rather than dependencies. The Coordinator model (documented in `the-walled-garden-cracks.md`) defines the interaction pattern:
 
 1. One person (Coordinator) connects to the source (e.g., Spotify).
 2. They import the playlist into WhatNext, normalizing it to the canonical format.
@@ -71,26 +73,26 @@ WhatNext occupies a unique position: it is not a streaming service, not a social
 
 | User Class      | Characteristics | Technical Requirements |
 |-----------------|----------------|----------------------|
-| **Coordinator** | Creates sessions, manages source platform connections, controls sync-back. Power user who bridges the walled garden. | Streaming platform account (e.g., Spotify Premium for Dev Mode), WhatNext installed. |
-| **Participant** | Joins sessions, collaborates on playlists, interacts with tracks. Zero onboarding friction. | WhatNext installed. Nothing else. |
+| __Coordinator__ | Creates sessions, manages source platform connections, controls sync-back. Power user who bridges the walled garden. | Streaming platform account (e.g., Spotify Premium for Dev Mode), WhatNext installed. |
+| __Participant__ | Joins sessions, collaborates on playlists, interacts with tracks. Zero onboarding friction. | WhatNext installed. Nothing else. |
 
 ### 2.3 Operating Environment
 
-- **Platforms**: Windows 10+, macOS 12+, Linux (Ubuntu 22.04+, Fedora 38+)
-- **Runtime**: [[Electron]] (Chromium + Node.js)
-- **Network**: Functional offline for local data; LAN for mDNS peer discovery; internet for relay connections and Spotify API access
-- **Storage**: Local filesystem (user-accessible data directory per [[adr-251109-database-storage-location]])
+- __Platforms__: Windows 10+, macOS 12+, Linux (Ubuntu 22.04+, Fedora 38+)
+- __Runtime__: [[Electron]] (Chromium + Node.js)
+- __Network__: Functional offline for local data; LAN for mDNS peer discovery; internet for relay connections and Spotify API access
+- __Storage__: Local filesystem (user-accessible data directory per [[adr-251109-database-storage-location]])
 
 ### 2.4 Design Constraints
 
 These constraints are non-negotiable architectural principles:
 
-1. **User Sovereignty**: The local database is the absolute source of truth. External services are enhancements, never dependencies.
-2. **Local-First**: All core data resides on the user's machine in a user-accessible location. The application is fully functional offline.
-3. **Plaintext Storage**: All user playlists must be readable and editable as files on disk (structured Markdown with YAML frontmatter).
-4. **Offline-Capable**: Core functionality (playlist viewing, editing, local playback) works without any network connection.
-5. **Security Hardened**: Renderer process is sandboxed (`nodeIntegration: false`, `contextIsolation: true`). All main process communication occurs via IPC through the preload script. See [[adr-251110-electron-process-model]].
-6. **Extensibility**: Architecture designed for future plugin support (inspired by Obsidian).
+1. __User Sovereignty__: The local database is the absolute source of truth. External services are enhancements, never dependencies.
+2. __Local-First__: All core data resides on the user's machine in a user-accessible location. The application is fully functional offline.
+3. __Plaintext Storage__: All user playlists must be readable and editable as files on disk (structured Markdown with YAML frontmatter).
+4. __Offline-Capable__: Core functionality (playlist viewing, editing, local playback) works without any network connection.
+5. __Security Hardened__: Renderer process is sandboxed (`nodeIntegration: false`, `contextIsolation: true`). All main process communication occurs via IPC through the preload script. See [[adr-251110-electron-process-model]].
+6. __Extensibility__: Architecture designed for future plugin support (inspired by Obsidian).
 
 ---
 
@@ -241,69 +243,77 @@ Replication synchronizes [[RxDB]] collections across peers using the `/whatnext/
 ## 6. User Stories
 
 ### US-001: Import a Spotify Playlist
-**As a** Coordinator, **I want to** import one of my Spotify playlists into WhatNext **so that** I can share it with friends who do not have Spotify.
 
-**Acceptance Criteria:**
+__As a__ Coordinator, __I want to__ import one of my Spotify playlists into WhatNext __so that__ I can share it with friends who do not have Spotify.
+
+__Acceptance Criteria:__
 - Coordinator authenticates with Spotify via OAuth PKCE.
 - Coordinator selects a playlist from their Spotify library.
 - Tracks are normalized to canonical format and stored in local RxDB.
 - Imported playlist displays in WhatNext with all track metadata.
 
 ### US-002: Create and Share a Session
-**As a** Coordinator, **I want to** create a collaboration session and share a link **so that** my friends can join without any setup.
 
-**Acceptance Criteria:**
+__As a__ Coordinator, __I want to__ create a collaboration session and share a link __so that__ my friends can join without any setup.
+
+__Acceptance Criteria:__
 - Coordinator creates a session from an imported or local playlist.
 - System generates a shareable link or code.
 - Link can be distributed via any messaging platform.
 
 ### US-003: Join a Session
-**As a** Participant, **I want to** join a friend's session by clicking a link **so that** I can collaborate on their playlist instantly.
 
-**Acceptance Criteria:**
+__As a__ Participant, __I want to__ join a friend's session by clicking a link __so that__ I can collaborate on their playlist instantly.
+
+__Acceptance Criteria:__
 - Clicking the link opens WhatNext (or prompts installation).
 - P2P connection establishes automatically.
 - Handshake completes and playlist state replicates.
 - Participant sees the shared playlist within 5 seconds on LAN.
 
 ### US-004: Collaborate on a Playlist
-**As a** Participant, **I want to** add tracks, vote on tracks, and react to the playlist **so that** I feel connected to the collaborative experience.
 
-**Acceptance Criteria:**
+__As a__ Participant, __I want to__ add tracks, vote on tracks, and react to the playlist __so that__ I feel connected to the collaborative experience.
+
+__Acceptance Criteria:__
 - Participant can add tracks to the shared playlist.
 - Participant can vote, like, or skip tracks.
 - Interactions are visible to all peers in real time.
 - Queue mode rules are enforced (turn-taking, free-for-all, or vote-based).
 
 ### US-005: Work Offline
-**As a** user, **I want to** view and edit my playlists without an internet connection **so that** my music library is always accessible.
 
-**Acceptance Criteria:**
+__As a__ user, __I want to__ view and edit my playlists without an internet connection __so that__ my music library is always accessible.
+
+__Acceptance Criteria:__
 - All playlists and tracks are available offline.
 - Edits made offline are persisted locally.
 - On reconnection, changes sync to peers via checkpoint-based replication.
 
 ### US-006: Sync Changes Back to Spotify
-**As a** Coordinator, **I want to** optionally push collaborative changes back to the Spotify playlist **so that** the collaboration results are reflected on the streaming platform.
 
-**Acceptance Criteria:**
+__As a__ Coordinator, __I want to__ optionally push collaborative changes back to the Spotify playlist __so that__ the collaboration results are reflected on the streaming platform.
+
+__Acceptance Criteria:__
 - Coordinator can view a diff of changes since last sync.
 - Sync-back is explicitly initiated (never automatic).
 - Only the Coordinator can trigger sync-back.
 - Failures are reported clearly; local data is never lost.
 
 ### US-007: Discover Peers on Local Network
-**As a** user, **I want to** automatically discover other WhatNext users on my local network **so that** I can connect without manually entering addresses.
 
-**Acceptance Criteria:**
+__As a__ user, __I want to__ automatically discover other WhatNext users on my local network __so that__ I can connect without manually entering addresses.
+
+__Acceptance Criteria:__
 - Peers running WhatNext on the same LAN appear within 5 seconds.
 - Discovered peers show display name and connection status.
 - User can initiate a connection to a discovered peer.
 
 ### US-008: Export Playlist to Plaintext
-**As a** user, **I want to** export my playlist as a readable Markdown file **so that** I own my data in a format that outlasts any application.
 
-**Acceptance Criteria:**
+__As a__ user, __I want to__ export my playlist as a readable Markdown file __so that__ I own my data in a format that outlasts any application.
+
+__Acceptance Criteria:__
 - Export produces a Markdown file with YAML frontmatter.
 - File contains all track metadata, tags, and descriptions.
 - File is human-readable and editable with any text editor.
@@ -397,11 +407,11 @@ playlist }o--o{ track : "trackIds"
 
 ### 8.1 Spotify Web API
 
-**Purpose**: Playlist import and track metadata retrieval (Coordinator only).
+__Purpose__: Playlist import and track metadata retrieval (Coordinator only).
 
-**Authentication**: OAuth 2.0 with PKCE. No client secret stored in the application. Tokens stored locally and never shared with peers.
+__Authentication__: OAuth 2.0 with PKCE. No client secret stored in the application. Tokens stored locally and never shared with peers.
 
-**February 2026 API Changes** (impact on WhatNext):
+__February 2026 API Changes__ (impact on WhatNext):
 
 | Change | Impact | Mitigation |
 |--------|--------|------------|
@@ -412,30 +422,30 @@ playlist }o--o{ track : "trackIds"
 | Search max results reduced to 10 (was 50) | Limited search-based track discovery | Pagination or alternative sources (MusicBrainz) for future phases |
 | `/playlists/{id}/tracks` renamed to `/playlists/{id}/items` | Endpoint path change | Updated in adapter implementation |
 
-**Key Endpoints Used**:
+__Key Endpoints Used__:
 - `GET /me/playlists` -- List Coordinator's playlists
 - `GET /playlists/{id}/items` -- Fetch tracks for a specific playlist
 - `GET /me` -- Verify authentication status
 
-**IPC Channels**: `spotify:auth-start`, `spotify:auth-status`, `spotify:get-playlists`, `spotify:get-tracks`
+__IPC Channels__: `spotify:auth-start`, `spotify:auth-status`, `spotify:get-playlists`, `spotify:get-tracks`
 
 ### 8.2 libp2p / Circuit Relay
 
-**Purpose**: NAT traversal for peers that cannot establish direct connections.
+__Purpose__: NAT traversal for peers that cannot establish direct connections.
 
-**Protocol**: libp2p circuit-relay-v2 (see [[Circuit-Relay]]).
+__Protocol__: libp2p circuit-relay-v2 (see [[Circuit-Relay]]).
 
-**Configuration**: Relay addresses configured in `P2P_CONFIG.RELAY.ADDRESSES`. Auto-connect on startup with retry (10s interval, max 5 retries).
+__Configuration__: Relay addresses configured in `P2P_CONFIG.RELAY.ADDRESSES`. Auto-connect on startup with retry (10s interval, max 5 retries).
 
-**Transports**: TCP (localhost), WebSocket (localhost), WebRTC (remote), Circuit Relay (remote).
+__Transports__: TCP (localhost), WebSocket (localhost), WebRTC (remote), Circuit Relay (remote).
 
-**Encryption**: Noise protocol. **Multiplexing**: Yamux.
+__Encryption__: Noise protocol. __Multiplexing__: Yamux.
 
 ### 8.3 MusicBrainz API (Future)
 
-**Purpose**: Open, platform-agnostic music metadata for cross-platform track identification and enrichment.
+__Purpose__: Open, platform-agnostic music metadata for cross-platform track identification and enrichment.
 
-**Status**: Not implemented in MVP. Planned for Phase 2+ as an additional adapter.
+__Status__: Not implemented in MVP. Planned for Phase 2+ as an additional adapter.
 
 ---
 

@@ -79,12 +79,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "00 index/INDEX.md",
+                "file": "index.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "INDEX"
+              "title": "index"
             }
           },
           {
@@ -116,7 +116,7 @@
             }
           }
         ],
-        "currentTab": 4
+        "currentTab": 6
       }
     ],
     "direction": "vertical"
@@ -273,46 +273,50 @@
       "command-palette:Open command palette": false,
       "bases:Create new base": false,
       "obsidian-git:Open Git source control": false,
-      "templater-obsidian:Templater": false
+      "templater-obsidian:Templater": false,
+      "webpage-html-export:Export as HTML": false
     }
   },
-  "active": "202348756e12bc35",
+  "active": "215681c894935d7c",
   "lastOpenFiles": [
+    "99 meta/00 templates/(TEMPLATE) Unique.md",
+    "04 architecture/srs-whatnext.md",
     "04 architecture/adr/adr-251110-libp2p-vs-simple-peer.md",
     "07 stories/the-walled-garden-cracks.md",
-    "04 architecture/adr",
     "00 index/ADR.md",
-    "README.md",
-    "07 stories/whtnxt-nextspec.md",
-    "99 meta/00 templates/(TEMPLATE) Unique.md",
-    "05 notes/issues-2-6-summary.md",
-    "05 notes/note-251109-custom-protocol-barebones-peer.md",
-    "04 architecture/adr/adr-251110-electron-process-model.md",
-    "04 architecture/adr/adr-251109-database-storage-location.md",
-    "03 guides/UI-Development.md",
-    "03 guides/Quick-Start.md",
-    "03 guides/Protocol-Implementation-Roadmap.md",
-    "03 guides/P2P-Testing.md",
-    "01 concepts/WebRTC.md",
-    "01 concepts/Tailwind.md",
+    "04 architecture/architecture-whatnext.md",
+    "01 concepts/libp2p.md",
+    "01 concepts/Handshake-Protocol.md",
+    "01 concepts/RxDB-Replication.md",
+    "01 concepts/Circuit-Relay.md",
     "01 concepts/Tailwind-v4.md",
     "01 concepts/RxDB.md",
+    "03 guides/UI-Development.md",
+    "01 concepts/Tailwind.md",
     "01 concepts/React.md",
-    "01 concepts/libp2p.md",
+    "01 concepts/WebRTC.md",
     "01 concepts/Electron-IPC.md",
+    "04 architecture/adr/adr-251110-electron-process-model.md",
+    "03 guides/Protocol-Implementation-Roadmap.md",
+    "03 guides/P2P-Testing.md",
+    "07 stories/whtnxt-nextspec.md",
+    "05 notes/issues-2-6-summary.md",
+    "05 notes/note-251109-custom-protocol-barebones-peer.md",
+    "04 architecture/adr/adr-251109-database-storage-location.md",
+    "03 guides/Quick-Start.md",
     "01 concepts/Electron.md",
-    "00 index/NOTES.md",
-    "00 index/INDEX.md",
-    "README.md.md",
-    "99 meta/00 templates/(TEMPLATE) Unique - Copy (2).md",
-    "99 meta/00 templates",
-    "99 meta/New folder",
-    "99 meta",
-    "New folder",
-    "07 stories",
-    "99 meta/01 agents",
-    "notes",
-    "00 index",
-    "notes/note-251110-added-tcp-websocket-transports.md.tmp.82545.1762798670820"
+    "site-lib/search-index.json",
+    "site-lib/metadata.json",
+    "site-lib/styles/supported-plugins.css",
+    "site-lib/styles/snippets.css",
+    "site-lib/styles/obsidian.css",
+    "site-lib/styles/main-styles.css",
+    "site-lib/styles/global-variable-styles.css",
+    "site-lib/scripts/webpage.js",
+    "site-lib/media/favicon.png",
+    "site-lib/scripts/graph-wasm.wasm",
+    "site-lib/scripts/graph-wasm.js",
+    "site-lib/media/6155340132a851f6089e.svg",
+    "site-lib/media/2308ab1944a6bfa5c5b8.svg"
   ]
 }

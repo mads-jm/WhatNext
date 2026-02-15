@@ -10,11 +10,13 @@ tags:
   - "#p2p/libp2p"
   - "#data/rxdb"
   - "#integration/spotify"
+  - architecture/design
+  - core/architecture
+date created: Sunday, February 15th 2026, 7:36:38 am
+date modified: Sunday, February 15th 2026, 8:27:28 pm
 ---
 
 # WhatNext Architecture Design Document
-
-#architecture/design #core/architecture
 
 ## Changelog
 
@@ -179,34 +181,34 @@ end note
 
 The main process runs in a Node.js context and is responsible for:
 
-- **Window management**: Creating and configuring `BrowserWindow` instances
-- **IPC routing**: Bridging communication between the renderer and utility processes
-- **Spotify OAuth**: Handling the PKCE flow (code verifier generation, browser launch, callback processing, token exchange)
-- **Utility process lifecycle**: Spawning the P2P utility process via `utilityProcess.fork()`, monitoring its health, relaying messages
-- **Protocol URL handling**: Registering and processing `whtnxt://` custom protocol URLs (peer connections and Spotify callbacks)
-- **P2P state caching**: Maintaining a `P2PStatusPayload` mirror so the renderer can poll status without round-tripping through the utility process
+- __Window management__: Creating and configuring `BrowserWindow` instances
+- __IPC routing__: Bridging communication between the renderer and utility processes
+- __Spotify OAuth__: Handling the PKCE flow (code verifier generation, browser launch, callback processing, token exchange)
+- __Utility process lifecycle__: Spawning the P2P utility process via `utilityProcess.fork()`, monitoring its health, relaying messages
+- __Protocol URL handling__: Registering and processing `whtnxt://` custom protocol URLs (peer connections and Spotify callbacks)
+- __P2P state caching__: Maintaining a `P2PStatusPayload` mirror so the renderer can poll status without round-tripping through the utility process
 
 ### 4.2 Renderer Process (`app/src/renderer/`)
 
 The renderer runs React 19 in a sandboxed Chromium environment:
 
-- **React UI**: Component tree for playlists, connections, Spotify import, session views
-- **Zustand**: Non-persistent UI state (connection status, active views, UI preferences)
-- **RxDB**: Local-first reactive database over IndexedDB via the Dexie adapter. Reactive queries drive UI re-renders.
-- **IPC Client**: All main process communication goes through the preload-exposed `window.electron` API
+- __React UI__: Component tree for playlists, connections, Spotify import, session views
+- __Zustand__: Non-persistent UI state (connection status, active views, UI preferences)
+- __RxDB__: Local-first reactive database over IndexedDB via the Dexie adapter. Reactive queries drive UI re-renders.
+- __IPC Client__: All main process communication goes through the preload-exposed `window.electron` API
 
 ### 4.3 Utility Process (`app/src/utility/p2p-service.ts`)
 
 The utility process is a separate Node.js process spawned by Electron's `utilityProcess.fork()`:
 
-- **libp2p node**: Full P2P networking stack with TCP, WebSockets, WebRTC, and circuit relay transports
-- **Protocol handlers**: Handshake and replication protocol implementations
-- **Connection management**: Peer discovery via mDNS, connection lifecycle, relay connectivity
-- **Communication**: Receives commands from main via `process.parentPort` (MessagePort), sends events back
+- __libp2p node__: Full P2P networking stack with TCP, WebSockets, WebRTC, and circuit relay transports
+- __Protocol handlers__: Handshake and replication protocol implementations
+- __Connection management__: Peer discovery via mDNS, connection lifecycle, relay connectivity
+- __Communication__: Receives commands from main via `process.parentPort` (MessagePort), sends events back
 
 ### 4.4 IPC Message Types
 
-**Main to Utility** (`MainToUtilityMessageType`):
+__Main to Utility__ (`MainToUtilityMessageType`):
 
 | Message Type            | Purpose                                    |
 |-------------------------|--------------------------------------------|
@@ -219,7 +221,7 @@ The utility process is a separate Node.js process spawned by Electron's `utility
 | `REPLICATION_PUSH`      | Push RxDB documents to all connected peers |
 | `REPLICATION_PULL`      | Pull RxDB documents from connected peers   |
 
-**Utility to Main** (`UtilityToMainMessageType`):
+__Utility to Main__ (`UtilityToMainMessageType`):
 
 | Message Type              | Purpose                                       |
 |---------------------------|-----------------------------------------------|
@@ -237,7 +239,7 @@ The utility process is a separate Node.js process spawned by Electron's `utility
 | `REPLICATION_STATE`       | Replication sync state update                 |
 | `HANDSHAKE_COMPLETE`      | Handshake protocol finished with a peer       |
 
-**Renderer to Main** (Electron IPC Channels):
+__Renderer to Main__ (Electron IPC Channels):
 
 | Channel Prefix    | Examples                                  | Direction         |
 |-------------------|-------------------------------------------|-------------------|
@@ -366,7 +368,7 @@ rxdb ..> plaintext : "Planned export/import\n(Phase 2+)"
 
 All schemas are at version 0. The database name is `whatnext_db`.
 
-**users** -- Peer identity and status tracking
+__users__ -- Peer identity and status tracking
 
 | Field         | Type    | Required | Indexed | Notes                              |
 |---------------|---------|----------|---------|-------------------------------------|
@@ -378,7 +380,7 @@ All schemas are at version 0. The database name is `whatnext_db`.
 | `publicKey`   | string  | No       | No      | Future encryption/verification      |
 | `createdAt`   | string  | Yes      | No      | ISO 8601 timestamp                  |
 
-**tracks** -- Music tracks with attribution
+__tracks__ -- Music tracks with attribution
 
 | Field        | Type     | Required | Indexed | Notes                            |
 |--------------|----------|----------|---------|-----------------------------------|
@@ -392,7 +394,7 @@ All schemas are at version 0. The database name is `whatnext_db`.
 | `addedBy`    | string   | Yes      | Yes     | User ID of who added this track   |
 | `notes`      | string   | No       | No      | User notes (local user only)      |
 
-**trackInteractions** -- User-track relationships for social features
+__trackInteractions__ -- User-track relationships for social features
 
 | Field            | Type   | Required | Indexed | Notes                                          |
 |------------------|--------|----------|---------|-------------------------------------------------|
@@ -406,7 +408,7 @@ All schemas are at version 0. The database name is `whatnext_db`.
 | `updatedAt`      | string | Yes      | Yes     | ISO 8601 timestamp                              |
 | `metadata`       | string | No       | No      | JSON string for extensible data                 |
 
-**playlists** -- Collaborative playlists with ownership and permissions
+__playlists__ -- Collaborative playlists with ownership and permissions
 
 | Field              | Type     | Required | Indexed | Notes                                                  |
 |--------------------|----------|----------|---------|--------------------------------------------------------|
@@ -426,7 +428,7 @@ All schemas are at version 0. The database name is `whatnext_db`.
 | `queueMode`        | string   | No       | No      | Enum: `free_for_all`, `turn_taking`, `vote_based`      |
 | `currentTurnUserId`| string   | No       | No      | For `turn_taking` mode                                 |
 
-> **Note on Dexie indexes**: Optional fields cannot be indexed with the Dexie adapter. This is why `spotifyId` (tracks), `playlistId` (trackInteractions), and `linkedSpotifyId` (playlists) are not indexed despite being useful query targets.
+> __Note on Dexie indexes__: Optional fields cannot be indexed with the Dexie adapter. This is why `spotifyId` (tracks), `playlistId` (trackInteractions), and `linkedSpotifyId` (playlists) are not indexed despite being useful query targets.
 
 ### 6.3 Local Data Flow
 
@@ -516,11 +518,11 @@ RH -> LDB : Apply documents
 
 ### 6.5 Conflict Resolution
 
-**Current strategy: Last-Write-Wins (LWW)**
+__Current strategy: Last-Write-Wins (LWW)__
 
 Each `ReplicationDocument` carries an `updatedAt` ISO timestamp. When two peers modify the same document concurrently, the document with the later `updatedAt` value wins. This is simple and sufficient for the MVP, where collaborative sessions are typically synchronous.
 
-**Migration path: CRDTs**
+__Migration path: CRDTs__
 
 The architecture is designed for eventual migration to CRDTs (Conflict-free Replicated Data Types). The replication protocol's checkpoint-based design and per-document sync granularity are compatible with CRDT-based merge functions. The `trackInteractions` collection (votes, likes) is a natural candidate for CRDT counters. Ordered lists (playlist `trackIds`) will require a sequence CRDT (e.g., RGA or LSEQ) for true concurrent editing support.
 
@@ -640,7 +642,7 @@ end note
 
 ### 7.4 Protocol Specifications
 
-**Handshake Protocol** (`/whatnext/handshake/1.0.0`)
+__Handshake Protocol__ (`/whatnext/handshake/1.0.0`)
 
 Exchanged after connection to share peer metadata. Uses JSON-over-stream.
 
@@ -653,7 +655,7 @@ interface HandshakeData {
 }
 ```
 
-**Replication Protocol** (`/whatnext/rxdb-replication/1.0.0`)
+__Replication Protocol__ (`/whatnext/rxdb-replication/1.0.0`)
 
 Checkpoint-based document synchronization. Uses JSON-over-stream with four message types:
 
@@ -677,20 +679,20 @@ interface ReplicationDocument {
 ```
 
 Message flow:
-1. **pull-request**: "Give me documents updated after this checkpoint"
-2. **pull-response**: "Here are the documents and the new checkpoint"
-3. **push**: "Here are documents I've changed"
-4. **push-ack**: "I received your push"
+1. __pull-request__: "Give me documents updated after this checkpoint"
+2. __pull-response__: "Here are the documents and the new checkpoint"
+3. __push__: "Here are documents I've changed"
+4. __push-ack__: "I received your push"
 
-**Playlist Sync Protocol** (`/whatnext/playlist-sync/1.0.0`) -- Defined in configuration but not yet implemented. Reserved for real-time collaborative queue operations (turn-taking, vote-based ordering).
+__Playlist Sync Protocol__ (`/whatnext/playlist-sync/1.0.0`) -- Defined in configuration but not yet implemented. Reserved for real-time collaborative queue operations (turn-taking, vote-based ordering).
 
 ### 7.5 NAT Traversal Strategy
 
-1. **Local network**: mDNS discovery enables zero-configuration connection between peers on the same subnet. Peers dial directly via TCP or WebSocket.
+1. __Local network__: mDNS discovery enables zero-configuration connection between peers on the same subnet. Peers dial directly via TCP or WebSocket.
 
-2. **Remote peers (across NAT)**: Circuit relay v2 provides NAT traversal. The relay server is a lightweight VPS running a libp2p relay node. The relay handles only signaling -- no user data passes through it. Configuration is in `P2P_CONFIG.RELAY` with auto-connect, retry intervals (10s), and max retries (5).
+2. __Remote peers (across NAT)__: Circuit relay v2 provides NAT traversal. The relay server is a lightweight VPS running a libp2p relay node. The relay handles only signaling -- no user data passes through it. Configuration is in `P2P_CONFIG.RELAY` with auto-connect, retry intervals (10s), and max retries (5).
 
-3. **WebRTC**: Available as a transport for browser-to-browser and NAT-punched connections. Requires the identify service and circuit relay transport as dependencies.
+3. __WebRTC__: Available as a transport for browser-to-browser and NAT-punched connections. Requires the identify service and circuit relay transport as dependencies.
 
 ---
 
@@ -861,11 +863,11 @@ UI -> UI : Store tracks in RxDB\n(renderer-side)
 
 The coordinator model enables zero-friction collaborative sessions:
 
-1. **Coordinator connects to source**: The session initiator authenticates with Spotify (only they need OAuth), imports a playlist, and normalizes it to canonical format in RxDB.
-2. **Coordinator opens P2P session**: A `whtnxt://connect/<peerId>` link is generated and shared.
-3. **Participants join**: Peers connect via the link. No Spotify authentication required for participants -- they receive normalized track data over P2P replication.
-4. **Collaboration in WhatNext P2P layer**: All participants can add tracks, vote, and interact. Changes replicate in real-time via the replication protocol.
-5. **Optional sync-back**: The coordinator can optionally push changes back to the source platform (Spotify) via the appropriate sync mode (`accessory`, `true_collaborate`, or `proxy_owner` per spec section 8.1).
+1. __Coordinator connects to source__: The session initiator authenticates with Spotify (only they need OAuth), imports a playlist, and normalizes it to canonical format in RxDB.
+2. __Coordinator opens P2P session__: A `whtnxt://connect/<peerId>` link is generated and shared.
+3. __Participants join__: Peers connect via the link. No Spotify authentication required for participants -- they receive normalized track data over P2P replication.
+4. __Collaboration in WhatNext P2P layer__: All participants can add tracks, vote, and interact. Changes replicate in real-time via the replication protocol.
+5. __Optional sync-back__: The coordinator can optionally push changes back to the source platform (Spotify) via the appropriate sync mode (`accessory`, `true_collaborate`, or `proxy_owner` per spec section 8.1).
 
 ---
 
@@ -973,7 +975,7 @@ Spotify integration uses the PKCE (Proof Key for Code Exchange) extension, desig
 
 ### 10.4 P2P Encryption
 
-All libp2p connections use the **Noise protocol** (`@chainsafe/libp2p-noise`) for authenticated encryption. This provides:
+All libp2p connections use the __Noise protocol__ (`@chainsafe/libp2p-noise`) for authenticated encryption. This provides:
 
 - Confidentiality: All stream data is encrypted
 - Integrity: Tampered messages are detected and rejected
@@ -1018,7 +1020,7 @@ All libp2p connections use the **Noise protocol** (`@chainsafe/libp2p-noise`) fo
 
 ## 12. File Structure Map
 
-```
+```ts
 app/
   src/
     main/                              # Main Process (Node.js context)

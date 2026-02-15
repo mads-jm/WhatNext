@@ -1,8 +1,19 @@
-# Issue #10 Complete: whtnxt:// Protocol Handler with libp2p
+---
+tags:
+  - 10
+  - 1
+  - 2
+  - 3
+  - 4
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Sunday, February 15th 2026, 8:27:14 pm
+---
 
-**Date**: 2025-11-10
-**Issue**: #10 - Handle `whtnxt://connect` Custom Protocol
-**Status**: ✅ **COMPLETE** - POC Ready for Testing
+# Issue Complete: <whtnxt://> Protocol Handler with libp2p
+
+__Date__: 2025-11-10
+__Issue__: - Handle `whtnxt://connect` Custom Protocol
+__Status__: ✅ __COMPLETE__ - POC Ready for Testing
 
 ---
 
@@ -14,13 +25,15 @@ Successfully implemented end-to-end P2P connection infrastructure using libp2p i
 
 ## What Was Delivered
 
-### 1. **Shared Core Library** (`/app/src/shared/core`)
-- ✅ Protocol URL parsing (`whtnxt://connect/<peerId>?relay=...`)
+### 1. __Shared Core Library__ (`/app/src/shared/core`)
+
+- ✅ Protocol URL parsing (`whtnxt://connect/<peerId>?relay=…`)
 - ✅ PeerID validation (CIDv0/CIDv1 support)
 - ✅ IPC message contracts for all processes
 - ✅ Type-safe message creators
 
-### 2. **P2P Utility Process** (`/app/src/utility`)
+### 2. __P2P Utility Process__ (`/app/src/utility`)
+
 - ✅ libp2p node with WebRTC transport
 - ✅ mDNS peer discovery (local network auto-discovery)
 - ✅ Circuit Relay transport (required for WebRTC)
@@ -28,27 +41,31 @@ Successfully implemented end-to-end P2P connection infrastructure using libp2p i
 - ✅ Event-based architecture (peer:discovery, peer:connect, peer:disconnect)
 - ✅ MessagePort communication with main process
 
-### 3. **Main Process Integration** (`/app/src/main/main.ts`)
+### 3. __Main Process Integration__ (`/app/src/main/main.ts`)
+
 - ✅ Custom protocol registration (`whtnxt://`)
 - ✅ Utility process spawning and lifecycle management
 - ✅ Protocol URL parsing and forwarding
 - ✅ IPC bridge between utility and renderer
 - ✅ Cross-platform protocol handling (Windows, macOS, Linux)
 
-### 4. **Preload Script** (`/app/src/main/preload.ts`)
+### 4. __Preload Script__ (`/app/src/main/preload.ts`)
+
 - ✅ P2P API exposed to renderer via context bridge
 - ✅ Type-safe event subscriptions
 - ✅ Connection management methods
 - ✅ Security-hardened (no Node.js access in renderer)
 
-### 5. **Renderer UI** (`/app/src/renderer/components/P2P`)
+### 5. __Renderer UI__ (`/app/src/renderer/components/P2P`)
+
 - ✅ P2PStatus component with real-time peer discovery
 - ✅ Node status indicator (starting/running/error)
 - ✅ Discovered peers list with connect buttons
 - ✅ Active connections display
 - ✅ Integrated into main navigation
 
-### 6. **Build System**
+### 6. __Build System__
+
 - ✅ Updated package.json scripts
 - ✅ Utility process bundled as ESM
 - ✅ Main/preload bundled as CommonJS
@@ -60,7 +77,8 @@ Successfully implemented end-to-end P2P connection infrastructure using libp2p i
 ## Architecture Highlights
 
 ### Process Isolation (MVC Pattern)
-```
+
+```ts
 ┌─────────────────┐
 │  Main Process   │  ← Controller (orchestration)
 │  (main.ts)      │
@@ -81,6 +99,7 @@ Successfully implemented end-to-end P2P connection infrastructure using libp2p i
 ```
 
 ### libp2p Configuration
+
 ```typescript
 const node = await createLibp2p({
     connectionEncrypters: [noise()],      // Noise protocol encryption
@@ -100,45 +119,50 @@ const node = await createLibp2p({
 
 ## Key Learnings Documented
 
-### Learning #1: WebRTC Dependencies
-**Discovery**: `@libp2p/webrtc` requires `@libp2p/identify` service AND `@libp2p/circuit-relay-v2` transport.
+### Learning: WebRTC Dependencies
 
-**Impact**: These dependencies are mandatory even if not using relay servers yet.
+__Discovery__: `@libp2p/webrtc` requires `@libp2p/identify` service AND `@libp2p/circuit-relay-v2` transport.
 
-**Documented**: `/docs/notes/note-251110-webrtc-node-js-compatibility-resolved.md`
+__Impact__: These dependencies are mandatory even if not using relay servers yet.
 
----
-
-### Learning #2: libp2p is ESM-Only
-**Discovery**: libp2p packages are ES modules, cannot use CommonJS.
-
-**Solution**: Build utility process as ESM (`--format esm`), while main/preload remain CommonJS.
-
-**Impact**: tsup handles the cross-module communication seamlessly.
+__Documented__: `/docs/notes/note-251110-webrtc-node-js-compatibility-resolved.md`
 
 ---
 
-### Learning #3: mDNS Discovers All libp2p Peers
-**Discovery**: mDNS will discover ANY libp2p node on the local network (IPFS Desktop, etc.).
+### Learning: libp2p is ESM-Only
 
-**Future Work**: Implement post-connection handshake filtering to only show WhatNext peers.
+__Discovery__: libp2p packages are ES modules, cannot use CommonJS.
 
-**Current State**: Shows all discovered peers (acceptable for POC).
+__Solution__: Build utility process as ESM (`--format esm`), while main/preload remain CommonJS.
+
+__Impact__: tsup handles the cross-module communication seamlessly.
 
 ---
 
-### Learning #4: Dialing Requires Multiaddrs
-**Discovery**: libp2p's `dial()` requires full multiaddrs, not just peer IDs.
+### Learning: mDNS Discovers All libp2p Peers
 
-**Solution for MVP**: mDNS discovery populates peerStore with multiaddrs automatically.
+__Discovery__: mDNS will discover ANY libp2p node on the local network (IPFS Desktop, etc.).
 
-**Future Work**: Add relay support for remote peers (Phase 2).
+__Future Work__: Implement post-connection handshake filtering to only show WhatNext peers.
+
+__Current State__: Shows all discovered peers (acceptable for POC).
+
+---
+
+### Learning: Dialing Requires Multiaddrs
+
+__Discovery__: libp2p's `dial()` requires full multiaddrs, not just peer IDs.
+
+__Solution for MVP__: mDNS discovery populates peerStore with multiaddrs automatically.
+
+__Future Work__: Add relay support for remote peers (Phase 2).
 
 ---
 
 ## Testing Instructions
 
 ### Prerequisites
+
 ```bash
 cd app
 npm install
@@ -146,34 +170,37 @@ npm install
 
 ### Run Two Instances on Same Network
 
-**Terminal 1**:
+__Terminal 1__:
+
 ```bash
 npm run dev
 ```
 
-**Terminal 2** (different shell/computer on same WiFi):
+__Terminal 2__ (different shell/computer on same WiFi):
+
 ```bash
 npm run dev
 ```
 
 ### Expected Behavior
 
-1. **Node Startup**:
+1. __Node Startup__:
    - Both instances spawn P2P utility process
    - Green "Connected" indicator appears
-   - Peer ID displayed (e.g., `12D3KooW...`)
+   - Peer ID displayed (e.g., `12D3KooW…`)
 
-2. **Peer Discovery** (within 1-2 seconds):
+2. __Peer Discovery__ (within 1-2 seconds):
    - "Discovered Peers" section populates
    - Peer appears with displayName and truncated peer ID
    - "Connect" button enabled
 
-3. **Manual Connection**:
+3. __Manual Connection__:
    - Click "Connect" on discovered peer
    - Button changes to "Connected" (green)
    - "Active Connections" section shows connected peer
 
-4. **Protocol URL** (optional advanced test):
+4. __Protocol URL__ (optional advanced test):
+
    ```bash
    # Get peer ID from instance 1
    # On instance 2, open URL:
@@ -186,23 +213,28 @@ npm run dev
 
 ## Known Limitations (POC)
 
-### 1. **Local Network Only**
+### 1. __Local Network Only__
+
 - mDNS only works on same subnet
 - Remote peers require relay servers (Phase 2)
 
-### 2. **No Protocol Filtering**
+### 2. __No Protocol Filtering__
+
 - Shows all libp2p peers, not just WhatNext
 - Future: Implement custom handshake protocol
 
-### 3. **No Data Replication Yet**
+### 3. __No Data Replication Yet__
+
 - Connections established but no RxDB sync
 - Future: Implement `/whatnext/rxdb/1.0.0` protocol (Phase 5)
 
-### 4. **Basic Error Handling**
+### 4. __Basic Error Handling__
+
 - Connection failures logged but not shown in UI
 - Future: Add user-facing error messages
 
-### 5. **No Persistence**
+### 5. __No Persistence__
+
 - Peer history not saved across restarts
 - Future: Store discovered peers in RxDB
 
@@ -210,7 +242,7 @@ npm run dev
 
 ## File Structure Created
 
-```
+```ts
 /app
   /src
     /shared
@@ -242,40 +274,40 @@ npm run dev
 
 ## Documentation Created
 
-1. **note-251110-p2p-utility-process-architecture.md**
+1. __note-251110-p2p-utility-process-architecture.md__
    - Architectural decision record
    - Process isolation rationale
    - IPC communication protocol
    - Future migration path
 
-2. **note-251110-libp2p-vs-simple-peer-analysis.md**
+2. __note-251110-libp2p-vs-simple-peer-analysis.md__
    - Comprehensive library comparison
    - Feature matrix
    - Trade-off analysis
    - Decision rationale
 
-3. **note-251110-libp2p-learning-roadmap.md**
+3. __note-251110-libp2p-learning-roadmap.md__
    - 10-week phased implementation plan
    - Learning milestones
    - Documentation templates
    - Experiment ideas
 
-4. **note-251110-libp2p-first-implementation-learnings.md**
+4. __note-251110-libp2p-first-implementation-learnings.md__
    - Early implementation discoveries
    - Blockers encountered and resolved
    - Open questions for future work
 
-5. **note-251110-webrtc-node-js-compatibility-resolved.md**
+5. __note-251110-webrtc-node-js-compatibility-resolved.md__
    - WebRTC compatibility validation
    - Required dependencies discovered
    - Minimal working configuration
 
-6. **note-251110-issue-10-session-summary.md**
+6. __note-251110-issue-10-session-summary.md__
    - Session-level overview
    - Work completed
    - Remaining tasks
 
-7. **note-251110-issue-10-complete.md** (this file)
+7. __note-251110-issue-10-complete.md__ (this file)
    - Final deliverables summary
    - Testing instructions
    - Known limitations
@@ -298,46 +330,49 @@ npm run dev
 }
 ```
 
-**Total added**: ~500KB minified (acceptable for desktop app)
+__Total added__: ~500KB minified (acceptable for desktop app)
 
 ---
 
-## Next Steps (Post-Issue #10)
+## Next Steps (Post-Issue)
 
-### Immediate (Phase 2):
-1. **Relay Server Setup**
+### Immediate (Phase 2)
+
+1. __Relay Server Setup__
    - Deploy libp2p relay for NAT traversal
    - Update protocol URLs to include relay hints
    - Test private-to-private connections
 
-2. **Protocol Filtering**
+2. __Protocol Filtering__
    - Define `/whatnext/handshake/1.0.0` protocol
    - Implement peer verification handshake
    - Filter out non-WhatNext peers from UI
 
-3. **Error Handling**
+3. __Error Handling__
    - Add user-facing error messages
    - Connection retry logic
    - Timeout handling
 
-### Short-term (Phase 3):
-4. **RxDB Replication**
+### Short-term (Phase 3)
+
+4. __RxDB Replication__
    - Define `/whatnext/rxdb/1.0.0` protocol
    - Implement replication over libp2p streams
    - Test playlist sync between peers
 
-5. **Connection Persistence**
+5. __Connection Persistence__
    - Store peer metadata in RxDB
    - Remember recently connected peers
    - Auto-reconnect on app restart
 
-### Long-term (Phase 5+):
-6. **DHT Peer Routing**
+### Long-term (Phase 5+)
+
+6. __DHT Peer Routing__
    - Enable global peer discovery
    - Bootstrap nodes configuration
    - Privacy considerations
 
-7. **Multi-Transport Support**
+7. __Multi-Transport Support__
    - Add WebSocket transport
    - Add TCP transport
    - Transport selection heuristics
@@ -346,38 +381,40 @@ npm run dev
 
 ## Success Metrics
 
-✅ **Protocol Handler Registered**: `whtnxt://` URLs recognized by OS
-✅ **Utility Process Spawns**: P2P service runs isolated
-✅ **libp2p Node Starts**: PeerID generated, listening on multiaddrs
-✅ **mDNS Discovery Works**: Peers found on local network automatically
-✅ **Connections Established**: WebRTC connections succeed
-✅ **UI Updates in Real-Time**: Events flow from utility → main → renderer
-✅ **Build System Works**: All components compile successfully
-✅ **Documentation Complete**: 7 comprehensive learning notes created
+✅ __Protocol Handler Registered__: `whtnxt://` URLs recognized by OS
+✅ __Utility Process Spawns__: P2P service runs isolated
+✅ __libp2p Node Starts__: PeerID generated, listening on multiaddrs
+✅ __mDNS Discovery Works__: Peers found on local network automatically
+✅ __Connections Established__: WebRTC connections succeed
+✅ __UI Updates in Real-Time__: Events flow from utility → main → renderer
+✅ __Build System Works__: All components compile successfully
+✅ __Documentation Complete__: 7 comprehensive learning notes created
 
 ---
 
-## Acceptance Criteria (from Issue #10)
+## Acceptance Criteria (from Issue)
 
-### Original Criteria:
+### Original Criteria
+
 - [ ] Criterion 1: *(undefined in original issue)*
 - [ ] Criterion 2: *(undefined in original issue)*
 - [ ] Criterion 3: *(undefined in original issue)*
 
-### Actual Deliverables:
-- ✅ **Custom protocol registered**: `whtnxt://` URLs handled by app
-- ✅ **Protocol URL parsing**: Peer ID extraction with validation
-- ✅ **P2P connection initiation**: Utility process dials target peer
-- ✅ **mDNS auto-discovery**: Local network peers found automatically
-- ✅ **Real-time UI updates**: Connection status reflected in renderer
-- ✅ **Architecture documented**: Comprehensive learning notes
-- ✅ **Build system configured**: Utility process bundled correctly
+### Actual Deliverables
+
+- ✅ __Custom protocol registered__: `whtnxt://` URLs handled by app
+- ✅ __Protocol URL parsing__: Peer ID extraction with validation
+- ✅ __P2P connection initiation__: Utility process dials target peer
+- ✅ __mDNS auto-discovery__: Local network peers found automatically
+- ✅ __Real-time UI updates__: Connection status reflected in renderer
+- ✅ __Architecture documented__: Comprehensive learning notes
+- ✅ __Build system configured__: Utility process bundled correctly
 
 ---
 
 ## Commit Message (for PR)
 
-```
+```ts
 feat(p2p): Implement whtnxt:// protocol handler with libp2p (#10)
 
 Implements end-to-end P2P connection infrastructure using libp2p in an
@@ -424,19 +461,21 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ## Final Notes
 
-### What Went Well:
+### What Went Well
+
 - ✅ WebRTC compatibility validated quickly
 - ✅ Utility process architecture proved correct
 - ✅ libp2p dependencies discovered systematically
 - ✅ Comprehensive documentation throughout
 - ✅ Build system integration smooth
 
-### What Was Challenging:
+### What Was Challenging
+
 - ⚠️ libp2p hidden dependencies (identify, circuit relay)
 - ⚠️ ESM vs CommonJS build configuration
 - ⚠️ Understanding libp2p's service/transport model
 
-### Confidence Level: **High**
+### Confidence Level: __High__
 
 The POC is ready for real-world testing. The architecture is solid and extensible. The next phases (relay, RxDB replication) have clear paths forward.
 
@@ -444,7 +483,7 @@ The POC is ready for real-world testing. The architecture is solid and extensibl
 
 ## References
 
-- Issue #10: Handle `whtnxt://connect` Custom Protocol
+- Issue: Handle `whtnxt://connect` Custom Protocol
 - Spec §2.3: Backend & Network Architecture
 - Spec §4.3: Collaborative & Social Features
 - [libp2p Documentation](https://docs.libp2p.io/)
@@ -452,6 +491,6 @@ The POC is ready for real-world testing. The architecture is solid and extensibl
 
 ---
 
-**Status**: ✅ **READY FOR COMMIT & TESTING**
+__Status__: ✅ __READY FOR COMMIT & TESTING__
 
-🚀 Issue #10 is complete! Time to test with real peers and move to Phase 2.
+🚀 Issue is complete! Time to test with real peers and move to Phase 2.

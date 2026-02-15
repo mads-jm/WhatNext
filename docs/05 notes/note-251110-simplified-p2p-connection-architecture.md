@@ -1,34 +1,40 @@
+---
+tags: 10
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Sunday, February 15th 2026, 8:27:16 pm
+---
+
 # Simplified P2P Connection Architecture
 
-**Date**: 2025-11-10
-**Status**: ✅ Resolved
+__Date__: 2025-11-10
+__Status__: ✅ Resolved
 
 ## Problem
 
 Initial P2P implementation suffered from complex IPC timing issues:
 
-1. **Push-based IPC events unreliable**: Main process sent events to renderer, but timing was unpredictable
-2. **Multiple failure points**:
+1. __Push-based IPC events unreliable__: Main process sent events to renderer, but timing was unpredictable
+2. __Multiple failure points__:
    - Utility process might not be ready when events sent
    - Window might not be created yet
    - React might not have mounted to set up listeners
-3. **Complex 3-process coordination**: Main ↔ Utility ↔ Renderer required careful orchestration
-4. **User-hostile connection flow**: Required peers to discover each other via mDNS, then click "Connect"
+3. __Complex 3-process coordination__: Main ↔ Utility ↔ Renderer required careful orchestration
+4. __User-hostile connection flow__: Required peers to discover each other via mDNS, then click "Connect"
 
-**User feedback**: "The p2p connection process shouldn't be this painful. Can we not use our custom protocol to connect peers? Isn't that the point?"
+__User feedback__: "The p2p connection process shouldn't be this painful. Can we not use our custom protocol to connect peers? Isn't that the point?"
 
 ## Root Cause
 
 We were trying to force event-driven architecture across process boundaries where timing guarantees are impossible:
 
-```
+```ts
 Utility Process → Main Process → Renderer Process
      (fork)           (IPC)          (webContents.send)
         ↓                ↓                   ↓
     Sends READY    Sends START_NODE    Registers listeners
 ```
 
-**The problem**: Each step is asynchronous with no ordering guarantees. Events could arrive before listeners were registered.
+__The problem__: Each step is asynchronous with no ordering guarantees. Events could arrive before listeners were registered.
 
 ## Solution
 
@@ -36,7 +42,8 @@ Utility Process → Main Process → Renderer Process
 
 Instead of push-based events, the renderer polls the main process every 1 second for P2P state:
 
-**Main Process** (`main.ts:468-474`):
+__Main Process__ (`main.ts:468-474`):
+
 ```typescript
 let p2pState = {
     nodeStarted: false,
@@ -51,7 +58,8 @@ ipcMain.handle('p2p:get-status', async () => {
 });
 ```
 
-**Renderer** (`P2PStatus.tsx:46-87`):
+__Renderer__ (`P2PStatus.tsx:46-87`):
+
 ```typescript
 const pollStatus = async () => {
     const status = await window.electron.p2p.getStatus();
@@ -66,7 +74,7 @@ const pollStatus = async () => {
 };
 ```
 
-**Advantages**:
+__Advantages__:
 - No timing dependencies - renderer pulls when ready
 - Simple to reason about - unidirectional data flow
 - Degrades gracefully - missed polls just delay UI update by 1s
@@ -75,34 +83,39 @@ const pollStatus = async () => {
 
 Instead of relying on automatic mDNS discovery + UI click, users can directly connect via `whtnxt://` URLs:
 
-**URL Format**:
-```
+__URL Format__:
+
+```ts
 whtnxt://connect/<peerId>
 ```
 
-**Example**:
-```
+__Example__:
+
+```ts
 whtnxt://connect/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN
 ```
 
-**User Flow**:
+__User Flow__:
 
-1. **Peer A**: Opens WhatNext, sees their connection URL in UI
-   ```
+1. __Peer A__: Opens WhatNext, sees their connection URL in UI
+
+   ```ts
    Your Connection URL: whtnxt://connect/12D3Koo...
    [Copy URL]
    ```
 
-2. **Peer A**: Copies URL and shares via chat/email/etc
+2. __Peer A__: Copies URL and shares via chat/email/etc
 
-3. **Peer B**: Pastes URL into "Connect via URL" input
-   ```
+3. __Peer B__: Pastes URL into "Connect via URL" input
+
+   ```ts
    [whtnxt://connect/12D3Koo...] [Connect]
    ```
 
-4. **Connection established** via libp2p dial
+4. __Connection established__ via libp2p dial
 
-**Implementation** (`P2PStatus.tsx:129-157`):
+__Implementation__ (`P2PStatus.tsx:129-157`):
+
 ```typescript
 const handleConnectViaUrl = async () => {
     const url = new URL(connectUrl.trim());
@@ -116,25 +129,25 @@ const handleConnectViaUrl = async () => {
 };
 ```
 
-**UI Components**:
+__UI Components__:
 - Display own connection URL with copy button
 - Input field for pasting peer URLs
 - One-click connect from pasted URL
 
-**Future Enhancement**: OS-level protocol handler registration allows clicking `whtnxt://` links in browser/email to open app and auto-connect.
+__Future Enhancement__: OS-level protocol handler registration allows clicking `whtnxt://` links in browser/email to open app and auto-connect.
 
 ## Key Learnings
 
-1. **Pull beats Push for cross-process UI state**: Polling is simple and reliable when 1s latency is acceptable
-2. **User-initiated connections > automatic discovery**: Explicit URLs give users control and work across networks
-3. **Simplicity > Cleverness**: 3-process event coordination was brittle; polling + direct URLs is robust
-4. **Protocol handlers are powerful**: `whtnxt://` URLs enable OS-level integration (share links, deep linking)
+1. __Pull beats Push for cross-process UI state__: Polling is simple and reliable when 1s latency is acceptable
+2. __User-initiated connections > automatic discovery__: Explicit URLs give users control and work across networks
+3. __Simplicity > Cleverness__: 3-process event coordination was brittle; polling + direct URLs is robust
+4. __Protocol handlers are powerful__: `whtnxt://` URLs enable OS-level integration (share links, deep linking)
 
 ## Architecture Comparison
 
 ### Before (Push-based, Discovery-first)
 
-```
+```ts
 ┌─────────────┐    IPC Events     ┌──────────┐
 │   Utility   │ ─────────────────→ │   Main   │
 │   Process   │  NODE_STARTED,     │ Process  │
@@ -157,7 +170,7 @@ Problems:
 
 ### After (Pull-based, URL-first)
 
-```
+```ts
 ┌─────────────┐    Messages       ┌──────────┐
 │   Utility   │ ─────────────────→ │   Main   │
 │   Process   │  Update p2pState   │ Process  │
@@ -188,15 +201,15 @@ Advantages:
 
 ### Core Changes
 
-**`app/src/main/main.ts`**:
+__`app/src/main/main.ts`__:
 - Lines 468-474: Added `p2pState` object
 - Lines 222-241: Store utility process messages in state
 - Lines 492-495: Added `p2p:get-status` handler
 
-**`app/src/main/preload.ts`**:
+__`app/src/main/preload.ts`__:
 - Lines 98-99: Added `getStatus()` method to preload API
 
-**`app/src/renderer/components/P2P/P2PStatus.tsx`**:
+__`app/src/renderer/components/P2P/P2PStatus.tsx`__:
 - Lines 30-115: Replaced event listeners with polling
 - Lines 129-157: Added `handleConnectViaUrl()` function
 - Lines 170-189: Added "Copy URL" button for own connection URL
@@ -210,23 +223,23 @@ Protocol parsing already existed in:
 
 ## Testing Strategy
 
-1. **Polling works**: Start app, verify status updates within 1s
-2. **URL copy works**: Click "Copy URL", verify clipboard contains `whtnxt://connect/<peerId>`
-3. **URL paste works**: Paste URL into input, click Connect, verify connection established
-4. **Cross-instance**: Run two instances, copy URL from A, paste into B, verify connection
-5. **Error handling**: Paste invalid URL, verify error message in debug log
+1. __Polling works__: Start app, verify status updates within 1s
+2. __URL copy works__: Click "Copy URL", verify clipboard contains `whtnxt://connect/<peerId>`
+3. __URL paste works__: Paste URL into input, click Connect, verify connection established
+4. __Cross-instance__: Run two instances, copy URL from A, paste into B, verify connection
+5. __Error handling__: Paste invalid URL, verify error message in debug log
 
 ## Next Steps
 
-1. ✅ **Complete**: Polling implementation
-2. ✅ **Complete**: URL-based connection UI
-3. **Future**: OS-level protocol handler (clicking `whtnxt://` links opens app)
-4. **Future**: QR code generation for mobile→desktop connections
-5. **Future**: Relay server support for NAT traversal (URL param: `?relay=/ip4/...`)
+1. ✅ __Complete__: Polling implementation
+2. ✅ __Complete__: URL-based connection UI
+3. __Future__: OS-level protocol handler (clicking `whtnxt://` links opens app)
+4. __Future__: QR code generation for mobile→desktop connections
+5. __Future__: Relay server support for NAT traversal (URL param: `?relay=/ip4/…`)
 
 ## References
 
-- Initial issue: #10 - Handle `whtnxt://connect` Custom Protocol
+- Initial issue: - Handle `whtnxt://connect` Custom Protocol
 - User feedback: Session 2025-11-10
-- libp2p dialing: https://docs.libp2p.io/concepts/fundamentals/peers/
-- Electron protocol handlers: https://www.electronjs.org/docs/latest/api/protocol
+- libp2p dialing: <https://docs.libp2p.io/concepts/fundamentals/peers/>
+- Electron protocol handlers: <https://www.electronjs.org/docs/latest/api/protocol>

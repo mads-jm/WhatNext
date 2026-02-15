@@ -1,7 +1,7 @@
 ---
 tags: core/vision
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Thursday, November 13th 2025, 5:24:08 am
+date modified: Sunday, February 15th 2026, 8:27:24 pm
 ---
 
 # Project Specification: WhatNext (nextspec)

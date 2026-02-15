@@ -1,13 +1,19 @@
+---
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Sunday, February 15th 2026, 8:27:13 pm
+---
+
 # RxDB Dev-Mode Plugin Setup
 
-**Date**: 2025-11-09
-**Issue**: RxDB Error DB9 - `ignoreDuplicate` not allowed without dev-mode plugin
-**Status**: ✅ Resolved
+__Date__: 2025-11-09
+__Issue__: RxDB Error DB9 - `ignoreDuplicate` not allowed without dev-mode plugin
+__Status__: ✅ Resolved
 
 ## Problem
 
 When initializing RxDB in development, received error:
-```
+
+```ts
 RxError (DB9): ignoreDuplicate is only allowed in dev-mode
 ```
 
@@ -47,7 +53,7 @@ async function loadDevMode(): Promise<void> {
 
 ### Step 2: Load Before Database Creation
 
-**Critical**: The plugin must be loaded **before** calling `createRxDatabase()`:
+__Critical__: The plugin must be loaded __before__ calling `createRxDatabase()`:
 
 ```typescript
 export async function initDatabase(): Promise<WhatNextDatabase> {
@@ -76,22 +82,22 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
 
 ## Key Learnings
 
-1. **Plugin Loading Order Matters**: Dev-mode must be loaded before any RxDB operations
-2. **Environment-Specific**: Only load in development (`process.env.NODE_ENV !== 'production'`)
-3. **Dynamic Import**: Use `await import()` to avoid bundling plugin in production
-4. **Singleton Pattern**: Track if plugin is loaded to avoid duplicate registration
-5. **Better DX**: Dev-mode provides full error messages instead of error codes
+1. __Plugin Loading Order Matters__: Dev-mode must be loaded before any RxDB operations
+2. __Environment-Specific__: Only load in development (`process.env.NODE_ENV !== 'production'`)
+3. __Dynamic Import__: Use `await import()` to avoid bundling plugin in production
+4. __Singleton Pattern__: Track if plugin is loaded to avoid duplicate registration
+5. __Better DX__: Dev-mode provides full error messages instead of error codes
 
 ## Benefits of Dev-Mode Plugin
 
-- **Full error messages**: Instead of "DB9", see complete explanation
-- **Schema validation**: Catches schema mistakes early
-- **API validation**: Warns about incorrect RxDB API usage
-- **Development features**: Enables `ignoreDuplicate` and other dev tools
+- __Full error messages__: Instead of "DB9", see complete explanation
+- __Schema validation__: Catches schema mistakes early
+- __API validation__: Warns about incorrect RxDB API usage
+- __Development features__: Enables `ignoreDuplicate` and other dev tools
 
 ## Production Considerations
 
-**Never deploy with dev-mode plugin** because:
+__Never deploy with dev-mode plugin__ because:
 - Increases bundle size significantly
 - Reduces runtime performance
 - Exposes development-only error messages
@@ -105,8 +111,9 @@ The conditional import ensures it's automatically excluded from production build
 
 ## Additional Fix Required: Schema Validation (DVM1)
 
-After loading dev-mode, encountered **Error DVM1**:
-```
+After loading dev-mode, encountered __Error DVM1__:
+
+```ts
 When dev-mode is enabled, your storage must use one of the schema validators at the top level.
 ```
 
@@ -136,10 +143,11 @@ const db = await createRxDatabase({
 ```
 
 ### Why This Works
-- **AJV validator**: Fast, JSON Schema compliant
-- **Conditional**: Only in development (performance + build size)
-- **Wrapping pattern**: Decorator around base storage
-- **Schema safety**: Catches invalid data before persistence
+
+- __AJV validator__: Fast, JSON Schema compliant
+- __Conditional__: Only in development (performance + build size)
+- __Wrapping pattern__: Decorator around base storage
+- __Schema safety__: Catches invalid data before persistence
 
 ## Testing
 
@@ -152,4 +160,4 @@ After fixes:
 6. ✅ Database operations function normally
 7. ✅ Invalid data rejected by validator
 
-**Result**: RxDB spike test component now works perfectly!
+__Result__: RxDB spike test component now works perfectly!

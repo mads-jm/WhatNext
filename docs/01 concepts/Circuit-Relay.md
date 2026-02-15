@@ -1,6 +1,10 @@
-# Circuit Relay v2
+---
+tags: p2p/relay/circuit-relay-v2
+date created: Saturday, February 14th 2026, 11:36:18 am
+date modified: Sunday, February 15th 2026, 8:27:27 pm
+---
 
-#p2p/relay/circuit-relay-v2
+# Circuit Relay V2
 
 ## What It Is
 
@@ -17,8 +21,8 @@ Circuit relay v2 provides the bridge for cross-network connectivity.
 
 ## How It Works
 
-1. **Relay server** runs on a VPS with a public IP, configured with `circuitRelayServer()` service
-2. **Client peers** connect to the relay using `circuitRelayTransport()` transport
+1. __Relay server__ runs on a VPS with a public IP, configured with `circuitRelayServer()` service
+2. __Client peers__ connect to the relay using `circuitRelayTransport()` transport
 3. When Peer A wants to reach Peer B (both behind NAT):
    - Both peers connect to the relay
    - Peer A dials a circuit address: `/ip4/<relay>/tcp/4001/p2p/<relay-id>/p2p-circuit/p2p/<peer-b-id>`
@@ -27,7 +31,7 @@ Circuit relay v2 provides the bridge for cross-network connectivity.
 
 ### Relay Address Format
 
-```
+```ts
 /ip4/<RELAY_IP>/tcp/<PORT>/p2p/<RELAY_PEER_ID>/p2p-circuit/p2p/<TARGET_PEER_ID>
 ```
 
@@ -48,9 +52,9 @@ RELAY: {
 
 ## Key Patterns
 
-- **Auto-connect on startup**: The P2P service connects to configured relays immediately after the node starts
-- **Relay hint in protocol URLs**: `whtnxt://connect/<peerId>?relay=<relayMultiaddr>` passes relay info for cross-network connections
-- **Fallback ordering**: Try direct connection first, fall back to relay if needed
+- __Auto-connect on startup__: The P2P service connects to configured relays immediately after the node starts
+- __Relay hint in protocol URLs__: `whtnxt://connect/<peerId>?relay=<relayMultiaddr>` passes relay info for cross-network connections
+- __Fallback ordering__: Try direct connection first, fall back to relay if needed
 
 ## Deploying a Relay
 
@@ -61,9 +65,9 @@ RELAY: {
 
 ## Common Pitfalls
 
-- **Relay PeerId changes on restart**: The relay generates a new PeerId each time. All clients must be updated with the new address. Future improvement: persist the PeerId.
-- **Relay limits**: v2 enforces connection duration and data limits. Not suitable for bulk data transfer -- use for signaling and small messages.
-- **Port forwarding**: The relay itself must have publicly accessible ports. Ensure firewall rules allow inbound TCP on 4001 and 4002.
+- __Relay PeerId changes on restart__: The relay generates a new PeerId each time. All clients must be updated with the new address. Future improvement: persist the PeerId.
+- __Relay limits__: v2 enforces connection duration and data limits. Not suitable for bulk data transfer -- use for signaling and small messages.
+- __Port forwarding__: The relay itself must have publicly accessible ports. Ensure firewall rules allow inbound TCP on 4001 and 4002.
 
 ## Related Concepts
 

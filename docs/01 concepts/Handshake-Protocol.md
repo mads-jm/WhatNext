@@ -1,6 +1,10 @@
-# Handshake Protocol
+---
+tags: p2p/protocols/handshake
+date created: Saturday, February 14th 2026, 11:36:56 am
+date modified: Sunday, February 15th 2026, 8:27:27 pm
+---
 
-#p2p/protocols/handshake
+# Handshake Protocol
 
 ## What It Is
 
@@ -30,7 +34,7 @@ interface HandshakeData {
 
 ### Protocol Flow
 
-```
+```ts
 Initiator (Peer A)                    Responder (Peer B)
     |                                      |
     |--- open stream (handshake/1.0.0) --->|
@@ -46,8 +50,8 @@ Initiator (Peer A)                    Responder (Peer B)
 
 Messages are sent as raw JSON-encoded UTF-8 bytes on the stream:
 
-1. **Write**: Encode JSON to UTF-8 bytes, push to stream sink, close write side
-2. **Read**: Collect all chunks from stream source, concatenate, decode UTF-8, parse JSON
+1. __Write__: Encode JSON to UTF-8 bytes, push to stream sink, close write side
+2. __Read__: Collect all chunks from stream source, concatenate, decode UTF-8, parse JSON
 
 This is intentionally simple. Future versions may add length-prefixing or protobuf encoding for robustness.
 
@@ -62,14 +66,14 @@ The callback sends a `HANDSHAKE_COMPLETE` message to the main process, which rel
 
 ## Key Patterns
 
-- **Register once, respond many**: `registerHandshakeProtocol()` is called once at startup; it handles all incoming handshakes
-- **Initiator pattern**: The peer that dials (connects) initiates the handshake; the listener responds
-- **Non-fatal**: If the handshake fails, the connection is still usable for other protocols. The handshake is informational, not gate-keeping.
+- __Register once, respond many__: `registerHandshakeProtocol()` is called once at startup; it handles all incoming handshakes
+- __Initiator pattern__: The peer that dials (connects) initiates the handshake; the listener responds
+- __Non-fatal__: If the handshake fails, the connection is still usable for other protocols. The handshake is informational, not gate-keeping.
 
 ## Common Pitfalls
 
-- **Bidirectional streams**: libp2p streams are not request/response by default. The responder opens a *new* stream for its response rather than writing back on the same stream, because the initiator closes the write side after sending.
-- **Protocol registration timing**: `node.handle()` must be called before `node.start()` or at least before any peer connects. Currently registered in `registerProtocols()` right after `node.start()`.
+- __Bidirectional streams__: libp2p streams are not request/response by default. The responder opens a *new* stream for its response rather than writing back on the same stream, because the initiator closes the write side after sending.
+- __Protocol registration timing__: `node.handle()` must be called before `node.start()` or at least before any peer connects. Currently registered in `registerProtocols()` right after `node.start()`.
 
 ## Related Concepts
 

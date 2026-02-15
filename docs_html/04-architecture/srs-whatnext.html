@@ -1,0 +1,746 @@
+<!DOCTYPE html> <html lang="en"><head>
+<title>Software Requirements Specification - WhatNext</title>
+<base href="..">
+<meta name="pathname" content="04-architecture/srs-whatnext.html">
+<meta name="description" content="docs - Software Requirements Specification - WhatNext">
+<meta property="og:title" content="Software Requirements Specification - WhatNext">
+<meta property="og:description" content="docs - Software Requirements Specification - WhatNext">
+<meta property="og:type" content="website">
+<meta property="og:url" content="04-architecture/srs-whatnext.html">
+<meta property="og:image" content="undefined">
+<meta charset="UTF-8"><meta property="og:site_name" content="docs"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=1.0, maximum-scale=5.0"><link rel="alternate" type="application/rss+xml" title="RSS Feed" href="site-lib/rss.xml"><script async="" id="webpage-script" src="site-lib/scripts/webpage.js" onload="this.onload=null;this.setAttribute(&quot;loaded&quot;, &quot;true&quot;)"></script><script async="" id="graph-wasm-script" src="site-lib/scripts/graph-wasm.js" onload="this.onload=null;this.setAttribute(&quot;loaded&quot;, &quot;true&quot;)"></script><script async="" id="graph-render-worker-script" src="site-lib/scripts/graph-render-worker.js" onload="this.onload=null;this.setAttribute(&quot;loaded&quot;, &quot;true&quot;)"></script><link rel="icon" href="site-lib/media/favicon.png"><link rel="preload" href="site-lib/styles/snippets.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="site-lib/styles/snippets.css"></noscript><link rel="stylesheet" href="site-lib/styles/obsidian.css"><link rel="preload" href="site-lib/styles/global-variable-styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="site-lib/styles/global-variable-styles.css"></noscript><link rel="preload" href="site-lib/styles/supported-plugins.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="site-lib/styles/supported-plugins.css"></noscript><link rel="preload" href="site-lib/styles/main-styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="site-lib/styles/main-styles.css"></noscript><style>body{--line-width:40em;--line-width-adaptive:40em;--file-line-width:40em;--sidebar-width:min(20em, 80vw);--collapse-arrow-size:11px;--tree-vertical-spacing:1.3em;--sidebar-margin:12px}:root{background-color:#202124}.sidebar{height:100%;font-size:14px;z-index:10;min-width:calc(var(--sidebar-width) + var(--divider-width-hover));max-width:calc(var(--sidebar-width) + var(--divider-width-hover));position:relative;overflow:hidden;overflow:clip;transition:min-width ease-in-out,max-width ease-in-out;transition-duration:.2s;contain:size}#left-sidebar{left:0}#right-sidebar{right:0}.sidebar.is-collapsed{min-width:0;max-width:0}.sidebar.floating{position:absolute}.sidebar .leaf-content{height:100%;min-width:calc(var(--sidebar-width) - var(--divider-width-hover));top:0;padding:var(--sidebar-margin);padding-top:4em;line-height:var(--line-height-tight);background-color:var(--background-secondary);transition:background-color,border-right,border-left,box-shadow;transition-duration:var(--color-fade-speed);transition-timing-function:ease-in-out;position:absolute;display:flex;flex-direction:column}.sidebar:not(.is-collapsed) .leaf-content{min-width:calc(max(100%,var(--sidebar-width)) - 3px);max-width:calc(max(100%,var(--sidebar-width)) - 3px)}#left-sidebar-content{left:0;border-top-right-radius:var(--radius-l);border-bottom-right-radius:var(--radius-l)}#right-sidebar-content{right:0;border-top-left-radius:var(--radius-l);border-bottom-left-radius:var(--radius-l)}.sidebar #left-sidebar-content,.sidebar #right-sidebar-content{contain:none!important;container-type:normal!important;animation:none!important}.sidebar:has(.leaf-content:empty):has(.topbar-content:empty){display:none}.sidebar-topbar{height:calc(2.3em + 2 * var(--sidebar-margin));width:var(--sidebar-width);padding:var(--sidebar-margin);z-index:1;position:fixed;display:flex;align-items:center;transition:width ease-in-out;transition-duration:inherit}.sidebar.is-collapsed .sidebar-topbar{width:calc(2.3em + var(--sidebar-margin) * 2)}.sidebar .sidebar-topbar.is-collapsed{width:0}#left-sidebar .sidebar-topbar{left:0;flex-direction:row;border-top-right-radius:var(--radius-l)}#right-sidebar .sidebar-topbar{right:0;flex-direction:row-reverse;border-top-left-radius:var(--radius-l)}#left-sidebar .topbar-content{margin-right:calc(2.3em + var(--sidebar-margin));flex-direction:row}#right-sidebar .topbar-content{margin-left:calc(2.3em + var(--sidebar-margin));flex-direction:row-reverse}.topbar-content{overflow:hidden visible;overflow:clip visible;width:100%;height:100%;display:flex;align-items:center;transition:inherit}.sidebar.is-collapsed .topbar-content{width:0;transition:inherit}.clickable-icon.sidebar-collapse-icon{background-color:transparent;color:var(--icon-color-focused);padding:2px!important;margin:0!important;height:100%!important;width:2.3em!important;margin-inline:0.14em!important;position:absolute}#left-sidebar .clickable-icon.sidebar-collapse-icon{transform:rotateY(180deg);right:var(--sidebar-margin)}#right-sidebar .clickable-icon.sidebar-collapse-icon{transform:rotateY(180deg);left:var(--sidebar-margin)}.clickable-icon.sidebar-collapse-icon svg.svg-icon{width:100%;height:100%}.feature-title{margin-left:1px;text-transform:uppercase;letter-spacing:.06em;margin-top:.75em;margin-bottom:.75em}.feature-header{display:flex;align-items:center;padding-top:0;font-size:1em;padding-left:0}body.floating-sidebars .sidebar{position:absolute}body{transition:background-color var(--color-fade-speed) ease-in-out}#navbar:not(:empty){display:flex;align-items:center;justify-content:space-between;padding:.5em 1em;width:100%}#main{display:flex;flex-direction:column;height:100%;width:100%;align-items:stretch;justify-content:center}#main-horizontal{display:flex;flex-direction:row;flex-grow:1;width:100%;align-items:stretch;justify-content:center}#center-content{flex-basis:100%;max-width:100%;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;transition:opacity .2s ease-in-out;contain:inline-size}.hide{opacity:0!important;transition:opacity .2s ease-in-out;pointer-events:none}#center-content>.obsidian-document{padding-left:2em;padding-right:1em;margin-bottom:0;width:100%;width:-webkit-fill-available;width:-moz-available;width:fill-available;transition:background-color var(--color-fade-speed) ease-in-out;border-top-right-radius:var(--window-radius,var(--radius-m));border-top-left-radius:var(--window-radius,var(--radius-m));overflow-x:hidden!important;overflow-y:auto!important;display:flex!important;flex-direction:column!important;align-items:center!important;contain:inline-size}body #center-content>.obsidian-document>.markdown-preview-sizer{padding-bottom:80vh;width:100%;max-width:var(--line-width);flex-basis:var(--line-width);transition:background-color var(--color-fade-speed) ease-in-out;contain:inline-size}#center-content>.obsidian-document>div{width:100%!important;transition:background-color var(--color-fade-speed) ease-in-out;contain:inline-size}#center-content>.obsidian-document:not([data-type=markdown]).embed{display:flex;padding:1em;height:100%;width:100%;align-items:center;justify-content:center}#center-content>.obsidian-document:not([data-type=markdown]).embed>*{max-width:100%;max-height:100%;object-fit:contain}:not(h1,h2,h3,h4,h5,h6,li):has(> :is(.math,table)){overflow-x:auto!important}#center-content>.obsidian-document:not([data-type=markdown]){overflow-x:auto;contain:content;padding:0;margin:0;height:100%}.obsidian-document[data-type=attachment]{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;width:100%}.obsidian-document[data-type=attachment]>*{outline:0;border:none;box-shadow:none}.obsidian-document[data-type=attachment] :is(img){max-width:90%;max-height:90%;object-fit:contain}.obsidian-document[data-type=attachment]>:is(audio){width:100%;max-width:min(90%,var(--line-width))}.obsidian-document[data-type=attachment]>:is(embed,iframe,video){width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}.canvas-wrapper>:is(.header,.footer){z-index:100;position:absolute;display:flex;justify-content:center;flex-direction:column;width:100%;align-items:center}.scroll-highlight{position:absolute;width:100%;height:100%;pointer-events:none;z-index:1000;background-color:hsla(var(--color-accent-hsl),.25);opacity:0;padding:1em;inset:50%;translate:-50% -50%;border-radius:var(--radius-s)}</style><script defer="">async function loadIncludes(){let e=document.querySelectorAll("link[itemprop='include']");for(const t of e){let e=t.getAttribute("href");try{let o="";if(e.startsWith("https:")||e.startsWith("http:")||"file:"!=window.location.protocol){const n=await fetch(e);if(!n.ok){console.log("Could not include file: "+e),t?.remove();continue}o=await n.text()}else{const t=document.getElementById(btoa(encodeURI(e)));if(t){const e=JSON.parse(decodeURI(atob(t.getAttribute("value")??"")));o=e?.data??""}}let n=document.createRange().createContextualFragment(o);t.before(n),t.remove(),console.log("Included text: "+o),console.log("Included file: "+e)}catch(o){t?.remove(),console.log("Could not include file: "+e,o);continue}}}document.addEventListener("DOMContentLoaded",(()=>{loadIncludes()}));let isFileProtocol="file:"==location.protocol;function waitLoadScripts(e,t){let o=e.map((e=>document.getElementById(e+"-script")));!function e(n){let l=o[n],c=n+1;l?(l&&"true"!=l.getAttribute("loaded")||n<o.length&&e(c),n<o.length&&l.addEventListener("load",(()=>e(c)))):n<o.length?e(c):t()}(0)}</script></head><body class="publish css-settings-manager styled-scrollbars show-inline-title show-ribbon is-focused"><script defer="">let theme=localStorage.getItem("theme")||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");"dark"==theme?(document.body.classList.add("theme-dark"),document.body.classList.remove("theme-light")):(document.body.classList.add("theme-light"),document.body.classList.remove("theme-dark")),window.innerWidth<480?document.body.classList.add("is-phone"):window.innerWidth<768?document.body.classList.add("is-tablet"):window.innerWidth<1024?document.body.classList.add("is-small-screen"):document.body.classList.add("is-large-screen")</script><div class="parsed-feature-container" style="display: contents;"><link itemprop="include" href="site-lib/html/custom-head-content-content.html"></div><div id="main"><div id="navbar"></div><div id="main-horizontal"><div id="left-content" class="leaf" style="--sidebar-width: var(--sidebar-width-left);"><div id="left-sidebar" class="sidebar"><div class="sidebar-handle"></div><div class="sidebar-topbar"><div class="topbar-content"><div id="search-container"><div id="search-wrapper"><input enterkeyhint="search" type="search" spellcheck="false" placeholder="Search..."><div aria-label="Clear search" id="search-clear-button"></div></div></div></div><div class="clickable-icon sidebar-collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="svg-icon"><path d="M21 3H3C1.89543 3 1 3.89543 1 5V19C1 20.1046 1.89543 21 3 21H21C22.1046 21 23 20.1046 23 19V5C23 3.89543 22.1046 3 21 3Z"></path><path d="M10 4V20"></path><path d="M4 7H7"></path><path d="M4 10H7"></path><path d="M4 13H7"></path></svg></div></div><div class="sidebar-content-wrapper"><div id="left-sidebar-content" class="leaf-content"><link itemprop="include" href="site-lib/html/file-tree-content.html"></div></div><script defer="">let ls = document.querySelector("#left-sidebar"); ls.classList.toggle("is-collapsed", window.innerWidth < 768); ls.style.setProperty("--sidebar-width", localStorage.getItem("sidebar-left-width"));</script></div></div><div id="center-content" class="leaf"><div class="obsidian-document markdown-preview-view markdown-rendered node-insert-event is-readable-line-width allow-fold-headings allow-fold-lists show-indentation-guide show-properties" data-type="markdown"><style id="MJX-CHTML-styles"></style><pre class="frontmatter language-yaml" style="display: none;"><code class="language-yaml is-loaded"><span class="token key atrule">title</span><span class="token punctuation">:</span> Software Requirements Specification <span class="token punctuation">-</span> WhatNext
+<span class="token key atrule">tags</span><span class="token punctuation">:</span>
+    <span class="token punctuation">-</span> architecture/srs
+    <span class="token punctuation">-</span> core/requirements
+<span class="token key atrule">aliases</span><span class="token punctuation">:</span>
+    <span class="token punctuation">-</span> SRS
+    <span class="token punctuation">-</span> Requirements Spec
+<span class="token key atrule">date created</span><span class="token punctuation">:</span> Sunday<span class="token punctuation">,</span> February 15th 2026<span class="token punctuation">,</span> 7<span class="token punctuation">:</span>33<span class="token punctuation">:</span>39 am
+<span class="token key atrule">date modified</span><span class="token punctuation">:</span> Sunday<span class="token punctuation">,</span> February 15th 2026<span class="token punctuation">,</span> 8<span class="token punctuation">:</span>20<span class="token punctuation">:</span>20 pm</code><button class="copy-code-button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-copy"><rect x="8" y="8" width="14" height="14" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button></pre><div class="markdown-preview-sizer markdown-preview-section"><div class="header"><h1 class="page-title heading inline-title" id="Software_Requirements_Specification_-_WhatNext_0">Software Requirements Specification - WhatNext</h1><div class="data-bar"></div></div><div class="markdown-preview-pusher" style="width: 1px; height: 0.1px; margin-bottom: 0px;"></div><div class="el-h1"><h1 data-heading="Software Requirements Specification: WhatNext" dir="auto" class="heading" id="Software_Requirements_Specification_WhatNext_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>Software Requirements Specification: WhatNext</h1></div><div class="el-h2"><h2 data-heading="Changelog" dir="auto" class="heading" id="Changelog_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>Changelog</h2></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">Version</th>
+<th dir="ltr">Date</th>
+<th dir="ltr">Description</th>
+<th dir="ltr">Author</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">v0.1.0</td>
+<td dir="auto">2026-02-14</td>
+<td dir="ltr">MVP baseline</td>
+<td dir="ltr">WhatNext Dev</td>
+</tr>
+</tbody>
+</table></div><div class="el-hr"><hr></div><div class="el-h2"><h2 data-heading="1. Introduction" dir="auto" class="heading" id="1._Introduction_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>1. Introduction</h2></div><div class="el-h3"><h3 data-heading="1.1 Purpose" dir="auto" class="heading" id="1.1_Purpose_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>1.1 Purpose</h3></div><div class="el-p"><p dir="auto">This Software Requirements Specification defines the functional and non-functional requirements for WhatNext, a resilient, user-centric music management platform. It serves as the authoritative requirements reference for development, testing, and architectural decisions throughout the MVP phase and beyond.</p></div><div class="el-h3"><h3 data-heading="1.2 Scope" dir="auto" class="heading" id="1.2_Scope_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>1.2 Scope</h3></div><div class="el-p"><p dir="auto">WhatNext is a cross-platform desktop application that enables collaborative playlist management through peer-to-peer networking, without requiring all participants to hold accounts on any streaming platform. The central user story driving the product is:</p></div><div class="el-blockquote"><blockquote dir="auto">
+<p>"I want to be more connected with my friends, through deeper collaboration on our collaborative playlists."</p>
+</blockquote></div><div class="el-p"><p dir="auto">The MVP delivers the <strong>Collaborative Playlist Accessory</strong> -- a system where one user (the Coordinator) bridges a streaming platform into a decentralized collaboration session that friends (Participants) can join with zero friction.</p></div><div class="el-h3"><h3 data-heading="1.3 Definitions and Acronyms" dir="auto" class="heading" id="1.3_Definitions_and_Acronyms_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>1.3 Definitions and Acronyms</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">Term</th>
+<th dir="ltr">Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr"><strong>Coordinator</strong></td>
+<td dir="ltr">A user who creates a session, connects to a source platform (e.g., Spotify), imports playlists, and manages sync-back to the source.</td>
+</tr>
+<tr>
+<td dir="ltr"><strong>Participant</strong></td>
+<td dir="ltr">A user who joins an existing session via a shared link. Requires no platform accounts, API keys, or OAuth flows.</td>
+</tr>
+<tr>
+<td dir="ltr"><strong>Session</strong></td>
+<td dir="ltr">A live P2P collaboration context in which peers share playlist state, track interactions, and presence information.</td>
+</tr>
+<tr>
+<td dir="ltr"><strong>Adapter</strong></td>
+<td dir="ltr">A modular integration layer that normalizes data from an external source (Spotify, MusicBrainz, local files) into the canonical format.</td>
+</tr>
+<tr>
+<td dir="ltr"><strong>Canonical Format</strong></td>
+<td dir="ltr">The internal, platform-agnostic data representation used by WhatNext for tracks, playlists, and interactions. Stored as structured data in <a data-href="RxDB" href="01-concepts/rxdb.html" class="internal-link" target="_self" rel="noopener nofollow">RxDB</a> and exportable to plaintext (Markdown + YAML frontmatter).</td>
+</tr>
+<tr>
+<td dir="ltr"><strong>CRDT</strong></td>
+<td dir="ltr">Conflict-free Replicated Data Type. A data structure that supports concurrent updates without coordination.</td>
+</tr>
+<tr>
+<td dir="ltr"><strong>LWW</strong></td>
+<td dir="ltr">Last-Write-Wins. A conflict resolution strategy where the most recent write takes precedence.</td>
+</tr>
+<tr>
+<td dir="ltr"><strong>PKCE</strong></td>
+<td dir="ltr">Proof Key for Code Exchange. An OAuth 2.0 extension for public clients.</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="1.4 References" dir="auto" class="heading" id="1.4_References_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>1.4 References</h3></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span>Technical Specification: <code>docs/whtnxt-nextspec.md</code> (source of truth)</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span>Coordinator Model: <code>docs/07 stories/the-walled-garden-cracks.md</code></li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span>Architecture Decisions: <a data-href="adr-251110-libp2p-vs-simple-peer" href="04-architecture/adr/adr-251110-libp2p-vs-simple-peer.html" class="internal-link" target="_self" rel="noopener nofollow">adr-251110-libp2p-vs-simple-peer</a>, <a data-href="adr-251110-electron-process-model" href="04-architecture/adr/adr-251110-electron-process-model.html" class="internal-link" target="_self" rel="noopener nofollow">adr-251110-electron-process-model</a>, <a data-href="adr-251109-database-storage-location" href="04-architecture/adr/adr-251109-database-storage-location.html" class="internal-link" target="_self" rel="noopener nofollow">adr-251109-database-storage-location</a></li>
+<li data-line="3" dir="auto"><span class="list-bullet"></span>Concept Pages: <a data-href="libp2p" href="01-concepts/libp2p.html" class="internal-link" target="_self" rel="noopener nofollow">libp2p</a>, <a data-href="RxDB" href="01-concepts/rxdb.html" class="internal-link" target="_self" rel="noopener nofollow">RxDB</a>, <a data-href="RxDB-Replication" href="01-concepts/rxdb-replication.html" class="internal-link" target="_self" rel="noopener nofollow">RxDB-Replication</a>, <a data-href="Circuit-Relay" href="01-concepts/circuit-relay.html" class="internal-link" target="_self" rel="noopener nofollow">Circuit-Relay</a>, <a data-href="Handshake-Protocol" href="01-concepts/handshake-protocol.html" class="internal-link" target="_self" rel="noopener nofollow">Handshake-Protocol</a>, <a data-href="Electron-IPC" href="01-concepts/electron-ipc.html" class="internal-link" target="_self" rel="noopener nofollow">Electron-IPC</a>, <a data-href="WebRTC" href="01-concepts/webrtc.html" class="internal-link" target="_self" rel="noopener nofollow">WebRTC</a>, <a data-href="Electron" href="01-concepts/electron.html" class="internal-link" target="_self" rel="noopener nofollow">Electron</a></li>
+</ul></div><div class="el-hr"><hr></div><div class="el-h2"><h2 data-heading="2. Overall Description" dir="auto" class="heading" id="2._Overall_Description_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>2. Overall Description</h2></div><div class="el-h3"><h3 data-heading="2.1 Product Perspective" dir="auto" class="heading" id="2.1_Product_Perspective_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>2.1 Product Perspective</h3></div><div class="el-p"><p dir="auto">WhatNext occupies a unique position: it is not a streaming service, not a social network, and not a cloud application. It is a <strong>local-first desktop tool</strong> that treats external streaming platforms as data sources rather than dependencies. The Coordinator model (documented in <code>the-walled-garden-cracks.md</code>) defines the interaction pattern:</p></div><div class="el-ol"><ol>
+<li data-line="0" dir="auto">One person (Coordinator) connects to the source (e.g., Spotify).</li>
+<li data-line="1" dir="auto">They import the playlist into WhatNext, normalizing it to the canonical format.</li>
+<li data-line="2" dir="auto">They open a P2P session and share the link.</li>
+<li data-line="3" dir="auto">Friends join the session -- no accounts, no API keys, no OAuth flows.</li>
+<li data-line="4" dir="auto">Collaboration happens inside WhatNext: turn-taking, queue management, reactions.</li>
+<li data-line="5" dir="auto">Changes flow back to the source only if the Coordinator has write access and chooses to sync.</li>
+</ol></div><div class="el-h3"><h3 data-heading="2.2 User Classes" dir="auto" class="heading" id="2.2_User_Classes_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>2.2 User Classes</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">User Class</th>
+<th dir="ltr">Characteristics</th>
+<th dir="ltr">Technical Requirements</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr"><strong>Coordinator</strong></td>
+<td dir="ltr">Creates sessions, manages source platform connections, controls sync-back. Power user who bridges the walled garden.</td>
+<td dir="ltr">Streaming platform account (e.g., Spotify Premium for Dev Mode), WhatNext installed.</td>
+</tr>
+<tr>
+<td dir="ltr"><strong>Participant</strong></td>
+<td dir="ltr">Joins sessions, collaborates on playlists, interacts with tracks. Zero onboarding friction.</td>
+<td dir="ltr">WhatNext installed. Nothing else.</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="2.3 Operating Environment" dir="auto" class="heading" id="2.3_Operating_Environment_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>2.3 Operating Environment</h3></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span><strong>Platforms</strong>: Windows 10+, macOS 12+, Linux (Ubuntu 22.04+, Fedora 38+)</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span><strong>Runtime</strong>: <a data-href="Electron" href="01-concepts/electron.html" class="internal-link" target="_self" rel="noopener nofollow">Electron</a> (Chromium + Node.js)</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span><strong>Network</strong>: Functional offline for local data; LAN for mDNS peer discovery; internet for relay connections and Spotify API access</li>
+<li data-line="3" dir="auto"><span class="list-bullet"></span><strong>Storage</strong>: Local filesystem (user-accessible data directory per <a data-href="adr-251109-database-storage-location" href="04-architecture/adr/adr-251109-database-storage-location.html" class="internal-link" target="_self" rel="noopener nofollow">adr-251109-database-storage-location</a>)</li>
+</ul></div><div class="el-h3"><h3 data-heading="2.4 Design Constraints" dir="auto" class="heading" id="2.4_Design_Constraints_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>2.4 Design Constraints</h3></div><div class="el-p"><p dir="auto">These constraints are non-negotiable architectural principles:</p></div><div class="el-ol"><ol>
+<li data-line="0" dir="auto"><strong>User Sovereignty</strong>: The local database is the absolute source of truth. External services are enhancements, never dependencies.</li>
+<li data-line="1" dir="auto"><strong>Local-First</strong>: All core data resides on the user's machine in a user-accessible location. The application is fully functional offline.</li>
+<li data-line="2" dir="auto"><strong>Plaintext Storage</strong>: All user playlists must be readable and editable as files on disk (structured Markdown with YAML frontmatter).</li>
+<li data-line="3" dir="auto"><strong>Offline-Capable</strong>: Core functionality (playlist viewing, editing, local playback) works without any network connection.</li>
+<li data-line="4" dir="auto"><strong>Security Hardened</strong>: Renderer process is sandboxed (<code>nodeIntegration: false</code>, <code>contextIsolation: true</code>). All main process communication occurs via IPC through the preload script. See <a data-href="adr-251110-electron-process-model" href="04-architecture/adr/adr-251110-electron-process-model.html" class="internal-link" target="_self" rel="noopener nofollow">adr-251110-electron-process-model</a>.</li>
+<li data-line="5" dir="auto"><strong>Extensibility</strong>: Architecture designed for future plugin support (inspired by Obsidian).</li>
+</ol></div><div class="el-hr"><hr></div><div class="el-h2"><h2 data-heading="3. System Context" dir="auto" class="heading" id="3._System_Context_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>3. System Context</h2></div><div class="el-p"><p dir="auto">The following C4 context diagram shows WhatNext and its external dependencies.</p></div><div class="el-pre"><pre class="language-plantuml"><code data-line="0" class="language-plantuml is-loaded"><span class="token delimiter punctuation">@startuml</span>
+<span class="token preprocessor property">!include &lt;C4/C4_Context&gt;</span>
+
+<span class="token keyword">title</span> System Context Diagram - WhatNext
+
+Person<span class="token punctuation">(</span>coordinator<span class="token punctuation">,</span> <span class="token string">"Coordinator"</span><span class="token punctuation">,</span> <span class="token string">"Creates sessions, imports playlists\nfrom streaming platforms,\nmanages sync-back"</span><span class="token punctuation">)</span>
+Person<span class="token punctuation">(</span>participant<span class="token punctuation">,</span> <span class="token string">"Participant"</span><span class="token punctuation">,</span> <span class="token string">"Joins sessions via shared link,\ncollaborates on playlists.\nNo platform accounts required."</span><span class="token punctuation">)</span>
+
+System<span class="token punctuation">(</span>whatnext<span class="token punctuation">,</span> <span class="token string">"WhatNext Desktop App"</span><span class="token punctuation">,</span> <span class="token string">"Local-first, P2P collaborative\nplaylist management.\nElectron + RxDB + libp2p"</span><span class="token punctuation">)</span>
+
+System_Ext<span class="token punctuation">(</span>spotify<span class="token punctuation">,</span> <span class="token string">"Spotify Web API"</span><span class="token punctuation">,</span> <span class="token string">"Playlist and track metadata.\nOAuth 2.0 PKCE.\nAccessory Mode (read-only polling)."</span><span class="token punctuation">)</span>
+System_Ext<span class="token punctuation">(</span>relay<span class="token punctuation">,</span> <span class="token string">"Circuit Relay Server"</span><span class="token punctuation">,</span> <span class="token string">"NAT traversal for remote peers.\nlibp2p circuit-relay-v2 protocol."</span><span class="token punctuation">)</span>
+System_Ext<span class="token punctuation">(</span>musicbrainz<span class="token punctuation">,</span> <span class="token string">"MusicBrainz API"</span><span class="token punctuation">,</span> <span class="token string">"Open music metadata.\nFuture: cross-platform\ntrack identification."</span><span class="token punctuation">)</span>
+
+System<span class="token punctuation">(</span>peer<span class="token punctuation">,</span> <span class="token string">"Peer WhatNext Instance"</span><span class="token punctuation">,</span> <span class="token string">"Another WhatNext desktop app\non the local network or\nreachable via relay."</span><span class="token punctuation">)</span>
+
+Rel<span class="token punctuation">(</span>coordinator<span class="token punctuation">,</span> whatnext<span class="token punctuation">,</span> <span class="token string">"Uses"</span><span class="token punctuation">,</span> <span class="token string">"Desktop app"</span><span class="token punctuation">)</span>
+Rel<span class="token punctuation">(</span>participant<span class="token punctuation">,</span> whatnext<span class="token punctuation">,</span> <span class="token string">"Uses"</span><span class="token punctuation">,</span> <span class="token string">"Desktop app"</span><span class="token punctuation">)</span>
+Rel<span class="token punctuation">(</span>whatnext<span class="token punctuation">,</span> spotify<span class="token punctuation">,</span> <span class="token string">"Reads playlists/tracks"</span><span class="token punctuation">,</span> <span class="token string">"HTTPS, OAuth 2.0 PKCE"</span><span class="token punctuation">)</span>
+Rel<span class="token punctuation">(</span>whatnext<span class="token punctuation">,</span> relay<span class="token punctuation">,</span> <span class="token string">"Connects for NAT traversal"</span><span class="token punctuation">,</span> <span class="token string">"libp2p circuit-relay-v2"</span><span class="token punctuation">)</span>
+Rel<span class="token punctuation">(</span>whatnext<span class="token punctuation">,</span> peer<span class="token punctuation">,</span> <span class="token string">"Syncs playlist state"</span><span class="token punctuation">,</span> <span class="token string">"libp2p: TCP, WebSocket,\nWebRTC, Noise encryption"</span><span class="token punctuation">)</span>
+Rel<span class="token punctuation">(</span>whatnext<span class="token punctuation">,</span> musicbrainz<span class="token punctuation">,</span> <span class="token string">"Resolves metadata"</span><span class="token punctuation">,</span> <span class="token string">"HTTPS (future)"</span><span class="token punctuation">)</span>
+
+<span class="token delimiter punctuation">@enduml</span>
+</code><button class="copy-code-button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-copy"><rect x="8" y="8" width="14" height="14" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button></pre></div><div class="el-hr"><hr></div><div class="el-h2"><h2 data-heading="4. Functional Requirements" dir="auto" class="heading" id="4._Functional_Requirements_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>4. Functional Requirements</h2></div><div class="el-h3"><h3 data-heading="4.1 Peer-to-Peer Networking (FR-P2P)" dir="auto" class="heading" id="4.1_Peer-to-Peer_Networking_(FR-P2P)_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>4.1 Peer-to-Peer Networking (FR-P2P)</h3></div><div class="el-p"><p dir="auto">All P2P functionality is built on <a data-href="libp2p" href="01-concepts/libp2p.html" class="internal-link" target="_self" rel="noopener nofollow">libp2p</a> per <a data-href="adr-251110-libp2p-vs-simple-peer" href="04-architecture/adr/adr-251110-libp2p-vs-simple-peer.html" class="internal-link" target="_self" rel="noopener nofollow">adr-251110-libp2p-vs-simple-peer</a>. The P2P node runs in Electron's utility process per <a data-href="adr-251110-electron-process-model" href="04-architecture/adr/adr-251110-electron-process-model.html" class="internal-link" target="_self" rel="noopener nofollow">adr-251110-electron-process-model</a>.</p></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">ID</th>
+<th dir="ltr">Requirement</th>
+<th dir="ltr">Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">FR-P2P-001</td>
+<td dir="ltr">The system shall discover peers on the local network using mDNS with service name <code>_whatnext._udp.local</code> and a broadcast interval of 1000ms.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-P2P-002</td>
+<td dir="ltr">The system shall establish direct connections to discovered peers over TCP and WebSocket transports, listening on <code>127.0.0.1</code> with OS-assigned ports.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-P2P-003</td>
+<td dir="ltr">The system shall execute the <a data-href="Handshake-Protocol" href="01-concepts/handshake-protocol.html" class="internal-link" target="_self" rel="noopener nofollow">Handshake-Protocol</a> (<code>/whatnext/handshake/1.0.0</code>) upon connection, exchanging display name, application version, and capability list.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-P2P-004</td>
+<td dir="ltr">The system shall support a maximum of 10 simultaneous peer connections, with a dial timeout of 30 seconds.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-P2P-005</td>
+<td dir="ltr">The system shall encrypt all peer connections using the Noise protocol and multiplex streams using Yamux.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-P2P-006</td>
+<td dir="ltr">The system shall connect to remote peers via <a data-href="Circuit-Relay" href="01-concepts/circuit-relay.html" class="internal-link" target="_self" rel="noopener nofollow">Circuit-Relay</a> servers (circuit-relay-v2) when direct connection is not possible due to NAT.</td>
+<td dir="ltr">Should</td>
+</tr>
+<tr>
+<td dir="ltr">FR-P2P-007</td>
+<td dir="ltr">The system shall support <a data-href="WebRTC" href="01-concepts/webrtc.html" class="internal-link" target="_self" rel="noopener nofollow">WebRTC</a> transport for remote peer connections behind NAT.</td>
+<td dir="ltr">Should</td>
+</tr>
+<tr>
+<td dir="ltr">FR-P2P-008</td>
+<td dir="ltr">The system shall emit peer discovery and connection lifecycle events (discovered, lost, connected, disconnected, failed) to the renderer process via <a data-href="Electron-IPC" href="01-concepts/electron-ipc.html" class="internal-link" target="_self" rel="noopener nofollow">Electron-IPC</a> channels (<code>p2p:*</code>).</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-P2P-009</td>
+<td dir="ltr">The system shall retry relay connections on failure, with a 10-second interval and a maximum of 5 retries.</td>
+<td dir="ltr">Should</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="4.2 Playlist Management (FR-PLAYLIST)" dir="auto" class="heading" id="4.2_Playlist_Management_(FR-PLAYLIST)_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>4.2 Playlist Management (FR-PLAYLIST)</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">ID</th>
+<th dir="ltr">Requirement</th>
+<th dir="ltr">Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">FR-PLAYLIST-001</td>
+<td dir="ltr">The system shall allow users to create playlists with a name, optional description, tags, and an ordered list of tracks.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-PLAYLIST-002</td>
+<td dir="ltr">The system shall allow users to add, remove, and reorder tracks within a playlist.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-PLAYLIST-003</td>
+<td dir="ltr">The system shall allow users to delete playlists they own.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-PLAYLIST-004</td>
+<td dir="ltr">The system shall support collaborative playlists with an owner and a list of collaborator IDs.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-PLAYLIST-005</td>
+<td dir="ltr">The system shall support three collaborative queue modes: <code>free_for_all</code> (any collaborator can modify freely), <code>turn_taking</code> (modifications gated by turn order, tracked via <code>currentTurnUserId</code>), and <code>vote_based</code> (modifications require vote threshold).</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-PLAYLIST-006</td>
+<td dir="ltr">The system shall persist all playlist data in the local <a data-href="RxDB" href="01-concepts/rxdb.html" class="internal-link" target="_self" rel="noopener nofollow">RxDB</a> database with the schema defined in <code>schemas.ts</code>.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-PLAYLIST-007</td>
+<td dir="ltr">The system shall export playlists to plaintext files (Markdown with YAML frontmatter) on disk.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-PLAYLIST-008</td>
+<td dir="ltr">The system shall support user-defined tags on playlists as an array of strings.</td>
+<td dir="ltr">Must</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="4.3 Import and Source Integration (FR-IMPORT)" dir="auto" class="heading" id="4.3_Import_and_Source_Integration_(FR-IMPORT)_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>4.3 Import and Source Integration (FR-IMPORT)</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">ID</th>
+<th dir="ltr">Requirement</th>
+<th dir="ltr">Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">FR-IMPORT-001</td>
+<td dir="ltr">The system shall authenticate with the Spotify Web API using OAuth 2.0 with PKCE, initiated only by the Coordinator.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-IMPORT-002</td>
+<td dir="ltr">The system shall fetch the Coordinator's Spotify playlists using the <code>/me/playlists</code> endpoint and playlist tracks using the <code>/playlists/{id}/items</code> endpoint (updated per Spotify's February 2026 API changes).</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-IMPORT-003</td>
+<td dir="ltr">The system shall normalize imported Spotify tracks to the canonical <code>TrackDocType</code> format, mapping Spotify fields to: <code>title</code>, <code>artists[]</code>, <code>album</code>, <code>durationMs</code>, <code>spotifyId</code>, <code>addedAt</code>, <code>addedBy</code>.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-IMPORT-004</td>
+<td dir="ltr">The system shall implement a Spotify adapter conforming to a generic adapter interface, enabling future source adapters (e.g., MusicBrainz, local files) without architectural changes.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-IMPORT-005</td>
+<td dir="ltr">The system shall handle Spotify API restrictions gracefully: search results capped at 10, stripped response fields (popularity, external_ids, followers), and the 5-user Dev Mode authorization limit.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-IMPORT-006</td>
+<td dir="ltr">The system shall support three Spotify sync modes as defined in the spec (section 8.1): <code>accessory</code> (read-only polling, MVP), <code>true_collaborate</code> (each user calls API), and <code>proxy_owner</code> (coordinator proxies writes).</td>
+<td dir="ltr">Must (accessory); Should (others)</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="4.4 Replication (FR-REPLICATION)" dir="auto" class="heading" id="4.4_Replication_(FR-REPLICATION)_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>4.4 Replication (FR-REPLICATION)</h3></div><div class="el-p"><p dir="auto">Replication synchronizes <a data-href="RxDB" href="01-concepts/rxdb.html" class="internal-link" target="_self" rel="noopener nofollow">RxDB</a> collections across peers using the <code>/whatnext/rxdb-replication/1.0.0</code> protocol. See <a data-href="RxDB-Replication" href="01-concepts/rxdb-replication.html" class="internal-link" target="_self" rel="noopener nofollow">RxDB-Replication</a> for design details.</p></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">ID</th>
+<th dir="ltr">Requirement</th>
+<th dir="ltr">Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">FR-REPLICATION-001</td>
+<td dir="ltr">The system shall push local document changes to connected peers, including document ID, data payload, <code>updatedAt</code> timestamp, and deletion flag.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-REPLICATION-002</td>
+<td dir="ltr">The system shall pull remote document changes from connected peers using checkpoint-based synchronization (ISO timestamp of last sync).</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-REPLICATION-003</td>
+<td dir="ltr">The system shall resolve conflicts using Last-Write-Wins (LWW) based on the <code>updatedAt</code> timestamp, with a clear migration path to CRDTs.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-REPLICATION-004</td>
+<td dir="ltr">The system shall replicate the following collections: <code>users</code>, <code>tracks</code>, <code>trackInteractions</code>, <code>playlists</code>.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-REPLICATION-005</td>
+<td dir="ltr">The system shall track replication state per peer per collection, including last checkpoint and document count, and expose this state via the <code>replication:state</code> IPC channel.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-REPLICATION-006</td>
+<td dir="ltr">The system shall report replication state as one of: <code>idle</code>, <code>pulling</code>, <code>pushing</code>, or <code>error</code>.</td>
+<td dir="ltr">Must</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="4.5 Session Management (FR-SESSION)" dir="auto" class="heading" id="4.5_Session_Management_(FR-SESSION)_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>4.5 Session Management (FR-SESSION)</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">ID</th>
+<th dir="ltr">Requirement</th>
+<th dir="ltr">Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">FR-SESSION-001</td>
+<td dir="ltr">The Coordinator shall be able to create a new collaboration session, generating a shareable session link.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-SESSION-002</td>
+<td dir="ltr">Participants shall be able to join a session via the shared link with zero additional setup (no accounts, no API keys, no OAuth).</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-SESSION-003</td>
+<td dir="ltr">The system shall display real-time presence information for all peers in the current session, including display name and connection status.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-SESSION-004</td>
+<td dir="ltr">The system shall track user identity via the <code>users</code> collection, distinguishing the local user (<code>isLocal: true</code>) from remote peers.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-SESSION-005</td>
+<td dir="ltr">The system shall support track interactions (vote, like, skip, play, queue) scoped to a user, track, and optionally a playlist, stored in the <code>trackInteractions</code> collection.</td>
+<td dir="ltr">Must</td>
+</tr>
+<tr>
+<td dir="ltr">FR-SESSION-006</td>
+<td dir="ltr">The system shall update <code>lastSeenAt</code> for connected peers to reflect activity.</td>
+<td dir="ltr">Must</td>
+</tr>
+</tbody>
+</table></div><div class="el-hr"><hr></div><div class="el-h2"><h2 data-heading="5. Non-Functional Requirements" dir="auto" class="heading" id="5._Non-Functional_Requirements_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>5. Non-Functional Requirements</h2></div><div class="el-h3"><h3 data-heading="5.1 Performance" dir="auto" class="heading" id="5.1_Performance_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>5.1 Performance</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">ID</th>
+<th dir="ltr">Requirement</th>
+<th dir="ltr">Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">NFR-PERF-001</td>
+<td dir="ltr">P2P message latency on local network (mDNS peers)</td>
+<td dir="ltr">&lt; 500ms round-trip</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-PERF-002</td>
+<td dir="ltr">P2P message latency via circuit relay</td>
+<td dir="ltr">&lt; 2000ms round-trip</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-PERF-003</td>
+<td dir="ltr">Peer discovery to connection-ready on LAN</td>
+<td dir="ltr">&lt; 5 seconds</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-PERF-004</td>
+<td dir="ltr">Spotify playlist import (100 tracks)</td>
+<td dir="ltr">&lt; 10 seconds</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-PERF-005</td>
+<td dir="ltr">Application cold start to interactive</td>
+<td dir="ltr">&lt; 3 seconds</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-PERF-006</td>
+<td dir="ltr">RxDB reactive query update propagation to UI</td>
+<td dir="ltr">&lt; 100ms</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="5.2 Security" dir="auto" class="heading" id="5.2_Security_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>5.2 Security</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">ID</th>
+<th dir="ltr">Requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">NFR-SEC-001</td>
+<td dir="ltr">All P2P connections shall be encrypted using the Noise protocol framework.</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-SEC-002</td>
+<td dir="ltr">The Electron renderer process shall run with <code>nodeIntegration: false</code> and <code>contextIsolation: true</code>. No direct Node.js access in the renderer.</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-SEC-003</td>
+<td dir="ltr">All main process communication from the renderer shall pass through the preload script via <code>contextBridge</code>.</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-SEC-004</td>
+<td dir="ltr">Spotify OAuth shall use PKCE (no client secret in the desktop application).</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-SEC-005</td>
+<td dir="ltr">External links shall open in the system browser, never in an in-app window.</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-SEC-006</td>
+<td dir="ltr">OAuth tokens shall be stored securely and never transmitted to peers.</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="5.3 Usability" dir="auto" class="heading" id="5.3_Usability_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>5.3 Usability</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">ID</th>
+<th dir="ltr">Requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">NFR-USE-001</td>
+<td dir="ltr">Participants shall be able to join a session with a single action (clicking a link or pasting a code). No account creation, no OAuth, no API keys.</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-USE-002</td>
+<td dir="ltr">The Coordinator's Spotify connection flow shall complete in 3 steps or fewer (initiate, authorize in browser, return to app).</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-USE-003</td>
+<td dir="ltr">Peer connection status shall be clearly visible in the UI at all times during an active session.</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="5.4 Reliability" dir="auto" class="heading" id="5.4_Reliability_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>5.4 Reliability</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">ID</th>
+<th dir="ltr">Requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">NFR-REL-001</td>
+<td dir="ltr">The application shall be fully functional offline for all local operations (viewing, editing, and creating playlists).</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-REL-002</td>
+<td dir="ltr">The <a data-href="RxDB" href="01-concepts/rxdb.html" class="internal-link" target="_self" rel="noopener nofollow">RxDB</a> database shall be crash-resilient; data shall survive unexpected application termination.</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-REL-003</td>
+<td dir="ltr">Loss of a peer connection shall not corrupt local data. Partial replication shall be recoverable via checkpoint-based sync on reconnection.</td>
+</tr>
+<tr>
+<td dir="ltr">NFR-REL-004</td>
+<td dir="ltr">The P2P node shall recover gracefully from network interface changes (e.g., Wi-Fi reconnect).</td>
+</tr>
+</tbody>
+</table></div><div class="el-hr"><hr></div><div class="el-h2"><h2 data-heading="6. User Stories" dir="auto" class="heading" id="6._User_Stories_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>6. User Stories</h2></div><div class="el-h3"><h3 data-heading="US-001: Import a Spotify Playlist" dir="auto" class="heading" id="US-001_Import_a_Spotify_Playlist_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>US-001: Import a Spotify Playlist</h3></div><div class="el-p"><p dir="auto"><strong>As a</strong> Coordinator, <strong>I want to</strong> import one of my Spotify playlists into WhatNext <strong>so that</strong> I can share it with friends who do not have Spotify.</p></div><div class="el-p"><p dir="auto"><strong>Acceptance Criteria:</strong></p></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span>Coordinator authenticates with Spotify via OAuth PKCE.</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span>Coordinator selects a playlist from their Spotify library.</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span>Tracks are normalized to canonical format and stored in local RxDB.</li>
+<li data-line="3" dir="auto"><span class="list-bullet"></span>Imported playlist displays in WhatNext with all track metadata.</li>
+</ul></div><div class="el-h3"><h3 data-heading="US-002: Create and Share a Session" dir="auto" class="heading" id="US-002_Create_and_Share_a_Session_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>US-002: Create and Share a Session</h3></div><div class="el-p"><p dir="auto"><strong>As a</strong> Coordinator, <strong>I want to</strong> create a collaboration session and share a link <strong>so that</strong> my friends can join without any setup.</p></div><div class="el-p"><p dir="auto"><strong>Acceptance Criteria:</strong></p></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span>Coordinator creates a session from an imported or local playlist.</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span>System generates a shareable link or code.</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span>Link can be distributed via any messaging platform.</li>
+</ul></div><div class="el-h3"><h3 data-heading="US-003: Join a Session" dir="auto" class="heading" id="US-003_Join_a_Session_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>US-003: Join a Session</h3></div><div class="el-p"><p dir="auto"><strong>As a</strong> Participant, <strong>I want to</strong> join a friend's session by clicking a link <strong>so that</strong> I can collaborate on their playlist instantly.</p></div><div class="el-p"><p dir="auto"><strong>Acceptance Criteria:</strong></p></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span>Clicking the link opens WhatNext (or prompts installation).</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span>P2P connection establishes automatically.</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span>Handshake completes and playlist state replicates.</li>
+<li data-line="3" dir="auto"><span class="list-bullet"></span>Participant sees the shared playlist within 5 seconds on LAN.</li>
+</ul></div><div class="el-h3"><h3 data-heading="US-004: Collaborate on a Playlist" dir="auto" class="heading" id="US-004_Collaborate_on_a_Playlist_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>US-004: Collaborate on a Playlist</h3></div><div class="el-p"><p dir="auto"><strong>As a</strong> Participant, <strong>I want to</strong> add tracks, vote on tracks, and react to the playlist <strong>so that</strong> I feel connected to the collaborative experience.</p></div><div class="el-p"><p dir="auto"><strong>Acceptance Criteria:</strong></p></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span>Participant can add tracks to the shared playlist.</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span>Participant can vote, like, or skip tracks.</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span>Interactions are visible to all peers in real time.</li>
+<li data-line="3" dir="auto"><span class="list-bullet"></span>Queue mode rules are enforced (turn-taking, free-for-all, or vote-based).</li>
+</ul></div><div class="el-h3"><h3 data-heading="US-005: Work Offline" dir="auto" class="heading" id="US-005_Work_Offline_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>US-005: Work Offline</h3></div><div class="el-p"><p dir="auto"><strong>As a</strong> user, <strong>I want to</strong> view and edit my playlists without an internet connection <strong>so that</strong> my music library is always accessible.</p></div><div class="el-p"><p dir="auto"><strong>Acceptance Criteria:</strong></p></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span>All playlists and tracks are available offline.</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span>Edits made offline are persisted locally.</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span>On reconnection, changes sync to peers via checkpoint-based replication.</li>
+</ul></div><div class="el-h3"><h3 data-heading="US-006: Sync Changes Back to Spotify" dir="auto" class="heading" id="US-006_Sync_Changes_Back_to_Spotify_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>US-006: Sync Changes Back to Spotify</h3></div><div class="el-p"><p dir="auto"><strong>As a</strong> Coordinator, <strong>I want to</strong> optionally push collaborative changes back to the Spotify playlist <strong>so that</strong> the collaboration results are reflected on the streaming platform.</p></div><div class="el-p"><p dir="auto"><strong>Acceptance Criteria:</strong></p></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span>Coordinator can view a diff of changes since last sync.</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span>Sync-back is explicitly initiated (never automatic).</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span>Only the Coordinator can trigger sync-back.</li>
+<li data-line="3" dir="auto"><span class="list-bullet"></span>Failures are reported clearly; local data is never lost.</li>
+</ul></div><div class="el-h3"><h3 data-heading="US-007: Discover Peers on Local Network" dir="auto" class="heading" id="US-007_Discover_Peers_on_Local_Network_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>US-007: Discover Peers on Local Network</h3></div><div class="el-p"><p dir="auto"><strong>As a</strong> user, <strong>I want to</strong> automatically discover other WhatNext users on my local network <strong>so that</strong> I can connect without manually entering addresses.</p></div><div class="el-p"><p dir="auto"><strong>Acceptance Criteria:</strong></p></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span>Peers running WhatNext on the same LAN appear within 5 seconds.</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span>Discovered peers show display name and connection status.</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span>User can initiate a connection to a discovered peer.</li>
+</ul></div><div class="el-h3"><h3 data-heading="US-008: Export Playlist to Plaintext" dir="auto" class="heading" id="US-008_Export_Playlist_to_Plaintext_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>US-008: Export Playlist to Plaintext</h3></div><div class="el-p"><p dir="auto"><strong>As a</strong> user, <strong>I want to</strong> export my playlist as a readable Markdown file <strong>so that</strong> I own my data in a format that outlasts any application.</p></div><div class="el-p"><p dir="auto"><strong>Acceptance Criteria:</strong></p></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span>Export produces a Markdown file with YAML frontmatter.</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span>File contains all track metadata, tags, and descriptions.</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span>File is human-readable and editable with any text editor.</li>
+</ul></div><div class="el-hr"><hr></div><div class="el-h2"><h2 data-heading="7. Data Model" dir="auto" class="heading" id="7._Data_Model_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>7. Data Model</h2></div><div class="el-p"><p dir="auto">The following entity-relationship diagram reflects the <a data-href="RxDB" href="01-concepts/rxdb.html" class="internal-link" target="_self" rel="noopener nofollow">RxDB</a> schema defined in <code>app/src/renderer/db/schemas.ts</code>.</p></div><div class="el-pre"><pre class="language-plantuml"><code data-line="0" class="language-plantuml is-loaded"><span class="token delimiter punctuation">@startuml</span>
+<span class="token keyword">title</span> WhatNext Data Model <span class="token punctuation">(</span>RxDB Collections<span class="token punctuation">)</span>
+
+<span class="token keyword">skinparam</span> linetype ortho
+
+<span class="token keyword">entity</span> <span class="token string">"users"</span> <span class="token keyword">as</span> user <span class="token punctuation">{</span>
+    * **id** <span class="token punctuation">:</span> string &lt;&lt;PK&gt;&gt;
+    --
+    * displayName <span class="token punctuation">:</span> string
+    avatarUrl <span class="token punctuation">:</span> string
+    * isLocal <span class="token punctuation">:</span> boolean
+    * lastSeenAt <span class="token punctuation">:</span> string <span class="token punctuation">(</span>ISO 8601<span class="token punctuation">)</span>
+    publicKey <span class="token punctuation">:</span> string
+    * createdAt <span class="token punctuation">:</span> string <span class="token punctuation">(</span>ISO 8601<span class="token punctuation">)</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">entity</span> <span class="token string">"tracks"</span> <span class="token keyword">as</span> track <span class="token punctuation">{</span>
+    * **id** <span class="token punctuation">:</span> string &lt;&lt;PK&gt;&gt;
+    --
+    * title <span class="token punctuation">:</span> string
+    * artists <span class="token punctuation">:</span> string<span class="token punctuation">[</span><span class="token punctuation">]</span>
+    * album <span class="token punctuation">:</span> string
+    * durationMs <span class="token punctuation">:</span> number
+    spotifyId <span class="token punctuation">:</span> string
+    * addedAt <span class="token punctuation">:</span> string <span class="token punctuation">(</span>ISO 8601<span class="token punctuation">)</span>
+    * addedBy <span class="token punctuation">:</span> string &lt;&lt;FK users.id&gt;&gt;
+    notes <span class="token punctuation">:</span> string
+<span class="token punctuation">}</span>
+
+<span class="token keyword">entity</span> <span class="token string">"trackInteractions"</span> <span class="token keyword">as</span> interaction <span class="token punctuation">{</span>
+    * **id** <span class="token punctuation">:</span> string &lt;&lt;PK&gt;&gt;
+    <span class="token punctuation">(</span>composite<span class="token punctuation">:</span> userId_trackId_interactionType<span class="token punctuation">)</span>
+    --
+    * userId <span class="token punctuation">:</span> string &lt;&lt;FK users.id&gt;&gt;
+    * trackId <span class="token punctuation">:</span> string &lt;&lt;FK tracks.id&gt;&gt;
+    playlistId <span class="token punctuation">:</span> string &lt;&lt;FK playlists.id&gt;&gt;
+    * interactionType <span class="token punctuation">:</span> enum
+      <span class="token punctuation">(</span>vote | like | skip | play | queue<span class="token punctuation">)</span>
+    value <span class="token punctuation">:</span> number
+    * createdAt <span class="token punctuation">:</span> string <span class="token punctuation">(</span>ISO 8601<span class="token punctuation">)</span>
+    * updatedAt <span class="token punctuation">:</span> string <span class="token punctuation">(</span>ISO 8601<span class="token punctuation">)</span>
+    metadata <span class="token punctuation">:</span> string <span class="token punctuation">(</span>JSON<span class="token punctuation">)</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">entity</span> <span class="token string">"playlists"</span> <span class="token keyword">as</span> playlist <span class="token punctuation">{</span>
+    * **id** <span class="token punctuation">:</span> string &lt;&lt;PK&gt;&gt;
+    --
+    * playlistName <span class="token punctuation">:</span> string
+    description <span class="token punctuation">:</span> string
+    * trackIds <span class="token punctuation">:</span> string<span class="token punctuation">[</span><span class="token punctuation">]</span>
+    * createdAt <span class="token punctuation">:</span> string <span class="token punctuation">(</span>ISO 8601<span class="token punctuation">)</span>
+    * updatedAt <span class="token punctuation">:</span> string <span class="token punctuation">(</span>ISO 8601<span class="token punctuation">)</span>
+    * ownerId <span class="token punctuation">:</span> string &lt;&lt;FK users.id&gt;&gt;
+    * collaboratorIds <span class="token punctuation">:</span> string<span class="token punctuation">[</span><span class="token punctuation">]</span>
+    * isCollaborative <span class="token punctuation">:</span> boolean
+    * isPublic <span class="token punctuation">:</span> boolean
+    linkedSpotifyId <span class="token punctuation">:</span> string
+    spotifySyncMode <span class="token punctuation">:</span> enum
+      <span class="token punctuation">(</span>accessory | true_collaborate | proxy_owner<span class="token punctuation">)</span>
+    * tags <span class="token punctuation">:</span> string<span class="token punctuation">[</span><span class="token punctuation">]</span>
+    queueMode <span class="token punctuation">:</span> enum
+      <span class="token punctuation">(</span>free_for_all | turn_taking | vote_based<span class="token punctuation">)</span>
+    currentTurnUserId <span class="token punctuation">:</span> string &lt;&lt;FK users.id&gt;&gt;
+<span class="token punctuation">}</span>
+
+user ||--o<span class="token punctuation">{</span> track <span class="token punctuation">:</span> <span class="token string">"addedBy"</span>
+user ||--o<span class="token punctuation">{</span> interaction <span class="token punctuation">:</span> <span class="token string">"userId"</span>
+track ||--o<span class="token punctuation">{</span> interaction <span class="token punctuation">:</span> <span class="token string">"trackId"</span>
+user ||--o<span class="token punctuation">{</span> playlist <span class="token punctuation">:</span> <span class="token string">"ownerId"</span>
+playlist <span class="token punctuation">}</span><span class="token arrow operator">o--o</span><span class="token punctuation">{</span> user <span class="token punctuation">:</span> <span class="token string">"collaboratorIds"</span>
+playlist ||--o<span class="token punctuation">{</span> interaction <span class="token punctuation">:</span> <span class="token string">"playlistId"</span>
+playlist <span class="token punctuation">}</span><span class="token arrow operator">o--o</span><span class="token punctuation">{</span> track <span class="token punctuation">:</span> <span class="token string">"trackIds"</span>
+
+<span class="token delimiter punctuation">@enduml</span>
+</code><button class="copy-code-button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-copy"><rect x="8" y="8" width="14" height="14" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button></pre></div><div class="el-hr"><hr></div><div class="el-h2"><h2 data-heading="8. External Interfaces" dir="auto" class="heading" id="8._External_Interfaces_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>8. External Interfaces</h2></div><div class="el-h3"><h3 data-heading="8.1 Spotify Web API" dir="auto" class="heading" id="8.1_Spotify_Web_API_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>8.1 Spotify Web API</h3></div><div class="el-p"><p dir="auto"><strong>Purpose</strong>: Playlist import and track metadata retrieval (Coordinator only).</p></div><div class="el-p"><p dir="auto"><strong>Authentication</strong>: OAuth 2.0 with PKCE. No client secret stored in the application. Tokens stored locally and never shared with peers.</p></div><div class="el-p"><p dir="auto"><strong>February 2026 API Changes</strong> (impact on WhatNext):</p></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">Change</th>
+<th dir="ltr">Impact</th>
+<th dir="ltr">Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">Premium required for Dev Mode</td>
+<td dir="ltr">Coordinator must have Spotify Premium</td>
+<td dir="ltr">Documented as Coordinator prerequisite</td>
+</tr>
+<tr>
+<td dir="ltr">1 Client ID per developer, 5 authorized users (down from 25)</td>
+<td dir="ltr">Limits the number of Coordinators using a single WhatNext build's Client ID</td>
+<td dir="ltr">Adapter architecture allows community-provided Client IDs; Participant model eliminates need for most users to authenticate</td>
+</tr>
+<tr>
+<td dir="ltr">16 endpoints removed (artist top tracks, multi-gets, user profiles, etc.)</td>
+<td dir="ltr">No direct impact on MVP (import flow uses playlist and track endpoints)</td>
+<td dir="ltr">Core import flow (<code>/me/playlists</code>, <code>/playlists/{id}/items</code>) remains functional</td>
+</tr>
+<tr>
+<td dir="ltr">Response fields stripped (popularity, external_ids, followers)</td>
+<td dir="ltr">Reduced metadata richness</td>
+<td dir="ltr">Canonical format does not depend on stripped fields</td>
+</tr>
+<tr>
+<td dir="ltr">Search max results reduced to 10 (was 50)</td>
+<td dir="ltr">Limited search-based track discovery</td>
+<td dir="ltr">Pagination or alternative sources (MusicBrainz) for future phases</td>
+</tr>
+<tr>
+<td dir="ltr"><code>/playlists/{id}/tracks</code> renamed to <code>/playlists/{id}/items</code></td>
+<td dir="ltr">Endpoint path change</td>
+<td dir="ltr">Updated in adapter implementation</td>
+</tr>
+</tbody>
+</table></div><div class="el-p"><p dir="auto"><strong>Key Endpoints Used</strong>:</p></div><div class="el-ul"><ul class="has-list-bullet">
+<li data-line="0" dir="auto"><span class="list-bullet"></span><code>GET /me/playlists</code> -- List Coordinator's playlists</li>
+<li data-line="1" dir="auto"><span class="list-bullet"></span><code>GET /playlists/{id}/items</code> -- Fetch tracks for a specific playlist</li>
+<li data-line="2" dir="auto"><span class="list-bullet"></span><code>GET /me</code> -- Verify authentication status</li>
+</ul></div><div class="el-p"><p dir="auto"><strong>IPC Channels</strong>: <code>spotify:auth-start</code>, <code>spotify:auth-status</code>, <code>spotify:get-playlists</code>, <code>spotify:get-tracks</code></p></div><div class="el-h3"><h3 data-heading="8.2 libp2p / Circuit Relay" dir="auto" class="heading" id="8.2_libp2p_/_Circuit_Relay_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>8.2 libp2p / Circuit Relay</h3></div><div class="el-p"><p dir="auto"><strong>Purpose</strong>: NAT traversal for peers that cannot establish direct connections.</p></div><div class="el-p"><p dir="auto"><strong>Protocol</strong>: libp2p circuit-relay-v2 (see <a data-href="Circuit-Relay" href="01-concepts/circuit-relay.html" class="internal-link" target="_self" rel="noopener nofollow">Circuit-Relay</a>).</p></div><div class="el-p"><p dir="auto"><strong>Configuration</strong>: Relay addresses configured in <code>P2P_CONFIG.RELAY.ADDRESSES</code>. Auto-connect on startup with retry (10s interval, max 5 retries).</p></div><div class="el-p"><p dir="auto"><strong>Transports</strong>: TCP (localhost), WebSocket (localhost), WebRTC (remote), Circuit Relay (remote).</p></div><div class="el-p"><p dir="auto"><strong>Encryption</strong>: Noise protocol. <strong>Multiplexing</strong>: Yamux.</p></div><div class="el-h3"><h3 data-heading="8.3 MusicBrainz API (Future)" dir="auto" class="heading" id="8.3_MusicBrainz_API_(Future)_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>8.3 MusicBrainz API (Future)</h3></div><div class="el-p"><p dir="auto"><strong>Purpose</strong>: Open, platform-agnostic music metadata for cross-platform track identification and enrichment.</p></div><div class="el-p"><p dir="auto"><strong>Status</strong>: Not implemented in MVP. Planned for Phase 2+ as an additional adapter.</p></div><div class="el-hr"><hr></div><div class="el-h2"><h2 data-heading="9. Assumptions and Dependencies" dir="auto" class="heading" id="9._Assumptions_and_Dependencies_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>9. Assumptions and Dependencies</h2></div><div class="el-h3"><h3 data-heading="9.1 Assumptions" dir="auto" class="heading" id="9.1_Assumptions_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>9.1 Assumptions</h3></div><div class="el-ol"><ol>
+<li data-line="0" dir="auto">Users have a desktop computer running a supported operating system (Windows 10+, macOS 12+, or a recent Linux distribution).</li>
+<li data-line="1" dir="auto">For Coordinator functionality, the user has a Spotify Premium account (required for Dev Mode as of February 2026).</li>
+<li data-line="2" dir="auto">For LAN peer discovery, peers are on the same local network segment with mDNS traffic permitted.</li>
+<li data-line="3" dir="auto">For remote peer connections, at least one circuit relay server is available and configured.</li>
+</ol></div><div class="el-h3"><h3 data-heading="9.2 Dependencies" dir="auto" class="heading" id="9.2_Dependencies_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>9.2 Dependencies</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">Dependency</th>
+<th dir="ltr">Version</th>
+<th dir="ltr">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">Electron</td>
+<td dir="ltr">Latest stable</td>
+<td dir="ltr">Desktop runtime (Chromium + Node.js). See <a data-href="Electron" href="01-concepts/electron.html" class="internal-link" target="_self" rel="noopener nofollow">Electron</a>.</td>
+</tr>
+<tr>
+<td dir="ltr">Node.js</td>
+<td dir="ltr">v24.3.0</td>
+<td dir="ltr">Runtime for main and utility processes</td>
+</tr>
+<tr>
+<td dir="ltr">React</td>
+<td dir="ltr">19.x</td>
+<td dir="ltr">UI framework for renderer process</td>
+</tr>
+<tr>
+<td dir="ltr">TypeScript</td>
+<td dir="ltr">5.x</td>
+<td dir="ltr">Type safety across all process boundaries</td>
+</tr>
+<tr>
+<td dir="ltr">RxDB</td>
+<td dir="ltr">Latest stable</td>
+<td dir="ltr">Reactive local database with replication support. See <a data-href="RxDB" href="01-concepts/rxdb.html" class="internal-link" target="_self" rel="noopener nofollow">RxDB</a>.</td>
+</tr>
+<tr>
+<td dir="ltr">libp2p</td>
+<td dir="ltr">Latest stable</td>
+<td dir="ltr">P2P networking stack (transport, discovery, encryption). See <a data-href="libp2p" href="01-concepts/libp2p.html" class="internal-link" target="_self" rel="noopener nofollow">libp2p</a>.</td>
+</tr>
+<tr>
+<td dir="ltr">Vite</td>
+<td dir="ltr">Latest stable</td>
+<td dir="ltr">Build tool and dev server for renderer</td>
+</tr>
+<tr>
+<td dir="ltr">Zustand</td>
+<td dir="ltr">Latest stable</td>
+<td dir="ltr">Lightweight state management for non-persistent UI state</td>
+</tr>
+<tr>
+<td dir="ltr">Tailwind CSS</td>
+<td dir="ltr">4.x</td>
+<td dir="ltr">Utility-first CSS framework</td>
+</tr>
+</tbody>
+</table></div><div class="el-h3"><h3 data-heading="9.3 Risks" dir="auto" class="heading" id="9.3_Risks_0"><span class="heading-collapse-indicator collapse-indicator collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></span>9.3 Risks</h3></div><div class="el-table" dir="ltr" style="overflow-x: auto;"><table>
+<thead>
+<tr>
+<th dir="ltr">Risk</th>
+<th dir="ltr">Likelihood</th>
+<th dir="ltr">Impact</th>
+<th dir="ltr">Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td dir="ltr">Spotify further restricts API access</td>
+<td dir="ltr">Medium</td>
+<td dir="ltr">High</td>
+<td dir="ltr">Adapter architecture isolates Spotify dependency; Coordinator model limits blast radius to one user per session</td>
+</tr>
+<tr>
+<td dir="ltr">libp2p browser/Electron compatibility issues</td>
+<td dir="ltr">Medium</td>
+<td dir="ltr">Medium</td>
+<td dir="ltr">Utility process isolation (see <a data-href="adr-251110-electron-process-model" href="04-architecture/adr/adr-251110-electron-process-model.html" class="internal-link" target="_self" rel="noopener nofollow">adr-251110-electron-process-model</a>); test-peer harness for rapid iteration</td>
+</tr>
+<tr>
+<td dir="ltr">LWW conflict resolution causes data loss</td>
+<td dir="ltr">Low</td>
+<td dir="ltr">Medium</td>
+<td dir="ltr">Clear migration path to CRDTs; <code>updatedAt</code> timestamps on all mutable documents</td>
+</tr>
+<tr>
+<td dir="ltr">NAT traversal failures prevent remote connections</td>
+<td dir="ltr">Medium</td>
+<td dir="ltr">Medium</td>
+<td dir="ltr">Multiple transport fallbacks (TCP, WebSocket, WebRTC, Circuit Relay); relay retry logic</td>
+</tr>
+</tbody>
+</table></div><div class="footer"><div class="data-bar"></div></div></div></div></div><div id="right-content" class="leaf" style="--sidebar-width: var(--sidebar-width-right);"><div id="right-sidebar" class="sidebar"><div class="sidebar-handle"></div><div class="sidebar-topbar"><div class="topbar-content"><label class="theme-toggle-container" for="theme-toggle-input" id=""><input class="theme-toggle-input" type="checkbox" id="theme-toggle-input"><div class="toggle-background"></div></label></div><div class="clickable-icon sidebar-collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="svg-icon"><path d="M21 3H3C1.89543 3 1 3.89543 1 5V19C1 20.1046 1.89543 21 3 21H21C22.1046 21 23 20.1046 23 19V5C23 3.89543 22.1046 3 21 3Z"></path><path d="M10 4V20"></path><path d="M4 7H7"></path><path d="M4 10H7"></path><path d="M4 13H7"></path></svg></div></div><div class="sidebar-content-wrapper"><div id="right-sidebar-content" class="leaf-content"><div class="graph-view-wrapper"><div class="feature-header"><div class="feature-title">Interactive Graph</div></div><div class="graph-view-placeholder">
+		<div class="graph-view-container">
+			<div class="graph-icon graph-expand" role="button" aria-label="Expand" data-tooltip-position="top"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg></div>
+			<div class="graph-icon graph-global" role="button" aria-label="Global Graph" data-tooltip-position="top"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-git-fork"><circle cx="12" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"></path><path d="M12 12v3"></path></svg></div>
+			<canvas id="graph-canvas" class="hide" width="512px" height="512px"></canvas>
+		</div>
+		</div></div><div id="outline" class=" tree-container"><div class="feature-header"><div class="feature-title">Table Of Contents</div><button class="clickable-icon nav-action-button tree-collapse-all" aria-label="Collapse All"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg></button></div><div class="tree-item" data-depth="1"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#Software_Requirements_Specification_-_WhatNext_0" data-path="#Software_Requirements_Specification_-_WhatNext_0"><div class="tree-item-inner heading-link" heading-name="Software Requirements Specification - WhatNext">Software Requirements Specification - WhatNext</div></a><div class="tree-item-children"></div></div><div class="tree-item mod-collapsible" data-depth="1"><a class="tree-item-self is-clickable mod-collapsible" href="04-architecture/srs-whatnext.html#Software_Requirements_Specification_WhatNext_0" data-path="#Software_Requirements_Specification_WhatNext_0"><div class="tree-item-icon collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div><div class="tree-item-inner heading-link" heading-name="Software Requirements Specification: WhatNext">Software Requirements Specification: WhatNext</div></a><div class="tree-item-children"><div class="tree-item" data-depth="2"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#Changelog_0" data-path="#Changelog_0"><div class="tree-item-inner heading-link" heading-name="Changelog">Changelog</div></a><div class="tree-item-children"></div></div><div class="tree-item mod-collapsible" data-depth="2"><a class="tree-item-self is-clickable mod-collapsible" href="04-architecture/srs-whatnext.html#1._Introduction_0" data-path="#1._Introduction_0"><div class="tree-item-icon collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div><div class="tree-item-inner heading-link" heading-name="1. Introduction">1. Introduction</div></a><div class="tree-item-children"><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#1.1_Purpose_0" data-path="#1.1_Purpose_0"><div class="tree-item-inner heading-link" heading-name="1.1 Purpose">1.1 Purpose</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#1.2_Scope_0" data-path="#1.2_Scope_0"><div class="tree-item-inner heading-link" heading-name="1.2 Scope">1.2 Scope</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#1.3_Definitions_and_Acronyms_0" data-path="#1.3_Definitions_and_Acronyms_0"><div class="tree-item-inner heading-link" heading-name="1.3 Definitions and Acronyms">1.3 Definitions and Acronyms</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#1.4_References_0" data-path="#1.4_References_0"><div class="tree-item-inner heading-link" heading-name="1.4 References">1.4 References</div></a><div class="tree-item-children"></div></div></div></div><div class="tree-item mod-collapsible" data-depth="2"><a class="tree-item-self is-clickable mod-collapsible" href="04-architecture/srs-whatnext.html#2._Overall_Description_0" data-path="#2._Overall_Description_0"><div class="tree-item-icon collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div><div class="tree-item-inner heading-link" heading-name="2. Overall Description">2. Overall Description</div></a><div class="tree-item-children"><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#2.1_Product_Perspective_0" data-path="#2.1_Product_Perspective_0"><div class="tree-item-inner heading-link" heading-name="2.1 Product Perspective">2.1 Product Perspective</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#2.2_User_Classes_0" data-path="#2.2_User_Classes_0"><div class="tree-item-inner heading-link" heading-name="2.2 User Classes">2.2 User Classes</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#2.3_Operating_Environment_0" data-path="#2.3_Operating_Environment_0"><div class="tree-item-inner heading-link" heading-name="2.3 Operating Environment">2.3 Operating Environment</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#2.4_Design_Constraints_0" data-path="#2.4_Design_Constraints_0"><div class="tree-item-inner heading-link" heading-name="2.4 Design Constraints">2.4 Design Constraints</div></a><div class="tree-item-children"></div></div></div></div><div class="tree-item" data-depth="2"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#3._System_Context_0" data-path="#3._System_Context_0"><div class="tree-item-inner heading-link" heading-name="3. System Context">3. System Context</div></a><div class="tree-item-children"></div></div><div class="tree-item mod-collapsible" data-depth="2"><a class="tree-item-self is-clickable mod-collapsible" href="04-architecture/srs-whatnext.html#4._Functional_Requirements_0" data-path="#4._Functional_Requirements_0"><div class="tree-item-icon collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div><div class="tree-item-inner heading-link" heading-name="4. Functional Requirements">4. Functional Requirements</div></a><div class="tree-item-children"><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#4.1_Peer-to-Peer_Networking_(FR-P2P)_0" data-path="#4.1_Peer-to-Peer_Networking_(FR-P2P)_0"><div class="tree-item-inner heading-link" heading-name="4.1 Peer-to-Peer Networking (FR-P2P)">4.1 Peer-to-Peer Networking (FR-P2P)</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#4.2_Playlist_Management_(FR-PLAYLIST)_0" data-path="#4.2_Playlist_Management_(FR-PLAYLIST)_0"><div class="tree-item-inner heading-link" heading-name="4.2 Playlist Management (FR-PLAYLIST)">4.2 Playlist Management (FR-PLAYLIST)</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#4.3_Import_and_Source_Integration_(FR-IMPORT)_0" data-path="#4.3_Import_and_Source_Integration_(FR-IMPORT)_0"><div class="tree-item-inner heading-link" heading-name="4.3 Import and Source Integration (FR-IMPORT)">4.3 Import and Source Integration (FR-IMPORT)</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#4.4_Replication_(FR-REPLICATION)_0" data-path="#4.4_Replication_(FR-REPLICATION)_0"><div class="tree-item-inner heading-link" heading-name="4.4 Replication (FR-REPLICATION)">4.4 Replication (FR-REPLICATION)</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#4.5_Session_Management_(FR-SESSION)_0" data-path="#4.5_Session_Management_(FR-SESSION)_0"><div class="tree-item-inner heading-link" heading-name="4.5 Session Management (FR-SESSION)">4.5 Session Management (FR-SESSION)</div></a><div class="tree-item-children"></div></div></div></div><div class="tree-item mod-collapsible" data-depth="2"><a class="tree-item-self is-clickable mod-collapsible" href="04-architecture/srs-whatnext.html#5._Non-Functional_Requirements_0" data-path="#5._Non-Functional_Requirements_0"><div class="tree-item-icon collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div><div class="tree-item-inner heading-link" heading-name="5. Non-Functional Requirements">5. Non-Functional Requirements</div></a><div class="tree-item-children"><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#5.1_Performance_0" data-path="#5.1_Performance_0"><div class="tree-item-inner heading-link" heading-name="5.1 Performance">5.1 Performance</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#5.2_Security_0" data-path="#5.2_Security_0"><div class="tree-item-inner heading-link" heading-name="5.2 Security">5.2 Security</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#5.3_Usability_0" data-path="#5.3_Usability_0"><div class="tree-item-inner heading-link" heading-name="5.3 Usability">5.3 Usability</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#5.4_Reliability_0" data-path="#5.4_Reliability_0"><div class="tree-item-inner heading-link" heading-name="5.4 Reliability">5.4 Reliability</div></a><div class="tree-item-children"></div></div></div></div><div class="tree-item mod-collapsible" data-depth="2"><a class="tree-item-self is-clickable mod-collapsible" href="04-architecture/srs-whatnext.html#6._User_Stories_0" data-path="#6._User_Stories_0"><div class="tree-item-icon collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div><div class="tree-item-inner heading-link" heading-name="6. User Stories">6. User Stories</div></a><div class="tree-item-children"><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#US-001_Import_a_Spotify_Playlist_0" data-path="#US-001_Import_a_Spotify_Playlist_0"><div class="tree-item-inner heading-link" heading-name="US-001: Import a Spotify Playlist">US-001: Import a Spotify Playlist</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#US-002_Create_and_Share_a_Session_0" data-path="#US-002_Create_and_Share_a_Session_0"><div class="tree-item-inner heading-link" heading-name="US-002: Create and Share a Session">US-002: Create and Share a Session</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#US-003_Join_a_Session_0" data-path="#US-003_Join_a_Session_0"><div class="tree-item-inner heading-link" heading-name="US-003: Join a Session">US-003: Join a Session</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#US-004_Collaborate_on_a_Playlist_0" data-path="#US-004_Collaborate_on_a_Playlist_0"><div class="tree-item-inner heading-link" heading-name="US-004: Collaborate on a Playlist">US-004: Collaborate on a Playlist</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#US-005_Work_Offline_0" data-path="#US-005_Work_Offline_0"><div class="tree-item-inner heading-link" heading-name="US-005: Work Offline">US-005: Work Offline</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#US-006_Sync_Changes_Back_to_Spotify_0" data-path="#US-006_Sync_Changes_Back_to_Spotify_0"><div class="tree-item-inner heading-link" heading-name="US-006: Sync Changes Back to Spotify">US-006: Sync Changes Back to Spotify</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#US-007_Discover_Peers_on_Local_Network_0" data-path="#US-007_Discover_Peers_on_Local_Network_0"><div class="tree-item-inner heading-link" heading-name="US-007: Discover Peers on Local Network">US-007: Discover Peers on Local Network</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#US-008_Export_Playlist_to_Plaintext_0" data-path="#US-008_Export_Playlist_to_Plaintext_0"><div class="tree-item-inner heading-link" heading-name="US-008: Export Playlist to Plaintext">US-008: Export Playlist to Plaintext</div></a><div class="tree-item-children"></div></div></div></div><div class="tree-item" data-depth="2"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#7._Data_Model_0" data-path="#7._Data_Model_0"><div class="tree-item-inner heading-link" heading-name="7. Data Model">7. Data Model</div></a><div class="tree-item-children"></div></div><div class="tree-item mod-collapsible" data-depth="2"><a class="tree-item-self is-clickable mod-collapsible" href="04-architecture/srs-whatnext.html#8._External_Interfaces_0" data-path="#8._External_Interfaces_0"><div class="tree-item-icon collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div><div class="tree-item-inner heading-link" heading-name="8. External Interfaces">8. External Interfaces</div></a><div class="tree-item-children"><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#8.1_Spotify_Web_API_0" data-path="#8.1_Spotify_Web_API_0"><div class="tree-item-inner heading-link" heading-name="8.1 Spotify Web API">8.1 Spotify Web API</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#8.2_libp2p_/_Circuit_Relay_0" data-path="#8.2_libp2p_/_Circuit_Relay_0"><div class="tree-item-inner heading-link" heading-name="8.2 libp2p / Circuit Relay">8.2 libp2p / Circuit Relay</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#8.3_MusicBrainz_API_(Future)_0" data-path="#8.3_MusicBrainz_API_(Future)_0"><div class="tree-item-inner heading-link" heading-name="8.3 MusicBrainz API (Future)">8.3 MusicBrainz API (Future)</div></a><div class="tree-item-children"></div></div></div></div><div class="tree-item mod-collapsible" data-depth="2"><a class="tree-item-self is-clickable mod-collapsible" href="04-architecture/srs-whatnext.html#9._Assumptions_and_Dependencies_0" data-path="#9._Assumptions_and_Dependencies_0"><div class="tree-item-icon collapse-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg></div><div class="tree-item-inner heading-link" heading-name="9. Assumptions and Dependencies">9. Assumptions and Dependencies</div></a><div class="tree-item-children"><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#9.1_Assumptions_0" data-path="#9.1_Assumptions_0"><div class="tree-item-inner heading-link" heading-name="9.1 Assumptions">9.1 Assumptions</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#9.2_Dependencies_0" data-path="#9.2_Dependencies_0"><div class="tree-item-inner heading-link" heading-name="9.2 Dependencies">9.2 Dependencies</div></a><div class="tree-item-children"></div></div><div class="tree-item" data-depth="3"><a class="tree-item-self is-clickable" href="04-architecture/srs-whatnext.html#9.3_Risks_0" data-path="#9.3_Risks_0"><div class="tree-item-inner heading-link" heading-name="9.3 Risks">9.3 Risks</div></a><div class="tree-item-children"></div></div></div></div></div></div></div></div></div><script defer="">let rs = document.querySelector("#right-sidebar"); rs.classList.toggle("is-collapsed", window.innerWidth < 768); rs.style.setProperty("--sidebar-width", localStorage.getItem("sidebar-right-width"));</script></div></div></div></div></body></html>

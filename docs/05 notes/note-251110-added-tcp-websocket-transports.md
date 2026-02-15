@@ -1,16 +1,26 @@
+---
+tags:
+  - 10
+  - 1
+  - 2
+  - 3
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Sunday, February 15th 2026, 8:27:14 pm
+---
+
 # Added TCP and WebSocket Transports
 
-**Date**: 2025-11-10
-**Issue**: #10 - P2P Transport Enhancement
-**Status**: ✅ Complete
+__Date__: 2025-11-10
+__Issue__: - P2P Transport Enhancement
+__Status__: ✅ Complete
 
 ## Problem
 
-**Initial Issue**: Test peer showed "Multiaddrs: 0" - not listening on any addresses.
+__Initial Issue__: Test peer showed "Multiaddrs: 0" - not listening on any addresses.
 
-**Root Cause**: WebRTC transport in Node.js doesn't create listening addresses by default. WebRTC is designed for browser contexts and requires another mechanism for initial connection establishment.
+__Root Cause__: WebRTC transport in Node.js doesn't create listening addresses by default. WebRTC is designed for browser contexts and requires another mechanism for initial connection establishment.
 
-**Impact**:
+__Impact__:
 - ❌ Cannot test on same machine
 - ❌ No fallback if WebRTC fails
 - ❌ Limited to browser-like environments
@@ -18,14 +28,15 @@
 ## Solution: Add TCP and WebSocket Transports
 
 Added two additional transports to both test peer and Electron app:
-- **TCP**: Desktop-to-desktop connections, same-machine testing
-- **WebSocket**: Browser compatibility, web client support (future)
+- __TCP__: Desktop-to-desktop connections, same-machine testing
+- __WebSocket__: Browser compatibility, web client support (future)
 
 ## Changes Made
 
 ### Dependencies Added
 
-**Test Peer** (`test-peer/package.json`):
+__Test Peer__ (`test-peer/package.json`):
+
 ```json
 {
   "@libp2p/tcp": "^11.0.7",
@@ -33,7 +44,8 @@ Added two additional transports to both test peer and Electron app:
 }
 ```
 
-**Electron App** (`app/package.json`):
+__Electron App__ (`app/package.json`):
+
 ```json
 {
   "@libp2p/tcp": "^11.0.7",
@@ -41,13 +53,14 @@ Added two additional transports to both test peer and Electron app:
 }
 ```
 
-**Bundle Size Impact**: ~50KB combined (negligible for desktop app)
+__Bundle Size Impact__: ~50KB combined (negligible for desktop app)
 
 ---
 
 ### Configuration Updated
 
-**Before** (WebRTC only):
+__Before__ (WebRTC only):
+
 ```typescript
 transports: [
     webRTC(),
@@ -55,7 +68,8 @@ transports: [
 ]
 ```
 
-**After** (Multi-transport):
+__After__ (Multi-transport):
+
 ```typescript
 transports: [
     tcp(),                      // Desktop-to-desktop, local testing
@@ -65,7 +79,7 @@ transports: [
 ]
 ```
 
-**Files Updated**:
+__Files Updated__:
 - ✅ `test-peer/src/index.js`
 - ✅ `app/src/utility/p2p-service.ts`
 
@@ -73,8 +87,9 @@ transports: [
 
 ## Results
 
-### Before (WebRTC only):
-```
+### Before (WebRTC only)
+
+```ts
 whatnext> status
 
 📊 Node Status:
@@ -84,8 +99,9 @@ whatnext> status
   Active Connections: 0
 ```
 
-### After (TCP + WebSocket + WebRTC):
-```
+### After (TCP + WebSocket + WebRTC)
+
+```ts
 whatnext> status
 
 📊 Node Status:
@@ -104,20 +120,23 @@ whatnext> status
 ## Benefits
 
 ### Immediate (Testing)
-- ✅ **Same-machine testing**: Both test peer and Electron app can run on localhost
-- ✅ **Faster iteration**: No need for VM/container/second machine
-- ✅ **More reliable**: TCP is more stable than WebRTC for local testing
+
+- ✅ __Same-machine testing__: Both test peer and Electron app can run on localhost
+- ✅ __Faster iteration__: No need for VM/container/second machine
+- ✅ __More reliable__: TCP is more stable than WebRTC for local testing
 
 ### Production (Deployment)
-- ✅ **Transport fallback**: If WebRTC fails, TCP/WebSocket work
-- ✅ **Better NAT traversal**: TCP with UPnP often works without relay
-- ✅ **Browser support**: WebSocket enables future web client
-- ✅ **Network diversity**: Different transports for different scenarios
+
+- ✅ __Transport fallback__: If WebRTC fails, TCP/WebSocket work
+- ✅ __Better NAT traversal__: TCP with UPnP often works without relay
+- ✅ __Browser support__: WebSocket enables future web client
+- ✅ __Network diversity__: Different transports for different scenarios
 
 ### Architecture (Long-term)
-- ✅ **Industry best practice**: IPFS, OrbitDB, etc. all use multiple transports
-- ✅ **Robustness**: Network failures don't prevent all connections
-- ✅ **Future-proof**: Ready for browser-based client
+
+- ✅ __Industry best practice__: IPFS, OrbitDB, etc. all use multiple transports
+- ✅ __Robustness__: Network failures don't prevent all connections
+- ✅ __Future-proof__: Ready for browser-based client
 
 ---
 
@@ -126,19 +145,23 @@ whatnext> status
 libp2p automatically selects the best transport for each connection:
 
 ### Local Same-Machine (127.0.0.1)
-- **Preferred**: TCP (lowest latency, most reliable)
-- **Fallback**: WebSocket
+
+- __Preferred__: TCP (lowest latency, most reliable)
+- __Fallback__: WebSocket
 
 ### Local Network (192.168.x.x)
-- **Preferred**: TCP (direct connection)
-- **Fallback**: WebSocket → WebRTC
+
+- __Preferred__: TCP (direct connection)
+- __Fallback__: WebSocket → WebRTC
 
 ### Internet (Remote Peers)
-- **Preferred**: WebRTC (NAT traversal)
-- **Fallback**: Circuit Relay → TCP (with port forwarding)
+
+- __Preferred__: WebRTC (NAT traversal)
+- __Fallback__: Circuit Relay → TCP (with port forwarding)
 
 ### Browser Peers
-- **Only option**: WebRTC or WebSocket
+
+- __Only option__: WebRTC or WebSocket
 - TCP not available in browser
 
 ---
@@ -147,19 +170,21 @@ libp2p automatically selects the best transport for each connection:
 
 ### Same-Machine Test
 
-**Terminal 1** (Test Peer):
+__Terminal 1__ (Test Peer):
+
 ```bash
 cd test-peer
 npm start
 ```
 
-**Terminal 2** (Electron App):
+__Terminal 2__ (Electron App):
+
 ```bash
 cd app
 npm run dev
 ```
 
-**Expected**:
+__Expected__:
 - Both start successfully
 - Both show 4+ multiaddrs
 - mDNS discovers each other (~1-2 seconds)
@@ -167,26 +192,28 @@ npm run dev
 
 ### Verify Multiaddrs
 
-**Test Peer**:
+__Test Peer__:
+
 ```bash
 whatnext> status
 ```
 
-**Electron App**:
-- Check DevTools console for log: `Listening on: /ip4/...`
+__Electron App__:
+- Check DevTools console for log: `Listening on: /ip4/…`
 
-**Both should show TCP and WebSocket addresses.**
+__Both should show TCP and WebSocket addresses.__
 
 ---
 
 ## Learning Notes
 
-### Learning #1: Transport Priority
-**Discovery**: libp2p tries transports in order defined in config.
+### Learning: Transport Priority
 
-**Why it matters**: TCP first = faster local connections
+__Discovery__: libp2p tries transports in order defined in config.
 
-**Order**:
+__Why it matters__: TCP first = faster local connections
+
+__Order__:
 1. TCP (fastest for local)
 2. WebSocket (fallback)
 3. WebRTC (browser compatibility)
@@ -194,37 +221,42 @@ whatnext> status
 
 ---
 
-### Learning #2: Port Allocation
-**Discovery**: Each transport gets its own port:
+### Learning: Port Allocation
+
+__Discovery__: Each transport gets its own port:
 - TCP: Random port (e.g., 54321)
 - WebSocket: Different random port (e.g., 54322)
 - WebRTC: No fixed port (uses ICE negotiation)
 
-**Why it matters**: Need to configure firewall rules for all ports
+__Why it matters__: Need to configure firewall rules for all ports
 
 ---
 
-### Learning #3: Multiaddr Format
-**Discovery**: Each multiaddr includes transport type:
-- `/ip4/127.0.0.1/tcp/54321/p2p/12D3KooW...` (TCP)
-- `/ip4/127.0.0.1/ws/tcp/54322/p2p/12D3KooW...` (WebSocket)
+### Learning: Multiaddr Format
 
-**Why it matters**: Peers can choose best transport based on capabilities
+__Discovery__: Each multiaddr includes transport type:
+- `/ip4/127.0.0.1/tcp/54321/p2p/12D3KooW…` (TCP)
+- `/ip4/127.0.0.1/ws/tcp/54322/p2p/12D3KooW…` (WebSocket)
+
+__Why it matters__: Peers can choose best transport based on capabilities
 
 ---
 
 ## Known Limitations
 
-### 1. **Firewall Configuration**
+### 1. __Firewall Configuration__
+
 - TCP/WebSocket require open ports
 - May need manual firewall rules on restrictive networks
 - WebRTC has better NAT traversal (doesn't need open ports)
 
-### 2. **Port Conflicts**
+### 2. __Port Conflicts__
+
 - Random port allocation may conflict with other apps
 - Future: Add explicit port configuration
 
-### 3. **WebSocket Security**
+### 3. __WebSocket Security__
+
 - Currently using `ws://` (unencrypted transport layer)
 - libp2p's Noise protocol encrypts payload
 - Future: Add `wss://` (WebSocket Secure) support
@@ -234,17 +266,20 @@ whatnext> status
 ## Next Steps
 
 ### Immediate
+
 - [x] Add TCP and WebSocket transports
 - [x] Update both test peer and Electron app
 - [x] Rebuild and verify multiaddrs
 - [ ] Test connection on same machine
 
 ### Short-term
+
 - [ ] Configure explicit ports (avoid random allocation)
 - [ ] Add UPnP for automatic port forwarding
 - [ ] Test across different network topologies
 
 ### Long-term
+
 - [ ] Add QUIC transport (high-performance, future)
 - [ ] Add WebTransport (browser standard, future)
 - [ ] Implement transport selection heuristics
@@ -257,10 +292,10 @@ whatnext> status
 - [TCP Transport](https://github.com/libp2p/js-libp2p/tree/master/packages/transport-tcp)
 - [WebSocket Transport](https://github.com/libp2p/js-libp2p/tree/master/packages/transport-websockets)
 - IPFS Desktop: Uses TCP + WebSocket + WebRTC + QUIC
-- Issue #10: Handle `whtnxt://connect` Custom Protocol
+- Issue: Handle `whtnxt://connect` Custom Protocol
 
 ---
 
-**Status**: ✅ Transports added, ready for testing!
+__Status__: ✅ Transports added, ready for testing!
 
-**Impact**: Same-machine testing now possible, production-ready architecture.
+__Impact__: Same-machine testing now possible, production-ready architecture.

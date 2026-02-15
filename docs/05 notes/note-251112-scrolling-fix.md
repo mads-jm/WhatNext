@@ -1,8 +1,13 @@
+---
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Sunday, February 15th 2026, 8:27:18 pm
+---
+
 # Fix: Add Vertical Scrolling to All Main Window Tabs
 
-**Date**: 2025-11-12
-**Status**: ✅ Complete
-**Type**: UI/UX Bug Fix
+__Date__: 2025-11-12
+__Status__: ✅ Complete
+__Type__: UI/UX Bug Fix
 
 ## Issue
 
@@ -38,12 +43,14 @@ This allows the main content area to scroll when content overflows.
 
 Removed `min-h-screen` and padding from the P2PStatus component:
 
-**Before:**
+__Before:__
+
 ```tsx
 <div className="p-4 space-y-4 bg-gray-50 min-h-screen font-mono text-sm">
 ```
 
-**After:**
+__After:__
+
 ```tsx
 <div className="space-y-4 font-mono text-sm">
 ```
@@ -54,12 +61,14 @@ The parent `<main>` already provides padding, so the component doesn't need its 
 
 Changed placeholder views (Library, Sessions, Settings) from `h-full` to `min-h-[400px]`:
 
-**Before:**
+__Before:__
+
 ```tsx
 <div className="flex items-center justify-center h-full">
 ```
 
-**After:**
+__After:__
+
 ```tsx
 <div className="flex items-center justify-center min-h-[400px]">
 ```
@@ -70,13 +79,15 @@ This ensures centered content works properly with parent scrolling.
 
 Removed nested `overflow-y-auto` and `h-full` from the playlists grid, allowing parent scrolling to handle it:
 
-**Before:**
+__Before:__
+
 ```tsx
 <div className="grid grid-cols-5 gap-6 h-full">
     <div className="col-span-2 overflow-y-auto">
 ```
 
-**After:**
+__After:__
+
 ```tsx
 <div className="grid grid-cols-5 gap-6">
     <div className="col-span-2">
@@ -97,14 +108,14 @@ After this fix, all tabs should:
 
 ### Test Scenarios
 
-1. **P2P Network tab**: Long peer lists, expanded sections, debug logs should all be accessible
-2. **RxDB Spike Test**: All CRUD operations and logs visible
-3. **Playlists**: Long playlist lists and track lists scroll independently (if needed in future)
-4. **Empty tabs**: Placeholder content still centered
+1. __P2P Network tab__: Long peer lists, expanded sections, debug logs should all be accessible
+2. __RxDB Spike Test__: All CRUD operations and logs visible
+3. __Playlists__: Long playlist lists and track lists scroll independently (if needed in future)
+4. __Empty tabs__: Placeholder content still centered
 
 ## Design Pattern
 
-**Scrolling Strategy:**
+__Scrolling Strategy:__
 - Main content area (`<main>`) is the scroll container
 - Individual components don't set their own heights
 - Parent padding/spacing is inherited

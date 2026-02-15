@@ -1,11 +1,11 @@
 ---
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:03:07 pm
+date modified: Sunday, February 15th 2026, 8:27:12 pm
 ---
 
 # README.md
 
-__00 index__ - Index files for the vault; Act both as a hub for 'spokes' of knowledge but also enforce knowledge mapping structure. [[INDEX]] captures the documentation structure
+__00 index__ - Index files for the vault; Act both as a hub for 'spokes' of knowledge but also enforce knowledge mapping structure. [[index]] captures the documentation structure
 
 __01 concepts__ - persistent atomic notes, permanent broad knowledges acting as an ever expanding wiki of knowledge gathered working on this project. Seeks to accelerate onboarding but also help existing developers maintain and upkeep their knowledge.
 

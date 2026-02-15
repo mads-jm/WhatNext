@@ -1,8 +1,13 @@
+---
+date created: Thursday, November 13th 2025, 4:59:13 am
+date modified: Sunday, February 15th 2026, 8:27:17 pm
+---
+
 # P2P Development Interface Complete
 
-**Date**: 2025-11-12
-**Status**: ✅ Complete
-**Type**: Feature Implementation & Learning Foundation
+__Date__: 2025-11-12
+__Status__: ✅ Complete
+__Type__: Feature Implementation & Learning Foundation
 
 ## Overview
 
@@ -25,29 +30,29 @@ Added `DetailedPeerInfo` interface that captures:
 
 A developer-first UI with collapsible sections for:
 
-**Node Status Section:**
+__Node Status Section:__
 - Online/offline indicator
 - Local Peer ID (copyable)
-- Connection URL (`whtnxt://connect/...`) with copy button
+- Connection URL (`whtnxt://connect/…`) with copy button
 - All listening addresses (TCP, WebSocket multiaddrs)
 - Supported protocols list
 
-**Connect to Peer Section:**
+__Connect to Peer Section:__
 - Manual connection via `whtnxt://` URL
 - Input validation
 - Enter key support
 
-**Discovered Peers Section:**
+__Discovered Peers Section:__
 - Card-based peer list
 - Shows display name, peer ID preview, discovery method, address count
 - Connect/disconnect buttons
 - "Details" button to drill into peer information
 
-**Active Connections Section:**
+__Active Connections Section:__
 - Badge list of connected peer IDs
 - Count indicator
 
-**Peer Details Modal:**
+__Peer Details Modal:__
 - Full peer ID
 - Discovery timestamp and method
 - Connection state, direction, transport
@@ -58,12 +63,12 @@ A developer-first UI with collapsible sections for:
 - Metadata (app version, protocol version, capabilities)
 - Statistics (bytes/messages sent and received)
 
-**Data Transfer Testing Section:**
+__Data Transfer Testing Section:__
 - Placeholder for future playlist sync testing
 - Placeholder for file transfer testing
 - Clearly marked "COMING SOON"
 
-**Debug Log Section:**
+__Debug Log Section:__
 - Rolling 50-line log
 - Timestamped entries
 - Color-coded by level (info, warn, error, success)
@@ -86,14 +91,15 @@ Enhanced peer discovery event to include:
 
 ## Architecture Pattern: Pull-Based Status
 
-**Why Pull Instead of Push:**
+__Why Pull Instead of Push:__
 
-1. **Process Lifecycle Robustness**: Utility process spawns asynchronously. Push-based events sent before renderer mounts are lost.
-2. **Simpler State Management**: Renderer polls at 1-second intervals, always gets current truth.
-3. **Event Listeners as Enhancement**: Real-time event listeners still work for low-latency updates, but aren't critical.
+1. __Process Lifecycle Robustness__: Utility process spawns asynchronously. Push-based events sent before renderer mounts are lost.
+2. __Simpler State Management__: Renderer polls at 1-second intervals, always gets current truth.
+3. __Event Listeners as Enhancement__: Real-time event listeners still work for low-latency updates, but aren't critical.
 
-**The Pattern:**
-```
+__The Pattern:__
+
+```ts
 Renderer → polls every 1s → Main Process (p2pState) → returns current snapshot
                                 ↑
                                 └─ Updated by Utility Process events
@@ -103,31 +109,31 @@ Renderer → polls every 1s → Main Process (p2pState) → returns current snap
 
 This interface sets you up for:
 
-1. **Observing Connection Patterns**: Watch discovery, dialing, connection establishment in real-time
-2. **Understanding Multiaddrs**: See which transports work (TCP vs WebSocket vs WebRTC)
-3. **Protocol Exploration**: Foundation for adding custom protocols (/whatnext/handshake, /whatnext/playlist-sync)
-4. **Data Transfer Patterns**: UI hooks ready for testing message sending and file transfer
-5. **Stream Management**: Can observe stream counts when protocols are implemented
+1. __Observing Connection Patterns__: Watch discovery, dialing, connection establishment in real-time
+2. __Understanding Multiaddrs__: See which transports work (TCP vs WebSocket vs WebRTC)
+3. __Protocol Exploration__: Foundation for adding custom protocols (/whatnext/handshake, /whatnext/playlist-sync)
+4. __Data Transfer Patterns__: UI hooks ready for testing message sending and file transfer
+5. __Stream Management__: Can observe stream counts when protocols are implemented
 
 ## Next Steps for P2P Learning
 
 ### Phase 1: Custom Protocol Handlers (Recommended Next)
 
-**Goal**: Understand libp2p stream-based communication
+__Goal__: Understand libp2p stream-based communication
 
 1. Implement `/whatnext/handshake/1.0.0` protocol handler in P2P service
 2. Exchange peer metadata (display name, app version, capabilities) on connection
 3. Update UI to show exchanged metadata
 4. Document learnings in notes
 
-**Why This First**:
+__Why This First__:
 - Simplest P2P pattern (request/response)
 - Foundation for all future data transfer
 - Validates bidirectional communication works
 
 ### Phase 2: Simple Data Transfer Testing
 
-**Goal**: Send and receive arbitrary data
+__Goal__: Send and receive arbitrary data
 
 1. Implement `/whatnext/data-test/1.0.0` protocol
 2. Add UI controls to P2P interface for:
@@ -137,7 +143,7 @@ This interface sets you up for:
 3. Display transfer statistics (time, bytes/sec)
 4. Document patterns for message framing, stream lifecycle
 
-**Why This Second**:
+__Why This Second__:
 - Builds on handshake pattern
 - Explores larger data sizes
 - Teaches streaming/chunking concepts
@@ -145,7 +151,7 @@ This interface sets you up for:
 
 ### Phase 3: File Transfer Exploration
 
-**Goal**: Transfer binary files between peers
+__Goal__: Transfer binary files between peers
 
 1. Implement `/whatnext/file-transfer/1.0.0` protocol
 2. Add UI controls to:
@@ -155,14 +161,14 @@ This interface sets you up for:
 3. Handle chunking, progress callbacks, errors
 4. Document file transfer patterns
 
-**Why Third**:
+__Why Third__:
 - More complex: chunking, progress, error recovery
 - Directly applicable to future features (sharing album art, local audio files)
 - Tests protocol robustness
 
 ### Phase 4: Playlist Data Replication (RxDB Integration)
 
-**Goal**: Understand CRDT-based replication
+__Goal__: Understand CRDT-based replication
 
 1. Integrate RxDB replication protocol
 2. Create test playlists in UI
@@ -170,14 +176,14 @@ This interface sets you up for:
 4. Test conflict scenarios (concurrent edits)
 5. Document CRDT behavior and limitations
 
-**Why Fourth**:
+__Why Fourth__:
 - Most complex: involves database layer
 - Builds on all previous learnings
 - Core to WhatNext's MVP feature set
 
 ### Phase 5: Production UI Refinement
 
-**Goal**: Turn developer interface into user-friendly experience
+__Goal__: Turn developer interface into user-friendly experience
 
 1. Design user-friendly connection flow (remove technical details)
 2. Simplify peer display (avatars, friendly names)
@@ -189,19 +195,19 @@ This interface sets you up for:
 
 ### What Worked Well
 
-- **Collapsible sections**: Keeps UI dense but navigable
-- **Monospace font**: Makes technical details readable
-- **Pull-based polling**: Simple, reliable, no timing issues
-- **Integrated logging**: Temporal context for understanding events
-- **Copy buttons**: Essential for sharing peer IDs across instances
+- __Collapsible sections__: Keeps UI dense but navigable
+- __Monospace font__: Makes technical details readable
+- __Pull-based polling__: Simple, reliable, no timing issues
+- __Integrated logging__: Temporal context for understanding events
+- __Copy buttons__: Essential for sharing peer IDs across instances
 
 ### What to Improve
 
-- **Connection metadata**: Currently placeholder, need real transport/direction info from libp2p Connection API
-- **Statistics tracking**: Need to implement byte/message counters (possibly via custom stream wrappers)
-- **Protocol list**: Will populate once custom protocol handlers are registered
-- **Latency measurement**: Need to implement ping/pong protocol
-- **Peer persistence**: Currently all peers forgotten on restart (future: save friends to disk)
+- __Connection metadata__: Currently placeholder, need real transport/direction info from libp2p Connection API
+- __Statistics tracking__: Need to implement byte/message counters (possibly via custom stream wrappers)
+- __Protocol list__: Will populate once custom protocol handlers are registered
+- __Latency measurement__: Need to implement ping/pong protocol
+- __Peer persistence__: Currently all peers forgotten on restart (future: save friends to disk)
 
 ## Files Modified
 
@@ -236,4 +242,4 @@ This interface provides the observability foundation needed to learn P2P pattern
 
 The developer-first approach means you can see exactly what's happening at the network level, understand the abstractions libp2p provides, and make informed decisions about protocol design before committing to production UX.
 
-**Ready for:** Custom protocol implementation (handshake → data test → file transfer → RxDB replication)
+__Ready for:__ Custom protocol implementation (handshake → data test → file transfer → RxDB replication)
