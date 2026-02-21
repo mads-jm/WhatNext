@@ -16,7 +16,8 @@
         "baseUrl": "./",
         "paths": {
             "@models/*": ["src/main/models/*"],
-            "@renderer/*": ["src/renderer/*"]
+            "@renderer/*": ["src/renderer/*"],
+            "@assets/*": ["../assets/*"]
         }
     },
     "exclude": ["test", "release/build", "release/app/dist", ".erb/dll"]
