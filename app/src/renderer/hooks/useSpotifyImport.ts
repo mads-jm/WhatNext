@@ -200,6 +200,7 @@ export function useSpotifyImport() {
                 ownerId: userId,
                 linkedSpotifyId: selectedPlaylist!.id,
                 spotifySyncMode: 'accessory',
+                isCollaborative: selectedPlaylist!.collaborative,
                 tags: ['spotify'],
             });
 

@@ -16,3 +16,6 @@ export * from './protocol';
 
 // IPC protocol definitions
 export * from './ipc-protocol';
+
+// Session provider interfaces
+export * from '../session-interfaces';

@@ -765,6 +765,90 @@ ipcMain.handle('spotify:sync-playlist', async (_event, linkedSpotifyId: string, 
     }
 });
 
+// ========================================
+// Spotify Playback Control
+// ========================================
+
+ipcMain.handle(IPC_CHANNELS.SPOTIFY_GET_PLAYBACK_STATE, async () => {
+    try {
+        const { getPlaybackState } = await import('./spotify/spotify-client');
+        const state = await getPlaybackState();
+        return { success: true, state };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle(IPC_CHANNELS.SPOTIFY_GET_DEVICES, async () => {
+    try {
+        const { getDevices } = await import('./spotify/spotify-client');
+        const devices = await getDevices();
+        return { success: true, devices };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle(IPC_CHANNELS.SPOTIFY_START_PLAYBACK, async (_event, params) => {
+    try {
+        const { startPlayback } = await import('./spotify/spotify-client');
+        await startPlayback(params);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle(IPC_CHANNELS.SPOTIFY_PAUSE_PLAYBACK, async (_event, params?: { deviceId?: string }) => {
+    try {
+        const { pausePlayback } = await import('./spotify/spotify-client');
+        await pausePlayback(params?.deviceId);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle(IPC_CHANNELS.SPOTIFY_RESUME_PLAYBACK, async (_event, params?: { deviceId?: string }) => {
+    try {
+        const { resumePlayback } = await import('./spotify/spotify-client');
+        await resumePlayback(params?.deviceId);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle(IPC_CHANNELS.SPOTIFY_SKIP_NEXT, async (_event, params?: { deviceId?: string }) => {
+    try {
+        const { skipToNext } = await import('./spotify/spotify-client');
+        await skipToNext(params?.deviceId);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle(IPC_CHANNELS.SPOTIFY_SKIP_PREVIOUS, async (_event, params?: { deviceId?: string }) => {
+    try {
+        const { skipToPrevious } = await import('./spotify/spotify-client');
+        await skipToPrevious(params?.deviceId);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FULL, async (_event, playlistId: string) => {
+    try {
+        const { getPlaylistTracksFull } = await import('./spotify/spotify-client');
+        const result = await getPlaylistTracksFull(playlistId);
+        return { success: true, tracks: result.tracks, total: result.total, snapshotId: result.snapshotId };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
 // Handle protocol URLs on macOS (open-url event)
 app.on('open-url', (event, url) => {
     event.preventDefault();

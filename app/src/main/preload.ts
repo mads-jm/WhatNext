@@ -20,6 +20,12 @@ import {
 } from '../shared/core';
 import type { SpotifyPlaylistItem } from './types';
 import type { MappedTrack } from './spotify/spotify-mapper';
+import type {
+    SpotifyPlaybackStateResult,
+    SpotifyDevice,
+    SpotifyStartPlaybackParams,
+    SpotifyPlaylistTracksFullResult,
+} from '../shared/core/ipc-protocol';
 
 const electronHandler = {
     // ========================================
@@ -225,6 +231,32 @@ const electronHandler = {
             ipcRenderer.on('spotify:auth-error', listener);
             return () => ipcRenderer.removeListener('spotify:auth-error', listener);
         },
+
+        // Playback control
+        getPlaybackState: (): Promise<{ success: boolean; state?: SpotifyPlaybackStateResult; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYBACK_STATE),
+
+        getDevices: (): Promise<{ success: boolean; devices?: SpotifyDevice[]; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_DEVICES),
+
+        startPlayback: (params: SpotifyStartPlaybackParams): Promise<{ success: boolean; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_START_PLAYBACK, params),
+
+        pausePlayback: (params?: { deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_PAUSE_PLAYBACK, params),
+
+        resumePlayback: (params?: { deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_RESUME_PLAYBACK, params),
+
+        skipNext: (params?: { deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_SKIP_NEXT, params),
+
+        skipPrevious: (params?: { deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_SKIP_PREVIOUS, params),
+
+        // Enhanced playlist polling
+        getPlaylistTracksFull: (playlistId: string): Promise<SpotifyPlaylistTracksFullResult> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FULL, playlistId),
     },
 
     // ========================================

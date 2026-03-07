@@ -126,6 +126,63 @@ export async function unlinkServiceAccount(
 }
 
 /**
+ * Get all users in the database.
+ */
+export async function getAllUsers(): Promise<UserDocType[]> {
+    const db = await getDatabase();
+    const docs = await db.users.find().exec();
+    return docs.map((d) => d.toJSON() as UserDocType);
+}
+
+/**
+ * Create a session participant — a non-local user linked to a Spotify account.
+ * Used by the host to register people before or during a session.
+ */
+export async function createSessionParticipant(
+    displayName: string,
+    spotifyUserId: string,
+    spotifyDisplayName?: string,
+    avatarUrl?: string
+): Promise<UserDocument> {
+    const db = await getDatabase();
+    const now = new Date().toISOString();
+
+    return db.users.insert({
+        id: uuidv4(),
+        displayName,
+        avatarSource: avatarUrl ? 'spotify' : 'none',
+        avatarUrl,
+        isLocal: false,
+        linkedAccounts: [{
+            provider: 'spotify',
+            providerUserId: spotifyUserId,
+            displayName: spotifyDisplayName,
+            avatarUrl,
+            linkedAt: now,
+        }],
+        lastSeenAt: now,
+        createdAt: now,
+        updatedAt: now,
+    });
+}
+
+/**
+ * Find a WhatNext user by their linked Spotify user ID.
+ * Used during track polling to map Spotify's added_by.id → WhatNext userId.
+ * Returns null if no matching profile exists.
+ */
+export async function resolveSpotifyUser(spotifyUserId: string): Promise<UserDocType | null> {
+    const db = await getDatabase();
+    const all = await db.users.find().exec();
+    const match = all.find((u) =>
+        u.linkedAccounts.some(
+            (a) => a.provider === 'spotify' && a.providerUserId === spotifyUserId
+        )
+    );
+    return match ? match.toJSON() as UserDocType : null;
+}
+
+/**
  * Create or update a remote peer user from P2P handshake data.
  * Uses the peer's ID as the user document ID.
  */

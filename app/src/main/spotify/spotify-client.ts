@@ -7,6 +7,12 @@ import { SPOTIFY_CONFIG } from '../../shared/spotify-config';
 import { refreshSpotifyToken } from './spotify-auth';
 import { saveTokens, loadTokens } from './token-store';
 import type { SpotifyTokens, SpotifyPlaylistItem, SpotifyTrackItem } from '../types';
+import type {
+    SpotifyPlaybackStateResult,
+    SpotifyDevice,
+    SpotifyStartPlaybackParams,
+    SpotifyFullTrackItem,
+} from '../../shared/core/ipc-protocol';
 
 let currentTokens: SpotifyTokens | null = null;
 
@@ -113,4 +119,191 @@ export async function getCurrentUser(): Promise<{
  */
 export function isAuthenticated(): boolean {
     return currentTokens !== null;
+}
+
+/**
+ * Authenticated fetch returning the raw Response.
+ * Use this when you need to inspect the status code before parsing (e.g. 204 No Content).
+ */
+async function spotifyFetchRaw(endpoint: string, options: RequestInit = {}): Promise<Response> {
+    const token = await getValidToken();
+    const response = await fetch(`${SPOTIFY_CONFIG.API.BASE}${endpoint}`, {
+        ...options,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            ...options.headers,
+        },
+    });
+
+    if (!response.ok && response.status !== 204) {
+        const errorText = await response.text().catch(() => '(no body)');
+        throw new Error(`Spotify API error ${response.status}: ${errorText}`);
+    }
+
+    return response;
+}
+
+// ========================================
+// Playback Control
+// ========================================
+
+/**
+ * Get the user's current Spotify playback state.
+ * Returns null when no active device (Spotify responds with 204).
+ */
+export async function getPlaybackState(): Promise<SpotifyPlaybackStateResult | null> {
+    const response = await spotifyFetchRaw('/me/player');
+
+    if (response.status === 204) {
+        return null;
+    }
+
+    const data = await response.json();
+
+    const track = data.item
+        ? {
+              spotifyId: data.item.id as string,
+              title: data.item.name as string,
+              artists: (data.item.artists as Array<{ name: string }>).map((a) => a.name),
+              album: data.item.album.name as string,
+              durationMs: data.item.duration_ms as number,
+              albumArtUrl: (data.item.album.images as Array<{ url: string }>)[0]?.url,
+          }
+        : null;
+
+    return {
+        isPlaying: data.is_playing as boolean,
+        track,
+        progressMs: (data.progress_ms as number) ?? 0,
+        deviceName: data.device?.name ?? null,
+        deviceId: data.device?.id ?? null,
+    };
+}
+
+/**
+ * Get the user's available Spotify playback devices.
+ */
+export async function getDevices(): Promise<SpotifyDevice[]> {
+    const data = await spotifyFetch<{ devices: Array<{ id: string; name: string; type: string; is_active: boolean }> }>('/me/player/devices');
+    return data.devices.map((d) => ({
+        id: d.id,
+        name: d.name,
+        type: d.type,
+        isActive: d.is_active,
+    }));
+}
+
+/**
+ * Start or resume playback. Optionally targets a context (playlist/album) at a given offset.
+ */
+export async function startPlayback(params: SpotifyStartPlaybackParams): Promise<void> {
+    const query = params.deviceId ? `?device_id=${params.deviceId}` : '';
+    let body: Record<string, unknown> | undefined;
+
+    if (params.contextUri !== undefined) {
+        body = { context_uri: params.contextUri };
+        if (params.offsetIndex !== undefined) {
+            body.offset = { position: params.offsetIndex };
+        }
+    }
+
+    await spotifyFetchRaw(`/me/player/play${query}`, {
+        method: 'PUT',
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+}
+
+/**
+ * Pause playback on the active (or specified) device.
+ */
+export async function pausePlayback(deviceId?: string): Promise<void> {
+    const query = deviceId ? `?device_id=${deviceId}` : '';
+    await spotifyFetchRaw(`/me/player/pause${query}`, { method: 'PUT' });
+}
+
+/**
+ * Resume playback (unpause) on the active (or specified) device.
+ */
+export async function resumePlayback(deviceId?: string): Promise<void> {
+    const query = deviceId ? `?device_id=${deviceId}` : '';
+    await spotifyFetchRaw(`/me/player/play${query}`, { method: 'PUT' });
+}
+
+/**
+ * Skip to the next track.
+ */
+export async function skipToNext(deviceId?: string): Promise<void> {
+    const query = deviceId ? `?device_id=${deviceId}` : '';
+    await spotifyFetchRaw(`/me/player/next${query}`, { method: 'POST' });
+}
+
+/**
+ * Skip to the previous track.
+ */
+export async function skipToPrevious(deviceId?: string): Promise<void> {
+    const query = deviceId ? `?device_id=${deviceId}` : '';
+    await spotifyFetchRaw(`/me/player/previous${query}`, { method: 'POST' });
+}
+
+// ========================================
+// Enhanced Playlist Polling (with attribution)
+// ========================================
+
+/**
+ * Fetch all tracks from a playlist including who added each one.
+ * Paginates automatically. Uses field filtering to minimise payload.
+ */
+export async function getPlaylistTracksFull(playlistId: string): Promise<{
+    tracks: SpotifyFullTrackItem[];
+    total: number;
+    snapshotId: string;
+}> {
+    const fields = 'snapshot_id,tracks.items(track(id,name,artists(name),album(name,images),duration_ms),added_at,added_by(id)),tracks.total,tracks.next,tracks.offset,tracks.limit';
+    const firstData = await spotifyFetch<{
+        snapshot_id: string;
+        tracks: {
+            items: Array<{
+                track: { id: string; name: string; artists: Array<{ name: string }>; album: { name: string; images: Array<{ url: string }> }; duration_ms: number } | null;
+                added_at: string;
+                added_by: { id: string };
+            }>;
+            total: number;
+            next: string | null;
+        };
+    }>(`/playlists/${playlistId}?fields=${encodeURIComponent(fields)}`);
+
+    const snapshotId = firstData.snapshot_id;
+    const allItems = [...firstData.tracks.items];
+    let total = firstData.tracks.total;
+    let nextUrl = firstData.tracks.next;
+
+    while (nextUrl) {
+        const pageData = await spotifyFetch<{
+            items: typeof allItems;
+            total: number;
+            next: string | null;
+        }>(nextUrl);
+        allItems.push(...pageData.items);
+        total = pageData.total;
+        nextUrl = pageData.next;
+    }
+
+    const tracks: SpotifyFullTrackItem[] = allItems
+        .filter((item) => item.track !== null)
+        .map((item) => {
+            const track = item.track!;
+            return {
+                spotifyId: track.id,
+                title: track.name,
+                artists: track.artists.map((a) => a.name),
+                album: track.album.name,
+                durationMs: track.duration_ms,
+                albumArtUrl: track.album.images[0]?.url,
+                addedAt: item.added_at,
+                addedBySpotifyId: item.added_by.id,
+            };
+        });
+
+    return { tracks, total, snapshotId };
 }

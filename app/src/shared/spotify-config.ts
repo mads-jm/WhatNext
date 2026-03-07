@@ -19,6 +19,9 @@ export const SPOTIFY_CONFIG = {
         'playlist-read-private',
         'playlist-read-collaborative',
         'user-library-read',
+        'user-read-playback-state',
+        'user-modify-playback-state',
+        'user-read-currently-playing',
     ],
 
     /** Spotify API endpoints */

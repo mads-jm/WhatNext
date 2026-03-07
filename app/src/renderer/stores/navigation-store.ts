@@ -5,6 +5,7 @@
  */
 
 import { create } from 'zustand';
+import type { SessionState, StartSessionConfig } from '../../shared/session-interfaces';
 
 export type ViewId =
     | 'playlists'
@@ -35,11 +36,14 @@ interface NavigationStore {
     activeView: ViewId;
     selectedPlaylistId: string | undefined;
     sessionPlaylistId: string | undefined;
+    sessionState: SessionState | null;
     showCreateDialog: boolean;
 
     navigate: (view: ViewId) => void;
     selectPlaylist: (id: string | undefined) => void;
     openSession: (playlistId: string) => void;
+    startSession: (config: StartSessionConfig) => void;
+    endSession: () => void;
     openCreateDialog: () => void;
     closeCreateDialog: () => void;
 }
@@ -48,11 +52,30 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
     activeView: 'playlists',
     selectedPlaylistId: undefined,
     sessionPlaylistId: undefined,
+    sessionState: null,
     showCreateDialog: false,
 
     navigate: (view) => set({ activeView: view }),
     selectPlaylist: (id) => set({ selectedPlaylistId: id }),
     openSession: (playlistId) => set({ sessionPlaylistId: playlistId, activeView: 'session' }),
+    startSession: (config) => set({
+        sessionPlaylistId: config.playlistId,
+        activeView: 'session',
+        sessionState: {
+            status: 'active',
+            playlistId: config.playlistId,
+            trackSource: config.trackSource,
+            playbackProvider: config.playbackProvider,
+            participantIds: config.participantIds,
+            hostId: config.hostId,
+            startedAt: new Date().toISOString(),
+        },
+    }),
+    endSession: () => set((state) => ({
+        sessionState: state.sessionState
+            ? { ...state.sessionState, status: 'ended' }
+            : null,
+    })),
     openCreateDialog: () => set({ showCreateDialog: true }),
     closeCreateDialog: () => set({ showCreateDialog: false }),
 }));

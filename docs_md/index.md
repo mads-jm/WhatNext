@@ -24,6 +24,7 @@ date modified: Sunday, February 15th 2026, 8:37:18 pm
 
 - __[[TESTING]]__ - P2P connection testing procedures
 - __[[issues-2-6-summary]]__ - Initial foundation implementation milestone
+- __[[note-260307-sessions-v1-implementation]]__ - Sessions v1 implementation milestone
 
 ---
 
@@ -32,6 +33,7 @@ date modified: Sunday, February 15th 2026, 8:37:18 pm
 ### P2P Networking
 
 [[Peer-to-Peer]] [[libp2p]] [[WebRTC]]
+- __[[adr-260307-session-architecture-provider-abstraction]]__ - Session provider abstraction (TrackSource + PlaybackProvider interfaces)
 - __[[adr-251110-libp2p-vs-simple-peer]]__ - Architectural decision for P2P library
 - __[[note-251110-p2p-utility-process-architecture]]__ - Electron process model for P2P
 - __[[note-251110-simplified-p2p-connection-architecture]]__ - Connection flow patterns
@@ -129,6 +131,7 @@ date modified: Sunday, February 15th 2026, 8:37:18 pm
 
 - __[[srs-whatnext]]__ → Formal requirements specification (MVP)
 - __[[architecture-whatnext]]__ → Formal architecture design (MVP)
+- __[[adr-260307-session-architecture-provider-abstraction]]__ → Session provider abstraction (TrackSource + PlaybackProvider)
 - __[[Helper Backend Service]]__ → Signaling + OAuth coordination
 - __[[Signaling Server]]__ → P2P connection brokering
 - __[[Spotify Collaborative Sync Strategy]]__ → External integration patterns (pre-2026 model)
@@ -182,6 +185,14 @@ cd app && npm run typecheck
 - IPC bridge: `app/src/main/preload.ts`
 - RxDB database: `app/src/renderer/db/database.ts`
 - Schemas: `app/src/renderer/db/schemas.ts`
+- Session interfaces: `app/src/shared/session-interfaces.ts`
+- IPC channels: `app/src/shared/core/ipc-protocol.ts`
+- Spotify client: `app/src/main/spotify/spotify-client.ts`
+- Session view: `app/src/renderer/components/Session/SessionView.tsx`
+- Track source hook: `app/src/renderer/hooks/useTrackSource.ts`
+- Playback state hook: `app/src/renderer/hooks/usePlaybackState.ts`
+- User service: `app/src/renderer/db/services/user-service.ts`
+- Navigation store: `app/src/renderer/stores/navigation-store.ts`
 
 ---
 
@@ -193,18 +204,21 @@ When working on WhatNext:
 3. __Check__: Recent notes in `/docs/05 notes/` for current state
 4. __Document__: New learnings following patterns in [[note-251110-libp2p-learning-roadmap]]
 
-### Active Development Areas (as of 2026-02-15)
+### Active Development Areas (as of 2026-03-07)
 
 - ✅ P2P networking foundation (libp2p integration complete)
 - ✅ UI modernization (v0.0.0 polished)
 - ✅ Formal documentation (SRS + Architecture Design — see [[srs-whatnext]], [[architecture-whatnext]])
-- 🔄 Protocol implementation (next phase)
-- 🔄 Spotify adapter migration (Feb 2026 API changes — see [[the-walled-garden-cracks]])
-- 🔜 RxDB replication over libp2p
-- 🔜 Import adapter architecture (service abstraction layer)
+- ✅ RxDB replication over libp2p (basic push working)
+- ✅ Spotify adapter (read-only import, OAuth PKCE)
+- ✅ Social features (reactions, comments, turn-taking)
+- ✅ **Sessions v1** — Provider-abstracted live sessions (see [[adr-260307-session-architecture-provider-abstraction]], [[note-260307-sessions-v1-implementation]])
+- ✅ Spotify playback control + collaborative playlist polling (8 new IPC channels)
 - 🔜 Open metadata enrichment (MusicBrainz/ListenBrainz)
+- 🔜 Non-Spotify track sources (ManualTrackSource, P2PTrackSource)
+- 🔜 Remote sessions via circuit relay
 
 ---
 
-__Last Updated__: 2026-02-15
-__Documentation Version__: v0.1.0
+__Last Updated__: 2026-03-07
+__Documentation Version__: v0.2.0

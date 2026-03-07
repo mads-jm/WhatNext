@@ -177,7 +177,78 @@ export const IPC_CHANNELS = {
     SPOTIFY_GET_PLAYLISTS: 'spotify:get-playlists',
     SPOTIFY_GET_TRACKS: 'spotify:get-tracks',
     SPOTIFY_SYNC_PLAYLIST: 'spotify:sync-playlist',
+
+    // Spotify playback control (renderer → main)
+    SPOTIFY_GET_PLAYBACK_STATE: 'spotify:get-playback-state',
+    SPOTIFY_GET_DEVICES: 'spotify:get-devices',
+    SPOTIFY_START_PLAYBACK: 'spotify:start-playback',
+    SPOTIFY_PAUSE_PLAYBACK: 'spotify:pause-playback',
+    SPOTIFY_RESUME_PLAYBACK: 'spotify:resume-playback',
+    SPOTIFY_SKIP_NEXT: 'spotify:skip-next',
+    SPOTIFY_SKIP_PREVIOUS: 'spotify:skip-previous',
+
+    // Enhanced playlist polling with attribution data (renderer → main)
+    SPOTIFY_GET_PLAYLIST_TRACKS_FULL: 'spotify:get-playlist-tracks-full',
 } as const;
+
+// ========================================
+// Spotify Playback Payloads
+// ========================================
+
+export interface SpotifyPlaybackStateResult {
+    isPlaying: boolean;
+    track: {
+        spotifyId: string;
+        title: string;
+        artists: string[];
+        album: string;
+        durationMs: number;
+        albumArtUrl?: string;
+    } | null;
+    progressMs: number;
+    deviceName: string | null;
+    deviceId: string | null;
+}
+
+export interface SpotifyDevice {
+    id: string;
+    name: string;
+    type: string;
+    isActive: boolean;
+}
+
+export interface SpotifyStartPlaybackParams {
+    deviceId?: string;
+    contextUri?: string;     // e.g. 'spotify:playlist:abc123'
+    offsetIndex?: number;    // track position in context
+}
+
+export interface SpotifySkipParams {
+    deviceId?: string;
+}
+
+// ========================================
+// Spotify Playlist Polling (full, with attribution)
+// ========================================
+
+export interface SpotifyFullTrackItem {
+    spotifyId: string;
+    title: string;
+    artists: string[];
+    album: string;
+    durationMs: number;
+    albumArtUrl?: string;
+    addedAt: string;
+    addedBySpotifyId: string;   // Spotify user ID for attribution
+}
+
+export interface SpotifyPlaylistTracksFullResult {
+    success: boolean;
+    tracks?: SpotifyFullTrackItem[];
+    total?: number;
+    snapshotId?: string;   // Spotify playlist version — skip re-parse if unchanged
+    error?: string;
+}
 
 // ========================================
 // Replication Payloads

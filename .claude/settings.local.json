@@ -8,7 +8,9 @@
       "Bash(npm run lint:*)",
       "Bash(npm run build:renderer:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(grep:*)",
+      "Bash(git:*)"
     ]
   }
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useRxDBDocument } from '../../hooks/useRxDBCollection';
-import { removeTrackFromPlaylist } from '../../db/services/playlist-service';
+import { removeTrackFromPlaylist, updatePlaylist } from '../../db/services/playlist-service';
 import { findTrackViewModels } from '../../db/query-helpers';
 import type { PlaylistDocType } from '../../db/schemas';
 import type { TrackViewModel } from '../../db/types';
@@ -94,7 +94,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                 {tracks.length} tracks {totalDuration > 0 && <>• {formatTotalDuration(totalDuration)}</>}
                             </p>
                             <div className="flex gap-2">
-                                {playlist.isCollaborative && (
+                                {playlist.isCollaborative ? (
                                     <button
                                         onClick={() => openSession(playlist.id)}
                                         className="btn-accent"
@@ -102,7 +102,16 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                         <i className="fa-solid fa-satellite-dish mr-1" />
                                         Open Session
                                     </button>
-                                )}
+                                ) : playlist.linkedSpotifyId ? (
+                                    <button
+                                        onClick={() => updatePlaylist(playlist.id, { isCollaborative: true })}
+                                        className="btn-ghost"
+                                        title="Mark as collaborative to enable sessions"
+                                    >
+                                        <i className="fa-solid fa-users mr-1" />
+                                        Enable Collaborative
+                                    </button>
+                                ) : null}
                                 <button
                                     onClick={() => setShowTrackPicker(true)}
                                     className="btn-accent"
