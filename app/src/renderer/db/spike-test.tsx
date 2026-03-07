@@ -100,9 +100,12 @@ export function RxDBSpikeTest() {
                 await db.users.insert({
                     id: userId,
                     displayName: 'Local User',
+                    avatarSource: 'none',
                     isLocal: true,
+                    linkedAccounts: [],
                     lastSeenAt: new Date().toISOString(),
                     createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
                 });
                 localUser = await db.users.findOne({ selector: { isLocal: true } }).exec();
             }
@@ -137,9 +140,12 @@ export function RxDBSpikeTest() {
                 await db.users.insert({
                     id: userId,
                     displayName: 'Local User',
+                    avatarSource: 'none',
                     isLocal: true,
+                    linkedAccounts: [],
                     lastSeenAt: new Date().toISOString(),
                     createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
                 });
                 localUser = await db.users.findOne({ selector: { isLocal: true } }).exec();
             }

@@ -7,6 +7,7 @@
 
 // Re-export document types from schemas for convenience
 export type {
+    LinkedAccount,
     TrackDocType,
     TrackDocument,
     PlaylistDocType,
@@ -27,7 +28,8 @@ export interface TrackViewModel {
     title: string;
     artists: string[];
     album: string;
-    addedBy: string;
+    addedBy: string; // User ID — preserved for cross-provider bridging
+    addedByName?: string; // Resolved display name for UI rendering
     durationMs: number;
 }
 
@@ -39,6 +41,7 @@ export interface CreatePlaylistInput {
     description?: string;
     tags?: string[];
     linkedSpotifyId?: string;
+    spotifySyncMode?: 'accessory' | 'true_collaborate' | 'proxy_owner';
     ownerId?: string;
     collaboratorIds?: string[];
     isCollaborative?: boolean;

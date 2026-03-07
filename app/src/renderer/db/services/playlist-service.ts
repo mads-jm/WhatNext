@@ -30,14 +30,15 @@ export async function createPlaylist(
         trackIds: [],
         createdAt: now,
         updatedAt: now,
-        ownerId: input.ownerId || 'local-user',
+        ownerId: input.ownerId!,
         collaboratorIds: input.collaboratorIds || [],
         isCollaborative: input.isCollaborative ?? false,
         isPublic: input.isPublic ?? false,
         linkedSpotifyId: input.linkedSpotifyId,
+        spotifySyncMode: input.spotifySyncMode,
         tags: input.tags || [],
         queueMode: input.queueMode,
-        currentTurnUserId: input.queueMode === 'turn_taking' ? (input.ownerId || 'local-user') : undefined,
+        currentTurnUserId: input.queueMode === 'turn_taking' ? input.ownerId : undefined,
     };
 
     return db.playlists.insert(playlist);

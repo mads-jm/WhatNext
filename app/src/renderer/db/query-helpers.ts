@@ -5,7 +5,7 @@
  * typed wrappers with proper Map handling.
  */
 
-import type { WhatNextDatabase, TrackDocument } from './schemas';
+import type { WhatNextDatabase, TrackDocument, UserDocument } from './schemas';
 import type { TrackViewModel } from './types';
 
 /**
@@ -31,12 +31,17 @@ export async function findTrackViewModels(
     ids: string[]
 ): Promise<TrackViewModel[]> {
     const docs = await findTracksByIds(db, ids);
+
+    const userIds = [...new Set(docs.map((d) => d.addedBy).filter(Boolean))];
+    const userMap: Map<string, UserDocument> = await db.users.findByIds(userIds).exec();
+
     return docs.map((doc) => ({
         id: doc.id,
         title: doc.title,
         artists: doc.artists,
         album: doc.album,
         addedBy: doc.addedBy,
+        addedByName: userMap.get(doc.addedBy)?.displayName,
         durationMs: doc.durationMs,
     }));
 }

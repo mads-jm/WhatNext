@@ -36,8 +36,8 @@ export async function applyReplicatedChanges(
             // LWW: only update if incoming is newer
             const existing = await col.findOne(doc.id).exec();
             if (existing) {
-                const existingTime = (existing as Record<string, unknown>).updatedAt as string
-                    || (existing as Record<string, unknown>).addedAt as string
+                const existingTime = (existing as unknown as Record<string, unknown>).updatedAt as string
+                    || (existing as unknown as Record<string, unknown>).addedAt as string
                     || '';
                 if (doc.updatedAt > existingTime) {
                     await existing.update({ $set: doc.data });

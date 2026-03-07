@@ -7,16 +7,23 @@ import { createRxDatabase, addRxPlugin } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { wrappedValidateAjvStorage } from 'rxdb/plugins/validate-ajv';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
+import { RxDBUpdatePlugin } from 'rxdb/plugins/update';
+import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
 import type { WhatNextDatabase, WhatNextCollections } from './schemas';
 import {
     userSchema,
     trackSchema,
     trackInteractionSchema,
     playlistSchema,
+    commentSchema,
 } from './schemas';
 
 // Add query builder plugin (required for .find(), .findOne(), etc.)
 addRxPlugin(RxDBQueryBuilderPlugin);
+// Add update plugin (required for document.update({ $set: ... }))
+addRxPlugin(RxDBUpdatePlugin);
+// Add migration plugin (required for schema version upgrades)
+addRxPlugin(RxDBMigrationSchemaPlugin);
 
 let dbPromise: Promise<WhatNextDatabase> | null = null;
 let devModeLoaded = false;
@@ -81,6 +88,20 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
         await db.addCollections({
             users: {
                 schema: userSchema,
+                migrationStrategies: {
+                    // v0 → v1: Added avatarSource, linkedAccounts, updatedAt, bio, avatarLocalPath, avatarUrl
+                    1(oldDoc: any) {
+                        return {
+                            ...oldDoc,
+                            avatarSource: oldDoc.avatarSource ?? 'none',
+                            linkedAccounts: oldDoc.linkedAccounts ?? [],
+                            updatedAt: oldDoc.updatedAt ?? oldDoc.createdAt ?? new Date().toISOString(),
+                            avatarLocalPath: oldDoc.avatarLocalPath ?? undefined,
+                            avatarUrl: oldDoc.avatarUrl ?? undefined,
+                            bio: oldDoc.bio ?? undefined,
+                        };
+                    },
+                },
             },
             tracks: {
                 schema: trackSchema,
@@ -91,6 +112,9 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
             playlists: {
                 schema: playlistSchema,
             },
+            comments: {
+                schema: commentSchema,
+            },
         });
 
         console.log('[RxDB] Collections added successfully');
@@ -100,8 +124,9 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
         const trackCount = await db.tracks.count().exec();
         const interactionCount = await db.trackInteractions.count().exec();
         const playlistCount = await db.playlists.count().exec();
+        const commentCount = await db.comments.count().exec();
         console.log(
-            `[RxDB] Database ready - ${userCount} users, ${trackCount} tracks, ${interactionCount} interactions, ${playlistCount} playlists`
+            `[RxDB] Database ready - ${userCount} users, ${trackCount} tracks, ${interactionCount} interactions, ${playlistCount} playlists, ${commentCount} comments`
         );
 
         return db;

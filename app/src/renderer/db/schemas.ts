@@ -14,6 +14,18 @@ import type {
 // ========================================
 // User/Peer Schema
 // ========================================
+
+/**
+ * Represents a linked external service account (Spotify, Apple Music, etc.)
+ */
+export interface LinkedAccount {
+    provider: string; // 'spotify' | 'apple_music' | 'youtube_music'
+    providerUserId: string;
+    displayName?: string;
+    avatarUrl?: string;
+    linkedAt: string; // ISO timestamp
+}
+
 /**
  * Represents a user/peer in the P2P network
  * Tracks identity, display information, and peer status
@@ -21,18 +33,23 @@ import type {
 export interface UserDocType {
     id: string; // Unique peer ID (generated locally or from P2P handshake)
     displayName: string;
-    avatarUrl?: string;
+    avatarSource: 'local' | 'spotify' | 'apple_music' | 'none'; // Where the avatar comes from
+    avatarLocalPath?: string; // Relative path to local avatar file in userData
+    avatarUrl?: string; // Resolved URL (service-provided or data: URI)
+    bio?: string; // Short bio (Phase 2)
     isLocal: boolean; // True if this is the local user
+    linkedAccounts: LinkedAccount[]; // Linked service accounts
     lastSeenAt: string; // ISO timestamp of last activity
     publicKey?: string; // For future encryption/verification
     createdAt: string; // ISO timestamp
+    updatedAt: string; // ISO timestamp (for LWW)
 }
 
 export type UserDocument = RxDocument<UserDocType>;
 export type UserCollection = RxCollection<UserDocType>;
 
 export const userSchema: RxJsonSchema<UserDocType> = {
-    version: 0,
+    version: 1,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -43,11 +60,36 @@ export const userSchema: RxJsonSchema<UserDocType> = {
         displayName: {
             type: 'string',
         },
+        avatarSource: {
+            type: 'string',
+            enum: ['local', 'spotify', 'apple_music', 'none'],
+            maxLength: 20,
+        },
+        avatarLocalPath: {
+            type: 'string',
+        },
         avatarUrl: {
+            type: 'string',
+        },
+        bio: {
             type: 'string',
         },
         isLocal: {
             type: 'boolean',
+        },
+        linkedAccounts: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    provider: { type: 'string', maxLength: 30 },
+                    providerUserId: { type: 'string', maxLength: 200 },
+                    displayName: { type: 'string' },
+                    avatarUrl: { type: 'string' },
+                    linkedAt: { type: 'string', format: 'date-time', maxLength: 30 },
+                },
+                required: ['provider', 'providerUserId', 'linkedAt'],
+            },
         },
         lastSeenAt: {
             type: 'string',
@@ -62,8 +104,13 @@ export const userSchema: RxJsonSchema<UserDocType> = {
             format: 'date-time',
             maxLength: 30,
         },
+        updatedAt: {
+            type: 'string',
+            format: 'date-time',
+            maxLength: 30,
+        },
     },
-    required: ['id', 'displayName', 'isLocal', 'lastSeenAt', 'createdAt'],
+    required: ['id', 'displayName', 'avatarSource', 'isLocal', 'linkedAccounts', 'lastSeenAt', 'createdAt', 'updatedAt'],
     indexes: ['isLocal', 'lastSeenAt'],
 };
 
@@ -149,7 +196,7 @@ export interface TrackInteractionDocType {
     userId: string;
     trackId: string;
     playlistId?: string; // Optional: context of where interaction occurred
-    interactionType: 'vote' | 'like' | 'skip' | 'play' | 'queue'; // Extensible interaction types
+    interactionType: 'vote' | 'like' | 'skip' | 'play' | 'queue' | 'reaction'; // Extensible interaction types
     value?: number; // For votes (+1/-1) or play counts
     createdAt: string; // ISO timestamp
     updatedAt: string; // ISO timestamp (for vote changes)
@@ -182,8 +229,8 @@ export const trackInteractionSchema: RxJsonSchema<TrackInteractionDocType> = {
         },
         interactionType: {
             type: 'string',
-            enum: ['vote', 'like', 'skip', 'play', 'queue'],
-            maxLength: 10, // Longest enum value is 'queue' (5 chars), set to 10 for safety
+            enum: ['vote', 'like', 'skip', 'play', 'queue', 'reaction'],
+            maxLength: 10, // Longest enum value is 'reaction' (8 chars), set to 10 for safety
         },
         value: {
             type: 'number',
@@ -322,6 +369,80 @@ export const playlistSchema: RxJsonSchema<PlaylistDocType> = {
 };
 
 // ========================================
+// Comment Schema
+// ========================================
+/**
+ * Represents a comment on a playlist or a specific track within a playlist.
+ * Supports single-level threaded replies via parentId.
+ * Uses soft delete (isDeleted: boolean) for P2P tombstoning.
+ */
+export interface CommentDocType {
+    id: string; // UUID v4 (P2P-safe)
+    playlistId: string; // Scoped to a playlist
+    trackId?: string; // If set → track comment; if absent → playlist-level comment
+    userId: string; // Author's user ID
+    userDisplayName: string;
+    body: string; // Comment text
+    parentId?: string; // For threaded replies; absent = top-level comment
+    createdAt: string; // ISO timestamp
+    updatedAt: string; // ISO timestamp (for LWW conflict resolution)
+    isDeleted: boolean; // Soft delete for P2P tombstoning
+}
+
+export type CommentDocument = RxDocument<CommentDocType>;
+export type CommentCollection = RxCollection<CommentDocType>;
+
+export const commentSchema: RxJsonSchema<CommentDocType> = {
+    version: 0,
+    primaryKey: 'id',
+    type: 'object',
+    properties: {
+        id: {
+            type: 'string',
+            maxLength: 100,
+        },
+        playlistId: {
+            type: 'string',
+            maxLength: 100,
+        },
+        trackId: {
+            type: 'string',
+            maxLength: 100,
+        },
+        userId: {
+            type: 'string',
+            maxLength: 100,
+        },
+        userDisplayName: {
+            type: 'string',
+            maxLength: 100,
+        },
+        body: {
+            type: 'string',
+        },
+        parentId: {
+            type: 'string',
+            maxLength: 100,
+        },
+        createdAt: {
+            type: 'string',
+            format: 'date-time',
+            maxLength: 30,
+        },
+        updatedAt: {
+            type: 'string',
+            format: 'date-time',
+            maxLength: 30,
+        },
+        isDeleted: {
+            type: 'boolean',
+        },
+    },
+    required: ['id', 'playlistId', 'userId', 'userDisplayName', 'body', 'createdAt', 'updatedAt', 'isDeleted'],
+    indexes: ['playlistId', 'updatedAt'], // trackId not indexed — optional fields can't be indexed with Dexie
+};
+
+// ========================================
 // Database Collections Type
 // ========================================
 /**
@@ -329,14 +450,16 @@ export const playlistSchema: RxJsonSchema<PlaylistDocType> = {
  * Collections:
  * - users: Peer identity and status tracking
  * - tracks: Music tracks with attribution
- * - trackInteractions: User-track relationships (votes, likes, etc.)
+ * - trackInteractions: User-track relationships (votes, likes, reactions, etc.)
  * - playlists: Collaborative playlists with ownership and permissions
+ * - comments: Comments on playlists and tracks with threading support
  */
 export interface WhatNextCollections {
     users: UserCollection;
     tracks: TrackCollection;
     trackInteractions: TrackInteractionCollection;
     playlists: PlaylistCollection;
+    comments: CommentCollection;
 }
 
 export type WhatNextDatabase = RxDatabase<WhatNextCollections>;

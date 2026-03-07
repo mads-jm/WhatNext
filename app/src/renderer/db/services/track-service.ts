@@ -24,7 +24,7 @@ export async function createTrack(
     const track: TrackDocType = {
         id: uuidv4(),
         ...input,
-        addedBy: input.addedBy || 'local-user',
+        addedBy: input.addedBy!,
         addedAt: new Date().toISOString(),
     };
 
@@ -121,15 +121,16 @@ export async function getTracksByIds(
  */
 export async function bulkImportTracks(
     tracks: CreateTrackInput[]
-): Promise<void> {
+): Promise<string[]> {
     const db = await getDatabase();
 
     const trackDocs: TrackDocType[] = tracks.map((track) => ({
         id: uuidv4(),
         ...track,
-        addedBy: track.addedBy || 'local-user',
+        addedBy: track.addedBy!,
         addedAt: new Date().toISOString(),
     }));
 
     await db.tracks.bulkInsert(trackDocs);
+    return trackDocs.map((t) => t.id);
 }
