@@ -1,27 +1,37 @@
-import { useState, useEffect } from 'react';
-import { initDatabase } from '../../db/database';
+import React, { useState, useEffect } from 'react';
+import { useDatabase } from '../../hooks/useDatabase';
+import { useNavigationStore } from '../../stores/navigation-store';
 import { useRxDBDocument } from '../../hooks/useRxDBCollection';
 import { removeTrackFromPlaylist } from '../../db/services/playlist-service';
 import { findTrackViewModels } from '../../db/query-helpers';
-import type { PlaylistDocType, WhatNextDatabase } from '../../db/schemas';
+import type { PlaylistDocType } from '../../db/schemas';
 import type { TrackViewModel } from '../../db/types';
+import { ReactionBar } from '../Social/ReactionBar';
+import { PlaylistComments } from '../Social/PlaylistComments';
+import { CommentThread } from '../Social/CommentThread';
+import { exportAndSave } from '../../services/export/export-service';
+import { bulkAddTracksToPlaylist } from '../../db/services/playlist-service';
+import { TrackPickerModal } from './TrackPickerModal';
+import { formatDuration, formatTotalDuration } from '../../utils/format';
+import { useSpotifySync } from '../../hooks/useSpotifySync';
 
 interface PlaylistViewProps {
     playlistId?: string;
-    onOpenSession?: (playlistId: string) => void;
 }
 
-export function PlaylistView({ playlistId, onOpenSession }: PlaylistViewProps) {
-    const [db, setDb] = useState<WhatNextDatabase | null>(null);
-
-    useEffect(() => {
-        initDatabase().then(setDb);
-    }, []);
+export function PlaylistView({ playlistId }: PlaylistViewProps) {
+    const openSession = useNavigationStore((s) => s.openSession);
+    const { db } = useDatabase();
 
     const { doc: playlist, loading: playlistLoading } = useRxDBDocument<PlaylistDocType>(
         () => db && playlistId ? db.playlists.findOne(playlistId).exec() : null,
         [db, playlistId]
     );
+
+    const { syncState, lastSynced, syncSummary, error: syncError, syncNow } = useSpotifySync(playlist ?? null);
+
+    const [expandedTrackComments, setExpandedTrackComments] = useState<string | null>(null);
+    const [showTrackPicker, setShowTrackPicker] = useState(false);
 
     const [tracks, setTracks] = useState<TrackViewModel[]>([]);
     useEffect(() => {
@@ -32,17 +42,10 @@ export function PlaylistView({ playlistId, onOpenSession }: PlaylistViewProps) {
         findTrackViewModels(db, trackIds).then(setTracks);
     }, [db, playlist?.trackIds]);
 
-    const formatDuration = (ms: number): string => {
-        const minutes = Math.floor(ms / 60000);
-        const seconds = Math.floor((ms % 60000) / 1000);
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    };
-
     const totalDuration = tracks.reduce((acc, t) => acc + (t.durationMs || 0), 0);
-    const formatTotalDuration = (ms: number): string => {
-        const hours = Math.floor(ms / 3600000);
-        const minutes = Math.floor((ms % 3600000) / 60000);
-        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+    const handleExport = (format: 'markdown' | 'html') => {
+        if (playlistId) exportAndSave(playlistId, format);
     };
 
     if (!playlistId) {
@@ -91,24 +94,69 @@ export function PlaylistView({ playlistId, onOpenSession }: PlaylistViewProps) {
                                 {tracks.length} tracks {totalDuration > 0 && <>• {formatTotalDuration(totalDuration)}</>}
                             </p>
                             <div className="flex gap-2">
-                                {playlist.isCollaborative && onOpenSession && (
+                                {playlist.isCollaborative && (
                                     <button
-                                        onClick={() => onOpenSession(playlist.id)}
+                                        onClick={() => openSession(playlist.id)}
                                         className="btn-accent"
                                     >
                                         <i className="fa-solid fa-satellite-dish mr-1" />
                                         Open Session
                                     </button>
                                 )}
+                                <button
+                                    onClick={() => setShowTrackPicker(true)}
+                                    className="btn-accent"
+                                >
+                                    <i className="fa-solid fa-plus mr-1" />
+                                    Add tracks
+                                </button>
                                 <button className="btn-ghost">
                                     <i className="fa-solid fa-share-nodes mr-1" />
                                     Share
                                 </button>
+                                <button
+                                    onClick={() => handleExport('markdown')}
+                                    className="btn-ghost"
+                                    title="Export as Markdown"
+                                >
+                                    <i className="fa-solid fa-file-lines mr-1" />
+                                    Export .md
+                                </button>
+                                <button
+                                    onClick={() => handleExport('html')}
+                                    className="btn-ghost"
+                                    title="Export as HTML"
+                                >
+                                    <i className="fa-solid fa-file-code mr-1" />
+                                    Export .html
+                                </button>
+                                {playlist.linkedSpotifyId && (
+                                    <button
+                                        onClick={syncNow}
+                                        disabled={syncState === 'syncing'}
+                                        className="btn-ghost"
+                                        title="Pull latest changes from Spotify"
+                                    >
+                                        <i className={`fa-brands fa-spotify mr-1${syncState === 'syncing' ? ' animate-spin' : ''}`} />
+                                        {syncState === 'syncing' ? 'Syncing...' : 'Sync with Spotify'}
+                                    </button>
+                                )}
                             </div>
+                            {playlist.linkedSpotifyId && syncState === 'done' && syncSummary && (
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Synced {lastSynced?.toLocaleTimeString()} · +{syncSummary.added} added, {syncSummary.removed} removed
+                                </p>
+                            )}
+                            {playlist.linkedSpotifyId && syncState === 'error' && (
+                                <p className="text-xs text-red-400 mt-2">Sync failed: {syncError}</p>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Playlist Discussion */}
+            <PlaylistComments playlistId={playlistId!} />
 
             {/* Track List */}
             <div className="card flex-1 overflow-hidden flex flex-col">
@@ -131,41 +179,79 @@ export function PlaylistView({ playlistId, onOpenSession }: PlaylistViewProps) {
                                     <th className="text-left px-4 py-2">Album</th>
                                     <th className="text-left px-4 py-2">Added By</th>
                                     <th className="text-right px-4 py-2">Duration</th>
-                                    <th className="w-8"></th>
+                                    <th className="w-16"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {tracks.map((track, index) => (
-                                    <tr
-                                        key={track.id}
-                                        className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
-                                    >
-                                        <td className="px-4 py-3 text-gray-500 text-sm">{index + 1}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="font-medium text-gray-100">{track.title}</div>
-                                            <div className="text-sm text-gray-400">{track.artists.join(', ')}</div>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-gray-400">{track.album}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-500">{track.addedBy}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-500 text-right">
-                                            {formatDuration(track.durationMs)}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <button
-                                                onClick={() => removeTrackFromPlaylist(playlistId!, track.id)}
-                                                className="text-gray-600 hover:text-red-400 transition-colors"
-                                                title="Remove track"
-                                            >
-                                                <i className="fa-solid fa-xmark" />
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <React.Fragment key={track.id}>
+                                        <tr className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                                            <td className="px-4 py-3 text-gray-500 text-sm">{index + 1}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="font-medium text-gray-100">{track.title}</div>
+                                                <div className="text-sm text-gray-400">{track.artists.join(', ')}</div>
+                                                <ReactionBar trackId={track.id} playlistId={playlistId!} />
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-400">{track.album}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-500">{track.addedByName ?? track.addedBy}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-500 text-right">
+                                                {formatDuration(track.durationMs)}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => setExpandedTrackComments(
+                                                            expandedTrackComments === track.id ? null : track.id
+                                                        )}
+                                                        className={`transition-colors ${
+                                                            expandedTrackComments === track.id
+                                                                ? 'text-blue-400'
+                                                                : 'text-gray-600 hover:text-gray-300'
+                                                        }`}
+                                                        title="Comments"
+                                                    >
+                                                        <i className="fa-solid fa-comment" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => removeTrackFromPlaylist(playlistId!, track.id)}
+                                                        className="text-gray-600 hover:text-red-400 transition-colors"
+                                                        title="Remove track"
+                                                    >
+                                                        <i className="fa-solid fa-xmark" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {expandedTrackComments === track.id && (
+                                            <tr className="border-b border-gray-800/50">
+                                                <td colSpan={6} className="px-4 py-3 bg-gray-900/30">
+                                                    <CommentThread
+                                                        playlistId={playlistId!}
+                                                        trackId={track.id}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
                                 ))}
                             </tbody>
                         </table>
                     )}
                 </div>
             </div>
+
+            {/* Track Picker Modal */}
+            {showTrackPicker && playlist && (
+                <TrackPickerModal
+                    playlistId={playlist.id}
+                    existingTrackIds={playlist.trackIds}
+                    onAdd={async (ids) => {
+                        await bulkAddTracksToPlaylist(playlist.id, ids);
+                        setShowTrackPicker(false);
+                    }}
+                    onClose={() => setShowTrackPicker(false)}
+                />
+            )}
         </div>
     );
 }

@@ -1,36 +1,19 @@
-import { useState, useEffect } from 'react';
-import { initDatabase } from '../../db/database';
 import { useRxDBQuery } from '../../hooks/useRxDBCollection';
-import type { PlaylistDocType, WhatNextDatabase } from '../../db/schemas';
+import { useDatabase } from '../../hooks/useDatabase';
+import { useNavigationStore } from '../../stores/navigation-store';
+import { formatTimeAgo } from '../../utils/format';
+import type { PlaylistDocType } from '../../db/schemas';
 
-interface PlaylistListProps {
-    onPlaylistSelect?: (playlistId: string) => void;
-    onCreatePlaylist?: () => void;
-    selectedPlaylistId?: string;
-}
-
-export function PlaylistList({ onPlaylistSelect, onCreatePlaylist, selectedPlaylistId }: PlaylistListProps) {
-    const [db, setDb] = useState<WhatNextDatabase | null>(null);
-
-    useEffect(() => {
-        initDatabase().then(setDb);
-    }, []);
+export function PlaylistList() {
+    const { db } = useDatabase();
+    const selectedPlaylistId = useNavigationStore((s) => s.selectedPlaylistId);
+    const selectPlaylist = useNavigationStore((s) => s.selectPlaylist);
+    const openCreateDialog = useNavigationStore((s) => s.openCreateDialog);
 
     const { data: playlists, loading } = useRxDBQuery<PlaylistDocType>(
         () => db ? db.playlists.find().sort({ updatedAt: 'desc' }) : null,
         [db]
     );
-
-    const formatTimeAgo = (dateStr: string): string => {
-        const diff = Date.now() - new Date(dateStr).getTime();
-        const minutes = Math.floor(diff / 60000);
-        if (minutes < 1) return 'just now';
-        if (minutes < 60) return `${minutes}m ago`;
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
-        const days = Math.floor(hours / 24);
-        return `${days}d ago`;
-    };
 
     if (loading) {
         return (
@@ -44,7 +27,7 @@ export function PlaylistList({ onPlaylistSelect, onCreatePlaylist, selectedPlayl
         <div className="space-y-3">
             {/* Create Playlist Button */}
             <button
-                onClick={onCreatePlaylist}
+                onClick={openCreateDialog}
                 className="w-full btn-primary flex items-center justify-center gap-2 py-3"
             >
                 <i className="fa-solid fa-plus" />
@@ -55,7 +38,7 @@ export function PlaylistList({ onPlaylistSelect, onCreatePlaylist, selectedPlayl
             {playlists.map((playlist) => (
                 <div
                     key={playlist.id}
-                    onClick={() => onPlaylistSelect?.(playlist.id)}
+                    onClick={() => selectPlaylist(playlist.id)}
                     className={`card cursor-pointer transition-colors ${
                         selectedPlaylistId === playlist.id
                             ? 'border-blue-500 bg-blue-950/20'

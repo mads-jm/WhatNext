@@ -1,0 +1,133 @@
+/**
+ * Single comment display with edit/delete/reply actions.
+ * Shows nested replies at a single level of depth.
+ */
+
+import { useState } from 'react';
+import type { CommentDocType } from '../../db/schemas';
+
+interface CommentItemProps {
+    comment: CommentDocType;
+    isOwn: boolean;
+    onReply: (parentId: string) => void;
+    onEdit: (id: string, body: string) => void;
+    onDelete: (id: string) => void;
+    replies?: CommentDocType[];
+    depth?: number;
+}
+
+export function CommentItem({
+    comment,
+    isOwn,
+    onReply,
+    onEdit,
+    onDelete,
+    replies = [],
+    depth = 0,
+}: CommentItemProps) {
+    const [editing, setEditing] = useState(false);
+    const [editBody, setEditBody] = useState(comment.body);
+
+    const handleSaveEdit = () => {
+        if (editBody.trim() && editBody !== comment.body) {
+            onEdit(comment.id, editBody.trim());
+        }
+        setEditing(false);
+    };
+
+    const handleCancelEdit = () => {
+        setEditBody(comment.body);
+        setEditing(false);
+    };
+
+    const timeAgo = formatTimeAgo(comment.createdAt);
+    // TODO : userId -> userName
+    // Worth persisting to comment still
+    return (
+        <div className={`${depth > 0 ? 'ml-6 border-l border-gray-700/50 pl-3' : ''}`}>
+            <div className="py-2">
+                <div className="flex items-center gap-2 mb-1">
+                    <div className="w-5 h-5 rounded-full bg-purple-600/60 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                        {(comment.userId || '?')[0].toUpperCase()}
+                    </div>
+                    <span className="text-xs font-medium text-gray-300">{comment.userId}</span>
+                    <span className="text-xs text-gray-600">{timeAgo}</span>
+                </div>
+
+                {editing ? (
+                    <div className="ml-7">
+                        <textarea
+                            value={editBody}
+                            onChange={(e) => setEditBody(e.target.value)}
+                            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 resize-none"
+                            rows={2}
+                            autoFocus
+                        />
+                        <div className="flex gap-1 mt-1">
+                            <button onClick={handleSaveEdit} className="text-xs text-blue-400 hover:text-blue-300">
+                                Save
+                            </button>
+                            <button onClick={handleCancelEdit} className="text-xs text-gray-500 hover:text-gray-400">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="ml-7">
+                        <p className="text-sm text-gray-300">{comment.body}</p>
+                        <div className="flex gap-2 mt-1">
+                            {depth === 0 && (
+                                <button
+                                    onClick={() => onReply(comment.id)}
+                                    className="text-xs text-gray-500 hover:text-gray-300"
+                                >
+                                    Reply
+                                </button>
+                            )}
+                            {isOwn && (
+                                <>
+                                    <button
+                                        onClick={() => setEditing(true)}
+                                        className="text-xs text-gray-500 hover:text-gray-300"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(comment.id)}
+                                        className="text-xs text-gray-500 hover:text-red-400"
+                                    >
+                                        Delete
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Nested replies (single level) */}
+            {replies.map((reply) => (
+                <CommentItem
+                    key={reply.id}
+                    comment={reply}
+                    isOwn={reply.userId === comment.userId}
+                    onReply={onReply}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    depth={depth + 1}
+                />
+            ))}
+        </div>
+    );
+}
+
+function formatTimeAgo(isoString: string): string {
+    const diff = Date.now() - new Date(isoString).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+}

@@ -1,20 +1,21 @@
 import { useState } from 'react';
+import { useUserStore } from '../../stores/user-store';
+import { useNavigationStore } from '../../stores/navigation-store';
 import { createPlaylist } from '../../db/services/playlist-service';
 
-interface CreatePlaylistDialogProps {
-    open: boolean;
-    onClose: () => void;
-    onCreated?: (playlistId: string) => void;
-}
+export function CreatePlaylistDialog() {
+    const userId = useUserStore((s) => s.userId);
+    const showCreateDialog = useNavigationStore((s) => s.showCreateDialog);
+    const selectPlaylist = useNavigationStore((s) => s.selectPlaylist);
+    const closeCreateDialog = useNavigationStore((s) => s.closeCreateDialog);
 
-export function CreatePlaylistDialog({ open, onClose, onCreated }: CreatePlaylistDialogProps) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [isCollaborative, setIsCollaborative] = useState(false);
     const [queueMode, setQueueMode] = useState<'free_for_all' | 'turn_taking'>('free_for_all');
     const [creating, setCreating] = useState(false);
 
-    if (!open) return null;
+    if (!showCreateDialog) return null;
 
     const handleCreate = async () => {
         if (!name.trim()) return;
@@ -25,14 +26,14 @@ export function CreatePlaylistDialog({ open, onClose, onCreated }: CreatePlaylis
                 description: description.trim() || undefined,
                 isCollaborative,
                 queueMode: isCollaborative ? queueMode : undefined,
-                ownerId: 'local-user',
+                ownerId: userId,
             });
-            onCreated?.(playlist.id);
+            selectPlaylist(playlist.id);
             setName('');
             setDescription('');
             setIsCollaborative(false);
             setQueueMode('free_for_all');
-            onClose();
+            closeCreateDialog();
         } catch (error) {
             console.error('Failed to create playlist:', error);
         } finally {
@@ -41,7 +42,7 @@ export function CreatePlaylistDialog({ open, onClose, onCreated }: CreatePlaylis
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={closeCreateDialog}>
             <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
                 <h2 className="text-xl font-bold text-gray-100 mb-4">Create Playlist</h2>
 
@@ -126,7 +127,7 @@ export function CreatePlaylistDialog({ open, onClose, onCreated }: CreatePlaylis
                 </div>
 
                 <div className="flex justify-end gap-3 mt-6">
-                    <button onClick={onClose} className="btn-ghost">Cancel</button>
+                    <button onClick={closeCreateDialog} className="btn-ghost">Cancel</button>
                     <button
                         onClick={handleCreate}
                         disabled={!name.trim() || creating}

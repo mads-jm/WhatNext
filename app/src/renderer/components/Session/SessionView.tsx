@@ -1,23 +1,25 @@
 import { useState, useEffect } from 'react';
-import { initDatabase } from '../../db/database';
+import { useDatabase } from '../../hooks/useDatabase';
+import { useUserStore } from '../../stores/user-store';
+import { useNavigationStore } from '../../stores/navigation-store';
 import { useRxDBDocument } from '../../hooks/useRxDBCollection';
 import { useP2PStatus } from '../../hooks/useP2PStatus';
+import { useSessionState } from '../../hooks/useSessionState';
 import { findTrackViewModels } from '../../db/query-helpers';
-import type { PlaylistDocType, WhatNextDatabase } from '../../db/schemas';
+import type { PlaylistDocType } from '../../db/schemas';
 import type { TrackViewModel } from '../../db/types';
+import { ReactionBar } from '../Social/ReactionBar';
+import { PlaylistComments } from '../Social/PlaylistComments';
 
 interface SessionViewProps {
     playlistId?: string;
-    onBack?: () => void;
 }
 
-export function SessionView({ playlistId, onBack }: SessionViewProps) {
-    const [db, setDb] = useState<WhatNextDatabase | null>(null);
+export function SessionView({ playlistId }: SessionViewProps) {
+    const navigate = useNavigationStore((s) => s.navigate);
+    const { db } = useDatabase();
+    const userId = useUserStore((s) => s.userId);
     const p2p = useP2PStatus();
-
-    useEffect(() => {
-        initDatabase().then(setDb);
-    }, []);
 
     const { doc: playlist } = useRxDBDocument<PlaylistDocType>(
         () => db && playlistId ? db.playlists.findOne(playlistId).exec() : null,
@@ -33,10 +35,7 @@ export function SessionView({ playlistId, onBack }: SessionViewProps) {
         findTrackViewModels(db, trackIds).then(setTracks);
     }, [db, playlist?.trackIds]);
 
-    const isMyTurn = playlist?.queueMode === 'turn_taking' &&
-        (playlist.currentTurnUserId === 'local-user' || !playlist.currentTurnUserId);
-    const isTurnTaking = playlist?.queueMode === 'turn_taking';
-    const currentTurnUser = playlist?.currentTurnUserId || 'local-user';
+    const { isTurnTaking, isMyTurn, currentTurnUser } = useSessionState(playlist, userId);
 
     const copyConnectUrl = () => {
         if (p2p.peerId) {
@@ -58,12 +57,10 @@ export function SessionView({ playlistId, onBack }: SessionViewProps) {
 
     return (
         <div className="space-y-4">
-            {onBack && (
-                <button onClick={onBack} className="btn-ghost text-sm">
-                    <i className="fa-solid fa-arrow-left mr-2" />
-                    Back to Playlists
-                </button>
-            )}
+            <button onClick={() => navigate('playlists')} className="btn-ghost text-sm">
+                <i className="fa-solid fa-arrow-left mr-2" />
+                Back to Playlists
+            </button>
 
             {/* Turn Indicator Banner */}
             {isTurnTaking && (
@@ -135,7 +132,7 @@ export function SessionView({ playlistId, onBack }: SessionViewProps) {
                         <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-800/50">
                             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">U</div>
                             <div className="flex-1">
-                                <div className="text-sm font-medium text-gray-200">You (local-user)</div>
+                                <div className="text-sm font-medium text-gray-200">You ({userId})</div>
                                 <div className="text-xs text-gray-500">{(p2p.peerId ?? '').slice(0, 16)}...</div>
                             </div>
                             {isTurnTaking && isMyTurn && (
@@ -176,14 +173,22 @@ export function SessionView({ playlistId, onBack }: SessionViewProps) {
                                     <div className="flex-1">
                                         <div className="text-sm font-medium text-gray-200">{track.title}</div>
                                         <div className="text-xs text-gray-500">{track.artists.join(', ')}</div>
+                                        {playlistId && (
+                                            <ReactionBar trackId={track.id} playlistId={playlistId} />
+                                        )}
                                     </div>
-                                    <div className="text-xs text-gray-500">{track.addedBy}</div>
+                                    <div className="text-xs text-gray-500">{track.addedByName ?? track.addedBy}</div>
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* Session Discussion */}
+            {playlistId && (
+                <PlaylistComments playlistId={playlistId} />
+            )}
         </div>
     );
 }

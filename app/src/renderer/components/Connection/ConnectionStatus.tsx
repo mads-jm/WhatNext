@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useP2PStatus } from '../../hooks/useP2PStatus';
 
 type ConnectionState = 'offline' | 'connecting' | 'connected';
 
 export function ConnectionStatus() {
-    const [state, setState] = useState<ConnectionState>('offline');
-    const [peerCount, setPeerCount] = useState(0);
+    const p2p = useP2PStatus();
 
-    // Placeholder - will be driven by P2P state in future
-    useEffect(() => {
-        // Simulate connection state for UI demonstration
-        // In production, this will subscribe to actual P2P connection state
-    }, []);
+    const state: ConnectionState = !p2p.nodeStarted
+        ? 'offline'
+        : p2p.connectedPeers.length > 0
+          ? 'connected'
+          : 'connecting';
+    const peerCount = p2p.connectedPeers.length;
 
     const stateConfig = {
         offline: {

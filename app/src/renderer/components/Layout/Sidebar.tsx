@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { useNavigationStore } from '../../stores/navigation-store';
+import { useUserStore } from '../../stores/user-store';
+import { useP2PStatus } from '../../hooks/useP2PStatus';
+import wnorbIcon from '@assets/png/wnorb.png';
 
 type NavItem = {
     id: string;
@@ -15,7 +19,7 @@ const navigationItems: NavItem[] = [
         icon: 'fa-solid fa-folder-open',
         children: [
             { id: 'playlists', label: 'Playlists', icon: 'fa-solid fa-list-music' },
-            { id: 'library', label: 'Library', icon: 'fa-solid fa-music', badge: 'Soon' },
+            { id: 'library', label: 'Library', icon: 'fa-solid fa-music' },
             { id: 'sessions', label: 'Sessions', icon: 'fa-solid fa-users' },
             { id: 'spotify', label: 'Spotify Import', icon: 'fa-brands fa-spotify' },
         ],
@@ -41,19 +45,16 @@ const navigationItems: NavItem[] = [
         label: 'Settings',
         icon: 'fa-solid fa-gear',
         children: [
-            { id: 'settings-general', label: 'General', icon: 'fa-solid fa-sliders', badge: 'Soon' },
+            { id: 'settings-general', label: 'General', icon: 'fa-solid fa-sliders' },
             { id: 'settings-p2p', label: 'P2P Config', icon: 'fa-solid fa-network-wired', badge: 'Soon' },
             { id: 'settings-storage', label: 'Storage', icon: 'fa-solid fa-database', badge: 'Soon' },
         ],
     },
 ];
 
-interface SidebarProps {
-    activeView: string;
-    onNavigate: (viewId: string) => void;
-}
-
-export function Sidebar({ activeView, onNavigate }: SidebarProps) {
+export function Sidebar() {
+    const activeView = useNavigationStore((s) => s.activeView);
+    const navigate = useNavigationStore((s) => s.navigate);
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
         new Set(['workspace', 'p2p', 'development'])
     );
@@ -86,12 +87,10 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
             {/* App Header */}
             <div className="px-4 py-4 border-b border-gray-800">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <i className="fa-solid fa-music text-white text-sm" />
-                    </div>
+                    <img src={wnorbIcon} alt="WhatNext" className="w-8 h-8 rounded-lg" />
                     <div>
                         <h1 className="text-lg font-bold text-white">WhatNext</h1>
-                        <p className="text-xs text-gray-500">v0.0.0 Alpha</p>
+                        <p className="text-xs text-gray-500">v0.0.1 Alpha</p>
                     </div>
                 </div>
             </div>
@@ -106,7 +105,7 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
                                 if (section.children) {
                                     toggleSection(section.id);
                                 } else {
-                                    onNavigate(section.id);
+                                    navigate(section.id as any);
                                 }
                             }}
                             className={`
@@ -141,7 +140,7 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
                                 {section.children.map((child) => (
                                     <button
                                         key={child.id}
-                                        onClick={() => onNavigate(child.id)}
+                                        onClick={() => navigate(child.id as any)}
                                         className={`
                                             w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md
                                             text-sm font-medium transition-colors
@@ -189,19 +188,81 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
                 </button>
             </div>
 
-            {/* Status Footer */}
-            <div className="px-3 py-3 border-t border-gray-800 text-xs">
-                <div className="flex items-center justify-between text-gray-500">
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <i className="fa-solid fa-circle text-green-500 text-[8px]" />
-                            <i className="fa-solid fa-circle text-green-500 text-[8px] absolute inset-0 animate-ping" />
-                        </div>
-                        <span>Local-First Mode</span>
-                    </div>
-                    <i className="fa-solid fa-database text-gray-600" />
-                </div>
-            </div>
+            {/* Identity Bar (Discord-style) */}
+            <SidebarIdentityBar />
         </aside>
+    );
+}
+
+/**
+ * Compact identity bar pinned to sidebar bottom.
+ * Shows avatar, display name, P2P status, and copy-link action.
+ */
+function SidebarIdentityBar() {
+    const user = useUserStore((s) => s.user);
+    const navigate = useNavigationStore((s) => s.navigate);
+    const p2p = useP2PStatus();
+    const [copied, setCopied] = useState(false);
+
+    const initials = user?.displayName?.slice(0, 2).toUpperCase() || '??';
+    const isOnline = p2p.nodeStarted && p2p.connectedPeers.length > 0;
+
+    const copyConnectUrl = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (p2p.peerId) {
+            navigator.clipboard.writeText(`whtnxt://connect/${p2p.peerId}`);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    return (
+        <div className="px-2 py-2 border-t border-gray-800">
+            <div
+                className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-800/60 cursor-pointer transition-colors"
+                onClick={() => navigate('settings-general')}
+            >
+                {/* Avatar with status indicator */}
+                <div className="relative shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                        {user?.avatarUrl ? (
+                            <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            initials
+                        )}
+                    </div>
+                    <div
+                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${
+                            isOnline ? 'bg-green-500' : p2p.nodeStarted ? 'bg-yellow-500' : 'bg-gray-500'
+                        }`}
+                    />
+                </div>
+
+                {/* Name + status text */}
+                <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-200 truncate">
+                        {user?.displayName || 'Loading...'}
+                    </div>
+                    <div className="text-[10px] text-gray-500 truncate">
+                        {isOnline
+                            ? `${p2p.connectedPeers.length} peer${p2p.connectedPeers.length !== 1 ? 's' : ''}`
+                            : p2p.nodeStarted
+                              ? 'Online'
+                              : 'Offline'}
+                    </div>
+                </div>
+
+                {/* Copy connection link */}
+                {p2p.peerId && (
+                    <button
+                        onClick={copyConnectUrl}
+                        className="shrink-0 w-7 h-7 flex items-center justify-center rounded text-gray-500 hover:text-gray-200 hover:bg-gray-700 transition-colors"
+                        title="Copy connection link"
+                    >
+                        <i className={`fa-solid ${copied ? 'fa-check text-green-400' : 'fa-link'} text-xs`} />
+                    </button>
+                )}
+            </div>
+        </div>
     );
 }
