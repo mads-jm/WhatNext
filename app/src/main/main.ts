@@ -11,6 +11,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, shell, utilityProcess } fr
 import type { UtilityProcess } from 'electron';
 import * as path from 'path';
 import { isDev } from './utils/environment';
+import { getAssetPath } from './utils/path';
 import {
     parseProtocolUrl,
     createIPCMessage,
@@ -48,6 +49,7 @@ const createMainWindow = (): BrowserWindow => {
     mainWindow = new BrowserWindow({
         width: 1280,
         height: 720,
+        icon: getAssetPath('png', 'wnorb.png'),
         webPreferences: {
             // Security posture: no Node APIs in renderer; use preload + contextBridge.
             nodeIntegration: false,
@@ -308,6 +310,8 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
 /**
  * Handle whtnxt:// protocol URLs
  */
+ // TODO : just do a match in the try{} here or route in a more extensible way.
+ // Protocol should be a clear API boundary and structurally documented in /docs for easy consumption and provider implementation.
 function handleProtocolUrl(url: string): void {
     console.log('[Main] Handling protocol URL:', url);
 
@@ -358,6 +362,7 @@ async function handleSpotifyCallbackUrl(url: string): Promise<void> {
         const result = await handleSpotifyCallback(code);
 
         if (result.success && result.tokens) {
+            // TODO : need a UX pass on token expiry, right now you have to see an error within a flow. We should proactively refresh and/or prompt the user before it becomes an interuption.
             const { saveTokens } = await import('./spotify/token-store');
             const { initSpotifyClient } = await import('./spotify/spotify-client');
             saveTokens(result.tokens);
@@ -574,8 +579,19 @@ ipcMain.handle('dialog:save-file', async (_event, options) => {
 });
 
 // ========================================
+// File Write (for export)
+// ========================================
+ipcMain.handle('file:write', async (_event, filePath: string, content: string) => {
+    const fs = await import('fs/promises');
+    await fs.writeFile(filePath, content, 'utf-8');
+    return { success: true };
+});
+
+// ========================================
 // External Links
 // ========================================
+// TODO : This is worth hardening with a URL whitelist or stricter validation, depending on final use case
+// NOTE : Thinking spotify, youtube, soundcloud, tidal, whitelist? tie to feature flag that's coupled to actual feature status / enable
 ipcMain.handle('shell:open-external', async (_event, url: string) => {
     // Security: validate URL before opening
     try {
@@ -624,6 +640,16 @@ ipcMain.handle(IPC_CHANNELS.P2P_GET_CONNECTIONS, async () => {
 ipcMain.handle('p2p:get-status', async () => {
     console.log('[Main] Renderer requesting P2P status:', p2pState);
     return p2pState;
+});
+
+// ========================================
+// User Identity Relay (renderer → utility)
+// ========================================
+
+ipcMain.handle('user:set-identity', async (_event, identity: { displayName: string; avatarUrl?: string; userId: string }) => {
+    console.log('[Main] Setting user identity for P2P:', identity.displayName);
+    sendToUtilityProcess(MainToUtilityMessageType.SET_USER_IDENTITY, identity);
+    return { success: true };
 });
 
 // ========================================
@@ -685,13 +711,55 @@ ipcMain.handle('spotify:get-playlists', async () => {
     }
 });
 
-ipcMain.handle('spotify:get-tracks', async (_event, playlistId: string) => {
+ipcMain.handle('spotify:get-tracks', async (_event, playlistId: string, localUserId: string) => {
     try {
         const { getPlaylistTracks } = await import('./spotify/spotify-client');
         const { mapSpotifyTracks } = await import('./spotify/spotify-mapper');
         const result = await getPlaylistTracks(playlistId);
-        const mapped = mapSpotifyTracks(result.items, 'local-user');
+        const mapped = mapSpotifyTracks(result.items, localUserId);
         return { success: true, tracks: mapped, total: result.total };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+// TODO : Asset
+ipcMain.handle('spotify:get-profile', async () => {
+    try {
+        const { getCurrentUser } = await import('./spotify/spotify-client');
+        const profile = await getCurrentUser();
+        return {
+            success: true,
+            userId: profile.id,
+            displayName: profile.display_name,
+            avatarUrl: profile.images?.[0]?.url,
+        };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle('spotify:sync-playlist', async (_event, linkedSpotifyId: string, localUserId: string) => {
+    try {
+        const { getPlaylistTracks } = await import('./spotify/spotify-client');
+        const { mapSpotifyTracks } = await import('./spotify/spotify-mapper');
+
+        // Paginate through ALL tracks — playlists can exceed 100 tracks
+        // TODO : ... is this? Is this limiting to 100?
+        const allItems: Awaited<ReturnType<typeof getPlaylistTracks>>['items'] = [];
+        let offset = 0;
+        const limit = 100;
+        let total = Infinity;
+
+        while (offset < total) {
+            const page = await getPlaylistTracks(linkedSpotifyId, limit, offset);
+            total = page.total;
+            allItems.push(...page.items);
+            offset += page.items.length;
+            if (page.items.length < limit) break;
+        }
+
+        const mapped = mapSpotifyTracks(allItems, localUserId);
+        return { success: true, tracks: mapped, total: allItems.length };
     } catch (error) {
         return { success: false, error: String(error) };
     }

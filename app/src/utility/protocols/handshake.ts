@@ -12,6 +12,8 @@ import { P2P_CONFIG } from '../../shared/p2p-config';
 
 export interface HandshakeData {
     displayName: string;
+    avatarUrl?: string;
+    userId: string; // WhatNext user ID (UUID)
     version: string;
     capabilities: string[];
     peerId: string;

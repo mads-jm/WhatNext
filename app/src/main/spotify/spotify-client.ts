@@ -98,6 +98,17 @@ export async function getPlaylistTracks(playlistId: string, limit = 100, offset 
 }
 
 /**
+ * Get the current authenticated user's Spotify profile.
+ */
+export async function getCurrentUser(): Promise<{
+    id: string;
+    display_name: string;
+    images: Array<{ url: string; height: number; width: number }>;
+}> {
+    return spotifyFetch('/me');
+}
+
+/**
  * Check if client is authenticated
  */
 export function isAuthenticated(): boolean {

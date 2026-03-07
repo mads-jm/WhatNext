@@ -55,6 +55,11 @@ class P2PService {
     private connectedPeerNames: Map<string, string> = new Map();
     private replicationCheckpoints: Map<string, string> = new Map(); // "peerId:collection" -> checkpoint
 
+    // User identity (set via IPC from main process, used in handshake)
+    private userDisplayName: string | null = null;
+    private userAvatarUrl: string | undefined = undefined;
+    private userIdentityId: string | null = null;
+
     constructor() {
         this.setupMessageListener();
     }
@@ -168,6 +173,15 @@ class P2PService {
                 case MainToUtilityMessageType.GET_CONNECTED_PEERS:
                     await this.getConnectedPeers();
                     break;
+
+                case MainToUtilityMessageType.SET_USER_IDENTITY: {
+                    const identity = message.payload as { displayName: string; avatarUrl?: string; userId: string };
+                    this.userDisplayName = identity.displayName;
+                    this.userAvatarUrl = identity.avatarUrl;
+                    this.userIdentityId = identity.userId;
+                    this.log('info', `User identity set: ${identity.displayName} (${identity.userId.slice(0, 8)}...)`);
+                    break;
+                }
 
                 default:
                     this.log('warn', `Unknown message type: ${message.type}`);
@@ -321,7 +335,9 @@ class P2PService {
         if (!this.libp2pNode) return;
 
         const localHandshakeData: HandshakeData = {
-            displayName: `WhatNext User ${Math.random().toString(36).slice(2, 6)}`,
+            displayName: this.userDisplayName || `WhatNext User ${Math.random().toString(36).slice(2, 6)}`,
+            avatarUrl: this.userAvatarUrl,
+            userId: this.userIdentityId || this.libp2pNode.peerId.toString(),
             version: P2P_CONFIG.APP_INFO.protocolVersion,
             capabilities: ['playlist-sync', 'rxdb-replication'],
             peerId: this.libp2pNode.peerId.toString(),
@@ -336,6 +352,8 @@ class P2PService {
                 this.sendToMain(UtilityToMainMessageType.HANDSHAKE_COMPLETE, {
                     peerId: remotePeerId,
                     displayName: data.displayName,
+                    avatarUrl: data.avatarUrl,
+                    userId: data.userId,
                     version: data.version,
                     capabilities: data.capabilities,
                 });
@@ -520,7 +538,9 @@ class P2PService {
             // Initiate handshake after connection
             try {
                 const localData: HandshakeData = {
-                    displayName: `WhatNext User ${this.libp2pNode.peerId.toString().slice(-4)}`,
+                    displayName: this.userDisplayName || `WhatNext User ${this.libp2pNode.peerId.toString().slice(-4)}`,
+                    avatarUrl: this.userAvatarUrl,
+                    userId: this.userIdentityId || this.libp2pNode.peerId.toString(),
                     version: P2P_CONFIG.APP_INFO.protocolVersion,
                     capabilities: ['playlist-sync', 'rxdb-replication'],
                     peerId: this.libp2pNode.peerId.toString(),

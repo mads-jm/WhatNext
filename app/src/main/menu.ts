@@ -11,6 +11,7 @@ interface DarwinMenuItemConstructorOptions extends MenuItemConstructorOptions {
   submenu?: DarwinMenuItemConstructorOptions[] | Menu;
 }
 
+// TODO : Strip this back to simple if not hidden/minimal
 export default class MenuBuilder {
   mainWindow: BrowserWindow;
 

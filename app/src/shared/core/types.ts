@@ -111,6 +111,7 @@ export interface P2PMessage<T = unknown> {
 export interface HandshakePayload {
     displayName: string;
     avatarUrl?: string;
+    userId: string; // WhatNext user ID (UUID)
     version: string; // WhatNext protocol version
     capabilities: string[]; // Supported features
 }

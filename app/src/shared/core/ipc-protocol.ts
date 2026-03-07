@@ -29,6 +29,9 @@ export enum MainToUtilityMessageType {
     // Replication
     REPLICATION_PUSH = 'replication_push',
     REPLICATION_PULL = 'replication_pull',
+
+    // User identity
+    SET_USER_IDENTITY = 'set_user_identity',
 }
 
 /**
@@ -173,6 +176,7 @@ export const IPC_CHANNELS = {
     SPOTIFY_AUTH_STATUS: 'spotify:auth-status',
     SPOTIFY_GET_PLAYLISTS: 'spotify:get-playlists',
     SPOTIFY_GET_TRACKS: 'spotify:get-tracks',
+    SPOTIFY_SYNC_PLAYLIST: 'spotify:sync-playlist',
 } as const;
 
 // ========================================

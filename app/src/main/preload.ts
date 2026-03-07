@@ -74,6 +74,17 @@ const electronHandler = {
     },
 
     // ========================================
+    // File Write (for export)
+    // ========================================
+    file: {
+        write: (
+            filePath: string,
+            content: string
+        ): Promise<{ success: boolean }> =>
+            ipcRenderer.invoke('file:write', filePath, content),
+    },
+
+    // ========================================
     // External Links
     // ========================================
     shell: {
@@ -81,6 +92,14 @@ const electronHandler = {
             url: string
         ): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke('shell:open-external', url),
+    },
+
+    // ========================================
+    // User Identity
+    // ========================================
+    user: {
+        setIdentity: (identity: { displayName: string; avatarUrl?: string; userId: string }): Promise<{ success: boolean }> =>
+            ipcRenderer.invoke('user:set-identity', identity),
     },
 
     // ========================================
@@ -186,8 +205,14 @@ const electronHandler = {
         getPlaylists: (): Promise<{ success: boolean; playlists?: SpotifyPlaylistItem[]; total?: number; error?: string }> =>
             ipcRenderer.invoke('spotify:get-playlists'),
 
-        getTracks: (playlistId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
-            ipcRenderer.invoke('spotify:get-tracks', playlistId),
+        getTracks: (playlistId: string, localUserId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
+            ipcRenderer.invoke('spotify:get-tracks', playlistId, localUserId),
+
+        getProfile: (): Promise<{ success: boolean; userId?: string; displayName?: string; avatarUrl?: string; error?: string }> =>
+            ipcRenderer.invoke('spotify:get-profile'),
+
+        syncPlaylist: (linkedSpotifyId: string, localUserId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
+            ipcRenderer.invoke('spotify:sync-playlist', linkedSpotifyId, localUserId),
 
         onAuthComplete: (callback: (data: { success: boolean }) => void) => {
             const listener = (_event: IpcRendererEvent, data: { success: boolean }) => callback(data);
