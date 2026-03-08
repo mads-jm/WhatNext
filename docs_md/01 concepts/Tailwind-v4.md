@@ -283,6 +283,6 @@ export default {
 
 ---
 
-__Status__: ✅ Production-ready, running in WhatNext v0.0.0
-__Version__: v4.0.0-alpha.x (with Vite 7)
-__Last Updated__: 2025-11-12
+__Status__: ✅ Production-ready, running in WhatNext v0.2.0
+__Version__: v4 stable (with Vite 7)
+__Last Updated__: 2026-03-07

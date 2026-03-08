@@ -380,11 +380,31 @@ useEffect(() => {
 }, []);
 ```
 
+## Session Patterns (v1)
+
+Sessions v1 added several user-service patterns for participant attribution:
+
+```typescript
+// Map Spotify user ID → WhatNext UserDocType (checks linkedAccounts)
+const user = await resolveSpotifyUser('spotify_user_id');
+
+// Auto-create a stub participant when no WhatNext user matches
+const doc = await createSessionParticipant('Unknown', 'spotify_user_id');
+// Creates UserDocType with isLocal: false, linkedAccounts: [{ provider: 'spotify', ... }]
+
+// Fetch all non-local users for the participant picker
+const users = await getAllUsers();
+const nonLocal = users.filter((u) => !u.isLocal);
+```
+
+See `app/src/renderer/db/services/user-service.ts` and [[Sessions]].
+
 ## Related Concepts
 
 - [[libp2p]] - P2P networking for RxDB replication
 - [[Electron-IPC]] - Database operations in renderer context
 - [[React-Patterns]] - Reactive query patterns with React hooks
+- [[Sessions]] - Session participant attribution via RxDB user service
 - [[adr-251109-database-storage-location]] - Where RxDB data is stored
 
 ## References
@@ -417,6 +437,6 @@ useEffect(() => {
 
 ---
 
-__Status__: ✅ Production-ready, running in WhatNext v0.0.0
+__Status__: ✅ Production-ready, running in WhatNext v0.2.0
 __Storage__: Dexie (IndexedDB) for MVP, SQLite migration planned
-__Last Updated__: 2025-11-12
+__Last Updated__: 2026-03-07

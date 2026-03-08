@@ -363,5 +363,5 @@ __Trade-off__: Localhost-only TCP means LAN peers can't connect via direct TCP �
 
 ---
 
-__Status__: ✅ Production-ready, running in WhatNext v0.0.0
-__Last Updated__: 2025-11-12
+__Status__: ✅ Production-ready, running in WhatNext v0.2.0
+__Last Updated__: 2026-03-07

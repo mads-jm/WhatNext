@@ -314,4 +314,4 @@ transports: [
 
 __Status__: ✅ Production-ready, verified working in Node.js
 __Transport Priority__: 3rd (after TCP, WebSocket)
-__Last Updated__: 2025-11-12
+__Last Updated__: 2026-03-07

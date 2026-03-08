@@ -317,11 +317,45 @@ const version = ipcRenderer.sendSync('app:get-version');
 const version = await ipcRenderer.invoke('app:get-version');
 ```
 
+## Spotify IPC Surface
+
+Added in sessions v1. All Spotify calls from the renderer go through `window.electron.spotify`:
+
+```typescript
+// Import flow
+spotify.getAuthStatus()          → 'spotify:auth-status'
+spotify.startAuth()              → 'spotify:auth-start'
+spotify.getProfile()             → 'spotify:get-profile'
+spotify.getPlaylists()           → 'spotify:get-playlists'
+spotify.getTracks(id, userId)    → 'spotify:get-tracks'
+spotify.syncPlaylist(id, userId) → 'spotify:sync-playlist'
+
+// Session: collaborative playlist polling (with attribution)
+spotify.getPlaylistTracksFull(id) → 'spotify:get-playlist-tracks-full'
+// Returns: { success, tracks: SpotifyFullTrackItem[], snapshotId, total }
+
+// Session: playback control (Spotify Premium required)
+spotify.getPlaybackState()       → 'spotify:get-playback-state'
+spotify.getDevices()             → 'spotify:get-devices'
+spotify.startPlayback(params)    → 'spotify:start-playback'
+spotify.pausePlayback(deviceId?) → 'spotify:pause-playback'
+spotify.resumePlayback(deviceId?)→ 'spotify:resume-playback'
+spotify.skipToNext(deviceId?)    → 'spotify:skip-next'
+spotify.skipToPrevious(deviceId?)→ 'spotify:skip-previous'
+
+// Push events (main → renderer)
+spotify.onAuthComplete(cb)       → ipcRenderer.on('spotify:auth-complete', cb)
+spotify.onAuthError(cb)          → ipcRenderer.on('spotify:auth-error', cb)
+```
+
+Full channel names are in `IPC_CHANNELS` in `app/src/shared/core/ipc-protocol.ts`. Full type definitions for payloads (`SpotifyFullTrackItem`, `SpotifyPlaybackStateResult`, `SpotifyStartPlaybackParams`) are in the same file.
+
 ## Related Concepts
 
-- [[Electron-Security]] - Security model and best practices
+- [[Electron]] - Process model overview
 - [[libp2p]] - Utility process running P2P networking
 - [[React-Patterns]] - Using IPC in React components
+- [[Spotify-Integration]] - Full Spotify IPC surface and OAuth flow
 
 ## References
 

@@ -22,7 +22,7 @@ date modified: Sunday, February 15th 2026, 8:37:18 pm
 
 ### Development Workflows
 
-- __[[TESTING]]__ - P2P connection testing procedures
+- __[[P2P-Testing]]__ - P2P connection testing procedures
 - __[[issues-2-6-summary]]__ - Initial foundation implementation milestone
 - __[[note-260307-sessions-v1-implementation]]__ - Sessions v1 implementation milestone
 
@@ -32,7 +32,7 @@ date modified: Sunday, February 15th 2026, 8:37:18 pm
 
 ### P2P Networking
 
-[[Peer-to-Peer]] [[libp2p]] [[WebRTC]]
+[[libp2p]] [[WebRTC]] [[Circuit-Relay]] [[Handshake-Protocol]]
 - __[[adr-260307-session-architecture-provider-abstraction]]__ - Session provider abstraction (TrackSource + PlaybackProvider interfaces)
 - __[[adr-251110-libp2p-vs-simple-peer]]__ - Architectural decision for P2P library
 - __[[note-251110-p2p-utility-process-architecture]]__ - Electron process model for P2P
@@ -46,15 +46,21 @@ date modified: Sunday, February 15th 2026, 8:37:18 pm
 
 ### Data Architecture
 
-[[Local-First Data]] [[RxDB]]
-- __[[rxdb-spike-findings]]__ - RxDB evaluation results (Issue 4)
+[[RxDB]] [[RxDB-Replication]]
 - __[[note-251109-rxdb-dev-mode]]__ - Development configuration
 - __[[note-251109-rxdb-schema-validation-dexie-constraints]]__ - Schema design patterns
 - __[[note-251109-database-location-architecture]]__ - Storage location decisions
 
+### Sessions & Integrations
+
+[[Sessions]] [[Spotify-Integration]]
+- __[[adr-260307-session-architecture-provider-abstraction]]__ - Provider abstraction decision
+- __[[note-260307-sessions-v1-implementation]]__ - Sessions v1 milestone
+- __[[the-walled-garden-cracks]]__ - Coordinator model rationale
+
 ### UI/UX
 
-[[Electron]] [[React]] [[Tailwind]]
+[[Electron]] [[Electron-IPC]] [[React-Patterns]] [[Tailwind-v4]]
 - __[[note-251112-ui-modernization-complete]]__ - v0.0.0 UI polish session summary
 - __[[note-251112-modern-sidebar-navigation]]__ - Navigation redesign
 - __[[note-251112-scrolling-fix]]__ - Layout overflow resolution
@@ -118,23 +124,27 @@ date modified: Sunday, February 15th 2026, 8:37:18 pm
 
 ### Technology Stack
 
-- __[[Electron]]__ → Desktop framework (main + renderer + preload)
-- __[[React]]__ → UI framework (v19, functional components)
-- __[[TypeScript]]__ → Type safety throughout
-- __[[Vite]]__ → Build tool and dev server
-- __[[Tailwind CSS]]__ → Styling (v4)
-- __[[RxDB]]__ → Local reactive database
-- __[[libp2p]]__ → P2P networking library
-- __[[WebRTC]]__ → P2P transport layer
+- __[[Electron]]__ → Desktop framework (main + renderer + utility process)
+- __[[Electron-IPC]]__ → IPC patterns, preload API surface, Spotify channels
+- __[[React-Patterns]]__ → UI hooks, reactive RxDB queries, Zustand patterns
+- __[[Tailwind-v4]]__ → Styling (v4 stable, Vite plugin)
+- __[[RxDB]]__ → Local reactive database (Dexie/IndexedDB, MVP)
+- __[[RxDB-Replication]]__ → P2P sync protocol over libp2p streams
+- __[[libp2p]]__ → P2P networking library (utility process)
+- __[[WebRTC]]__ → P2P transport layer (NAT traversal)
+- __[[Circuit-Relay]]__ → Cross-network relay server for NAT traversal
+- __[[Handshake-Protocol]]__ → Application-level peer identity exchange
+
+### Sessions & Integrations
+
+- __[[Sessions]]__ → Session lifecycle, TrackSource/PlaybackProvider adapters, coordinator model
+- __[[Spotify-Integration]]__ → OAuth PKCE, import adapter, playback IPC, Feb 2026 API changes
 
 ### Architecture Components
 
 - __[[srs-whatnext]]__ → Formal requirements specification (MVP)
 - __[[architecture-whatnext]]__ → Formal architecture design (MVP)
 - __[[adr-260307-session-architecture-provider-abstraction]]__ → Session provider abstraction (TrackSource + PlaybackProvider)
-- __[[Helper Backend Service]]__ → Signaling + OAuth coordination
-- __[[Signaling Server]]__ → P2P connection brokering
-- __[[Spotify Collaborative Sync Strategy]]__ → External integration patterns (pre-2026 model)
 - __[[the-walled-garden-cracks]]__ → Coordinator model, service abstraction, revised strategy
 - __[[Plugin Architecture]]__ → Future extensibility (Obsidian-inspired)
 
@@ -167,7 +177,8 @@ date modified: Sunday, February 15th 2026, 8:37:18 pm
 ./scripts/dev-init.sh
 
 # Development (app + test peer)
-./scripts/start-dev.sh
+node scripts/start-dev.mjs
+node scripts/start-dev.mjs --app-only
 
 # Testing
 cd test-peer && npm start
@@ -180,19 +191,26 @@ cd app && npm run typecheck
 
 ### Key File Locations
 
-- Main process: `app/src/main/main.ts`
-- Renderer entry: `app/src/renderer/App.tsx`
-- IPC bridge: `app/src/main/preload.ts`
-- RxDB database: `app/src/renderer/db/database.ts`
-- Schemas: `app/src/renderer/db/schemas.ts`
-- Session interfaces: `app/src/shared/session-interfaces.ts`
-- IPC channels: `app/src/shared/core/ipc-protocol.ts`
-- Spotify client: `app/src/main/spotify/spotify-client.ts`
-- Session view: `app/src/renderer/components/Session/SessionView.tsx`
-- Track source hook: `app/src/renderer/hooks/useTrackSource.ts`
-- Playback state hook: `app/src/renderer/hooks/usePlaybackState.ts`
-- User service: `app/src/renderer/db/services/user-service.ts`
-- Navigation store: `app/src/renderer/stores/navigation-store.ts`
+| Area | File |
+|------|------|
+| Main process | `app/src/main/main.ts` |
+| Renderer entry | `app/src/renderer/App.tsx` |
+| IPC bridge | `app/src/main/preload.ts` |
+| P2P utility process | `app/src/utility/p2p-service.ts` |
+| RxDB database | `app/src/renderer/db/database.ts` |
+| Schemas | `app/src/renderer/db/schemas.ts` |
+| Session interfaces | `app/src/shared/session-interfaces.ts` |
+| IPC channel names + payload types | `app/src/shared/core/ipc-protocol.ts` |
+| Spotify config (scopes, client ID) | `app/src/shared/spotify-config.ts` |
+| P2P config (relay addresses) | `app/src/shared/p2p-config.ts` |
+| Spotify client (API calls) | `app/src/main/spotify/spotify-client.ts` |
+| Spotify OAuth | `app/src/main/spotify/spotify-auth.ts` |
+| Session view | `app/src/renderer/components/Session/SessionView.tsx` |
+| Session setup | `app/src/renderer/components/Session/SessionSetup.tsx` |
+| Track source hook | `app/src/renderer/hooks/useTrackSource.ts` |
+| Playback state hook | `app/src/renderer/hooks/usePlaybackState.ts` |
+| User service | `app/src/renderer/db/services/user-service.ts` |
+| Navigation store | `app/src/renderer/stores/navigation-store.ts` |
 
 ---
 
@@ -221,4 +239,4 @@ When working on WhatNext:
 ---
 
 __Last Updated__: 2026-03-07
-__Documentation Version__: v0.2.0
+__Documentation Version__: v0.3.0
