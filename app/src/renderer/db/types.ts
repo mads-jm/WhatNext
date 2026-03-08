@@ -31,6 +31,8 @@ export interface TrackViewModel {
     addedBy: string; // User ID — preserved for cross-provider bridging
     addedByName?: string; // Resolved display name for UI rendering
     durationMs: number;
+    albumArtUrl?: string;
+    albumArtLocalPath?: string;
 }
 
 /**
@@ -47,6 +49,7 @@ export interface CreatePlaylistInput {
     isCollaborative?: boolean;
     isPublic?: boolean;
     queueMode?: 'free_for_all' | 'turn_taking' | 'vote_based';
+    coverArtUrl?: string;
 }
 
 /**
@@ -68,6 +71,7 @@ export interface CreateTrackInput {
     album: string;
     durationMs: number;
     spotifyId?: string;
+    albumArtUrl?: string;
     notes?: string;
     addedBy?: string;
 }
@@ -81,6 +85,8 @@ export interface UpdateTrackInput {
     album?: string;
     durationMs?: number;
     spotifyId?: string;
+    albumArtUrl?: string;
+    albumArtLocalPath?: string;
     notes?: string;
 }
 

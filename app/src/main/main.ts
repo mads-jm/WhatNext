@@ -588,6 +588,48 @@ ipcMain.handle('file:write', async (_event, filePath: string, content: string) =
 });
 
 // ========================================
+// Artwork Caching
+// ========================================
+
+/**
+ * Download and cache artwork (album art or playlist cover) from a remote URL.
+ * Extracts a stable image ID from the URL path (works for Spotify CDN URLs).
+ * Skips download if already cached. Returns the absolute local file path.
+ */
+ipcMain.handle('artwork:download', async (_event, url: string) => {
+    try {
+        const artworkDir = path.join(app.getPath('userData'), 'artwork');
+        const fs = await import('fs/promises');
+
+        await fs.mkdir(artworkDir, { recursive: true });
+
+        // Extract stable image ID from URL path — Spotify CDN: /image/<id>
+        const urlPath = new URL(url).pathname;
+        const rawId = urlPath.split('/').filter(Boolean).pop() ?? '';
+        const imageId = rawId.replace(/[^a-zA-Z0-9_-]/g, '') || Buffer.from(url).toString('base64url').slice(0, 40);
+        const localPath = path.join(artworkDir, `${imageId}.jpg`);
+
+        // Skip if already cached
+        try {
+            await fs.access(localPath);
+            return { success: true, localPath };
+        } catch {
+            // Not cached yet — proceed
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const buffer = Buffer.from(await response.arrayBuffer());
+        await fs.writeFile(localPath, buffer);
+
+        return { success: true, localPath };
+    } catch (error) {
+        console.error('[Main] artwork:download failed:', error);
+        return { success: false, error: String(error) };
+    }
+});
+
+// ========================================
 // External Links
 // ========================================
 // TODO : This is worth hardening with a URL whitelist or stricter validation, depending on final use case
@@ -711,12 +753,12 @@ ipcMain.handle('spotify:get-playlists', async () => {
     }
 });
 
-ipcMain.handle('spotify:get-tracks', async (_event, playlistId: string, localUserId: string) => {
+ipcMain.handle('spotify:get-tracks', async (_event, playlistId: string) => {
     try {
         const { getPlaylistTracks } = await import('./spotify/spotify-client');
         const { mapSpotifyTracks } = await import('./spotify/spotify-mapper');
         const result = await getPlaylistTracks(playlistId);
-        const mapped = mapSpotifyTracks(result.items, localUserId);
+        const mapped = mapSpotifyTracks(result.items);
         return { success: true, tracks: mapped, total: result.total };
     } catch (error) {
         return { success: false, error: String(error) };
@@ -738,7 +780,7 @@ ipcMain.handle('spotify:get-profile', async () => {
     }
 });
 
-ipcMain.handle('spotify:sync-playlist', async (_event, linkedSpotifyId: string, localUserId: string) => {
+ipcMain.handle('spotify:sync-playlist', async (_event, linkedSpotifyId: string) => {
     try {
         const { getPlaylistTracks } = await import('./spotify/spotify-client');
         const { mapSpotifyTracks } = await import('./spotify/spotify-mapper');
@@ -758,7 +800,7 @@ ipcMain.handle('spotify:sync-playlist', async (_event, linkedSpotifyId: string, 
             if (page.items.length < limit) break;
         }
 
-        const mapped = mapSpotifyTracks(allItems, localUserId);
+        const mapped = mapSpotifyTracks(allItems);
         return { success: true, tracks: mapped, total: allItems.length };
     } catch (error) {
         return { success: false, error: String(error) };

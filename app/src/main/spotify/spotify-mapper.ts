@@ -13,14 +13,17 @@ export interface MappedTrack {
     album: string;
     durationMs: number;
     spotifyId: string;
+    albumArtUrl?: string;
     addedAt: string;
-    addedBy: string;
+    addedBySpotifyId: string; // Spotify user ID — resolved to WhatNext userId in the renderer
 }
 
 /**
- * Map a Spotify track to WhatNext TrackDocType format
+ * Map a Spotify track to WhatNext TrackDocType format.
+ * Attribution is taken from item.added_by.id; resolving to a WhatNext userId
+ * is the renderer's responsibility (see useSpotifyImport / useSpotifySync).
  */
-export function mapSpotifyTrack(item: SpotifyTrackItem, addedBy: string): MappedTrack {
+export function mapSpotifyTrack(item: SpotifyTrackItem): MappedTrack {
     return {
         id: uuidv4(),
         title: item.track.name,
@@ -28,16 +31,17 @@ export function mapSpotifyTrack(item: SpotifyTrackItem, addedBy: string): Mapped
         album: item.track.album.name,
         durationMs: item.track.duration_ms,
         spotifyId: item.track.id,
+        albumArtUrl: item.track.album.images[0]?.url,
         addedAt: item.added_at || new Date().toISOString(),
-        addedBy,
+        addedBySpotifyId: item.added_by.id,
     };
 }
 
 /**
  * Map multiple Spotify tracks
  */
-export function mapSpotifyTracks(items: SpotifyTrackItem[], addedBy: string): MappedTrack[] {
+export function mapSpotifyTracks(items: SpotifyTrackItem[]): MappedTrack[] {
     return items
         .filter(item => item.track && item.track.id) // Filter out null/local tracks
-        .map(item => mapSpotifyTrack(item, addedBy));
+        .map(item => mapSpotifyTrack(item));
 }

@@ -7,9 +7,11 @@
 
 import { useState, useCallback } from 'react';
 import { useUserStore } from '../stores/user-store';
-import { getTracksByIds, bulkImportTracks } from '../db/services/track-service';
+import { getTracksByIds, bulkImportTracks, updateTrack } from '../db/services/track-service';
 import { bulkAddTracksToPlaylist, removeTrackFromPlaylist } from '../db/services/playlist-service';
+import { resolveSpotifyUser, createSessionParticipant } from '../db/services/user-service';
 import type { PlaylistDocType } from '../db/schemas';
+import type { MappedTrack } from './useSpotifyImport';
 
 export type SyncState = 'idle' | 'syncing' | 'done' | 'error';
 
@@ -36,7 +38,6 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
             // 1. Fetch current Spotify state
             const result = await window.electron?.spotify.syncPlaylist(
                 playlist.linkedSpotifyId,
-                userId,
             );
 
             if (!result?.success || !result.tracks) {
@@ -66,17 +67,36 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
 
             // 5. Apply diff
             if (toAdd.length > 0) {
+                // Resolve each unique Spotify user ID to a WhatNext user ID.
+                const uniqueSpotifyIds = [...new Set(toAdd.map((t) => (t as MappedTrack).addedBySpotifyId).filter(Boolean))];
+                const spotifyToWhatNext = new Map<string, string>();
+                for (const spotifyId of uniqueSpotifyIds) {
+                    const user = await resolveSpotifyUser(spotifyId);
+                    if (user) {
+                        spotifyToWhatNext.set(spotifyId, user.id);
+                    } else {
+                        const stub = await createSessionParticipant('Unknown', spotifyId);
+                        spotifyToWhatNext.set(spotifyId, stub.id);
+                    }
+                }
+
                 const newLocalIds = await bulkImportTracks(
-                    toAdd.map((t) => ({
-                        title: t.title,
-                        artists: t.artists,
-                        album: t.album,
-                        durationMs: t.durationMs,
-                        spotifyId: t.spotifyId,
-                        addedBy: t.addedBy || userId,
-                    })),
+                    toAdd.map((t) => {
+                        const spotifyId = (t as MappedTrack).addedBySpotifyId;
+                        return {
+                            title: t.title,
+                            artists: t.artists,
+                            album: t.album,
+                            durationMs: t.durationMs,
+                            spotifyId: t.spotifyId,
+                            albumArtUrl: (t as MappedTrack).albumArtUrl,
+                            addedBy: (spotifyId && spotifyToWhatNext.get(spotifyId)) ?? userId,
+                        };
+                    }),
                 );
                 await bulkAddTracksToPlaylist(playlist.id, newLocalIds);
+                // Fire-and-forget artwork download for newly synced tracks
+                downloadArtworkForTracks(toAdd as MappedTrack[], newLocalIds);
             }
 
             for (const localId of toRemoveIds) {
@@ -93,4 +113,26 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
     }, [playlist, userId]);
 
     return { syncState, lastSynced, syncSummary, error, syncNow };
+}
+
+async function downloadArtworkForTracks(tracks: MappedTrack[], trackIds: string[]) {
+    const urlToTrackIds = new Map<string, string[]>();
+    tracks.forEach((t, i) => {
+        if (t.albumArtUrl) {
+            const ids = urlToTrackIds.get(t.albumArtUrl) ?? [];
+            ids.push(trackIds[i]);
+            urlToTrackIds.set(t.albumArtUrl, ids);
+        }
+    });
+
+    for (const [url, ids] of urlToTrackIds) {
+        try {
+            const result = await window.electron?.artwork.download(url);
+            if (result?.success && result.localPath) {
+                await Promise.all(ids.map((id) => updateTrack(id, { albumArtLocalPath: result.localPath })));
+            }
+        } catch (err) {
+            console.warn('[SpotifySync] Artwork download failed for', url, err);
+        }
+    }
 }

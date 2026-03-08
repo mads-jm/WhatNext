@@ -30,6 +30,10 @@ export function formatAsMarkdown(data: ExportPlaylist): string {
     // Title
     lines.push(`# ${data.name}`);
     lines.push('');
+    if (data.coverArtUrl) {
+        lines.push(`![Cover Art](${data.coverArtUrl})`);
+        lines.push('');
+    }
     if (data.description) {
         lines.push(`> ${data.description}`);
         lines.push('');
@@ -51,6 +55,10 @@ export function formatAsMarkdown(data: ExportPlaylist): string {
 
     data.tracks.forEach((track, i) => {
         lines.push(`### ${i + 1}. ${track.title}`);
+        if (track.albumArtUrl) {
+            lines.push(`![${escapeYaml(track.album)}](${track.albumArtUrl})`);
+            lines.push('');
+        }
         lines.push(`- **Artists:** ${track.artists.join(', ')}`);
         lines.push(`- **Album:** ${track.album}`);
         lines.push(`- **Duration:** ${formatDuration(track.durationMs)}`);

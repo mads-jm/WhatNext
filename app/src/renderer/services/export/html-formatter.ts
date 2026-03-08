@@ -17,9 +17,13 @@ export function formatAsHtml(data: ExportPlaylist): string {
             .join('');
 
         const commentsHtml = track.comments.map((c) => renderCommentHtml(c)).join('');
+        const artHtml = track.albumArtUrl
+            ? `<img class="track-art" src="${escapeHtml(track.albumArtUrl)}" alt="${escapeHtml(track.album)}" loading="lazy">`
+            : '';
 
         return `
     <div class="track">
+        ${artHtml}
         <div class="track-num">${i + 1}</div>
         <div class="track-info">
             <div class="track-title">${escapeHtml(track.title)}</div>
@@ -56,7 +60,9 @@ export function formatAsHtml(data: ExportPlaylist): string {
         .tag { display: inline-block; background: #333; border-radius: 4px; padding: 2px 8px; margin-right: 4px; font-size: 0.75rem; color: var(--muted); }
         .section { margin-bottom: 1.5rem; }
         .section h2 { font-size: 1.125rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        .cover-art { width: 200px; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem; display: block; }
         .track { display: flex; align-items: flex-start; gap: 0.75rem; background: var(--card); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+        .track-art { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
         .track-num { color: var(--muted); font-size: 0.875rem; min-width: 1.5rem; text-align: right; padding-top: 2px; }
         .track-info { flex: 1; }
         .track-title { font-weight: 600; }
@@ -75,6 +81,7 @@ export function formatAsHtml(data: ExportPlaylist): string {
 </head>
 <body>
     <div class="header">
+        ${data.coverArtUrl ? `<img class="cover-art" src="${escapeHtml(data.coverArtUrl)}" alt="${escapeHtml(data.name)} cover art">` : ''}
         <h1>${escapeHtml(data.name)}</h1>
         ${data.description ? `<p class="desc">${escapeHtml(data.description)}</p>` : ''}
         <p class="meta">${data.trackCount} tracks &bull; ${formatDuration(data.totalDurationMs)} &bull; by ${escapeHtml(data.owner)}</p>

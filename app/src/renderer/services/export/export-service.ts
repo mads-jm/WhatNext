@@ -114,6 +114,7 @@ async function gatherExportData(playlistId: string): Promise<ExportPlaylist> {
             addedBy: resolveUser(track.addedBy),
             addedAt: track.addedAt,
             spotifyId: track.spotifyId,
+            albumArtUrl: track.albumArtUrl,
             reactions: reactionCounts,
             comments: buildCommentTree(trackComments),
         };
@@ -133,5 +134,6 @@ async function gatherExportData(playlistId: string): Promise<ExportPlaylist> {
         comments: buildCommentTree(playlistComments),
         isCollaborative: playlist.isCollaborative,
         queueMode: playlist.queueMode,
+        coverArtUrl: playlist.coverArtUrl,
     };
 }

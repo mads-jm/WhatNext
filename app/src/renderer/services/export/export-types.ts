@@ -20,6 +20,7 @@ export interface ExportTrack {
     addedBy: string;
     addedAt: string;
     spotifyId?: string;
+    albumArtUrl?: string;
     reactions: Record<ReactionEmoji, number>;
     comments: ExportComment[];
 }
@@ -38,6 +39,7 @@ export interface ExportPlaylist {
     comments: ExportComment[];
     isCollaborative: boolean;
     queueMode?: string;
+    coverArtUrl?: string;
 }
 
 export type ExportFormat = 'markdown' | 'html';

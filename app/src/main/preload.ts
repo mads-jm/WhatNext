@@ -91,6 +91,14 @@ const electronHandler = {
     },
 
     // ========================================
+    // Artwork Caching
+    // ========================================
+    artwork: {
+        download: (url: string): Promise<{ success: boolean; localPath?: string; error?: string }> =>
+            ipcRenderer.invoke('artwork:download', url),
+    },
+
+    // ========================================
     // External Links
     // ========================================
     shell: {
@@ -211,14 +219,14 @@ const electronHandler = {
         getPlaylists: (): Promise<{ success: boolean; playlists?: SpotifyPlaylistItem[]; total?: number; error?: string }> =>
             ipcRenderer.invoke('spotify:get-playlists'),
 
-        getTracks: (playlistId: string, localUserId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
-            ipcRenderer.invoke('spotify:get-tracks', playlistId, localUserId),
+        getTracks: (playlistId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
+            ipcRenderer.invoke('spotify:get-tracks', playlistId),
 
         getProfile: (): Promise<{ success: boolean; userId?: string; displayName?: string; avatarUrl?: string; error?: string }> =>
             ipcRenderer.invoke('spotify:get-profile'),
 
-        syncPlaylist: (linkedSpotifyId: string, localUserId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
-            ipcRenderer.invoke('spotify:sync-playlist', linkedSpotifyId, localUserId),
+        syncPlaylist: (linkedSpotifyId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
+            ipcRenderer.invoke('spotify:sync-playlist', linkedSpotifyId),
 
         onAuthComplete: (callback: (data: { success: boolean }) => void) => {
             const listener = (_event: IpcRendererEvent, data: { success: boolean }) => callback(data);

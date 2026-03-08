@@ -128,6 +128,8 @@ export interface TrackDocType {
     album: string;
     durationMs: number;
     spotifyId?: string; // Optional Spotify track ID
+    albumArtUrl?: string; // Remote album art URL (Spotify CDN or other source)
+    albumArtLocalPath?: string; // Absolute path to locally cached album art file
     addedAt: string; // ISO timestamp
     addedBy: string; // User ID of who added this track
     notes?: string; // User notes (local user only)
@@ -137,7 +139,7 @@ export type TrackDocument = RxDocument<TrackDocType>;
 export type TrackCollection = RxCollection<TrackDocType>;
 
 export const trackSchema: RxJsonSchema<TrackDocType> = {
-    version: 0,
+    version: 1,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -164,6 +166,12 @@ export const trackSchema: RxJsonSchema<TrackDocType> = {
         spotifyId: {
             type: 'string',
             maxLength: 100, // Spotify track IDs are ~22 chars
+        },
+        albumArtUrl: {
+            type: 'string',
+        },
+        albumArtLocalPath: {
+            type: 'string',
         },
         addedAt: {
             type: 'string',
@@ -278,13 +286,15 @@ export interface PlaylistDocType {
     tags: string[]; // User-defined tags
     queueMode?: 'free_for_all' | 'turn_taking' | 'vote_based'; // Collaborative queue behavior
     currentTurnUserId?: string; // For turn_taking mode: whose turn it is
+    coverArtUrl?: string; // Remote cover art URL (Spotify CDN or other source)
+    coverArtLocalPath?: string; // Absolute path to locally cached cover art file
 }
 
 export type PlaylistDocument = RxDocument<PlaylistDocType>;
 export type PlaylistCollection = RxCollection<PlaylistDocType>;
 
 export const playlistSchema: RxJsonSchema<PlaylistDocType> = {
-    version: 0,
+    version: 1,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -351,6 +361,12 @@ export const playlistSchema: RxJsonSchema<PlaylistDocType> = {
         currentTurnUserId: {
             type: 'string',
             maxLength: 100,
+        },
+        coverArtUrl: {
+            type: 'string',
+        },
+        coverArtLocalPath: {
+            type: 'string',
         },
     },
     required: [

@@ -5,9 +5,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useUserStore } from '../stores/user-store';
-import { bulkImportTracks } from '../db/services/track-service';
+import { bulkImportTracks, updateTrack } from '../db/services/track-service';
 import { createPlaylist, bulkAddTracksToPlaylist } from '../db/services/playlist-service';
-import { linkServiceAccount, updateLocalUserProfile } from '../db/services/user-service';
+import { linkServiceAccount, updateLocalUserProfile, resolveSpotifyUser, createSessionParticipant } from '../db/services/user-service';
 
 export interface SpotifyPlaylist {
     id: string;
@@ -27,8 +27,9 @@ export interface MappedTrack {
     album: string;
     durationMs: number;
     spotifyId: string;
+    albumArtUrl?: string;
     addedAt: string;
-    addedBy: string;
+    addedBySpotifyId: string; // Spotify user ID — resolved to WhatNext userId before writing to RxDB
 }
 
 export type ImportState =
@@ -150,7 +151,7 @@ export function useSpotifyImport() {
         setState('loading-tracks');
         setError(null);
         try {
-            const result = await window.electron?.spotify.getTracks(playlist.id, userId);
+            const result = await window.electron?.spotify.getTracks(playlist.id);
             if (result?.success && result.tracks) {
                 setTracks(result.tracks);
                 setSelectedTrackIds(new Set(result.tracks.map((t: MappedTrack) => t.id)));
@@ -182,6 +183,21 @@ export function useSpotifyImport() {
         setError(null);
         try {
             const tracksToImport = tracks.filter((t) => selectedTrackIds.has(t.id));
+            const coverArtUrl = selectedPlaylist?.images?.[0]?.url;
+
+            // Resolve each unique Spotify user ID to a WhatNext user ID.
+            // Creates a stub profile for any Spotify user not yet in the database.
+            const uniqueSpotifyIds = [...new Set(tracksToImport.map((t) => t.addedBySpotifyId))];
+            const spotifyToWhatNext = new Map<string, string>();
+            for (const spotifyId of uniqueSpotifyIds) {
+                const user = await resolveSpotifyUser(spotifyId);
+                if (user) {
+                    spotifyToWhatNext.set(spotifyId, user.id);
+                } else {
+                    const stub = await createSessionParticipant('Unknown', spotifyId);
+                    spotifyToWhatNext.set(spotifyId, stub.id);
+                }
+            }
 
             const trackIds = await bulkImportTracks(
                 tracksToImport.map((t) => ({
@@ -190,7 +206,8 @@ export function useSpotifyImport() {
                     album: t.album,
                     durationMs: t.durationMs,
                     spotifyId: t.spotifyId,
-                    addedBy: t.addedBy || userId,
+                    albumArtUrl: t.albumArtUrl,
+                    addedBy: spotifyToWhatNext.get(t.addedBySpotifyId) ?? userId,
                 })),
             );
 
@@ -202,15 +219,65 @@ export function useSpotifyImport() {
                 spotifySyncMode: 'accessory',
                 isCollaborative: selectedPlaylist!.collaborative,
                 tags: ['spotify'],
+                coverArtUrl,
             });
 
             await bulkAddTracksToPlaylist(playlist.id, trackIds);
             setImportCount(tracksToImport.length);
             setCreatedPlaylistId(playlist.id);
             setState('done');
+
+            // Fire-and-forget: download artwork in background after import completes
+            downloadArtworkInBackground(tracksToImport, trackIds, playlist.id, coverArtUrl);
         } catch (err) {
             setError(`Import failed: ${err}`);
             setState('error');
+        }
+    };
+
+    /**
+     * Download and cache artwork locally after a successful import.
+     * Runs in background — does not block the import flow or update UI state.
+     */
+    const downloadArtworkInBackground = async (
+        importedTracks: MappedTrack[],
+        trackIds: string[],
+        playlistId: string,
+        coverArtUrl?: string,
+    ) => {
+        // Group track IDs by their albumArtUrl to deduplicate downloads
+        const urlToTrackIds = new Map<string, string[]>();
+        importedTracks.forEach((t, i) => {
+            if (t.albumArtUrl) {
+                const ids = urlToTrackIds.get(t.albumArtUrl) ?? [];
+                ids.push(trackIds[i]);
+                urlToTrackIds.set(t.albumArtUrl, ids);
+            }
+        });
+
+        for (const [url, ids] of urlToTrackIds) {
+            try {
+                const result = await window.electron?.artwork.download(url);
+                if (result?.success && result.localPath) {
+                    await Promise.all(ids.map((id) => updateTrack(id, { albumArtLocalPath: result.localPath })));
+                }
+            } catch (err) {
+                console.warn('[SpotifyImport] Artwork download failed for', url, err);
+            }
+        }
+
+        // Download playlist cover art
+        if (coverArtUrl) {
+            try {
+                const result = await window.electron?.artwork.download(coverArtUrl);
+                if (result?.success && result.localPath) {
+                    const db = await import('../db/database').then((m) => m.getDatabase());
+                    const playlistDoc = await db.playlists.findOne(playlistId).exec();
+                    await playlistDoc?.update({ $set: { coverArtLocalPath: result.localPath } });
+                }
+            } catch (err) {
+                console.warn('[SpotifyImport] Playlist cover download failed:', err);
+            }
         }
     };
 

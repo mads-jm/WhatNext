@@ -39,6 +39,7 @@ export async function createPlaylist(
         tags: input.tags || [],
         queueMode: input.queueMode,
         currentTurnUserId: input.queueMode === 'turn_taking' ? input.ownerId : undefined,
+        coverArtUrl: input.coverArtUrl,
     };
 
     return db.playlists.insert(playlist);

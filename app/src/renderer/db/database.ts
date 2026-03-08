@@ -105,12 +105,32 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
             },
             tracks: {
                 schema: trackSchema,
+                migrationStrategies: {
+                    // v0 → v1: Added albumArtUrl, albumArtLocalPath
+                    1(oldDoc: any) {
+                        return {
+                            ...oldDoc,
+                            albumArtUrl: oldDoc.albumArtUrl ?? undefined,
+                            albumArtLocalPath: oldDoc.albumArtLocalPath ?? undefined,
+                        };
+                    },
+                },
             },
             trackInteractions: {
                 schema: trackInteractionSchema,
             },
             playlists: {
                 schema: playlistSchema,
+                migrationStrategies: {
+                    // v0 → v1: Added coverArtUrl, coverArtLocalPath
+                    1(oldDoc: any) {
+                        return {
+                            ...oldDoc,
+                            coverArtUrl: oldDoc.coverArtUrl ?? undefined,
+                            coverArtLocalPath: oldDoc.coverArtLocalPath ?? undefined,
+                        };
+                    },
+                },
             },
             comments: {
                 schema: commentSchema,
