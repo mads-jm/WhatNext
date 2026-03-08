@@ -10,7 +10,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx:*)",
       "Bash(grep:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

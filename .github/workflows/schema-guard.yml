@@ -1,0 +1,106 @@
+name: Schema Migration Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'app/src/renderer/db/schemas.ts'
+
+jobs:
+  check:
+    name: Verify migrations exist for schema version bumps
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for migrations
+        id: check
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+
+          # Extract version numbers from schemas.ts in both base and head
+          git show $BASE:app/src/renderer/db/schemas.ts > /tmp/schemas-base.ts 2>/dev/null || echo "" > /tmp/schemas-base.ts
+
+          BASE_VERSIONS=$(grep -oP 'version:\s*\K[0-9]+' /tmp/schemas-base.ts | sort -u)
+          HEAD_VERSIONS=$(grep -oP 'version:\s*\K[0-9]+' app/src/renderer/db/schemas.ts | sort -u)
+
+          # Find versions that are new or bumped
+          NEW_VERSIONS=$(comm -13 <(echo "$BASE_VERSIONS") <(echo "$HEAD_VERSIONS"))
+
+          if [ -z "$NEW_VERSIONS" ]; then
+            echo "no_bumps=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "new_versions=$NEW_VERSIONS" >> $GITHUB_OUTPUT
+
+          # Check that each new version has a migration strategy in database.ts
+          MISSING=""
+          for VERSION in $NEW_VERSIONS; do
+            if ! grep -q "$VERSION:" app/src/renderer/db/database.ts; then
+              MISSING="$MISSING $VERSION"
+            fi
+          done
+
+          if [ -n "$MISSING" ]; then
+            echo "missing=$MISSING" >> $GITHUB_OUTPUT
+            echo "has_missing=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post warning if migrations missing
+        if: steps.check.outputs.has_missing == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const missing = '${{ steps.check.outputs.missing }}'.trim().split(' ').filter(Boolean);
+            const versions = missing.map(v => `\`${v}\``).join(', ');
+
+            const body = `## ⚠️ Schema Version Bump Without Migration
+
+            \`schemas.ts\` has new version(s): ${versions}
+
+            No corresponding migration strategy found in \`database.ts\` for these versions.
+
+            **RxDB will refuse to open the database** if existing users have data at the previous schema version.
+
+            Please add migration strategies:
+            \`\`\`ts
+            migrationStrategies: {
+              ${missing.map(v => `${v}: (oldDoc) => ({ ...oldDoc }), // TODO: transform`).join('\n  ')}
+            }
+            \`\`\`
+
+            _See [[RxDB]] — Schema Migrations._`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const alreadyPosted = comments.some(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.includes('Schema Version Bump Without Migration')
+            );
+
+            if (!alreadyPosted) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Summary (no issues)
+        if: steps.check.outputs.no_bumps == 'true'
+        run: echo "No schema version bumps detected — no migrations required."
+
+      - name: Summary (migrations present)
+        if: steps.check.outputs.new_versions != '' && steps.check.outputs.has_missing != 'true'
+        run: echo "Schema version bump detected and migrations found — looks good."

@@ -1,23 +1,36 @@
-### ✨ Description
+### Summary
 
-A brief overview of the changes in this pull request.
+One to three sentences. What changed and why.
+Reference the Conventional Commit type: `feat` / `fix` / `refactor` / `docs` / `chore`.
 
-### 🔗 Related Issue
+### Related
 
--   Closes #[issue_number]
+Closes #<!-- issue number -->
+Story: [[story-<!-- slug -->]]
 
-### 📖 Documentation PR
+### Type of Change
 
-A link to the pull request in the documentation repository that corresponds to these changes.
+- [ ] New feature (`feat`)
+- [ ] Bug fix (`fix`)
+- [ ] Refactor / cleanup (`refactor`)
+- [ ] Documentation (`docs`)
+- [ ] Chore / tooling (`chore`)
 
--   [Name of Documentation PR](link-to-documentation-pr)
+### Checklist
 
-### ✅ Checklist
+- [ ] `npm run typecheck` passes
+- [ ] `npm run lint` passes
+- [ ] Acceptance criteria from the linked issue are met
+- [ ] New or changed behaviour is manually tested
+- [ ] Documentation updated if applicable (concept pages, CLAUDE.md, ADR)
+- [ ] No secrets or credentials in diff
+- [ ] Squash commit message is rich enough to serve as a changelog entry
 
--   [ ] I have tested these changes locally.
--   [ ] The code follows the project's style guidelines.
--   [ ] I have updated the documentation accordingly.
+### AI Assistance
 
-### 📸 Screenshots (Optional)
+If Claude Code contributed to this PR, note the model and scope here.
+e.g. "Implemented with Claude Sonnet 4.6 via Claude Code CLI."
 
-If these changes include visual updates, please provide screenshots.
+### Screenshots (if UI changes)
+
+### Notes for Reviewer

@@ -1,0 +1,79 @@
+name: Persist PR to docs_md
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  persist:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Generate PR doc
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_MERGED_AT: ${{ github.event.pull_request.merged_at }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ', ') }}
+        run: |
+          # Build a slug from the PR title (lowercase, hyphens, max 60 chars)
+          SLUG=$(echo "$PR_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-\|-$//g' | cut -c1-60)
+          FILENAME="docs_md/09 PRs/pr-${PR_NUMBER}-${SLUG}.md"
+
+          # Format merged date as YYYY-MM-DD
+          MERGED_DATE=$(echo "$PR_MERGED_AT" | cut -c1-10)
+
+          cat > "$FILENAME" << HEREDOC
+          ---
+          tags:
+            - history/pr
+          pr: ${PR_NUMBER}
+          date merged: ${MERGED_DATE}
+          author: ${PR_AUTHOR}
+          branch: ${PR_BRANCH}
+          base: ${PR_BASE}
+          labels: ${PR_LABELS}
+          github: ${PR_URL}
+          ---
+
+          # PR #${PR_NUMBER}: ${PR_TITLE}
+
+          #history/pr
+
+          **Merged**: ${MERGED_DATE}
+          **Author**: ${PR_AUTHOR}
+          **Branch**: \`${PR_BRANCH}\` → \`${PR_BASE}\`
+          **Labels**: ${PR_LABELS}
+          **GitHub**: [#${PR_NUMBER}](${PR_URL})
+
+          ---
+
+          ${PR_BODY}
+          HEREDOC
+
+          # Remove leading whitespace from heredoc lines
+          sed -i 's/^          //' "$FILENAME"
+
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+
+      - name: Commit PR doc
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$FILENAME"
+          git diff --cached --quiet || git commit -m "docs(prs): Persist PR #${PR_NUMBER} on merge"
+          git push
