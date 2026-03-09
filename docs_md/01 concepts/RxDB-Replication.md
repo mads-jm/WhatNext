@@ -1,9 +1,9 @@
 ---
 tags:
   - data/rxdb/replication
-  - p2p/protocols/replication
+  - core/net/p2p/protocols/replication
 date created: Saturday, February 14th 2026, 11:36:37 am
-date modified: Sunday, February 15th 2026, 8:37:08 pm
+date modified: Monday, March 9th 2026, 12:20:45 am
 ---
 
 # RxDB Replication Protocol
@@ -119,3 +119,4 @@ window.electron.replication.onReplicationChanges((data) => {
 - IPC types: `app/src/shared/core/ipc-protocol.ts` (ReplicationPushPayload, etc.)
 - Preload API: `app/src/main/preload.ts` (replication namespace)
 - [RxDB Replication Protocol docs](https://rxdb.info/replication.html)
+

@@ -1,10 +1,10 @@
 ---
 tags:
   - guides/testing
-  - net
+  - core/net
   - core/development
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:11 pm
+date modified: Monday, March 9th 2026, 12:20:44 am
 ---
 
 # P2P Testing Guide
@@ -413,3 +413,4 @@ Then move to Phase 2:
 
 __Status__: ✅ Test peer production-ready for development workflows
 __Last Updated__: 2025-11-12
+

@@ -1,12 +1,10 @@
 ---
 tags:
-  - 10
-  - 1
-  - 2
-  - 3
-  - 4
+  - core/net/p2p/transports/webrtc
+  - core/net/p2p/libp2p
+  - notes
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:14 pm
+date modified: Monday, March 9th 2026, 12:20:37 am
 ---
 
 # WebRTC in Node.js Compatibility - RESOLVED ✅
@@ -283,6 +281,12 @@ this.libp2pNode = await createLibp2p({
 
 ---
 
+## Related Concepts
+
+[[libp2p]] [[WebRTC]] [[Circuit-Relay]]
+
+---
+
 ## References
 
 - Test script: `/app/test-libp2p-webrtc.mjs`
@@ -304,3 +308,5 @@ __Blocker Status__: __UNBLOCKED__ - Ready to proceed with implementation.
 __Estimated Time Saved__: 1-2 days (avoided detour into WebSocket/TCP fallback implementations).
 
 This validates our decision to use libp2p! 🚀
+
+

@@ -3,7 +3,7 @@ tags:
   - core/electron
   - architecture/patterns/ipc
 date created: Thursday, November 13th 2025, 4:59:12 am
-date modified: Saturday, March 7th 2026
+date modified: Monday, March 9th 2026, 12:20:51 am
 ---
 
 # Electron
@@ -16,7 +16,7 @@ Electron is a framework for building cross-platform desktop applications using w
 
 WhatNext runs three Electron processes:
 
-```
+```ts
 ┌──────────────────────────────────────────┐
 │  Renderer Process (Chromium, sandboxed)  │
 │  React UI — no direct Node.js access     │
@@ -39,7 +39,7 @@ WhatNext runs three Electron processes:
 └──────────────────────────────────────────┘
 ```
 
-**Why three processes?**
+__Why three processes?__
 - Renderer is sandboxed for security (`nodeIntegration: false`, `contextIsolation: true`)
 - Utility process isolates P2P networking from the UI thread and main process
 - Main process has full OS access, acts as trusted broker
@@ -89,3 +89,4 @@ In development, Vite runs a hot-reload dev server and the main/preload are rebui
 
 __Status__: Production-ready, running in WhatNext v0.0.0+
 __Last Updated__: 2026-03-07
+

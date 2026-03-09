@@ -1,6 +1,9 @@
 ---
+tags:
+  - data/rxdb/schema
+  - data/rxdb/dexie
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:17 pm
+date modified: Monday, March 9th 2026, 12:20:48 am
 ---
 
 # RxDB Schema Validation & Dexie Storage Constraints
@@ -264,8 +267,15 @@ After all fixes applied:
 
 ---
 
+## Related Concepts
+
+[[RxDB]]
+
+---
+
 ## Related Files
 
 - `app/src/renderer/db/database.ts` - Database initialization
 - `app/src/renderer/db/schemas.ts` - Schema definitions
 - `app/src/renderer/db/spike-test.tsx` - Initial integration test
+

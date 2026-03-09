@@ -1,9 +1,9 @@
 ---
 tags:
   - guides/roadmap
-  - net/protocols
+  - core/net/protocols
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:10 pm
+date modified: Monday, March 9th 2026, 12:20:44 am
 ---
 
 # Protocol Implementation Roadmap
@@ -511,3 +511,4 @@ By the end of this roadmap, you should be able to:
 Start with `Protocol 1: Handshake` above. It's the simplest and most important. Everything else builds on it.
 
 Good luck! 🚀
+

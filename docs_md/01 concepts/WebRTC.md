@@ -1,10 +1,10 @@
 ---
 tags:
-  - net/webrtc
-  - net
-  - net/transports
+  - core/net/webrtc
+  - core/net
+  - core/net/transports
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:09 pm
+date modified: Monday, March 9th 2026, 12:20:45 am
 ---
 
 # WebRTC
@@ -315,3 +315,4 @@ transports: [
 __Status__: ✅ Production-ready, verified working in Node.js
 __Transport Priority__: 3rd (after TCP, WebSocket)
 __Last Updated__: 2026-03-07
+

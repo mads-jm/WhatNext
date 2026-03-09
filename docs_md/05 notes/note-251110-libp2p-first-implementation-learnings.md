@@ -1,21 +1,17 @@
 ---
 tags:
-    - 10
-    - 1
-    - 2
-    - 3
-    - 4
-    - 5
-    - 6
+  - core/net/p2p/libp2p
+  - core/net/p2p/protocols
+  - core/net/p2p/transports/webrtc
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:15 pm
+date modified: Monday, March 9th 2026, 12:20:38 am
 ---
 
 # libp2p First Implementation - Early Learnings
 
-**Date**: 2025-11-10
-**Issue**: - libp2p Integration
-**Status**: 🔄 In Progress - Initial Implementation
+__Date__: 2025-11-10
+__Issue__: - libp2p Integration
+__Status__: 🔄 In Progress - Initial Implementation
 
 ## Context
 
@@ -25,9 +21,9 @@ Building the first iteration of the P2P utility process with libp2p. This docume
 
 ## Learning: Dial Requires Multiaddr, Not Just PeerID
 
-**Discovery**: When implementing `connectToPeer()`, realized that libp2p's `dial()` method requires a full multiaddr, not just a peer ID string.
+__Discovery__: When implementing `connectToPeer()`, realized that libp2p's `dial()` method requires a full multiaddr, not just a peer ID string.
 
-**The Problem**:
+__The Problem__:
 
 ```typescript
 // This doesn't work:
@@ -37,35 +33,35 @@ await libp2pNode.dial("12D3KooWFoo...");
 await libp2pNode.dial("/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWFoo...");
 ```
 
-**Why It Matters**:
+__Why It Matters__:
 Our `whtnxt://connect/<peerId>` protocol URLs only contain the peer ID, not the full multiaddr (IP address, port, transport protocol). We need a way to resolve peer IDs to multiaddrs.
 
-**Solutions** (in order of implementation priority):
+__Solutions__ (in order of implementation priority):
 
-1. **mDNS Discovery** (Immediate):
+1. __mDNS Discovery__ (Immediate):
     - When peer is discovered via mDNS, libp2p's `peerStore` saves their multiaddrs
     - We can retrieve multiaddrs from peerStore: `await libp2pNode.peerStore.get(peerId)`
-    - **Limitation**: Only works for peers discovered on local network
+    - __Limitation__: Only works for peers discovered on local network
 
-2. **Relay/Circuit Relay** (Phase 2):
+2. __Relay/Circuit Relay__ (Phase 2):
     - Include relay multiaddr in protocol URL: `whtnxt://connect/<peerId>?relay=/ip4/…`
     - Connect to relay, relay brokers connection to target peer
-    - **Trade-off**: Requires relay infrastructure
+    - __Trade-off__: Requires relay infrastructure
 
-3. **DHT Peer Routing** (Phase 3):
+3. __DHT Peer Routing__ (Phase 3):
     - libp2p's DHT (Distributed Hash Table) can find peers globally
     - Query DHT for peer's multiaddrs: `await libp2pNode.peerRouting.findPeer(peerId)`
-    - **Trade-off**: Requires DHT bootstrap nodes, adds complexity
+    - __Trade-off__: Requires DHT bootstrap nodes, adds complexity
 
-**Decision for MVP**: Start with mDNS-only (local network), add relay in Phase 2.
+__Decision for MVP__: Start with mDNS-only (local network), add relay in Phase 2.
 
 ---
 
 ## Learning: PeerID String Vs libp2p PeerId Object
 
-**Discovery**: libp2p's TypeScript APIs expect `PeerId` objects, not plain strings.
+__Discovery__: libp2p's TypeScript APIs expect `PeerId` objects, not plain strings.
 
-**The Problem**:
+__The Problem__:
 
 ```typescript
 // Our protocol uses strings:
@@ -77,10 +73,10 @@ const peerIdObj = peerIdFromString(peerId);
 await libp2pNode.dial(peerIdObj);
 ```
 
-**Why It Matters**:
+__Why It Matters__:
 Need conversion utilities between our string-based protocol and libp2p's object-based APIs.
 
-**Action Items**:
+__Action Items__:
 
 - [ ] Add `@libp2p/peer-id` package for conversion utilities
 - [ ] Create helper functions in `/shared/core/protocol.ts`:
@@ -91,23 +87,23 @@ Need conversion utilities between our string-based protocol and libp2p's object-
 
 ## Learning: WebRTC Transport Configuration
 
-**Discovery**: libp2p's WebRTC transport requires additional configuration for desktop-to-desktop connections.
+__Discovery__: libp2p's WebRTC transport requires additional configuration for desktop-to-desktop connections.
 
-**Initial Configuration**:
+__Initial Configuration__:
 
 ```typescript
 transports: [webRTC()],
 ```
 
-**Blocker**: This may not work out-of-box for Electron utility process. Need to investigate:
+__Blocker__: This may not work out-of-box for Electron utility process. Need to investigate:
 
 - Does `@libp2p/webrtc` support Node.js environment?
 - Do we need `wrtc` (WebRTC polyfill for Node.js)?
 - Should we use `@libp2p/webrtc-direct` instead?
 
-**Status**: ⚠️ **BLOCKER** - Need to test if WebRTC transport works in utility process.
+__Status__: ⚠️ __BLOCKER__ - Need to test if WebRTC transport works in utility process.
 
-**Action Items**:
+__Action Items__:
 
 - [ ] Test minimal libp2p node startup in utility process
 - [ ] Check if WebRTC requires browser APIs (fails in Node.js)
@@ -118,45 +114,45 @@ transports: [webRTC()],
 
 ## Learning: mDNS Peer Filtering
 
-**Discovery**: mDNS will discover ALL libp2p peers on local network, not just WhatNext instances.
+__Discovery__: mDNS will discover ALL libp2p peers on local network, not just WhatNext instances.
 
-**The Problem**:
+__The Problem__:
 If IPFS Desktop or other libp2p apps are running on the same network, we'll discover them too. Users might see irrelevant peers in the UI.
 
-**Solutions**:
+__Solutions__:
 
-1. **Protocol Matching** (Recommended):
+1. __Protocol Matching__ (Recommended):
     - When peer is discovered, check if they support our custom protocol
     - Query: `await libp2pNode.peerStore.protoBook.get(peerId)`
     - Only show peers that support `/whatnext/1.0.0` protocol
-    - **Trade-off**: Requires opening connection to check protocol support
+    - __Trade-off__: Requires opening connection to check protocol support
 
-2. **Service Name Filtering**:
+2. __Service Name Filtering__:
     - Configure mDNS with custom service name: `_whatnext._udp.local`
     - Only WhatNext instances advertise this service
-    - **Trade-off**: May require custom mDNS implementation
+    - __Trade-off__: May require custom mDNS implementation
 
-3. **Post-Connection Handshake**:
+3. __Post-Connection Handshake__:
     - Accept all discovered peers initially
     - After connection, send WhatNext handshake message
     - If peer doesn't respond with valid handshake, disconnect
-    - **Trade-off**: Wastes resources connecting to non-WhatNext peers
+    - __Trade-off__: Wastes resources connecting to non-WhatNext peers
 
-**Decision for MVP**: Option 3 (post-connection handshake) - simplest to implement.
+__Decision for MVP__: Option 3 (post-connection handshake) - simplest to implement.
 
 ---
 
 ## Learning: Utility Process Vs Worker Threads
 
-**Discovery**: Electron's `utilityProcess` API uses worker threads under the hood.
+__Discovery__: Electron's `utilityProcess` API uses worker threads under the hood.
 
-**What This Means**:
+__What This Means__:
 
 - Our P2P service imports `parentPort` from `node:worker_threads`
 - Communication happens via `parentPort.postMessage()` (like Web Workers)
 - Not traditional `process.send()` like child processes
 
-**Electron API**:
+__Electron API__:
 
 ```typescript
 // In main.ts
@@ -171,7 +167,7 @@ p2pProcess.on("message", (message) => {
 });
 ```
 
-**Action Items**:
+__Action Items__:
 
 - [ ] Update main.ts to spawn utility process
 - [ ] Test MessagePort communication
@@ -181,20 +177,20 @@ p2pProcess.on("message", (message) => {
 
 ## Learning: Build Configuration for Utility Process
 
-**Discovery**: The utility process needs to be bundled separately from main/renderer.
+__Discovery__: The utility process needs to be bundled separately from main/renderer.
 
-**Current Build Setup**:
+__Current Build Setup__:
 
 - `tsup` builds main.ts and preload.ts to `app/dist/`
 - Vite builds renderer to `app/dist/`
 
-**Needed**:
+__Needed__:
 
 - Utility process must be built as a separate entry point
 - Output: `app/dist/p2p-service.js`
 - Must include all libp2p dependencies (large bundle)
 
-**Action Items**:
+__Action Items__:
 
 - [ ] Update `tsup.config.ts` to include utility process entry point
 - [ ] Test that bundled utility process works when spawned
@@ -204,21 +200,27 @@ p2pProcess.on("message", (message) => {
 
 ## Next Steps
 
-1. **Test libp2p node startup** in utility process (validate WebRTC works in Node.js)
-2. **Update build configuration** to bundle utility process
-3. **Implement utility process spawning** in main.ts
-4. **Add peer ID conversion utilities** (string ↔ PeerId object)
-5. **Test mDNS discovery** with two Electron instances on same network
+1. __Test libp2p node startup__ in utility process (validate WebRTC works in Node.js)
+2. __Update build configuration__ to bundle utility process
+3. __Implement utility process spawning__ in main.ts
+4. __Add peer ID conversion utilities__ (string ↔ PeerId object)
+5. __Test mDNS discovery__ with two Electron instances on same network
 
 ---
 
 ## Open Questions
 
-1. **WebRTC in Node.js**: Does `@libp2p/webrtc` work in Node.js utility process, or do we need `wrtc` polyfill? what is polyfill? lol
-2. **Transport Fallbacks**: Should we add TCP/WebSocket transports for robustness?
-3. **PeerStore Persistence**: Does libp2p's peerStore persist across restarts, or is it in-memory only?
-4. **Connection Limits**: What's a realistic max peer count for collaborative playlists? (Current: 10) 10 is already more than ever has participated in the format. Would just want to map the impact of scale esp via a relay (cost). Dynamic scaling based on network conditions would make sense. Local mDNS discovery is less resource intensive than relay connections, so we could allow more local peers and limit relay connections more strictly.
-5. **Protocol Versioning**: How do we handle future protocol changes? (e.g., `/whatnext/2.0.0`) or can we future-proof by maintaining backward compatibility in protocol handlers?
+1. __WebRTC in Node.js__: Does `@libp2p/webrtc` work in Node.js utility process, or do we need `wrtc` polyfill? what is polyfill? lol
+2. __Transport Fallbacks__: Should we add TCP/WebSocket transports for robustness?
+3. __PeerStore Persistence__: Does libp2p's peerStore persist across restarts, or is it in-memory only?
+4. __Connection Limits__: What's a realistic max peer count for collaborative playlists? (Current: 10) 10 is already more than ever has participated in the format. Would just want to map the impact of scale esp via a relay (cost). Dynamic scaling based on network conditions would make sense. Local mDNS discovery is less resource intensive than relay connections, so we could allow more local peers and limit relay connections more strictly.
+5. __Protocol Versioning__: How do we handle future protocol changes? (e.g., `/whatnext/2.0.0`) or can we future-proof by maintaining backward compatibility in protocol handlers?
+
+---
+
+## Related Concepts
+
+[[libp2p]] [[WebRTC]] [[Circuit-Relay]] [[Electron-IPC]]
 
 ---
 
@@ -229,3 +231,4 @@ p2pProcess.on("message", (message) => {
 - [libp2p WebRTC Transport](https://github.com/libp2p/js-libp2p/tree/master/packages/transport-webrtc)
 - [Electron utilityProcess](https://www.electronjs.org/docs/latest/api/utility-process)
 - Issue: Handle `whtnxt://connect` Custom Protocol
+

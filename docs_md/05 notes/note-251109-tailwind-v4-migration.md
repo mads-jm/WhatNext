@@ -1,6 +1,9 @@
 ---
+tags:
+  - ux/ui/tailwind
+  - ux/ui/vite
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:17 pm
+date modified: Monday, March 9th 2026, 12:20:34 am
 ---
 
 # Tailwind CSS V4 Migration
@@ -151,3 +154,10 @@ __Status__: ✅ __Tailwind v4 working perfectly with Vite 7!__
 - [x] Get build working with Tailwind v4
 - [x] Learn `@utility` directive properly
 - [ ] Consider v4 theme configuration with `@theme` directive for colors
+
+---
+
+## Related Concepts
+
+[[Tailwind-v4]]
+

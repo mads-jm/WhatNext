@@ -8,17 +8,17 @@
   "collapse-color-groups": false,
   "colorGroups": [
     {
-      "query": "tag:#report",
-      "color": {
-        "a": 1,
-        "rgb": 16711680
-      }
-    },
-    {
-      "query": "tag:#core/index  ",
+      "query": "tag:#index  ",
       "color": {
         "a": 1,
         "rgb": 14701138
+      }
+    },
+    {
+      "query": "tag:#report",
+      "color": {
+        "a": 1,
+        "rgb": 16692404
       }
     },
     {
@@ -71,10 +71,17 @@
       }
     },
     {
-      "query": "tag:#net",
+      "query": "tag:#core/net/p2p/libp2p  ",
       "color": {
         "a": 1,
-        "rgb": 11621088
+        "rgb": 12255487
+      }
+    },
+    {
+      "query": "tag:#core/net",
+      "color": {
+        "a": 1,
+        "rgb": 14457853
       }
     },
     {
@@ -83,18 +90,25 @@
         "a": 1,
         "rgb": 14701233
       }
+    },
+    {
+      "query": "tag:#notes ",
+      "color": {
+        "a": 1,
+        "rgb": 11400703
+      }
     }
   ],
-  "collapse-display": true,
-  "showArrow": false,
+  "collapse-display": false,
+  "showArrow": true,
   "textFadeMultiplier": -2,
-  "nodeSizeMultiplier": 1.51731346372762,
-  "lineSizeMultiplier": 0.896636655283038,
+  "nodeSizeMultiplier": 2.99083044982699,
+  "lineSizeMultiplier": 0.990138408304498,
   "collapse-forces": false,
-  "centerStrength": 0.0483286763944945,
-  "repelStrength": 13.2329504294733,
-  "linkStrength": 1,
+  "centerStrength": 0.368512110726644,
+  "repelStrength": 20,
+  "linkStrength": 0.403114186851211,
   "linkDistance": 107,
-  "scale": 0.5561784698117793,
+  "scale": 0.14396048774355624,
   "close": false
 }

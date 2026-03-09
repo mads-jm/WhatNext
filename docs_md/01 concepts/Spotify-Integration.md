@@ -2,18 +2,18 @@
 tags:
   - integrations/spotify
   - architecture/patterns/adapters
-  - net/oauth
-date created: Saturday, March 7th 2026
-date modified: Saturday, March 7th 2026
+  - core/net/oauth
+date created: Sunday, March 8th 2026, 12:13:43 am
+date modified: Monday, March 9th 2026, 12:20:45 am
 ---
 
 # Spotify Integration
 
 ## What It Is
 
-WhatNext's Spotify integration is a **read-and-control adapter** — it reads playlists and tracks from Spotify, imports them into the local RxDB, and drives Spotify playback from the session UI. It does not write playlists back to Spotify (see sync modes in the spec for future True Collaborate / Proxy Owner modes).
+WhatNext's Spotify integration is a __read-and-control adapter__ — it reads playlists and tracks from Spotify, imports them into the local RxDB, and drives Spotify playback from the session UI. It does not write playlists back to Spotify (see sync modes in the spec for future True Collaborate / Proxy Owner modes).
 
-All Spotify interaction is in the **main process** behind IPC. The renderer never calls the Spotify API directly.
+All Spotify interaction is in the __main process__ behind IPC. The renderer never calls the Spotify API directly.
 
 ## Why We Use It
 
@@ -23,9 +23,9 @@ Spotify is the coordinator's source platform for MVP: they import a collaborativ
 
 ### OAuth PKCE Flow
 
-WhatNext uses **PKCE (Proof Key for Code Exchange)** — the correct OAuth flow for desktop apps that cannot safely store a client secret.
+WhatNext uses __PKCE (Proof Key for Code Exchange)__ — the correct OAuth flow for desktop apps that cannot safely store a client secret.
 
-```
+```ts
 Main process                              Spotify
     |                                         |
     |-- generatePKCE() ---------------------->|  (local: verifier + SHA256 challenge)
@@ -45,7 +45,7 @@ Main process                              Spotify
 
 The `whtnxt://` custom protocol is registered in `main.ts` via `app.setAsDefaultProtocolClient('whtnxt')`. The callback URL is `whtnxt://spotify-callback`.
 
-**Scopes requested:**
+__Scopes requested:__
 
 | Scope | Purpose |
 |-------|---------|
@@ -64,7 +64,7 @@ Tokens are stored in `userData` via `token-store.ts` (Electron `app.getPath('use
 
 ### Import Adapter Architecture
 
-```
+```ts
 SpotifyPlaylistBrowser          SpotifyTrackSelector
   lists user playlists            shows tracks for selection
        |                               |
@@ -79,7 +79,7 @@ SpotifyPlaylistBrowser          SpotifyTrackSelector
                                 spotifySyncMode:  'accessory'
 ```
 
-The `SpotifyPlaylist.collaborative` flag from the Spotify API **must** be passed through to `createPlaylist` as `isCollaborative` — this is what unlocks the "Open Session" button in `PlaylistView`.
+The `SpotifyPlaylist.collaborative` flag from the Spotify API __must__ be passed through to `createPlaylist` as `isCollaborative` — this is what unlocks the "Open Session" button in `PlaylistView`.
 
 ### Collaborative Playlist Polling (Session Source)
 
@@ -95,9 +95,9 @@ const fields = [
 GET /playlists/{id}?fields={encodeURIComponent(fields)}
 ```
 
-**Snapshot ID optimisation:** The response includes `snapshot_id` — a version fingerprint for the playlist. If it matches the last known snapshot, the hook short-circuits without re-processing the track list. This avoids CPU and allocation cost on every 5 s tick when the playlist is idle.
+__Snapshot ID optimisation:__ The response includes `snapshot_id` — a version fingerprint for the playlist. If it matches the last known snapshot, the hook short-circuits without re-processing the track list. This avoids CPU and allocation cost on every 5 s tick when the playlist is idle.
 
-**Pagination:** The first response includes `tracks.next`. If non-null, the hook follows the cursor until all pages are fetched. Each page uses the raw `nextUrl` returned by Spotify (already includes limit/offset).
+__Pagination:__ The first response includes `tracks.next`. If non-null, the hook follows the cursor until all pages are fetched. Each page uses the raw `nextUrl` returned by Spotify (already includes limit/offset).
 
 ### Playback Control IPC
 
@@ -112,7 +112,7 @@ All playback calls go through the main process. IPC channels (defined in `ipc-pr
 | `spotify:resume-playback` | `resumePlayback(deviceId?)` | `PUT /me/player/play` |
 | `spotify:skip-next` | `skipToNext(deviceId?)` | `POST /me/player/next` |
 | `spotify:skip-previous` | `skipToPrevious(deviceId?)` | `POST /me/player/previous` |
-| `spotify:get-playlist-tracks-full` | `getPlaylistTracksFull(id)` | `GET /playlists/{id}?fields=...` |
+| `spotify:get-playlist-tracks-full` | `getPlaylistTracksFull(id)` | `GET /playlists/{id}?fields=…` |
 
 Playback endpoints use `spotifyFetchRaw` (returns `Response`, not `.json()`) to handle 204 No Content without throwing.
 
@@ -184,7 +184,7 @@ if (response.status === 204) return null;  // No active device
 const data = await response.json();
 ```
 
-### Pitfall 3: collaborative Flag Must Flow Through Import
+### Pitfall 3: Collaborative Flag Must Flow Through Import
 
 `SpotifyPlaylist.collaborative` comes back from `GET /me/playlists`. It must be passed as `isCollaborative` when calling `createPlaylist`. If it's dropped, `PlaylistView` won't show the "Open Session" button and the coordinator cannot start a session.
 
@@ -234,3 +234,4 @@ Tokens are stored in Electron's `userData` directory. On first launch (or after 
 
 __Status__: Read-only import + playback control operational. Write-back (True Collaborate, Proxy Owner) planned for Phase 2.
 __Last Updated__: 2026-03-07
+

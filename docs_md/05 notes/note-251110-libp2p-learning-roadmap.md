@@ -1,7 +1,9 @@
 ---
-tags: 10
+tags:
+  - core/net/p2p/libp2p
+  - notes/roadmap
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:06 pm
+date modified: Monday, March 9th 2026, 12:20:38 am
 ---
 
 # libp2p Learning Roadmap & Knowledge Capture
@@ -586,3 +588,10 @@ __Goal__: By the end of this journey, we'll have a comprehensive libp2p integrat
 6. → Document every blocker, insight, and decision along the way
 
 Let's build and learn! 🚀
+
+---
+
+## Related Concepts
+
+[[libp2p]] [[WebRTC]] [[Circuit-Relay]] [[RxDB-Replication]]
+

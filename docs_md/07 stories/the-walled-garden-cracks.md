@@ -2,11 +2,11 @@
 tags:
   - core/vision
   - stories/origin
-  - spotify/api
+  - integrations/spotify/api
   - architecture/decisions
 date created: Saturday, February 14th 2026, 4:27:24 pm
 relates to: "[[whtnxt-nextspec]]"
-date modified: Sunday, February 15th 2026, 8:37:07 pm
+date modified: Monday, March 9th 2026, 12:20:47 am
 ---
 
 # The Walled Garden Cracks
@@ -173,3 +173,4 @@ For the record, here's what Spotify pulled:
 - [[libp2p]] — P2P networking implementation
 - [[RxDB-Replication]] — Data sync between peers
 - [[Handshake-Protocol]] — P2P connection establishment
+

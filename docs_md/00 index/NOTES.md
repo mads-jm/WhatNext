@@ -1,8 +1,8 @@
 ---
 tags:
-  - core/index
+  - index
 date created: Thursday, November 13th 2025, 4:59:12 am
-date modified: Sunday, February 15th 2026, 8:37:13 pm
+date modified: Monday, March 9th 2026, 12:20:36 am
 ---
 
 # Notes Index
@@ -42,6 +42,10 @@ These should be consolidated and distilled into concept pages (`/docs/01 concept
 - [[note-251112-scrolling-fix]]
 - [[note-251112-ui-modernization-complete]]
 
+### Sessions
+
+- [[note-260307-sessions-v1-implementation]]
+
 ### Milestone Summaries
 
 - [[note-251110-issue-10-complete]]
@@ -69,3 +73,5 @@ After integration, move the note to an archive or delete it to keep this index c
 ---
 
 __Last Updated__: 2025-11-12
+
+

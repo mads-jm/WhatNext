@@ -1,11 +1,9 @@
 ---
 tags:
-  - 10
-  - 1
-  - 2
-  - 3
+  - core/net/p2p/transports
+  - core/net/p2p/libp2p
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:16 pm
+date modified: Monday, March 9th 2026, 12:20:40 am
 ---
 
 # Added TCP and WebSocket Transports
@@ -286,6 +284,12 @@ __Why it matters__: Peers can choose best transport based on capabilities
 
 ---
 
+## Related Concepts
+
+[[libp2p]] [[WebRTC]] [[Circuit-Relay]]
+
+---
+
 ## References
 
 - [libp2p Transports](https://docs.libp2p.io/concepts/transports/)
@@ -299,3 +303,4 @@ __Why it matters__: Peers can choose best transport based on capabilities
 __Status__: ✅ Transports added, ready for testing!
 
 __Impact__: Same-machine testing now possible, production-ready architecture.
+

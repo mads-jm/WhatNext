@@ -3,8 +3,8 @@ tags:
   - ux/react
   - architecture/patterns/hooks
   - data/rxdb
-date created: Saturday, March 7th 2026
-date modified: Saturday, March 7th 2026
+date created: Sunday, March 8th 2026, 12:14:26 am
+date modified: Monday, March 9th 2026, 12:20:51 am
 ---
 
 # React Patterns
@@ -212,7 +212,7 @@ const userId = useUserStore.getState().userId;
 
 Do not use `useUserStore()` (the hook) outside of React components or custom hooks — it will throw.
 
-### Pitfall 5: eslint-disable for Intentional Dep Omissions
+### Pitfall 5: Eslint-disable for Intentional Dep Omissions
 
 Some hooks intentionally omit dependencies to avoid re-subscribing on every render (e.g., `config.type` is used instead of the full `config` object in `useTrackSource`). These are marked with `// eslint-disable-next-line react-hooks/exhaustive-deps`. Audit these comments when the hook's logic changes.
 
@@ -245,3 +245,4 @@ Some hooks intentionally omit dependencies to avoid re-subscribing on every rend
 
 __Status__: Established patterns, in use across all components
 __Last Updated__: 2026-03-07
+

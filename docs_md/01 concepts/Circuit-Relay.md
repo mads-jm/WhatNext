@@ -1,7 +1,7 @@
 ---
-tags: p2p/relay/circuit-relay-v2
+tags: core/net/p2p/relay/circuit-relay-v2
 date created: Saturday, February 14th 2026, 11:36:18 am
-date modified: Sunday, February 15th 2026, 8:37:08 pm
+date modified: Monday, March 9th 2026, 12:20:46 am
 ---
 
 # Circuit Relay V2
@@ -82,3 +82,5 @@ RELAY: {
 - [Circuit Relay v2 spec](https://github.com/libp2p/specs/blob/master/relay/circuit-v2.md)
 - Relay server code: `relay/relay-server.mjs`
 - Config: `app/src/shared/p2p-config.ts` (`RELAY` section)
+
+

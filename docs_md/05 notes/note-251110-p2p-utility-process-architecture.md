@@ -1,7 +1,10 @@
 ---
-tags: 10
+tags:
+  - core/net/p2p/libp2p
+  - core/electron/process-model
+  - architecture/decisions
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:15 pm
+date modified: Monday, March 9th 2026, 12:20:37 am
 ---
 
 # P2P Utility Process Architecture
@@ -344,6 +347,12 @@ This architecture is successful if:
 
 ---
 
+## Related Concepts
+
+[[libp2p]] [[Electron]] [[Electron-IPC]] [[adr-251110-electron-process-model]]
+
+---
+
 ## References
 
 - Issue: Handle `whtnxt://connect` Custom Protocol
@@ -351,3 +360,4 @@ This architecture is successful if:
 - CLAUDE.md: Architecture Principles (IPC Communication)
 - Electron Docs: [Utility Process](https://www.electronjs.org/docs/latest/api/utility-process)
 - [note-251109-custom-protocol-barebones-peer.md](note-251109-custom-protocol-barebones-peer.md): Test peer architecture
+

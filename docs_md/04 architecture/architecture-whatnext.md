@@ -1,19 +1,19 @@
 ---
 title: WhatNext Architecture Design Document
-version: 0.1.0
+version: 0.2.0
 status: Living Document
 created: 2026-02-14
-updated: 2026-02-14
+updated: 2026-03-08
 tags:
   - "#architecture/design"
   - "#core/architecture"
-  - "#p2p/libp2p"
+  - "#core/net/p2p/libp2p"
   - "#data/rxdb"
-  - "#integration/spotify"
+  - "#integrations/spotify"
   - architecture/design
   - core/architecture
 date created: Sunday, February 15th 2026, 7:36:38 am
-date modified: Sunday, February 15th 2026, 8:37:07 pm
+date modified: Monday, March 9th 2026, 12:20:42 am
 ---
 
 # WhatNext Architecture Design Document
@@ -23,6 +23,7 @@ date modified: Sunday, February 15th 2026, 8:37:07 pm
 | Version | Date       | Author       | Description                              |
 |---------|------------|--------------|------------------------------------------|
 | v0.1.0  | 2026-02-14 | WhatNext Dev | MVP baseline -- three-process Electron model, RxDB local-first data, libp2p P2P networking, Spotify import adapter |
+| v0.2.0  | 2026-03-07 | WhatNext Dev | Sessions v1 -- provider abstraction (TrackSource / PlaybackProvider), Spotify playback IPC, artwork caching, comments collection, schema migrations to v1 |
 
 ---
 
@@ -41,6 +42,9 @@ This architecture covers the MVP (Phase 1: Collaborative Playlist Accessory), in
 - P2P networking via libp2p for peer discovery and data replication
 - Spotify integration as the first import adapter via OAuth PKCE
 - The coordinator model for zero-friction collaborative sessions
+- Sessions v1: provider abstraction (TrackSource / PlaybackProvider), Spotify playback control, turn-taking
+- Artwork caching to local userData directory
+- Comments collection for playlist and track-level discussion
 
 ### 1.3 Architectural Drivers
 
@@ -58,7 +62,9 @@ This architecture covers the MVP (Phase 1: Collaborative Playlist Accessory), in
 - [[adr-251110-electron-process-model]] -- Three-process architecture decision
 - [[adr-251110-libp2p-vs-simple-peer]] -- Why libp2p over simple-peer
 - [[adr-251109-database-storage-location]] -- RxDB storage location decision
+- [[adr-260307-session-architecture-provider-abstraction]] -- Session provider abstraction decision
 - [[libp2p]], [[RxDB]], [[RxDB-Replication]], [[Circuit-Relay]], [[Handshake-Protocol]], [[Electron-IPC]], [[WebRTC]], [[Electron]]
+- [[Sessions]], [[Spotify-Integration]], [[React-Patterns]]
 
 ---
 
@@ -192,9 +198,12 @@ The main process runs in a Node.js context and is responsible for:
 
 The renderer runs React 19 in a sandboxed Chromium environment:
 
-- __React UI__: Component tree for playlists, connections, Spotify import, session views
-- __Zustand__: Non-persistent UI state (connection status, active views, UI preferences)
-- __RxDB__: Local-first reactive database over IndexedDB via the Dexie adapter. Reactive queries drive UI re-renders.
+- __React UI__: Component tree for playlists, library, Spotify import, session views, settings, social (comments/reactions)
+- __Zustand stores__: Non-persistent UI state, split into two stores:
+  - `navigation-store.ts` -- active view, selected playlist, session state (including provider configs), create dialog flag
+  - `user-store.ts` -- local user identity (initializes via `getOrCreateLocalUser()`, subscribes reactively, syncs identity to P2P utility)
+- __RxDB__: Local-first reactive database over IndexedDB via the Dexie adapter. Five collections: `users`, `tracks`, `trackInteractions`, `playlists`, `comments`. Reactive queries drive UI re-renders.
+- __Service layer__: Pure async functions over RxDB, one module per collection (`user-service.ts`, `playlist-service.ts`, `track-service.ts`, `comment-service.ts`, `reaction-service.ts`)
 - __IPC Client__: All main process communication goes through the preload-exposed `window.electron` API
 
 ### 4.3 Utility Process (`app/src/utility/p2p-service.ts`)
@@ -220,6 +229,7 @@ __Main to Utility__ (`MainToUtilityMessageType`):
 | `GET_CONNECTED_PEERS`   | Request list of currently connected peers  |
 | `REPLICATION_PUSH`      | Push RxDB documents to all connected peers |
 | `REPLICATION_PULL`      | Pull RxDB documents from connected peers   |
+| `SET_USER_IDENTITY`     | Send local user displayName/userId to P2P process for handshake |
 
 __Utility to Main__ (`UtilityToMainMessageType`):
 
@@ -243,11 +253,20 @@ __Renderer to Main__ (Electron IPC Channels):
 
 | Channel Prefix    | Examples                                  | Direction         |
 |-------------------|-------------------------------------------|-------------------|
-| `p2p:*`           | `p2p:connect`, `p2p:disconnect`, `p2p:get-status` | Renderer -> Main |
-| `p2p:*`           | `p2p:node-started`, `p2p:peer-discovered`, `p2p:connection-established` | Main -> Renderer |
+| `app:*`           | `app:get-version`, `app:get-platform`, `app:get-path` | Renderer -> Main |
+| `window:*`        | `window:minimize`, `window:maximize`, `window:close`, `window:is-maximized` | Renderer -> Main |
+| `window-*`        | `window-maximized`, `window-unmaximized`  | Main -> Renderer  |
+| `dialog:*`        | `dialog:open-file`, `dialog:open-directory`, `dialog:save-file` | Renderer -> Main |
+| `file:*`          | `file:write`                              | Renderer -> Main  |
+| `artwork:*`       | `artwork:download`                        | Renderer -> Main  |
+| `shell:*`         | `shell:open-external`                     | Renderer -> Main  |
+| `user:*`          | `user:set-identity`                       | Renderer -> Main  |
+| `p2p:*`           | `p2p:connect`, `p2p:disconnect`, `p2p:get-connections`, `p2p:get-status` | Renderer -> Main |
+| `p2p:*`           | `p2p:node-started`, `p2p:peer-discovered`, `p2p:connection-established`, `p2p:connection-failed`, `p2p:connection-closed`, `p2p:connection-request`, `p2p:node-error`, `p2p:handshake-complete` | Main -> Renderer |
 | `replication:*`   | `replication:push`, `replication:pull`     | Renderer -> Main  |
 | `replication:*`   | `replication:changes`, `replication:state` | Main -> Renderer  |
-| `spotify:*`       | `spotify:auth-start`, `spotify:get-playlists`, `spotify:get-tracks` | Renderer -> Main |
+| `spotify:*`       | `spotify:auth-start`, `spotify:auth-status`, `spotify:get-profile`, `spotify:get-playlists`, `spotify:get-tracks`, `spotify:sync-playlist` | Renderer -> Main |
+| `spotify:*`       | `spotify:get-playback-state`, `spotify:get-devices`, `spotify:start-playback`, `spotify:pause-playback`, `spotify:resume-playback`, `spotify:skip-next`, `spotify:skip-previous`, `spotify:get-playlist-tracks-full` | Renderer -> Main |
 | `spotify:*`       | `spotify:auth-complete`, `spotify:auth-error` | Main -> Renderer |
 
 ---
@@ -262,8 +281,8 @@ title WhatNext - Component Architecture
 
 Container_Boundary(renderer_boundary, "Renderer Process (Sandboxed Chromium)") {
     Component(react_ui, "React 19 UI", "TSX, Tailwind CSS", "Playlist management, P2P status, Spotify import, session views")
-    Component(zustand_store, "Zustand Store", "Zustand", "Non-persistent UI state: connection status, active views, preferences")
-    Component(rxdb_db, "RxDB Database", "RxDB + Dexie + IndexedDB", "Reactive local database: users, tracks, trackInteractions, playlists")
+    Component(zustand_store, "Zustand Stores", "Zustand", "navigation-store (view, session state, selected playlist); user-store (local user identity, P2P sync)")
+    Component(rxdb_db, "RxDB Database", "RxDB + Dexie + IndexedDB", "Reactive local database: users(v1), tracks(v1), trackInteractions(v0), playlists(v1), comments(v0)")
     Component(replication_handler, "Replication Handler", "TypeScript", "Bridges IPC replication events with local RxDB writes")
     Component(ipc_client, "IPC Client (Preload)", "contextBridge", "Type-safe API exposed as window.electron")
     Component(rx_hooks, "RxDB Hooks", "React Hooks", "useRxDBCollection -- reactive query subscriptions")
@@ -334,7 +353,7 @@ rectangle "Application Layer" {
 
 rectangle "Database Layer" {
     component "RxDB\n(Reactive queries, schema validation)" as rxdb
-    component "Collections:\nusers | tracks | trackInteractions | playlists" as collections
+    component "Collections:\nusers (v1) | tracks (v1) | trackInteractions (v0) | playlists (v1) | comments (v0)" as collections
 }
 
 rectangle "Storage Engine" {
@@ -355,7 +374,7 @@ rectangle "Future: Plaintext Export" as future #lightyellow {
 
 react --> zustand : "UI state\n(non-persistent)"
 react --> rxdb : "Reactive queries\n(.find().$)"
-rxdb --> collections : "Schema v0\nall collections"
+rxdb --> collections : "users v1 | tracks v1 | interactions v0 | playlists v1 | comments v0"
 collections --> dexie : "CRUD operations"
 dexie --> idb : "Indexed reads/writes"
 idb --> disk : "Persisted by Chromium"
@@ -366,33 +385,52 @@ rxdb ..> plaintext : "Planned export/import\n(Phase 2+)"
 
 ### 6.2 RxDB Schema Summary
 
-All schemas are at version 0. The database name is `whatnext_db`.
+The database name is `whatnext_db`. Schema versions as of MVP (Sessions v1):
 
-__users__ -- Peer identity and status tracking
+| Collection         | Schema Version | Migration Notes                                         |
+|--------------------|----------------|---------------------------------------------------------|
+| `users`            | v1             | v0→v1: added `avatarSource`, `linkedAccounts`, `updatedAt`, `bio`, `avatarLocalPath`, `avatarUrl` |
+| `tracks`           | v1             | v0→v1: added `albumArtUrl`, `albumArtLocalPath`         |
+| `trackInteractions`| v0             | No migrations yet                                       |
+| `playlists`        | v1             | v0→v1: added `coverArtUrl`, `coverArtLocalPath`         |
+| `comments`         | v0             | New in Sessions v1; no migrations yet                   |
 
-| Field         | Type    | Required | Indexed | Notes                              |
-|---------------|---------|----------|---------|-------------------------------------|
-| `id`          | string  | PK       | PK      | Unique peer ID                      |
-| `displayName` | string  | Yes      | No      |                                     |
-| `avatarUrl`   | string  | No       | No      |                                     |
-| `isLocal`     | boolean | Yes      | Yes     | True for the local user             |
-| `lastSeenAt`  | string  | Yes      | Yes     | ISO 8601 timestamp                  |
-| `publicKey`   | string  | No       | No      | Future encryption/verification      |
-| `createdAt`   | string  | Yes      | No      | ISO 8601 timestamp                  |
+---
+
+__users__ -- Peer identity, linked accounts, and status tracking
+
+| Field             | Type                                      | Required | Indexed | Notes                              |
+|-------------------|-------------------------------------------|----------|---------|-------------------------------------|
+| `id`              | string                                    | PK       | PK      | UUID (local user) or libp2p PeerId (remote peer) |
+| `displayName`     | string                                    | Yes      | No      |                                     |
+| `avatarSource`    | `'local'\|'spotify'\|'apple_music'\|'none'` | Yes    | No      | Where the avatar image comes from   |
+| `avatarLocalPath` | string                                    | No       | No      | Relative path to local avatar in userData |
+| `avatarUrl`       | string                                    | No       | No      | Resolved URL (service-provided or data URI) |
+| `bio`             | string                                    | No       | No      | Short bio (Phase 2)                 |
+| `isLocal`         | boolean                                   | Yes      | Yes     | True for the local user             |
+| `linkedAccounts`  | LinkedAccount[]                           | Yes      | No      | Linked service accounts (Spotify, etc.) |
+| `lastSeenAt`      | string                                    | Yes      | Yes     | ISO 8601 timestamp                  |
+| `publicKey`       | string                                    | No       | No      | Future encryption/verification      |
+| `createdAt`       | string                                    | Yes      | No      | ISO 8601 timestamp                  |
+| `updatedAt`       | string                                    | Yes      | No      | ISO 8601 timestamp (for LWW)        |
+
+`LinkedAccount` object: `{ provider, providerUserId, displayName?, avatarUrl?, linkedAt }`. Used to resolve Spotify `added_by.id` → WhatNext user during session polling.
 
 __tracks__ -- Music tracks with attribution
 
-| Field        | Type     | Required | Indexed | Notes                            |
-|--------------|----------|----------|---------|-----------------------------------|
-| `id`         | string   | PK       | PK      |                                   |
-| `title`      | string   | Yes      | No      |                                   |
-| `artists`    | string[] | Yes      | No      | Array of artist names             |
-| `album`      | string   | Yes      | No      |                                   |
-| `durationMs` | number   | Yes      | No      | Track duration in milliseconds    |
-| `spotifyId`  | string   | No       | No      | Optional Spotify track ID         |
-| `addedAt`    | string   | Yes      | Yes     | ISO 8601 timestamp                |
-| `addedBy`    | string   | Yes      | Yes     | User ID of who added this track   |
-| `notes`      | string   | No       | No      | User notes (local user only)      |
+| Field               | Type     | Required | Indexed | Notes                            |
+|---------------------|----------|----------|---------|-----------------------------------|
+| `id`                | string   | PK       | PK      |                                   |
+| `title`             | string   | Yes      | No      |                                   |
+| `artists`           | string[] | Yes      | No      | Array of artist names             |
+| `album`             | string   | Yes      | No      |                                   |
+| `durationMs`        | number   | Yes      | No      | Track duration in milliseconds    |
+| `spotifyId`         | string   | No       | No      | Optional Spotify track ID (not indexed — optional) |
+| `albumArtUrl`       | string   | No       | No      | Remote album art URL (Spotify CDN) |
+| `albumArtLocalPath` | string   | No       | No      | Absolute path to locally cached artwork file |
+| `addedAt`           | string   | Yes      | Yes     | ISO 8601 timestamp                |
+| `addedBy`           | string   | Yes      | Yes     | User ID of who added this track   |
+| `notes`             | string   | No       | No      | User notes (local user only)      |
 
 __trackInteractions__ -- User-track relationships for social features
 
@@ -401,12 +439,12 @@ __trackInteractions__ -- User-track relationships for social features
 | `id`             | string | PK       | PK      | Composite: `${userId}_${trackId}_${interactionType}` |
 | `userId`         | string | Yes      | Yes     |                                                 |
 | `trackId`        | string | Yes      | Yes     |                                                 |
-| `playlistId`     | string | No       | No      | Context of the interaction                      |
-| `interactionType`| string | Yes      | Yes     | Enum: `vote`, `like`, `skip`, `play`, `queue`   |
-| `value`          | number | No       | No      | For votes (+1/-1) or play counts                |
+| `playlistId`     | string | No       | No      | Context of the interaction (not indexed — optional) |
+| `interactionType`| string | Yes      | Yes     | Enum: `vote`, `like`, `skip`, `play`, `queue`, `reaction` |
+| `value`          | number | No       | No      | For votes (+1/-1) or play counts; for reactions, `1` = active |
 | `createdAt`      | string | Yes      | No      | ISO 8601 timestamp                              |
 | `updatedAt`      | string | Yes      | Yes     | ISO 8601 timestamp                              |
-| `metadata`       | string | No       | No      | JSON string for extensible data                 |
+| `metadata`       | string | No       | No      | JSON string for extensible data (e.g. `{ emoji: '👍' }` for reactions) |
 
 __playlists__ -- Collaborative playlists with ownership and permissions
 
@@ -420,15 +458,32 @@ __playlists__ -- Collaborative playlists with ownership and permissions
 | `updatedAt`        | string   | Yes      | Yes     | ISO 8601 timestamp                                     |
 | `ownerId`          | string   | Yes      | Yes     | User ID of playlist creator                            |
 | `collaboratorIds`  | string[] | Yes      | No      | User IDs with write access                             |
-| `isCollaborative`  | boolean  | Yes      | Yes     | Whether P2P collaboration is enabled                   |
+| `isCollaborative`  | boolean  | Yes      | Yes     | Whether P2P collaboration is enabled; gates "Open Session" button |
 | `isPublic`         | boolean  | Yes      | No      | Whether discoverable (future)                          |
-| `linkedSpotifyId`  | string   | No       | No      | Spotify playlist ID                                    |
+| `linkedSpotifyId`  | string   | No       | No      | Spotify playlist ID (not indexed — optional)           |
 | `spotifySyncMode`  | string   | No       | No      | Enum: `accessory`, `true_collaborate`, `proxy_owner`   |
 | `tags`             | string[] | Yes      | No      | User-defined tags                                      |
 | `queueMode`        | string   | No       | No      | Enum: `free_for_all`, `turn_taking`, `vote_based`      |
-| `currentTurnUserId`| string   | No       | No      | For `turn_taking` mode                                 |
+| `currentTurnUserId`| string   | No       | No      | For `turn_taking` mode — whose turn it is              |
+| `coverArtUrl`      | string   | No       | No      | Remote cover art URL (Spotify CDN)                     |
+| `coverArtLocalPath`| string   | No       | No      | Absolute path to locally cached cover art file         |
 
-> __Note on Dexie indexes__: Optional fields cannot be indexed with the Dexie adapter. This is why `spotifyId` (tracks), `playlistId` (trackInteractions), and `linkedSpotifyId` (playlists) are not indexed despite being useful query targets.
+__comments__ -- Playlist and track-level comments with threading (Sessions v1)
+
+| Field             | Type    | Required | Indexed | Notes                                          |
+|-------------------|---------|----------|---------|------------------------------------------------|
+| `id`              | string  | PK       | PK      | UUID v4                                        |
+| `playlistId`      | string  | Yes      | Yes     | Scoped to a playlist                           |
+| `trackId`         | string  | No       | No      | If set: track comment; absent: playlist-level  |
+| `userId`          | string  | Yes      | No      | Author's user ID                               |
+| `userDisplayName` | string  | Yes      | No      | Denormalized for display without join          |
+| `body`            | string  | Yes      | No      | Comment text                                   |
+| `parentId`        | string  | No       | No      | For threaded replies; absent = top-level       |
+| `createdAt`       | string  | Yes      | No      | ISO 8601 timestamp                             |
+| `updatedAt`       | string  | Yes      | Yes     | ISO 8601 timestamp (for LWW conflict resolution) |
+| `isDeleted`       | boolean | Yes      | No      | Soft delete for P2P tombstoning                |
+
+> __Note on Dexie indexes__: Optional fields cannot be indexed with the Dexie adapter. This is why `spotifyId` (tracks), `playlistId` (trackInteractions), `linkedSpotifyId` (playlists), and `trackId` (comments) are not indexed despite being useful query targets. Queries on these fields do full collection scans — acceptable at MVP scale.
 
 ### 6.3 Local Data Flow
 
@@ -859,9 +914,75 @@ UI -> UI : Store tracks in RxDB\n(renderer-side)
 @enduml
 ```
 
-### 8.3 Coordinator Model
+### 8.3 Session Provider Abstraction
 
-The coordinator model enables zero-friction collaborative sessions:
+Sessions v1 (shipped 2026-03-07) decouples the session layer from any specific platform. The session coordinates participants, turn order, and the track list, but delegates all platform-specific behavior to two pluggable adapter interfaces. See [[adr-260307-session-architecture-provider-abstraction]] for the full decision record.
+
+__TrackSource__ — "Where do new tracks come from?"
+
+```typescript
+// Defined in app/src/shared/session-interfaces.ts
+type TrackSourceConfig =
+    | { type: 'spotify-collab'; spotifyPlaylistId: string }  // polls Spotify collaborative playlist
+    | { type: 'manual' }                                      // host enters tracks by hand
+    | { type: 'p2p' };                                       // future: participants submit via libp2p
+```
+
+v1 implementation: `useTrackSource` hook (`spotify-collab` variant) polls `GET /playlists/{id}?fields=…` every 5 seconds. Uses `snapshotId` to short-circuit re-processing when the playlist hasn't changed.
+
+__PlaybackProvider__ — "How do we play music?"
+
+```typescript
+type PlaybackProviderConfig =
+    | { type: 'spotify' }   // controls Spotify playback via Web API (Premium required)
+    | { type: 'none' };     // metadata-only session, no playback control
+```
+
+v1 implementation: `usePlaybackState` polls `GET /me/player` every 5 s. `PlaybackBar` component drives `startPlayback`, `pausePlayback`, `skipToNext`, etc. via IPC.
+
+__Session State__ lives in the navigation Zustand store (`navigation-store.ts`) as ephemeral in-memory state:
+
+```typescript
+sessionState: {
+    status: 'active' | 'ended';
+    playlistId: string;
+    trackSource: TrackSourceConfig;
+    playbackProvider: PlaybackProviderConfig;
+    participantIds: string[];
+    hostId: string;
+    startedAt: string;
+} | null
+```
+
+Session state is never persisted — closing the app ends the session. All playlist and track data it produces persists in RxDB.
+
+__Attribution Chain__ (Spotify-powered sessions):
+
+```ts
+Spotify collaborative playlist
+    → added_by.id (Spotify user ID)
+    → resolveSpotifyUser(spotifyId)    [checks UserDocType.linkedAccounts]
+    → WhatNext UserDocType
+    → TrackDocType.addedBy = whatnext userId
+    → SessionView participant roster: trackCount per participant
+```
+
+If no WhatNext user matches a Spotify `added_by` ID, a stub profile is auto-created (`isLocal: false`, linked to the Spotify user ID). The stub can be named in the session setup screen.
+
+### 8.4 Artwork Caching
+
+Album art and playlist cover art downloaded from Spotify CDN URLs are cached to the local filesystem:
+
+- __Handler__: `artwork:download` IPC channel in `main.ts`
+- __Storage location__: `{userData}/artwork/{imageId}.jpg`
+- __Image ID__: Extracted from the Spotify CDN URL path (stable, non-expiring)
+- __Deduplication__: Checks file existence before fetching (skip if already cached)
+- __RxDB fields__: `TrackDocType.albumArtUrl` (remote), `TrackDocType.albumArtLocalPath` (local); `PlaylistDocType.coverArtUrl` (remote), `PlaylistDocType.coverArtLocalPath` (local)
+- __Display priority__: Use `file://${albumArtLocalPath}` when cached; fall back to `albumArtUrl` (remote)
+- __Import flow__: Downloaded in background after `importSelected()` completes (fire-and-forget)
+- __Sync flow__: Same pattern applied in `useSpotifySync.ts` for newly synced tracks
+
+### 8.5 Coordinator Model
 
 1. __Coordinator connects to source__: The session initiator authenticates with Spotify (only they need OAuth), imports a playlist, and normalizes it to canonical format in RxDB.
 2. __Coordinator opens P2P session__: A `whtnxt://connect/<peerId>` link is generated and shared.
@@ -1045,33 +1166,71 @@ app/
       components/
         Connection/
           ConnectionStatus.tsx         # P2P connection status display
+        Dev/
+          DevDashboard.tsx             # Developer diagnostics dashboard
         Layout/
-          Toolbar.tsx                  # Top toolbar
+          Toolbar.tsx                  # Top toolbar with window controls
           Sidebar.tsx                  # Navigation sidebar
+        Library/
+          LibraryView.tsx              # Music library view
+        Onboarding/
+          WelcomeModal.tsx             # First-run onboarding modal
         P2P/
-          P2PStatus.tsx                # Detailed P2P node status (dev view)
+          P2PStatus.tsx                # Detailed P2P node status
         Playlist/
           PlaylistList.tsx             # Playlist listing
           PlaylistView.tsx             # Single playlist view with tracks
           CreatePlaylistDialog.tsx     # New playlist creation dialog
+          TrackPickerModal.tsx         # Modal for adding tracks to playlist
         Session/
-          SessionView.tsx              # Collaborative session view
+          SessionSetup.tsx             # Session configuration: source, playback, participants
+          SessionView.tsx              # Active collaborative session view
+          PlaybackBar.tsx              # Playback transport controls (Spotify)
+        Settings/
+          ProfileSettings.tsx          # User profile and linked account settings
+        Social/
+          CommentItem.tsx              # Comment rendering with replies
         Spotify/
-          SpotifyImport.tsx            # Spotify import UI
+          SpotifyImport.tsx            # Spotify import UI (via useSpotifyImport hook)
+        UI/
+          ModalPortal.tsx              # Portal for modals
       db/
         database.ts                    # RxDB initialization (singleton, Dexie storage)
-        schemas.ts                     # RxDB schemas: users, tracks, trackInteractions, playlists
-        types.ts                       # Database type exports
-        query-helpers.ts               # Common query patterns
-        replication-handler.ts         # Bridges IPC replication events with RxDB writes
+        schemas.ts                     # RxDB schemas: users(v1), tracks(v1), trackInteractions(v0), playlists(v1), comments(v0)
+        types.ts                       # View models (TrackViewModel), CRUD input types
+        query-helpers.ts               # Common query patterns (findTracksByIds, etc.)
+        replication-handler.ts         # Bridges IPC replication:changes with RxDB upsert (LWW)
         services/
           index.ts                     # Service barrel exports
-          playlist-service.ts          # Playlist CRUD operations
-          track-service.ts             # Track CRUD operations
+          playlist-service.ts          # Playlist CRUD: create, update, delete, reorder, add/remove tracks, advanceTurn
+          track-service.ts             # Track CRUD: bulkImportTracks, updateTrack
+          user-service.ts              # User CRUD: getOrCreateLocalUser, linkServiceAccount, resolveSpotifyUser, createSessionParticipant, upsertPeerUser
+          comment-service.ts           # Comment CRUD with threading and soft-delete
+          reaction-service.ts          # Reaction management (trackInteractions with type='reaction')
       hooks/
-        useRxDBCollection.ts           # React hook for reactive RxDB query subscriptions
+        useDatabase.ts                 # React hook: provides RxDB instance + loading state
+        useRxDBCollection.ts           # React hook: reactive RxDB query subscriptions
         useP2PStatus.ts                # React hook for P2P status polling
+        useP2PDevStatus.ts             # Extended P2P status for dev dashboard
+        useSpotifyImport.ts            # State machine for the Spotify import flow
+        useSpotifySync.ts              # Syncs Spotify playlist changes to local RxDB
+        useSessionState.ts             # Reads active session for a given playlistId from navigation store
+        useTrackSource.ts              # Polling loop for 'spotify-collab' TrackSource
+        usePlaybackState.ts            # Polls Spotify playback state every 5s
+        useComments.ts                 # Reactive comment query for a playlist or track
+        useReactions.ts                # Reactive reaction query
+        useAddToPlaylist.ts            # Adds a track to a playlist with RxDB write
+        useTrackSource.ts              # TrackSource polling hook (spotify-collab / manual / p2p)
+      stores/
+        navigation-store.ts            # Zustand: active view, selected playlist, session state, dialog flags
+        user-store.ts                  # Zustand: local user identity (initializes DB user, syncs to P2P)
+        database-store.ts              # Zustand: RxDB instance reference
       services/
+        export/
+          export-service.ts            # Orchestrates export: gathers RxDB data, calls formatter
+          export-types.ts              # ExportPlaylist, ExportTrack, ExportComment, ExportFormat types
+          markdown-formatter.ts        # Formats ExportPlaylist to Markdown + YAML frontmatter
+          html-formatter.ts            # Formats ExportPlaylist to standalone HTML
         turn-service.ts                # Turn-taking logic for collaborative queues
 
     utility/                           # Utility Process (Separate Node.js process)
@@ -1086,11 +1245,12 @@ app/
     shared/                            # Shared across all processes
       core/
         index.ts                       # Barrel exports
-        ipc-protocol.ts                # IPC message types, channel names, payload interfaces
+        ipc-protocol.ts                # IPC message types, channel names (IPC_CHANNELS), payload interfaces (ReplicationPayloads, SpotifyPayloads, P2P events)
         types.ts                       # PeerId, ConnectionState, PeerMetadata, P2PConnection, etc.
-        protocol.ts                    # whtnxt:// URL parsing and generation
+        protocol.ts                    # whtnxt:// URL parsing and generation (parseProtocolUrl)
+      session-interfaces.ts            # Session provider types: IncomingTrack, PlaybackState, TrackSourceConfig, PlaybackProviderConfig, SessionState, StartSessionConfig
       p2p-config.ts                    # P2P configuration: mDNS, protocols, connection limits, relay
-      spotify-config.ts                # Spotify OAuth config: client ID, scopes, API endpoints
+      spotify-config.ts                # Spotify OAuth config: client ID, scopes, redirect URI, API endpoints
 
   dist/                                # Build output (tsup + Vite)
     main.js                            # Main process (CJS)
@@ -1107,9 +1267,16 @@ scripts/                               # Development scripts
   start-app.mjs                        # Starts the Electron app in dev mode
   dev-init.sh                          # Initial setup: nvm, Node, dependencies
 
-docs/                                  # Project documentation (Obsidian vault)
-  INDEX.md                             # Complete documentation map
-  whtnxt-nextspec.md                   # Technical specification (source of truth)
+docs_md/                               # Project documentation (Obsidian vault at docs_md/)
+  00 index/
+    ADR.md                             # ADR index
+    NOTES.md                           # Development notes index
+  01 concepts/                         # Technology concept pages
+  03 guides/                           # How-to guides
+  04 architecture/
+    architecture-whatnext.md           # This document
+    srs-whatnext.md                    # Software Requirements Specification
+    adr/                               # Architecture Decision Records
 ```
 
 ---
@@ -1120,6 +1287,7 @@ docs/                                  # Project documentation (Obsidian vault)
 - [[adr-251110-electron-process-model]] -- Three-process architecture decision
 - [[adr-251110-libp2p-vs-simple-peer]] -- libp2p selection rationale
 - [[adr-251109-database-storage-location]] -- RxDB/IndexedDB storage decision
+- [[adr-260307-session-architecture-provider-abstraction]] -- Session provider abstraction (TrackSource / PlaybackProvider)
 - [[libp2p]] -- libp2p concept page
 - [[RxDB]] -- RxDB concept page
 - [[RxDB-Replication]] -- Replication strategy details
@@ -1131,3 +1299,4 @@ docs/                                  # Project documentation (Obsidian vault)
 - [Electron Documentation](https://www.electronjs.org/docs/latest/)
 - [libp2p Documentation](https://docs.libp2p.io/)
 - [RxDB Documentation](https://rxdb.info/)
+

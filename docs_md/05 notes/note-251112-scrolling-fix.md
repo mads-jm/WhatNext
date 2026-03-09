@@ -1,6 +1,9 @@
 ---
+tags:
+  - ux/react
+  - ux/ui/layout
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:13 pm
+date modified: Monday, March 9th 2026, 12:20:33 am
 ---
 
 # Fix: Add Vertical Scrolling to All Main Window Tabs
@@ -125,6 +128,11 @@ __Scrolling Strategy:__
 
 The P2P development interface has many collapsible sections that can create very tall content. Without scrolling, much of the debug information would be inaccessible, defeating the purpose of the comprehensive developer UI.
 
-## Related
+## Related Concepts
+
+[[React-Patterns]] [[Tailwind-v4]]
+
+## Related Notes
 
 - `note-251112-p2p-development-interface-complete.md` - The comprehensive UI that needed scrolling
+

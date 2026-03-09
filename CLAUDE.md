@@ -18,28 +18,30 @@ The project is architected as an Electron desktop application with a circuit rel
 /relay      - Circuit relay server for P2P NAT traversal
 /test-peer  - Barebones libp2p test peer for P2P development
 /service    - Helper service for OAuth coordination and API proxying (planned)
-/docs       - Obsidian vault: project documentation organized by concept
-  /00 index     - INDEX.md and documentation maps
+/docs_md    - Obsidian vault: project documentation organized by concept
+  /00 index     - Documentation maps and indexes
   /01 concepts  - Core technology and pattern explanations
   /03 guides    - How-to documents and workflows
   /04 architecture - System design, ADRs, SRS, and architecture docs
   /05 notes     - Development notes and learnings
   /07 stories   - Vision documents and project narratives
   /99 meta      - Templates and vault configuration
+/docs       - Generated HTML documentation site (do not edit directly)
 /scripts    - Development and initialization scripts
 ```
 
 ## Documentation Navigation
 
-All project documentation is indexed in **[docs/00 index/INDEX.md](docs/00%20index/INDEX.md)**, organized by concept for efficient LLM interaction. This index:
+All project documentation is indexed in **`docs_md/index.md`**, organized by concept for efficient LLM interaction. This index:
 - Maps all markdown files by architectural concept
 - Links documentation using Obsidian-style `[[WikiLinks]]`
 - Provides quick reference for common commands and file locations
 - Must be maintained when new documentation is created
 
 Key formal documents:
-- **[SRS](docs/04%20architecture/srs-whatnext.md)** — Software Requirements Specification (MVP baseline)
-- **[Architecture](docs/04%20architecture/architecture-whatnext.md)** — Architecture Design Document
+- **`docs_md/04 architecture/srs-whatnext.md`** — Software Requirements Specification (MVP baseline)
+- **`docs_md/04 architecture/architecture-whatnext.md`** — Architecture Design Document
+- **`docs_md/03 guides/workflow-story-to-pr.md`** — Development workflow (Story → Issue → Spec → Commit → PR)
 
 ## Development Commands
 
@@ -211,6 +213,29 @@ WhatNext abstracts streaming services behind a **translation layer** pattern:
 - **React**: Functional components with hooks
 - **ESLint**: React hooks and refresh plugins enabled
 
+## Commit Convention
+
+WhatNext uses **Conventional Commits**:
+
+```
+<type>(<scope>): <short summary, ≤72 chars>
+
+[Optional body: the "why", not the "what".]
+```
+
+Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `style`, `perf`
+
+Scopes: `sessions`, `p2p`, `spotify`, `db`, `ipc`, `ui`, `auth`, `relay`
+
+**Do not include `Co-Authored-By` lines in commits.** If Claude Code contributed, note it in the PR description instead. All commits are human-owned.
+
+## Agentic Work Policy
+
+- **The P2P protocol is off-limits for fully autonomous agentic work** without explicit human approval. This covers: `app/src/main/p2p/`, `app/src/renderer/db/replication*.ts`, `app/src/main/handshake.ts`, and P2P message types in `app/src/shared/core/ipc-protocol.ts`.
+- All other code may be implemented autonomously, subject to normal human review before merge.
+- Agents cannot merge to `main` or `dev`. Every PR requires a human reviewer.
+- **Worktree cleanup is Claude's responsibility**: after every agentic session, run `git worktree remove <path> && git branch -d <branch>` before closing.
+
 ## Critical Design Constraints
 
 1. **User Sovereignty is Non-Negotiable**: Local data is canonical; external services are enhancements
@@ -221,7 +246,7 @@ WhatNext abstracts streaming services behind a **translation layer** pattern:
 
 ## Knowledge Management: Obsidian-First Documentation
 
-The `/docs` directory is structured as an **Obsidian vault** optimized for concept-based knowledge growth, not chronological logging. This approach prioritizes enduring knowledge over ephemeral notes.
+The `/docs_md` directory is structured as an **Obsidian vault** optimized for concept-based knowledge growth, not chronological logging. This approach prioritizes enduring knowledge over ephemeral notes.
 
 ### Documentation Philosophy
 
@@ -237,13 +262,16 @@ The `/docs` directory is structured as an **Obsidian vault** optimized for conce
 ### Directory Structure (Wide, Not Deep)
 
 ```
-/docs
-  /00 index         Documentation maps and indexes (INDEX.md)
+/docs_md
+  /00 index         Documentation maps and indexes
   /01 concepts      Core technology and pattern explanations
-  /03 guides        How-to documents and workflows
+  /02 references    Reference material and external resource summaries
+  /03 guides        How-to documents and workflows (including workflow-story-to-pr.md)
   /04 architecture  System design, ADRs, SRS, and architecture docs
   /05 notes         Development notes and learnings
-  /07 stories       Vision documents and project narratives (whtnxt-nextspec.md)
+  /07 stories       Vision documents and project narratives
+  /08 specs         Feature and component specs (linked from GitHub Issues)
+  /09 PRs           Auto-generated PR records (written on merge via GitHub Action)
   /99 meta          Templates and vault configuration
 ```
 
@@ -328,7 +356,7 @@ What we didn't choose and why
 
 ### Maintenance Discipline
 
-1. **Update `/docs/INDEX.md`** when creating new documentation
+1. **Update `docs_md/index.md`** when creating new documentation
 2. **Use `[[WikiLinks]]`** liberally to connect related concepts
 3. **Apply nested tags** (`#category/subcategory`) for graph visualization in Obsidian
 4. **Consolidate learning** into concept pages rather than scattering across timestamped notes
@@ -338,18 +366,19 @@ What we didn't choose and why
 
 When working on WhatNext:
 - **Prioritize updating existing concept pages** over creating new timestamped notes
-- **Check `/docs/INDEX.md`** for relevant existing documentation before creating new files
+- **Check `docs_md/index.md`** for relevant existing documentation before creating new files
 - **Use WikiLink syntax** `[[Concept-Name]]` when referencing other documentation
 - **Apply appropriate nested tags** to new documentation for Obsidian graph navigation
 - **Propose consolidation** when you notice scattered information that should be unified
 
 ## Reference Documentation
 
-- **Documentation Index**: `docs/00 index/INDEX.md` - Complete map of all project documentation
-- **Full specification**: `docs/07 stories/whtnxt-nextspec.md` - Technical specification (source of truth)
-- **SRS**: `docs/04 architecture/srs-whatnext.md` - Software Requirements Specification
-- **Architecture**: `docs/04 architecture/architecture-whatnext.md` - Architecture Design Document
-- **Vision supplement**: `docs/07 stories/the-walled-garden-cracks.md` - Coordinator model and service abstraction
+- **Documentation Index**: `docs_md/index.md` - Complete map of all project documentation
+- **Full specification**: `docs_md/07 stories/whtnxt-nextspec.md` - Technical specification (source of truth)
+- **SRS**: `docs_md/04 architecture/srs-whatnext.md` - Software Requirements Specification
+- **Architecture**: `docs_md/04 architecture/architecture-whatnext.md` - Architecture Design Document
+- **Vision supplement**: `docs_md/07 stories/the-walled-garden-cracks.md` - Coordinator model and service abstraction
+- **Workflow guide**: `docs_md/03 guides/workflow-story-to-pr.md` - Development workflow
 - **README**: High-level structure and stack overview
-- **Development notes**: `docs/05 notes/` for lessons learned and troubleshooting
+- **Development notes**: `docs_md/05 notes/` for lessons learned and troubleshooting
 - **Electron docs**: https://www.electronjs.org/docs/latest/

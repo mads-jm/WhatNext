@@ -1,170 +1,38 @@
 ---
 tags:
-  - core/index
+  - index
 date created: Thursday, November 13th 2025, 4:59:12 am
-date modified: Sunday, February 15th 2026, 8:37:18 pm
+date modified: Monday, March 9th 2026, 12:20:36 am
 ---
 
-# WhatNext Documentation Index
+# WhatNext Documentation
 
-> __For LLMs__: This index maps all documentation in the repository by concept. Use this for quick navigation and context gathering.
-
-## Core Documentation
-
-### Project Foundation
-
-- __[[whtnxt-nextspec]]__ - Complete technical specification and architecture (source of truth)
-- __[[the-walled-garden-cracks]]__ - Vision supplement: Spotify API crackdown, coordinator model, translation layer architecture (2026-02)
-- __[[srs-whatnext]]__ - Software Requirements Specification (MVP baseline v0.1.0)
-- __[[architecture-whatnext]]__ - Architecture Design Document (MVP baseline v0.1.0)
-- __[[README]]__ - High-level overview and stack
-- __[[CLAUDE]]__ - Development instructions, commands, architecture principles
-
-### Development Workflows
-
-- __[[P2P-Testing]]__ - P2P connection testing procedures
-- __[[issues-2-6-summary]]__ - Initial foundation implementation milestone
-- __[[note-260307-sessions-v1-implementation]]__ - Sessions v1 implementation milestone
+> __For LLMs__: Start here. Navigate to a directory index for scoped exploration, or jump directly to a core document below.
 
 ---
 
-## Concepts & Architecture
+## Directory Indexes (`00 index/`)
 
-### P2P Networking
-
-[[libp2p]] [[WebRTC]] [[Circuit-Relay]] [[Handshake-Protocol]]
-- __[[adr-260307-session-architecture-provider-abstraction]]__ - Session provider abstraction (TrackSource + PlaybackProvider interfaces)
-- __[[adr-251110-libp2p-vs-simple-peer]]__ - Architectural decision for P2P library
-- __[[note-251110-p2p-utility-process-architecture]]__ - Electron process model for P2P
-- __[[note-251110-simplified-p2p-connection-architecture]]__ - Connection flow patterns
-- __[[note-251110-libp2p-learning-roadmap]]__ - Phase-by-phase learning plan
-- __[[note-251110-libp2p-first-implementation-learnings]]__ - Practical lessons
-- __[[note-251110-webrtc-node-js-compatibility-resolved]]__ - Node.js WebRTC integration
-- __[[note-251110-barebones-test-peer-created]]__ - Test peer implementation
-- __[[note-251110-added-tcp-websocket-transports]]__ - Transport layer expansion
-- __[[note-251109-custom-protocol-barebones-peer]]__ - Protocol handler implementation
-
-### Data Architecture
-
-[[RxDB]] [[RxDB-Replication]]
-- __[[note-251109-rxdb-dev-mode]]__ - Development configuration
-- __[[note-251109-rxdb-schema-validation-dexie-constraints]]__ - Schema design patterns
-- __[[note-251109-database-location-architecture]]__ - Storage location decisions
-
-### Sessions & Integrations
-
-[[Sessions]] [[Spotify-Integration]]
-- __[[adr-260307-session-architecture-provider-abstraction]]__ - Provider abstraction decision
-- __[[note-260307-sessions-v1-implementation]]__ - Sessions v1 milestone
-- __[[the-walled-garden-cracks]]__ - Coordinator model rationale
-
-### UI/UX
-
-[[Electron]] [[Electron-IPC]] [[React-Patterns]] [[Tailwind-v4]]
-- __[[note-251112-ui-modernization-complete]]__ - v0.0.0 UI polish session summary
-- __[[note-251112-modern-sidebar-navigation]]__ - Navigation redesign
-- __[[note-251112-scrolling-fix]]__ - Layout overflow resolution
-- __[[note-251109-tailwind-v4-migration]]__ - Upgrading to Tailwind CSS v4
+| Directory | Index | Contents |
+|-----------|-------|----------|
+| `01 concepts/` | [[CONCEPTS]] | Technology & pattern concept pages |
+| `03 guides/` | [[GUIDES]] | How-to docs and workflow guides |
+| `04 architecture/` | [[ARCHITECTURE]] | SRS, architecture design document |
+| `04 architecture/adr/` | [[ADR]] | Architecture Decision Records |
+| `05 notes/` | [[NOTES]] | Active development notes |
+| `07 stories/` | [[STORIES]] | Vision documents and narratives |
+| `08 specs/` | [[SPECS]] | Feature and component specs (linked from Issues) |
+| `09 PRs/` | [[PRS]] | PR history (auto-generated on merge) |
 
 ---
 
-## Development Milestones
+## Core Documents
 
-### Issue 10: libp2p Integration
-
-- __[[note-251110-issue-10-complete]]__ - libp2p integration milestone
-- __[[note-251110-issue-10-session-summary]]__ - Development session retrospective
-
-### V0.0.0 Release
-
-- __[[note-251112-v0.0.0-release-summary]]__ - Alpha release overview
-- __[[note-251112-p2p-development-interface-complete]]__ - Dev UI implementation
-- __[[Protocol-Implementation-Roadmap]]__ - Next steps for protocol work
-- __[[Quick-Start]]__ - Getting started with v0.0.0
-- __[[note-251112-navigation-quick-reference]]__ - UI navigation guide
-
----
-
-## Repository Structure
-
-### Application Components
-
-```ts
-/app                    Main Electron application
-  /src/main            Main process (Node.js)
-  /src/renderer        Renderer process (React)
-  /src/main/preload.ts IPC bridge (security boundary)
-  /docs                App-specific documentation
-
-/test-peer             Barebones libp2p test peer for P2P development
-  README.md            Test peer usage guide
-
-/service               Helper service (future: signaling, OAuth)
-/scripts               Development and initialization scripts
-/docs                  Project-wide documentation
-  /notes               Development notes and learnings
-```
-
-### Key Configuration Files
-
-- __[[CLAUDE]]__ - Instructions for AI assistants working on the codebase
-- __[[README]]__ - Project overview
-- __[[TESTING]]__ - Testing procedures
-
----
-
-## Concept Map
-
-### Core Principles
-
-- __[[User Sovereignty]]__ → Local-first, user owns data
-- __[[Local-First Data]]__ → Plaintext storage, offline-capable
-- __[[Peer-to-Peer]]__ → Decentralized collaboration
-- __[[Plaintext Data Format]]__ → Markdown + YAML frontmatter
-
-### Technology Stack
-
-- __[[Electron]]__ → Desktop framework (main + renderer + utility process)
-- __[[Electron-IPC]]__ → IPC patterns, preload API surface, Spotify channels
-- __[[React-Patterns]]__ → UI hooks, reactive RxDB queries, Zustand patterns
-- __[[Tailwind-v4]]__ → Styling (v4 stable, Vite plugin)
-- __[[RxDB]]__ → Local reactive database (Dexie/IndexedDB, MVP)
-- __[[RxDB-Replication]]__ → P2P sync protocol over libp2p streams
-- __[[libp2p]]__ → P2P networking library (utility process)
-- __[[WebRTC]]__ → P2P transport layer (NAT traversal)
-- __[[Circuit-Relay]]__ → Cross-network relay server for NAT traversal
-- __[[Handshake-Protocol]]__ → Application-level peer identity exchange
-
-### Sessions & Integrations
-
-- __[[Sessions]]__ → Session lifecycle, TrackSource/PlaybackProvider adapters, coordinator model
-- __[[Spotify-Integration]]__ → OAuth PKCE, import adapter, playback IPC, Feb 2026 API changes
-
-### Architecture Components
-
-- __[[srs-whatnext]]__ → Formal requirements specification (MVP)
-- __[[architecture-whatnext]]__ → Formal architecture design (MVP)
-- __[[adr-260307-session-architecture-provider-abstraction]]__ → Session provider abstraction (TrackSource + PlaybackProvider)
-- __[[the-walled-garden-cracks]]__ → Coordinator model, service abstraction, revised strategy
-- __[[Plugin Architecture]]__ → Future extensibility (Obsidian-inspired)
-
----
-
-## Documentation Patterns
-
-### Note Types
-
-- `note-YYMMDD-[topic].md` - Issue-specific learnings, problems solved
-- `adr-YYMMDD-[decision].md` - Architecture Decision Records
-- Session summaries - Milestone retrospectives
-- Concept explainers - Deep dives on specific technologies
-
-### Status Indicators
-
-- ✅ Resolved/Complete
-- 🔄 In Progress
-- ⚠️ Blocked
-- 🎓 Learning Phase
+- __[[whtnxt-nextspec]]__ — Complete technical specification (source of truth)
+- __[[srs-whatnext]]__ — Software Requirements Specification (MVP baseline)
+- __[[architecture-whatnext]]__ — Architecture Design Document (MVP baseline)
+- __[[the-walled-garden-cracks]]__ — Coordinator model and Spotify strategy (Feb 2026)
+- __[[workflow-story-to-pr]]__ — Development workflow: Story → Issue → Spec → Commit → PR
 
 ---
 
@@ -173,20 +41,10 @@ date modified: Sunday, February 15th 2026, 8:37:18 pm
 ### Common Commands
 
 ```bash
-# Initial setup
-./scripts/dev-init.sh
-
-# Development (app + test peer)
-node scripts/start-dev.mjs
-node scripts/start-dev.mjs --app-only
-
-# Testing
-cd test-peer && npm start
-cd app && npm run dev
-
-# Building
-cd app && npm run build
-cd app && npm run typecheck
+node scripts/start-dev.mjs              # Start app + test peer
+node scripts/start-dev.mjs --app-only   # App only
+cd app && npm run typecheck             # TypeScript check
+cd app && npm run build                 # Production build
 ```
 
 ### Key File Locations
@@ -194,49 +52,29 @@ cd app && npm run typecheck
 | Area | File |
 |------|------|
 | Main process | `app/src/main/main.ts` |
-| Renderer entry | `app/src/renderer/App.tsx` |
 | IPC bridge | `app/src/main/preload.ts` |
-| P2P utility process | `app/src/utility/p2p-service.ts` |
 | RxDB database | `app/src/renderer/db/database.ts` |
 | Schemas | `app/src/renderer/db/schemas.ts` |
-| Session interfaces | `app/src/shared/session-interfaces.ts` |
-| IPC channel names + payload types | `app/src/shared/core/ipc-protocol.ts` |
-| Spotify config (scopes, client ID) | `app/src/shared/spotify-config.ts` |
-| P2P config (relay addresses) | `app/src/shared/p2p-config.ts` |
-| Spotify client (API calls) | `app/src/main/spotify/spotify-client.ts` |
-| Spotify OAuth | `app/src/main/spotify/spotify-auth.ts` |
+| IPC channels + payload types | `app/src/shared/core/ipc-protocol.ts` |
 | Session view | `app/src/renderer/components/Session/SessionView.tsx` |
-| Session setup | `app/src/renderer/components/Session/SessionSetup.tsx` |
-| Track source hook | `app/src/renderer/hooks/useTrackSource.ts` |
-| Playback state hook | `app/src/renderer/hooks/usePlaybackState.ts` |
-| User service | `app/src/renderer/db/services/user-service.ts` |
-| Navigation store | `app/src/renderer/stores/navigation-store.ts` |
+| Spotify OAuth | `app/src/main/spotify/spotify-auth.ts` |
 
 ---
 
-## For AI Assistants
+## Active Development Status (2026-03-08)
 
-When working on WhatNext:
-1. __Start with__: [[CLAUDE]] for development context
-2. __Reference__: [[whtnxt-nextspec]] for architectural decisions
-3. __Check__: Recent notes in `/docs/05 notes/` for current state
-4. __Document__: New learnings following patterns in [[note-251110-libp2p-learning-roadmap]]
-
-### Active Development Areas (as of 2026-03-07)
-
-- ✅ P2P networking foundation (libp2p integration complete)
-- ✅ UI modernization (v0.0.0 polished)
-- ✅ Formal documentation (SRS + Architecture Design — see [[srs-whatnext]], [[architecture-whatnext]])
-- ✅ RxDB replication over libp2p (basic push working)
-- ✅ Spotify adapter (read-only import, OAuth PKCE)
+- ✅ P2P networking foundation (libp2p integration)
+- ✅ RxDB replication over libp2p
+- ✅ Spotify adapter (import + playback)
+- ✅ Sessions v1 (provider-abstracted — [[adr-260307-session-architecture-provider-abstraction]])
 - ✅ Social features (reactions, comments, turn-taking)
-- ✅ **Sessions v1** — Provider-abstracted live sessions (see [[adr-260307-session-architecture-provider-abstraction]], [[note-260307-sessions-v1-implementation]])
-- ✅ Spotify playback control + collaborative playlist polling (8 new IPC channels)
 - 🔜 Open metadata enrichment (MusicBrainz/ListenBrainz)
 - 🔜 Non-Spotify track sources (ManualTrackSource, P2PTrackSource)
 - 🔜 Remote sessions via circuit relay
 
 ---
 
-__Last Updated__: 2026-03-07
-__Documentation Version__: v0.3.0
+__Last Updated__: 2026-03-08
+__Documentation Version__: v0.3.2
+
+

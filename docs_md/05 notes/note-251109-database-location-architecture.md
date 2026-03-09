@@ -1,6 +1,10 @@
 ---
+tags:
+  - data/rxdb
+  - core/electron/process-model
+  - architecture/decisions
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:17 pm
+date modified: Monday, March 9th 2026, 12:20:47 am
 ---
 
 # Database Location: Renderer Vs Main Process
@@ -437,8 +441,15 @@ Move to main process ONLY if:
 - Security model changes dramatically (not planned)
 - Adding server-side sync hub (contradicts local-first)
 
+## Related Concepts
+
+[[RxDB]] [[Electron]] [[adr-251109-database-storage-location]]
+
+---
+
 ## References
 
 - [RxDB Electron Integration](https://rxdb.info/electron.html)
 - [Electron Process Model](https://www.electronjs.org/docs/latest/tutorial/process-model)
 - WhatNext spec §2.1: Local-First Data with User-Accessible Storage
+

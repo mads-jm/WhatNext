@@ -2,9 +2,9 @@
 tags:
   - architecture/decisions
   - core/electron
-  - net
+  - core/net
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:10 pm
+date modified: Monday, March 9th 2026, 12:20:43 am
 ---
 
 # ADR: Electron Process Model for P2P Architecture
@@ -280,3 +280,4 @@ app.on('open-url', (event, url) => {
 
 __Status__: ✅ Implemented and production-ready in v0.0.0
 __Review Date__: 2026-01-10 (re-evaluate after 2 months of production use)
+

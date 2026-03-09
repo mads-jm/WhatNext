@@ -1,7 +1,9 @@
 ---
-tags: 10
+tags:
+  - core/net/p2p/testing/test-peer
+  - core/net/p2p/libp2p
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:16 pm
+date modified: Monday, March 9th 2026, 12:20:40 am
 ---
 
 # Barebones Test Peer Created
@@ -244,6 +246,12 @@ Files to keep in sync:
 ✅ __Fast startup__: <1 second to running node
 ✅ __mDNS discovery__: Auto-finds Electron app
 
+## Related Concepts
+
+[[libp2p]] [[WebRTC]]
+
+---
+
 ## References
 
 - Issue: Handle `whtnxt://connect` Custom Protocol
@@ -256,3 +264,4 @@ Files to keep in sync:
 __Status__: ✅ Test peer ready for use!
 
 Next: Test connection between test peer and Electron app.
+

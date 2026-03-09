@@ -2,9 +2,9 @@
 tags:
   - architecture/patterns/ipc
   - core/electron
-  - net/security
+  - core/net/security
 date created: Thursday, November 13th 2025, 4:59:12 am
-date modified: Sunday, February 15th 2026, 8:37:10 pm
+date modified: Monday, March 9th 2026, 12:20:46 am
 ---
 
 # Electron IPC
@@ -317,38 +317,91 @@ const version = ipcRenderer.sendSync('app:get-version');
 const version = await ipcRenderer.invoke('app:get-version');
 ```
 
-## Spotify IPC Surface
+## Full window.electron API Surface
 
-Added in sessions v1. All Spotify calls from the renderer go through `window.electron.spotify`:
+The complete `window.electron` API as exposed by `app/src/main/preload.ts`:
 
 ```typescript
-// Import flow
-spotify.getAuthStatus()          → 'spotify:auth-status'
-spotify.startAuth()              → 'spotify:auth-start'
-spotify.getProfile()             → 'spotify:get-profile'
-spotify.getPlaylists()           → 'spotify:get-playlists'
-spotify.getTracks(id, userId)    → 'spotify:get-tracks'
-spotify.syncPlaylist(id, userId) → 'spotify:sync-playlist'
+window.electron = {
+    // Application info
+    app.getVersion()                              → 'app:get-version'
+    app.getPlatform()                             → 'app:get-platform'
+    app.getPath(name)                             → 'app:get-path'
 
-// Session: collaborative playlist polling (with attribution)
-spotify.getPlaylistTracksFull(id) → 'spotify:get-playlist-tracks-full'
-// Returns: { success, tracks: SpotifyFullTrackItem[], snapshotId, total }
+    // Window controls
+    window.minimize()                             → 'window:minimize'
+    window.maximize()                             → 'window:maximize'
+    window.close()                                → 'window:close'
+    window.isMaximized()                          → 'window:is-maximized'
+    window.onMaximized(cb)                        → ipcRenderer.on('window-maximized', cb)
+    window.onUnmaximized(cb)                      → ipcRenderer.on('window-unmaximized', cb)
 
-// Session: playback control (Spotify Premium required)
-spotify.getPlaybackState()       → 'spotify:get-playback-state'
-spotify.getDevices()             → 'spotify:get-devices'
-spotify.startPlayback(params)    → 'spotify:start-playback'
-spotify.pausePlayback(deviceId?) → 'spotify:pause-playback'
-spotify.resumePlayback(deviceId?)→ 'spotify:resume-playback'
-spotify.skipToNext(deviceId?)    → 'spotify:skip-next'
-spotify.skipToPrevious(deviceId?)→ 'spotify:skip-previous'
+    // File system / dialogs
+    dialog.openFile(options?)                     → 'dialog:open-file'
+    dialog.openDirectory(options?)                → 'dialog:open-directory'
+    dialog.saveFile(options?)                     → 'dialog:save-file'
 
-// Push events (main → renderer)
-spotify.onAuthComplete(cb)       → ipcRenderer.on('spotify:auth-complete', cb)
-spotify.onAuthError(cb)          → ipcRenderer.on('spotify:auth-error', cb)
+    // File write (export)
+    file.write(filePath, content)                 → 'file:write'
+
+    // Artwork caching
+    artwork.download(url)                         → 'artwork:download'
+    // Returns: { success, localPath?, error? }
+
+    // External links
+    shell.openExternal(url)                       → 'shell:open-external'
+
+    // User identity relay
+    user.setIdentity({ displayName, avatarUrl?, userId }) → 'user:set-identity'
+    // Relays identity to P2P utility for handshake
+
+    // P2P connection management
+    p2p.connect(peerId)                           → 'p2p:connect'
+    p2p.disconnect(peerId)                        → 'p2p:disconnect'
+    p2p.getConnections()                          → 'p2p:get-connections'
+    p2p.getStatus()                               → 'p2p:get-status'
+    p2p.onNodeStarted(cb)                         → ipcRenderer.on('p2p:node-started', cb)
+    p2p.onPeerDiscovered(cb)                      → ipcRenderer.on('p2p:peer-discovered', cb)
+    p2p.onConnectionRequest(cb)                   → ipcRenderer.on('p2p:connection-request', cb)
+    p2p.onConnectionEstablished(cb)               → ipcRenderer.on('p2p:connection-established', cb)
+    p2p.onConnectionFailed(cb)                    → ipcRenderer.on('p2p:connection-failed', cb)
+    p2p.onConnectionClosed(cb)                    → ipcRenderer.on('p2p:connection-closed', cb)
+    p2p.onNodeError(cb)                           → ipcRenderer.on('p2p:node-error', cb)
+
+    // Replication (renderer ↔ main ↔ utility)
+    replication.pushChanges(collection, documents)→ 'replication:push'
+    replication.pullChanges(collection, checkpoint)→ 'replication:pull'
+    replication.onReplicationChanges(cb)          → ipcRenderer.on('replication:changes', cb)
+    replication.onReplicationState(cb)            → ipcRenderer.on('replication:state', cb)
+
+    // Spotify integration
+    spotify.startAuth()                           → 'spotify:auth-start'
+    spotify.getAuthStatus()                       → 'spotify:auth-status'
+    spotify.getPlaylists()                        → 'spotify:get-playlists'
+    spotify.getTracks(playlistId)                 → 'spotify:get-tracks'
+    spotify.getProfile()                          → 'spotify:get-profile'
+    spotify.syncPlaylist(linkedSpotifyId)         → 'spotify:sync-playlist'
+    spotify.onAuthComplete(cb)                    → ipcRenderer.on('spotify:auth-complete', cb)
+    spotify.onAuthError(cb)                       → ipcRenderer.on('spotify:auth-error', cb)
+    // Playback control (Spotify Premium required)
+    spotify.getPlaybackState()                    → 'spotify:get-playback-state'
+    spotify.getDevices()                          → 'spotify:get-devices'
+    spotify.startPlayback(params)                 → 'spotify:start-playback'
+    spotify.pausePlayback(params?)                → 'spotify:pause-playback'
+    spotify.resumePlayback(params?)               → 'spotify:resume-playback'
+    spotify.skipNext(params?)                     → 'spotify:skip-next'
+    spotify.skipPrevious(params?)                 → 'spotify:skip-previous'
+    // Session polling (returns snapshotId for optimisation)
+    spotify.getPlaylistTracksFull(playlistId)     → 'spotify:get-playlist-tracks-full'
+
+    // Low-level escape hatch (for advanced / edge cases)
+    ipcRenderer.sendMessage(channel, args)
+    ipcRenderer.invoke(channel, ...args)
+    ipcRenderer.on(channel, listener)
+}
 ```
 
-Full channel names are in `IPC_CHANNELS` in `app/src/shared/core/ipc-protocol.ts`. Full type definitions for payloads (`SpotifyFullTrackItem`, `SpotifyPlaybackStateResult`, `SpotifyStartPlaybackParams`) are in the same file.
+All channel names are defined in `IPC_CHANNELS` in `app/src/shared/core/ipc-protocol.ts`. All payload types (`SpotifyFullTrackItem`, `SpotifyPlaybackStateResult`, `SpotifyStartPlaybackParams`, `ReplicationChangesPayload`, etc.) are in the same file.
 
 ## Related Concepts
 
@@ -380,6 +433,7 @@ Full channel names are in `IPC_CHANNELS` in `app/src/shared/core/ipc-protocol.ts
 
 ---
 
-__Status__: ✅ Production-ready, running in WhatNext v0.0.0
+__Status__: Production-ready; API surface expanded in Sessions v1 (Spotify playback, artwork, user identity, replication)
 __Security__: `nodeIntegration: false`, `contextIsolation: true` enforced
-__Last Updated__: 2025-11-12
+__Last Updated__: 2026-03-08
+

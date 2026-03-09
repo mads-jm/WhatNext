@@ -1,9 +1,9 @@
 ---
 tags:
-  - net/libp2p
-  - net
+  - core/net/p2p/libp2p
+  - core/net
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:08 pm
+date modified: Monday, March 9th 2026, 12:20:44 am
 ---
 
 # libp2p
@@ -365,3 +365,4 @@ __Trade-off__: Localhost-only TCP means LAN peers can't connect via direct TCP â
 
 __Status__: âœ… Production-ready, running in WhatNext v0.2.0
 __Last Updated__: 2026-03-07
+

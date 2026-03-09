@@ -1,6 +1,9 @@
 ---
+tags:
+  - data/rxdb/plugins
+  - data/rxdb/dev-mode
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:17 pm
+date modified: Monday, March 9th 2026, 12:20:48 am
 ---
 
 # RxDB Dev-Mode Plugin Setup
@@ -161,3 +164,11 @@ After fixes:
 7. ✅ Invalid data rejected by validator
 
 __Result__: RxDB spike test component now works perfectly!
+
+---
+
+## Related Concepts
+
+[[RxDB]]
+
+

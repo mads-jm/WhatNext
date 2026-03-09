@@ -4,7 +4,7 @@ tags:
   - core/build-tools
   - ux/styling/tailwind
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:08 pm
+date modified: Monday, March 9th 2026, 12:20:51 am
 ---
 
 # Tailwind CSS V4
@@ -286,3 +286,4 @@ export default {
 __Status__: ✅ Production-ready, running in WhatNext v0.2.0
 __Version__: v4 stable (with Vite 7)
 __Last Updated__: 2026-03-07
+

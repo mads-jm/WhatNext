@@ -4,7 +4,7 @@ tags:
   - core/vision/local-first
   - ux/reactive
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:09 pm
+date modified: Monday, March 9th 2026, 12:20:49 am
 ---
 
 # RxDB
@@ -78,10 +78,13 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
             ignoreDuplicate: true
         });
 
-        // Add collections
+        // Add collections (5 total, with migration strategies for versioned schemas)
         await db.addCollections({
-            tracks: { schema: trackSchema },
-            playlists: { schema: playlistSchema }
+            users: { schema: userSchema, migrationStrategies: { 1: (old) => ({ ...old, avatarSource: 'none', linkedAccounts: [], updatedAt: old.createdAt }) } },
+            tracks: { schema: trackSchema, migrationStrategies: { 1: (old) => ({ ...old, albumArtUrl: undefined, albumArtLocalPath: undefined }) } },
+            trackInteractions: { schema: trackInteractionSchema },
+            playlists: { schema: playlistSchema, migrationStrategies: { 1: (old) => ({ ...old, coverArtUrl: undefined, coverArtLocalPath: undefined }) } },
+            comments: { schema: commentSchema },
         });
 
         return db as WhatNextDatabase;
@@ -93,28 +96,30 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
 
 ### Schemas
 
-WhatNext uses JSON Schema with RxDB extensions:
+WhatNext uses JSON Schema with RxDB extensions. Current schema versions: `users` v1, `tracks` v1, `playlists` v1, `trackInteractions` v0, `comments` v0. See `app/src/renderer/db/schemas.ts` for the authoritative definitions.
+
+Example (tracks v1, simplified):
 
 ```typescript
-export const trackSchema: RxJsonSchema<Track> = {
-    version: 0,
+export const trackSchema: RxJsonSchema<TrackDocType> = {
+    version: 1,  // v0→v1 migration added albumArtUrl, albumArtLocalPath
     primaryKey: 'id',
     type: 'object',
     properties: {
-        id: { type: 'string', maxLength: 36 },
+        id: { type: 'string', maxLength: 100 },
         title: { type: 'string' },
-        artists: {
-            type: 'array',
-            items: { type: 'string' }
-        },
+        artists: { type: 'array', items: { type: 'string' } },
         album: { type: 'string' },
         durationMs: { type: 'number', minimum: 0 },
-        spotifyId: { type: 'string' },
-        addedAt: { type: 'string', format: 'date-time' },
-        notes: { type: 'string' }
+        spotifyId: { type: 'string', maxLength: 100 },
+        albumArtUrl: { type: 'string' },         // Added in v1
+        albumArtLocalPath: { type: 'string' },   // Added in v1
+        addedAt: { type: 'string', format: 'date-time', maxLength: 30 },
+        addedBy: { type: 'string', maxLength: 100 },
+        notes: { type: 'string' },
     },
-    required: ['id', 'title', 'artists', 'album', 'durationMs', 'addedAt'],
-    indexes: ['addedAt']  // Only required fields can be indexed with Dexie
+    required: ['id', 'title', 'artists', 'album', 'durationMs', 'addedAt', 'addedBy'],
+    indexes: ['addedAt', 'addedBy'],  // Only required fields can be indexed with Dexie
 };
 ```
 
@@ -419,9 +424,11 @@ See `app/src/renderer/db/services/user-service.ts` and [[Sessions]].
 ### WhatNext Implementation
 
 - Database: `app/src/renderer/db/database.ts`
-- Schemas: `app/src/renderer/db/schemas.ts`
-- Services: `app/src/renderer/db/services/`
-- Spike test: `app/src/renderer/db/spike-test.tsx`
+- Schemas: `app/src/renderer/db/schemas.ts` (users v1, tracks v1, playlists v1, trackInteractions v0, comments v0)
+- Services: `app/src/renderer/db/services/` (playlist, track, user, comment, reaction)
+- Types: `app/src/renderer/db/types.ts` (view models, CRUD input types)
+- Query helpers: `app/src/renderer/db/query-helpers.ts`
+- Replication handler: `app/src/renderer/db/replication-handler.ts`
 
 ### Related Issues
 
@@ -440,3 +447,4 @@ See `app/src/renderer/db/services/user-service.ts` and [[Sessions]].
 __Status__: ✅ Production-ready, running in WhatNext v0.2.0
 __Storage__: Dexie (IndexedDB) for MVP, SQLite migration planned
 __Last Updated__: 2026-03-07
+

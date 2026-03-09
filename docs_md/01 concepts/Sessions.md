@@ -3,8 +3,8 @@ tags:
   - architecture/patterns/sessions
   - architecture/patterns/adapters
   - core/sessions
-date created: Saturday, March 7th 2026
-date modified: Saturday, March 7th 2026
+date created: Sunday, March 8th 2026, 12:12:43 am
+date modified: Monday, March 9th 2026, 12:20:52 am
 ---
 
 # Sessions
@@ -13,7 +13,7 @@ date modified: Saturday, March 7th 2026
 
 A WhatNext session is a live, collaborative playlist-building experience hosted by one peer (the coordinator) around a shared playlist. Sessions are ephemeral — they exist in memory while running, but all playlist and track data they produce persists in RxDB.
 
-Sessions v1 shipped with the **provider abstraction**: the session layer is platform-agnostic and never imports Spotify directly. All external platform interaction is behind two interfaces — `TrackSource` and `PlaybackProvider`.
+Sessions v1 shipped with the __provider abstraction__: the session layer is platform-agnostic and never imports Spotify directly. All external platform interaction is behind two interfaces — `TrackSource` and `PlaybackProvider`.
 
 ## Why We Use It
 
@@ -50,7 +50,7 @@ Both are discriminated unions serialised into Zustand — no class instances, no
 
 Session state lives in the navigation store (Zustand, in-memory only):
 
-```
+```ts
 sessionState = null             → no session (SessionSetup shown)
 sessionState.status = 'active'  → session running (SessionView shown)
 sessionState.status = 'ended'   → session ended, navigated to playlists
@@ -60,12 +60,12 @@ Closing the app ends the session; all playlist and track data survives in RxDB.
 
 ### SessionSetup Flow (2 steps)
 
-**Step 1 — Configure source and playback:**
+__Step 1 — Configure source and playback:__
 - Loads the playlist from RxDB (`getPlaylist(playlistId)`)
 - If `playlist.linkedSpotifyId` exists, pre-selects `spotify-collab` source and `spotify` playback
 - User can switch to `manual` source or `none` playback
 
-**Step 2 — Register participants:**
+__Step 2 — Register participants:__
 - Lists all non-local users from RxDB as suggestions (toggle checkboxes)
 - Host can add new participants by display name + Spotify username (`createSessionParticipant`)
 - Host is always prepended to the participant list as participant 0
@@ -76,7 +76,7 @@ On "Start Session", calls `startSession(config)` in the navigation store, settin
 
 `useTrackSource` runs the polling loop for `spotify-collab`:
 
-```
+```ts
 Every 5 seconds:
 1. Call spotify.getPlaylistTracksFull(spotifyPlaylistId)
 2. If snapshotId unchanged → short-circuit (no re-parse)
@@ -99,7 +99,7 @@ The snapshot ID optimisation avoids re-processing the full track list when the S
 
 ### Attribution Chain
 
-```
+```ts
 Spotify collaborative playlist
     → added_by.id (Spotify user ID)
     → resolveSpotifyUser(spotifyId)     [checks linkedAccounts in RxDB users]
@@ -162,23 +162,23 @@ navigate('playlists'); // Return to playlist view
 
 ## Common Pitfalls
 
-### Pitfall 1: Playlist not showing "Open Session"
+### Pitfall 1: Playlist not Showing "Open Session"
 
 `PlaylistView` gates the button on `playlist.isCollaborative`. Playlists imported from Spotify before the `isCollaborative` flag was wired into the import flow will have `isCollaborative: false`. Use the "Enable Collaborative" button that appears on any Spotify-linked playlist without the flag set, or re-import.
 
-### Pitfall 2: Spotify source requires coordinator to be authenticated
+### Pitfall 2: Spotify Source Requires Coordinator to Be Authenticated
 
 `useTrackSource` calls `window.electron.spotify.getPlaylistTracksFull`. This IPC call requires the main process to have a valid Spotify access token. If the coordinator hasn't completed OAuth, the source will error with `'Spotify IPC not available'` or an auth error.
 
-### Pitfall 3: Playback requires Spotify Premium
+### Pitfall 3: Playback Requires Spotify Premium
 
 `GET /me/player`, `PUT /me/player/play`, etc. all require a Spotify Premium subscription. If the account is free tier, playback controls silently fail (Spotify returns 403). Sessions still work fully in metadata-only mode by setting `playbackProvider: none`.
 
-### Pitfall 4: snapshotId only guards re-parse, not re-fetch
+### Pitfall 4: snapshotId only Guards Re-parse, not Re-fetch
 
 The snapshot ID check short-circuits the track-processing loop but still makes the API call. If the playlist hasn't changed, the response is cheap (just the snapshot_id header is compared), but the network round-trip still happens every 5 s.
 
-### Pitfall 5: Turn-advance fires once per new track per poll cycle
+### Pitfall 5: Turn-advance Fires once per New Track per Poll Cycle
 
 `advanceTurn` is called inside the per-track loop. If multiple tracks arrived since the last poll (e.g. app was backgrounded), the turn will advance for each of them in sequence within a single poll cycle. This is correct behaviour — each added track counts as one turn — but can feel fast if tracks were queued up offline.
 
@@ -207,3 +207,4 @@ The snapshot ID check short-circuits the track-processing loop but still makes t
 
 __Status__: v1 shipped 2026-03-07 (Spotify collab + playback). ManualTrackSource and P2PTrackSource are stubs.
 __Last Updated__: 2026-03-07
+

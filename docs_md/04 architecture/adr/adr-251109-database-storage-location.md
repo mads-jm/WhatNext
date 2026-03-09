@@ -3,7 +3,7 @@ tags:
   - architecture/decisions
   - data
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:12 pm
+date modified: Monday, March 9th 2026, 12:20:53 am
 ---
 
 # ADR: Database Storage Location (Renderer Vs Main Process)
@@ -322,3 +322,4 @@ __Review date__: 2026-01-09 (after 2 months production use)
 __Status__: ✅ Implemented and validated in production
 __Performance__: Sub-millisecond query latency, instant UI updates
 __Security__: Renderer properly sandboxed, IndexedDB isolated
+

@@ -11,7 +11,9 @@
     "displayProgress": true,
     "inlineHTML": false,
     "exportPath": "D:\\dev\\mads\\whatnext\\docs",
-    "filesToExport": [],
+    "filesToExport": [
+      "all"
+    ],
     "useFallbackRenderer": false,
     "addBodyClasses": true,
     "addMathjaxStyles": true,

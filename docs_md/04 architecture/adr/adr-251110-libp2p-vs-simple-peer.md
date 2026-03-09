@@ -1,9 +1,9 @@
 ---
 tags:
   - architecture/decisions
-  - net
+  - core/net
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:06 pm
+date modified: Monday, March 9th 2026, 12:20:43 am
 ---
 
 # ADR: libp2p Vs Simple-peer
@@ -606,3 +606,4 @@ peer.on('connect', () => {
 __Total implementation effort__:
 - __libp2p__: ~200 lines (client) + relay deployment
 - __simple-peer__: ~100 lines (client) + ~300 lines (signaling server) + mesh logic (100+ lines)
+

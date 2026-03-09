@@ -5,5 +5,10 @@
   "templater-obsidian",
   "obsidian-icon-folder",
   "obsidian-linter",
-  "webpage-html-export"
+  "webpage-html-export",
+  "url-into-selection",
+  "obsidian-plantuml",
+  "obsidian-reading-time",
+  "note-refactor-obsidian",
+  "obsidian-paste-image-rename"
 ]

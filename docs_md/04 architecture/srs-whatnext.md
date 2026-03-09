@@ -7,7 +7,7 @@ aliases:
     - SRS
     - Requirements Spec
 date created: Sunday, February 15th 2026, 7:33:39 am
-date modified: Sunday, February 15th 2026, 8:37:06 pm
+date modified: Monday, March 9th 2026, 12:20:50 am
 ---
 
 # Software Requirements Specification: WhatNext
@@ -17,6 +17,7 @@ date modified: Sunday, February 15th 2026, 8:37:06 pm
 | Version | Date       | Description                          | Author       |
 |---------|------------|--------------------------------------|--------------|
 | v0.1.0  | 2026-02-14 | MVP baseline                         | WhatNext Dev |
+| v0.2.0  | 2026-03-07 | Sessions v1: provider abstraction, Spotify playback IPC, comments collection, artwork caching, schema migrations | WhatNext Dev |
 
 ---
 
@@ -192,8 +193,12 @@ Replication synchronizes [[RxDB]] collections across peers using the `/whatnext/
 | FR-SESSION-002 | Participants shall be able to join a session via the shared link with zero additional setup (no accounts, no API keys, no OAuth). | Must |
 | FR-SESSION-003 | The system shall display real-time presence information for all peers in the current session, including display name and connection status. | Must |
 | FR-SESSION-004 | The system shall track user identity via the `users` collection, distinguishing the local user (`isLocal: true`) from remote peers. | Must |
-| FR-SESSION-005 | The system shall support track interactions (vote, like, skip, play, queue) scoped to a user, track, and optionally a playlist, stored in the `trackInteractions` collection. | Must |
+| FR-SESSION-005 | The system shall support track interactions (vote, like, skip, play, queue, reaction) scoped to a user, track, and optionally a playlist, stored in the `trackInteractions` collection. | Must |
 | FR-SESSION-006 | The system shall update `lastSeenAt` for connected peers to reflect activity. | Must |
+| FR-SESSION-007 | The session architecture shall be platform-agnostic: a `TrackSource` interface abstracts where tracks come from, and a `PlaybackProvider` interface abstracts how music plays. These are discriminated union configs stored in Zustand session state. | Must |
+| FR-SESSION-008 | The v1 `TrackSource` implementation shall poll a Spotify collaborative playlist (`spotify-collab` type) every 5 seconds, using `snapshotId` to skip reprocessing unchanged playlists, and map `added_by.id` to WhatNext user IDs via `resolveSpotifyUser()`. | Must (v1) |
+| FR-SESSION-009 | The v1 `PlaybackProvider` implementation shall control Spotify playback on the coordinator's device via the Spotify Web API (play, pause, skip, seek). Sessions shall also support a `none` playback provider for metadata-only operation without Spotify Premium. | Must (v1) |
+| FR-SESSION-010 | The system shall support comments on playlists and individual tracks, stored in the `comments` collection, with threading (parentId) and soft-delete (isDeleted) for P2P tombstoning. | Must |
 
 ---
 
@@ -322,7 +327,7 @@ __Acceptance Criteria:__
 
 ## 7. Data Model
 
-The following entity-relationship diagram reflects the [[RxDB]] schema defined in `app/src/renderer/db/schemas.ts`.
+The following entity-relationship diagram reflects the [[RxDB]] schema defined in `app/src/renderer/db/schemas.ts`. Schema versions as of Sessions v1 (2026-03-07): `users` v1, `tracks` v1, `playlists` v1, `trackInteractions` v0, `comments` v0.
 
 ```plantuml
 @startuml
@@ -330,18 +335,23 @@ title WhatNext Data Model (RxDB Collections)
 
 skinparam linetype ortho
 
-entity "users" as user {
+entity "users (v1)" as user {
     * **id** : string <<PK>>
     --
     * displayName : string
+    * avatarSource : enum (local|spotify|apple_music|none)
+    avatarLocalPath : string
     avatarUrl : string
+    bio : string
     * isLocal : boolean
+    * linkedAccounts : LinkedAccount[]
     * lastSeenAt : string (ISO 8601)
     publicKey : string
     * createdAt : string (ISO 8601)
+    * updatedAt : string (ISO 8601)
 }
 
-entity "tracks" as track {
+entity "tracks (v1)" as track {
     * **id** : string <<PK>>
     --
     * title : string
@@ -349,12 +359,14 @@ entity "tracks" as track {
     * album : string
     * durationMs : number
     spotifyId : string
+    albumArtUrl : string
+    albumArtLocalPath : string
     * addedAt : string (ISO 8601)
     * addedBy : string <<FK users.id>>
     notes : string
 }
 
-entity "trackInteractions" as interaction {
+entity "trackInteractions (v0)" as interaction {
     * **id** : string <<PK>>
     (composite: userId_trackId_interactionType)
     --
@@ -362,14 +374,14 @@ entity "trackInteractions" as interaction {
     * trackId : string <<FK tracks.id>>
     playlistId : string <<FK playlists.id>>
     * interactionType : enum
-      (vote | like | skip | play | queue)
+      (vote | like | skip | play | queue | reaction)
     value : number
     * createdAt : string (ISO 8601)
     * updatedAt : string (ISO 8601)
     metadata : string (JSON)
 }
 
-entity "playlists" as playlist {
+entity "playlists (v1)" as playlist {
     * **id** : string <<PK>>
     --
     * playlistName : string
@@ -388,6 +400,22 @@ entity "playlists" as playlist {
     queueMode : enum
       (free_for_all | turn_taking | vote_based)
     currentTurnUserId : string <<FK users.id>>
+    coverArtUrl : string
+    coverArtLocalPath : string
+}
+
+entity "comments (v0)" as comment {
+    * **id** : string <<PK>> (UUID v4)
+    --
+    * playlistId : string <<FK playlists.id>>
+    trackId : string <<FK tracks.id>>
+    * userId : string <<FK users.id>>
+    * userDisplayName : string
+    * body : string
+    parentId : string <<FK comments.id>>
+    * createdAt : string (ISO 8601)
+    * updatedAt : string (ISO 8601)
+    * isDeleted : boolean
 }
 
 user ||--o{ track : "addedBy"
@@ -397,6 +425,10 @@ user ||--o{ playlist : "ownerId"
 playlist }o--o{ user : "collaboratorIds"
 playlist ||--o{ interaction : "playlistId"
 playlist }o--o{ track : "trackIds"
+playlist ||--o{ comment : "playlistId"
+track ||--o{ comment : "trackId"
+user ||--o{ comment : "userId"
+comment |o--o{ comment : "parentId (replies)"
 
 @enduml
 ```
@@ -424,10 +456,21 @@ __February 2026 API Changes__ (impact on WhatNext):
 
 __Key Endpoints Used__:
 - `GET /me/playlists` -- List Coordinator's playlists
-- `GET /playlists/{id}/items` -- Fetch tracks for a specific playlist
-- `GET /me` -- Verify authentication status
+- `GET /playlists/{id}/items` -- Fetch tracks for a specific playlist (import)
+- `GET /playlists/{id}?fields=…` -- Full track list with attribution for session polling
+- `GET /me` -- Verify authentication and fetch user profile
+- `GET /me/player` -- Poll playback state (Sessions v1)
+- `GET /me/player/devices` -- List available playback devices
+- `PUT /me/player/play` -- Start or resume playback (Premium required)
+- `PUT /me/player/pause` -- Pause playback (Premium required)
+- `POST /me/player/next` -- Skip to next track (Premium required)
+- `POST /me/player/previous` -- Skip to previous track (Premium required)
 
-__IPC Channels__: `spotify:auth-start`, `spotify:auth-status`, `spotify:get-playlists`, `spotify:get-tracks`
+__IPC Channels__:
+- Import: `spotify:auth-start`, `spotify:auth-status`, `spotify:get-profile`, `spotify:get-playlists`, `spotify:get-tracks`, `spotify:sync-playlist`
+- Session polling: `spotify:get-playlist-tracks-full`
+- Playback (Premium): `spotify:get-playback-state`, `spotify:get-devices`, `spotify:start-playback`, `spotify:pause-playback`, `spotify:resume-playback`, `spotify:skip-next`, `spotify:skip-previous`
+- Push events: `spotify:auth-complete`, `spotify:auth-error`
 
 ### 8.2 libp2p / Circuit Relay
 

@@ -1,7 +1,11 @@
 ---
-tags: 10
+tags:
+  - core/net/p2p/libp2p
+  - core/net/p2p/protocols
+  - core/electron/ipc
+  - notes
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:15 pm
+date modified: Monday, March 9th 2026, 12:20:37 am
 ---
 
 # Simplified P2P Connection Architecture
@@ -237,9 +241,18 @@ Protocol parsing already existed in:
 4. __Future__: QR code generation for mobile→desktop connections
 5. __Future__: Relay server support for NAT traversal (URL param: `?relay=/ip4/…`)
 
+## Related Concepts
+
+[[libp2p]] [[Electron-IPC]] [[Handshake-Protocol]]
+
+---
+
 ## References
 
 - Initial issue: - Handle `whtnxt://connect` Custom Protocol
 - User feedback: Session 2025-11-10
 - libp2p dialing: <https://docs.libp2p.io/concepts/fundamentals/peers/>
 - Electron protocol handlers: <https://www.electronjs.org/docs/latest/api/protocol>
+
+
+

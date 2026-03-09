@@ -1,12 +1,10 @@
 ---
 tags:
-  - 10
-  - 1
-  - 2
-  - 3
-  - 4
+  - notes/milestone
+  - core/net/p2p/libp2p
+  - core/net/p2p/protocols
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:16 pm
+date modified: Monday, March 9th 2026, 12:20:39 am
 ---
 
 # Issue Complete: <whtnxt://> Protocol Handler with libp2p
@@ -481,6 +479,12 @@ The POC is ready for real-world testing. The architecture is solid and extensibl
 
 ---
 
+## Related Concepts
+
+[[libp2p]] [[WebRTC]] [[Handshake-Protocol]] [[Electron-IPC]]
+
+---
+
 ## References
 
 - Issue: Handle `whtnxt://connect` Custom Protocol
@@ -494,3 +498,4 @@ The POC is ready for real-world testing. The architecture is solid and extensibl
 __Status__: ✅ __READY FOR COMMIT & TESTING__
 
 🚀 Issue is complete! Time to test with real peers and move to Phase 2.
+

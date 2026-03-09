@@ -1,6 +1,9 @@
 ---
+tags:
+  - ux/ui/navigation
+  - notes/reference
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:14 pm
+date modified: Monday, March 9th 2026, 12:20:34 am
 ---
 
 # Navigation Quick Reference
@@ -129,7 +132,12 @@ __Child Items__: Normal case, medium font, full highlight when active
 __Badges__: Tiny font, colored background, rounded
 __Icons__: FontAwesome solid icons, consistent sizing
 
+## Related Concepts
+
+[[React-Patterns]] [[Electron]]
+
 ## Related Docs
 
 - `note-251112-modern-sidebar-navigation.md` - Full design documentation
 - `note-251112-ui-modernization-complete.md` - Complete changes summary
+

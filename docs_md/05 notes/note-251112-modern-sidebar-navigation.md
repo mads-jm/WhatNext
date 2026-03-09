@@ -1,7 +1,9 @@
 ---
-tags: 4
+tags:
+  - ux/ui/navigation
+  - ux/react
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:14 pm
+date modified: Monday, March 9th 2026, 12:20:32 am
 ---
 
 # Modern Sidebar Navigation - Obsidian-Inspired
@@ -243,3 +245,11 @@ SECTION HEADER (uppercase, small)
 This navigation redesign transforms WhatNext from a simple app into a comprehensive development workspace. The hierarchical structure accommodates current features while clearly signposting future capabilities. The Obsidian-inspired aesthetic reinforces the local-first, user-sovereign philosophy at the core of the project.
 
 __Ready for exploration and protocol development.__ 🎯
+
+---
+
+## Related Concepts
+
+[[React-Patterns]] [[Electron]]
+
+

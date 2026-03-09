@@ -1,7 +1,7 @@
 ---
 tags: guides/setup
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Sunday, February 15th 2026, 8:37:12 pm
+date modified: Monday, March 9th 2026, 12:20:52 am
 ---
 
 # Quick Start Guide
@@ -288,3 +288,4 @@ If you encounter issues:
 ---
 
 __Happy exploring!__ The P2P layer is yours to master now. 🚀
+

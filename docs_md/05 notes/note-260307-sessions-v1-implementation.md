@@ -1,14 +1,13 @@
 ---
 tags:
-  - milestone/sessions
+  - notes/milestone/sessions
   - architecture/patterns/adapters
   - architecture/patterns/sessions
-date created: Saturday, March 7th 2026
+date created: Saturday, March 7th 2026, 7:44:10 pm
+date modified: Monday, March 9th 2026, 12:20:47 am
 ---
 
-# Sessions v1 — Implementation Complete
-
-#milestone/sessions #architecture/patterns/sessions #architecture/patterns/adapters
+# Sessions V1 — Implementation Complete
 
 ## What Was Built
 
@@ -23,22 +22,24 @@ Sessions v1 is the collaborative playlist-building experience at the heart of th
 
 ## Architecture
 
-Implemented the **provider abstraction** decided in [[adr-260307-session-architecture-provider-abstraction]]. The session layer is platform-agnostic — it never imports from `spotify-client` directly. All platform interaction is behind two interfaces:
+Implemented the __provider abstraction__ decided in [[adr-260307-session-architecture-provider-abstraction]]. The session layer is platform-agnostic — it never imports from `spotify-client` directly. All platform interaction is behind two interfaces:
 
-- **`TrackSource`** — where new tracks come from. v1 ships `spotify-collab` (polling) and `manual` (stub). Config is a discriminated union serialised into Zustand.
-- **`PlaybackProvider`** — how music plays. v1 ships `spotify` and `none`.
+- __`TrackSource`__ — where new tracks come from. v1 ships `spotify-collab` (polling) and `manual` (stub). Config is a discriminated union serialised into Zustand.
+- __`PlaybackProvider`__ — how music plays. v1 ships `spotify` and `none`.
 
 Adding a future source (Apple Music, P2P, local files) means implementing the interface, not touching the session layer.
 
 ## Key Files
 
 ### Shared (both processes)
+
 | File | Purpose |
 |------|---------|
 | `app/src/shared/session-interfaces.ts` | `TrackSourceConfig`, `PlaybackProviderConfig`, `SessionState`, `IncomingTrack`, `PlaybackState` |
 | `app/src/shared/core/ipc-protocol.ts` | 8 new IPC channels + Spotify playback payload types |
 
 ### Platform Layer (main process)
+
 | File | Purpose |
 |------|---------|
 | `app/src/main/spotify/spotify-client.ts` | Added `getPlaybackState`, `getDevices`, `startPlayback`, `pausePlayback`, `resumePlayback`, `skipToNext`, `skipToPrevious`, `getPlaylistTracksFull` |
@@ -47,6 +48,7 @@ Adding a future source (Apple Music, P2P, local files) means implementing the in
 | `app/src/shared/spotify-config.ts` | Added `user-read-playback-state`, `user-modify-playback-state`, `user-read-currently-playing` scopes |
 
 ### Session Layer (renderer)
+
 | File | Purpose |
 |------|---------|
 | `app/src/renderer/hooks/usePlaybackState.ts` | Polls `getPlaybackState` every 5s, returns `PlaybackState \| null` |
@@ -60,7 +62,7 @@ Adding a future source (Apple Music, P2P, local files) means implementing the in
 
 ## Attribution Chain
 
-```
+```ts
 Spotify collaborative playlist → added_by.id (Spotify user ID)
     → resolveSpotifyUser(spotifyId) → WhatNext UserDocType (via linkedAccounts)
     → TrackDocType.addedBy = WhatNext userId
@@ -71,14 +73,14 @@ If no profile is found for a `added_by.id`, `createSessionParticipant('Unknown',
 
 ## Spotify API Notes
 
-- **Playback endpoints** require Premium. `GET /me/player` returns `204 No Content` (not an error) when no active device — handled via `spotifyFetchRaw` returning raw `Response` before `.json()`.
-- **`getPlaylistTracksFull`** uses the `fields` query parameter to fetch only `snapshot_id`, track metadata, `added_at`, and `added_by` — minimising payload on every 5s poll.
-- **Snapshot ID optimisation**: if the playlist's `snapshot_id` hasn't changed since the last poll, the hook short-circuits without re-processing the track list.
-- **`POST /users/{id}/playlists`** was removed in Feb 2026 — playlist must be pre-created in Spotify. This aligns with the v1 model (participants use their own Spotify apps).
+- __Playback endpoints__ require Premium. `GET /me/player` returns `204 No Content` (not an error) when no active device — handled via `spotifyFetchRaw` returning raw `Response` before `.json()`.
+- __`getPlaylistTracksFull`__ uses the `fields` query parameter to fetch only `snapshot_id`, track metadata, `added_at`, and `added_by` — minimising payload on every 5s poll.
+- __Snapshot ID optimisation__: if the playlist's `snapshot_id` hasn't changed since the last poll, the hook short-circuits without re-processing the track list.
+- __`POST /users/{id}/playlists`__ was removed in Feb 2026 — playlist must be pre-created in Spotify. This aligns with the v1 model (participants use their own Spotify apps).
 
 ## Session State Lifecycle
 
-```
+```ts
 Navigation store:
   sessionState = null          → no session (show SessionSetup)
   sessionState.status = active → session running (show SessionView)
@@ -87,13 +89,13 @@ Navigation store:
 
 Session state is ephemeral (Zustand, in-memory). The playlist and all tracks persist in RxDB. Closing the app ends the session but the playlist data survives.
 
-## What's Not in v1
+## What's Not in V1
 
-- **ManualTrackSource**: stub only — host would enter tracks directly in WhatNext (good for offline/no-Spotify sessions)
-- **P2PTrackSource**: stub — participants running WhatNext submit tracks via libp2p
-- **Per-user Spotify auth in sessions**: all attribution flows through `added_by` from the collaborative playlist; participants don't need to auth with WhatNext
-- **Session persistence/history**: ephemeral by design, clear migration path if needed
-- **Relay-based remote sessions**: mDNS discovery only for now
+- __ManualTrackSource__: stub only — host would enter tracks directly in WhatNext (good for offline/no-Spotify sessions)
+- __P2PTrackSource__: stub — participants running WhatNext submit tracks via libp2p
+- __Per-user Spotify auth in sessions__: all attribution flows through `added_by` from the collaborative playlist; participants don't need to auth with WhatNext
+- __Session persistence/history__: ephemeral by design, clear migration path if needed
+- __Relay-based remote sessions__: mDNS discovery only for now
 
 ## Related
 
@@ -101,3 +103,5 @@ Session state is ephemeral (Zustand, in-memory). The playlist and all tracks per
 - [[the-walled-garden-cracks]] — Why the provider abstraction matters (Spotify API restrictions)
 - [[RxDB]] — Local data layer, all tracks/playlists/users persist here
 - [[libp2p]] — P2P transport (used indirectly via replication, directly in future P2PTrackSource)
+
+

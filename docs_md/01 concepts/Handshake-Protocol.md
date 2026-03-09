@@ -1,7 +1,7 @@
 ---
-tags: p2p/protocols/handshake
+tags: core/net/p2p/protocols/handshake
 date created: Saturday, February 14th 2026, 11:36:56 am
-date modified: Sunday, February 15th 2026, 8:37:08 pm
+date modified: Monday, March 9th 2026, 12:20:46 am
 ---
 
 # Handshake Protocol
@@ -87,3 +87,4 @@ The callback sends a `HANDSHAKE_COMPLETE` message to the main process, which rel
 - Implementation: `app/src/utility/protocols/handshake.ts`
 - P2P service integration: `app/src/utility/p2p-service.ts`
 - IPC type: `HandshakeCompletePayload` in `app/src/shared/core/ipc-protocol.ts`
+
