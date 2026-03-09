@@ -5,7 +5,7 @@
  * Step 2: add/select participants.
  */
 
-import { useState, useEffect } from 'react';
+import { useReducer, useEffect } from 'react';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useUserStore } from '../../stores/user-store';
 import {
@@ -19,6 +19,96 @@ import type {
 } from '../../../shared/session-interfaces';
 import type { UserDocType } from '../../db/schemas';
 
+// ---------------------------------------------------------------------------
+// State & reducer
+// ---------------------------------------------------------------------------
+
+type SessionSetupState = {
+    step: 1 | 2;
+    linkedSpotifyId: string | null;
+    trackSource: TrackSourceConfig;
+    playbackProvider: PlaybackProviderConfig;
+    participantIds: string[];
+    suggestedUsers: UserDocType[];
+    newParticipant: { name: string; spotifyUsername: string; error: string | null };
+};
+
+type SessionSetupAction =
+    /** Atomically links a Spotify playlist and sets the derived track source + playback provider. */
+    | { type: 'LINK_SPOTIFY'; spotifyPlaylistId: string }
+    | { type: 'SET_TRACK_SOURCE'; source: TrackSourceConfig }
+    | { type: 'SET_PLAYBACK_PROVIDER'; provider: PlaybackProviderConfig }
+    | { type: 'SET_STEP'; step: 1 | 2 }
+    | { type: 'SET_SUGGESTED_USERS'; users: UserDocType[] }
+    | { type: 'TOGGLE_PARTICIPANT'; userId: string }
+    | { type: 'ADD_PARTICIPANT'; user: UserDocType; userId: string }
+    | { type: 'UPDATE_NEW_PARTICIPANT'; field: 'name' | 'spotifyUsername'; value: string }
+    | { type: 'SET_NEW_PARTICIPANT_ERROR'; error: string | null }
+    | { type: 'RESET_NEW_PARTICIPANT' };
+
+const initialState: SessionSetupState = {
+    step: 1,
+    linkedSpotifyId: null,
+    trackSource: { type: 'manual' },
+    playbackProvider: { type: 'none' },
+    participantIds: [],
+    suggestedUsers: [],
+    newParticipant: { name: '', spotifyUsername: '', error: null },
+};
+
+function reducer(state: SessionSetupState, action: SessionSetupAction): SessionSetupState {
+    switch (action.type) {
+        case 'LINK_SPOTIFY':
+            return {
+                ...state,
+                linkedSpotifyId: action.spotifyPlaylistId,
+                trackSource: { type: 'spotify-collab', spotifyPlaylistId: action.spotifyPlaylistId },
+                playbackProvider: { type: 'spotify' },
+            };
+        case 'SET_TRACK_SOURCE':
+            return { ...state, trackSource: action.source };
+        case 'SET_PLAYBACK_PROVIDER':
+            return { ...state, playbackProvider: action.provider };
+        case 'SET_STEP':
+            return { ...state, step: action.step };
+        case 'SET_SUGGESTED_USERS':
+            return { ...state, suggestedUsers: action.users };
+        case 'TOGGLE_PARTICIPANT':
+            return {
+                ...state,
+                participantIds: state.participantIds.includes(action.userId)
+                    ? state.participantIds.filter((id) => id !== action.userId)
+                    : [...state.participantIds, action.userId],
+            };
+        case 'ADD_PARTICIPANT':
+            return {
+                ...state,
+                participantIds: [...state.participantIds, action.userId],
+                suggestedUsers: [...state.suggestedUsers, action.user],
+                newParticipant: { name: '', spotifyUsername: '', error: null },
+            };
+        case 'UPDATE_NEW_PARTICIPANT':
+            return {
+                ...state,
+                newParticipant: { ...state.newParticipant, [action.field]: action.value },
+            };
+        case 'SET_NEW_PARTICIPANT_ERROR':
+            return {
+                ...state,
+                newParticipant: { ...state.newParticipant, error: action.error },
+            };
+        case 'RESET_NEW_PARTICIPANT':
+            return {
+                ...state,
+                newParticipant: { name: '', spotifyUsername: '', error: null },
+            };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 interface SessionSetupProps {
     playlistId: string;
     onStart: () => void;
@@ -28,57 +118,35 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
     const user = useUserStore((s) => s.user);
     const startSession = useNavigationStore((s) => s.startSession);
 
-    const [step, setStep] = useState<1 | 2>(1);
-    const [linkedSpotifyId, setLinkedSpotifyId] = useState<string | null>(null);
-
-    const [trackSource, setTrackSource] = useState<TrackSourceConfig>({ type: 'manual' });
-    const [playbackProvider, setPlaybackProvider] = useState<PlaybackProviderConfig>({ type: 'none' });
-
-    const [participantIds, setParticipantIds] = useState<string[]>([]);
-    const [suggestedUsers, setSuggestedUsers] = useState<UserDocType[]>([]);
-
-    const [newDisplayName, setNewDisplayName] = useState('');
-    const [newSpotifyUsername, setNewSpotifyUsername] = useState('');
-    const [addError, setAddError] = useState<string | null>(null);
+    const [state, dispatch] = useReducer(reducer, initialState);
+    const { step, linkedSpotifyId, trackSource, playbackProvider, participantIds, suggestedUsers, newParticipant } = state;
 
     useEffect(() => {
         getPlaylist(playlistId).then((pl) => {
-            if (!pl) return;
-            if (pl.linkedSpotifyId) {
-                setLinkedSpotifyId(pl.linkedSpotifyId);
-                setTrackSource({ type: 'spotify-collab', spotifyPlaylistId: pl.linkedSpotifyId });
-                setPlaybackProvider({ type: 'spotify' });
+            if (pl?.linkedSpotifyId) {
+                dispatch({ type: 'LINK_SPOTIFY', spotifyPlaylistId: pl.linkedSpotifyId });
             }
         });
     }, [playlistId]);
 
     useEffect(() => {
         getAllUsers().then((users) => {
-            setSuggestedUsers(users.filter((u) => !u.isLocal));
+            dispatch({ type: 'SET_SUGGESTED_USERS', users: users.filter((u) => !u.isLocal) });
         });
     }, []);
 
-    const toggleSuggestedParticipant = (userId: string) => {
-        setParticipantIds((prev) =>
-            prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-        );
-    };
-
     const handleAddParticipant = async () => {
-        setAddError(null);
-        const name = newDisplayName.trim();
-        if (!name) { setAddError('Display name is required'); return; }
-        const spotifyId = newSpotifyUsername.trim();
-        if (!spotifyId) { setAddError('Spotify username is required'); return; }
+        dispatch({ type: 'SET_NEW_PARTICIPANT_ERROR', error: null });
+        const name = newParticipant.name.trim();
+        if (!name) { dispatch({ type: 'SET_NEW_PARTICIPANT_ERROR', error: 'Display name is required' }); return; }
+        const spotifyId = newParticipant.spotifyUsername.trim();
+        if (!spotifyId) { dispatch({ type: 'SET_NEW_PARTICIPANT_ERROR', error: 'Spotify username is required' }); return; }
 
         try {
             const doc = await createSessionParticipant(name, spotifyId);
-            setParticipantIds((prev) => [...prev, doc.id]);
-            setSuggestedUsers((prev) => [...prev, doc.toJSON() as UserDocType]);
-            setNewDisplayName('');
-            setNewSpotifyUsername('');
+            dispatch({ type: 'ADD_PARTICIPANT', user: doc.toJSON() as UserDocType, userId: doc.id });
         } catch (err) {
-            setAddError(err instanceof Error ? err.message : String(err));
+            dispatch({ type: 'SET_NEW_PARTICIPANT_ERROR', error: err instanceof Error ? err.message : String(err) });
         }
     };
 
@@ -114,9 +182,10 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                             type="radio"
                                             name="trackSource"
                                             className="mt-0.5"
+                                            aria-label="Spotify Collaborative Playlist"
                                             checked={trackSource.type === 'spotify-collab'}
                                             onChange={() =>
-                                                setTrackSource({ type: 'spotify-collab', spotifyPlaylistId: linkedSpotifyId })
+                                                dispatch({ type: 'SET_TRACK_SOURCE', source: { type: 'spotify-collab', spotifyPlaylistId: linkedSpotifyId } })
                                             }
                                         />
                                         <div>
@@ -133,8 +202,9 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                             type="radio"
                                             name="trackSource"
                                             className="mt-0.5"
+                                            aria-label="Manual (metadata only)"
                                             checked={trackSource.type === 'manual'}
-                                            onChange={() => setTrackSource({ type: 'manual' })}
+                                            onChange={() => dispatch({ type: 'SET_TRACK_SOURCE', source: { type: 'manual' } })}
                                         />
                                         <div>
                                             <p className="text-sm font-medium text-gray-200">Manual</p>
@@ -167,7 +237,7 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                         type="radio"
                                         name="playback"
                                         checked={playbackProvider.type === 'spotify'}
-                                        onChange={() => setPlaybackProvider({ type: 'spotify' })}
+                                        onChange={() => dispatch({ type: 'SET_PLAYBACK_PROVIDER', provider: { type: 'spotify' } })}
                                     />
                                     <span className="text-sm text-gray-200">
                                         <i className="fa-brands fa-spotify text-green-500 mr-2" />
@@ -179,14 +249,14 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                         type="radio"
                                         name="playback"
                                         checked={playbackProvider.type === 'none'}
-                                        onChange={() => setPlaybackProvider({ type: 'none' })}
+                                        onChange={() => dispatch({ type: 'SET_PLAYBACK_PROVIDER', provider: { type: 'none' } })}
                                     />
                                     <span className="text-sm text-gray-200">None (metadata only)</span>
                                 </label>
                             </div>
                         </div>
 
-                        <button className="btn-primary w-full" onClick={() => setStep(2)}>
+                        <button className="btn-primary w-full" onClick={() => dispatch({ type: 'SET_STEP', step: 2 })}>
                             Next: Add Participants
                             <i className="fa-solid fa-arrow-right ml-2" />
                         </button>
@@ -195,7 +265,7 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
 
                 {step === 2 && (
                     <div className="card-body space-y-4">
-                        <button className="btn-ghost text-sm p-0 text-gray-400" onClick={() => setStep(1)}>
+                        <button className="btn-ghost text-sm p-0 text-gray-400" onClick={() => dispatch({ type: 'SET_STEP', step: 1 })}>
                             <i className="fa-solid fa-arrow-left mr-1" />
                             Back
                         </button>
@@ -208,8 +278,9 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                         <label key={u.id} className="flex items-center gap-3 cursor-pointer">
                                             <input
                                                 type="checkbox"
+                                                aria-label={u.displayName}
                                                 checked={participantIds.includes(u.id)}
-                                                onChange={() => toggleSuggestedParticipant(u.id)}
+                                                onChange={() => dispatch({ type: 'TOGGLE_PARTICIPANT', userId: u.id })}
                                             />
                                             <div className="flex items-center gap-2">
                                                 <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300">
@@ -229,16 +300,16 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                 <input
                                     className="input text-sm w-full"
                                     placeholder="Display name"
-                                    value={newDisplayName}
-                                    onChange={(e) => setNewDisplayName(e.target.value)}
+                                    value={newParticipant.name}
+                                    onChange={(e) => dispatch({ type: 'UPDATE_NEW_PARTICIPANT', field: 'name', value: e.target.value })}
                                 />
                                 <input
                                     className="input text-sm w-full"
                                     placeholder="Spotify username"
-                                    value={newSpotifyUsername}
-                                    onChange={(e) => setNewSpotifyUsername(e.target.value)}
+                                    value={newParticipant.spotifyUsername}
+                                    onChange={(e) => dispatch({ type: 'UPDATE_NEW_PARTICIPANT', field: 'spotifyUsername', value: e.target.value })}
                                 />
-                                {addError && <p className="text-xs text-red-400">{addError}</p>}
+                                {newParticipant.error && <p className="text-xs text-red-400">{newParticipant.error}</p>}
                                 <button className="btn-ghost text-sm border border-gray-700" onClick={handleAddParticipant}>
                                     <i className="fa-solid fa-plus mr-1" />
                                     Add

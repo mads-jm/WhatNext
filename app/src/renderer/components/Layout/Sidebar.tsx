@@ -84,9 +84,15 @@ export function Sidebar() {
 
     return (
         <aside className="sidebar flex flex-col bg-gray-900">
-            {/* App Header */}
-            <div className="px-4 py-4 border-b border-gray-800">
-                <div className="flex items-center gap-2">
+            {/* App Header — draggable to match toolbar height */}
+            <div
+                className="px-4 py-4 border-b border-gray-800"
+                style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+            >
+                <div
+                    className="flex items-center gap-2"
+                    style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+                >
                     <img src={wnorbIcon} alt="WhatNext" className="w-8 h-8 rounded-lg" />
                     <div>
                         <h1 className="text-lg font-bold text-white">WhatNext</h1>
@@ -218,8 +224,8 @@ function SidebarIdentityBar() {
 
     return (
         <div className="px-2 py-2 border-t border-gray-800">
-            <div
-                className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-800/60 cursor-pointer transition-colors"
+            <button
+                className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-800/60 cursor-pointer transition-colors"
                 onClick={() => navigate('settings-general')}
             >
                 {/* Avatar with status indicator */}
@@ -262,7 +268,7 @@ function SidebarIdentityBar() {
                         <i className={`fa-solid ${copied ? 'fa-check text-green-400' : 'fa-link'} text-xs`} />
                     </button>
                 )}
-            </div>
+            </button>
         </div>
     );
 }

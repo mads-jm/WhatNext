@@ -36,10 +36,10 @@ export function PlaylistList() {
 
             {/* Playlist Cards */}
             {playlists.map((playlist) => (
-                <div
+                <button
                     key={playlist.id}
                     onClick={() => selectPlaylist(playlist.id)}
-                    className={`card cursor-pointer transition-colors ${
+                    className={`card w-full text-left cursor-pointer transition-colors ${
                         selectedPlaylistId === playlist.id
                             ? 'border-blue-500 bg-blue-950/20'
                             : 'hover:border-gray-600'
@@ -82,7 +82,7 @@ export function PlaylistList() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </button>
             ))}
 
             {/* Empty State */}

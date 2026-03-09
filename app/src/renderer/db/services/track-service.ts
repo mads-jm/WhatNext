@@ -25,7 +25,7 @@ export async function createTrack(
         id: uuidv4(),
         ...input,
         addedBy: input.addedBy!,
-        addedAt: new Date().toISOString(),
+        addedAt: input.addedAt ?? new Date().toISOString(),
     };
 
     return db.tracks.insert(track);
@@ -128,7 +128,7 @@ export async function bulkImportTracks(
         id: uuidv4(),
         ...track,
         addedBy: track.addedBy!,
-        addedAt: new Date().toISOString(),
+        addedAt: track.addedAt ?? new Date().toISOString(),
     }));
 
     await db.tracks.bulkInsert(trackDocs);

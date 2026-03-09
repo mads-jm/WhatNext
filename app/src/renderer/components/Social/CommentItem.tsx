@@ -16,13 +16,15 @@ interface CommentItemProps {
     depth?: number;
 }
 
+const EMPTY_REPLIES: CommentDocType[] = [];
+
 export function CommentItem({
     comment,
     isOwn,
     onReply,
     onEdit,
     onDelete,
-    replies = [],
+    replies = EMPTY_REPLIES,
     depth = 0,
 }: CommentItemProps) {
     const [editing, setEditing] = useState(false);
@@ -61,7 +63,6 @@ export function CommentItem({
                             onChange={(e) => setEditBody(e.target.value)}
                             className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 resize-none"
                             rows={2}
-                            autoFocus
                         />
                         <div className="flex gap-1 mt-1">
                             <button onClick={handleSaveEdit} className="text-xs text-blue-400 hover:text-blue-300">

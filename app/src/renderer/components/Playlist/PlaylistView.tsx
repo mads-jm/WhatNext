@@ -13,6 +13,7 @@ import { exportAndSave } from '../../services/export/export-service';
 import { bulkAddTracksToPlaylist } from '../../db/services/playlist-service';
 import { TrackPickerModal } from './TrackPickerModal';
 import { formatDuration, formatTotalDuration } from '../../utils/format';
+import { artSrc } from '../../utils/artSrc';
 import { useSpotifySync } from '../../hooks/useSpotifySync';
 
 interface PlaylistViewProps {
@@ -73,8 +74,19 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
             <div className="card mb-4">
                 <div className="card-body">
                     <div className="flex items-start gap-4">
-                        <div className="w-32 h-32 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shrink-0">
-                            <i className="fa-solid fa-music text-4xl text-white opacity-50" />
+                        <div className="w-32 h-32 rounded-lg shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+                            {playlist.coverArtLocalPath || playlist.coverArtUrl ? (
+                                <img
+                                    src={artSrc(playlist.coverArtLocalPath, playlist.coverArtUrl)}
+                                    alt={playlist.playlistName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        if (playlist.coverArtUrl) e.currentTarget.src = playlist.coverArtUrl;
+                                    }}
+                                />
+                            ) : (
+                                <i className="fa-solid fa-music text-4xl text-white opacity-50" />
+                            )}
                         </div>
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -184,6 +196,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                             <thead className="text-xs text-gray-500 uppercase border-b border-gray-800">
                                 <tr>
                                     <th className="text-left px-4 py-2 w-8">#</th>
+                                    <th className="w-14"></th>
                                     <th className="text-left px-4 py-2">Title</th>
                                     <th className="text-left px-4 py-2">Album</th>
                                     <th className="text-left px-4 py-2">Added By</th>
@@ -196,6 +209,22 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                     <React.Fragment key={track.id}>
                                         <tr className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                                             <td className="px-4 py-3 text-gray-500 text-sm">{index + 1}</td>
+                                            <td className="p-0 w-14">
+                                                {artSrc(track.albumArtLocalPath, track.albumArtUrl) ? (
+                                                    <img
+                                                        src={artSrc(track.albumArtLocalPath, track.albumArtUrl)}
+                                                        alt=""
+                                                        className="w-14 h-14 object-cover block"
+                                                        onError={(e) => {
+                                                            if (track.albumArtUrl) e.currentTarget.src = track.albumArtUrl;
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="w-14 h-14 bg-gray-800 flex items-center justify-center">
+                                                        <i className="fa-solid fa-music text-gray-700 text-sm" />
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <div className="font-medium text-gray-100">{track.title}</div>
                                                 <div className="text-sm text-gray-400">{track.artists.join(', ')}</div>
@@ -233,7 +262,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                         </tr>
                                         {expandedTrackComments === track.id && (
                                             <tr className="border-b border-gray-800/50">
-                                                <td colSpan={6} className="px-4 py-3 bg-gray-900/30">
+                                                <td colSpan={7} className="px-4 py-3 bg-gray-900/30">
                                                     <CommentThread
                                                         playlistId={playlistId!}
                                                         trackId={track.id}

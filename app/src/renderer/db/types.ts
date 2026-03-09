@@ -74,6 +74,7 @@ export interface CreateTrackInput {
     albumArtUrl?: string;
     notes?: string;
     addedBy?: string;
+    addedAt?: string;
 }
 
 /**

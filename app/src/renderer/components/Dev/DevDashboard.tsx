@@ -3,7 +3,6 @@
  */
 
 import { useState } from 'react';
-import { RxDBSpikeTest } from '../../db/spike-test';
 
 export function DevDashboard() {
     const [activeTab, setActiveTab] = useState<'rxdb' | 'protocols' | 'debug'>('rxdb');
@@ -71,7 +70,7 @@ export function DevDashboard() {
             </div>
 
             {/* Tab Content */}
-            {activeTab === 'rxdb' && <RxDBSpikeTest />}
+            {activeTab === 'rxdb' && null}
             {activeTab === 'protocols' && (
                 <div className="space-y-4">
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">

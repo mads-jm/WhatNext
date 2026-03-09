@@ -1,7 +1,48 @@
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { useUserStore } from '../../stores/user-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { createPlaylist } from '../../db/services/playlist-service';
+
+type FormState = {
+    name: string;
+    description: string;
+    isCollaborative: boolean;
+    queueMode: 'free_for_all' | 'turn_taking';
+    creating: boolean;
+};
+
+type FormAction =
+    | { type: 'SET_NAME'; value: string }
+    | { type: 'SET_DESCRIPTION'; value: string }
+    | { type: 'SET_COLLABORATIVE'; value: boolean }
+    | { type: 'SET_QUEUE_MODE'; value: 'free_for_all' | 'turn_taking' }
+    | { type: 'SET_CREATING'; value: boolean }
+    | { type: 'RESET' };
+
+const initialFormState: FormState = {
+    name: '',
+    description: '',
+    isCollaborative: false,
+    queueMode: 'free_for_all',
+    creating: false,
+};
+
+function formReducer(state: FormState, action: FormAction): FormState {
+    switch (action.type) {
+        case 'SET_NAME':
+            return { ...state, name: action.value };
+        case 'SET_DESCRIPTION':
+            return { ...state, description: action.value };
+        case 'SET_COLLABORATIVE':
+            return { ...state, isCollaborative: action.value };
+        case 'SET_QUEUE_MODE':
+            return { ...state, queueMode: action.value };
+        case 'SET_CREATING':
+            return { ...state, creating: action.value };
+        case 'RESET':
+            return initialFormState;
+    }
+}
 
 export function CreatePlaylistDialog() {
     const userId = useUserStore((s) => s.userId);
@@ -9,62 +50,68 @@ export function CreatePlaylistDialog() {
     const selectPlaylist = useNavigationStore((s) => s.selectPlaylist);
     const closeCreateDialog = useNavigationStore((s) => s.closeCreateDialog);
 
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [isCollaborative, setIsCollaborative] = useState(false);
-    const [queueMode, setQueueMode] = useState<'free_for_all' | 'turn_taking'>('free_for_all');
-    const [creating, setCreating] = useState(false);
+    const [form, dispatch] = useReducer(formReducer, initialFormState);
 
     if (!showCreateDialog) return null;
 
     const handleCreate = async () => {
-        if (!name.trim()) return;
-        setCreating(true);
+        if (!form.name.trim()) return;
+        dispatch({ type: 'SET_CREATING', value: true });
         try {
             const playlist = await createPlaylist({
-                playlistName: name.trim(),
-                description: description.trim() || undefined,
-                isCollaborative,
-                queueMode: isCollaborative ? queueMode : undefined,
+                playlistName: form.name.trim(),
+                description: form.description.trim() || undefined,
+                isCollaborative: form.isCollaborative,
+                queueMode: form.isCollaborative ? form.queueMode : undefined,
                 ownerId: userId,
             });
             selectPlaylist(playlist.id);
-            setName('');
-            setDescription('');
-            setIsCollaborative(false);
-            setQueueMode('free_for_all');
+            dispatch({ type: 'RESET' });
             closeCreateDialog();
         } catch (error) {
             console.error('Failed to create playlist:', error);
         } finally {
-            setCreating(false);
+            dispatch({ type: 'SET_CREATING', value: false });
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={closeCreateDialog}>
-            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+            role="button"
+            tabIndex={0}
+            onClick={closeCreateDialog}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') closeCreateDialog();
+            }}
+        >
+            <div
+                className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-2xl"
+                role="presentation"
+                onClick={e => e.stopPropagation()}
+            >
                 <h2 className="text-xl font-bold text-gray-100 mb-4">Create Playlist</h2>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Name</label>
+                        <label htmlFor="playlist-name" className="block text-sm font-medium text-gray-400 mb-1">Name</label>
                         <input
+                            id="playlist-name"
                             type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
+                            value={form.name}
+                            onChange={e => dispatch({ type: 'SET_NAME', value: e.target.value })}
                             placeholder="My Awesome Playlist"
                             className="input w-full"
-                            autoFocus
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Description</label>
+                        <label htmlFor="playlist-description" className="block text-sm font-medium text-gray-400 mb-1">Description</label>
                         <input
+                            id="playlist-description"
                             type="text"
-                            value={description}
-                            onChange={e => setDescription(e.target.value)}
+                            value={form.description}
+                            onChange={e => dispatch({ type: 'SET_DESCRIPTION', value: e.target.value })}
                             placeholder="Optional description..."
                             className="input w-full"
                         />
@@ -76,29 +123,30 @@ export function CreatePlaylistDialog() {
                             <div className="text-xs text-gray-500">Allow others to add tracks via P2P</div>
                         </div>
                         <button
-                            onClick={() => setIsCollaborative(!isCollaborative)}
+                            onClick={() => dispatch({ type: 'SET_COLLABORATIVE', value: !form.isCollaborative })}
                             className={`w-12 h-6 rounded-full transition-colors ${
-                                isCollaborative ? 'bg-blue-600' : 'bg-gray-700'
+                                form.isCollaborative ? 'bg-blue-600' : 'bg-gray-700'
                             } relative`}
                         >
                             <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-                                isCollaborative ? 'translate-x-6' : 'translate-x-0.5'
+                                form.isCollaborative ? 'translate-x-6' : 'translate-x-0.5'
                             }`} />
                         </button>
                     </div>
 
-                    {isCollaborative && (
+                    {form.isCollaborative && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Queue Mode</label>
+                            <p className="block text-sm font-medium text-gray-400 mb-2">Queue Mode</p>
                             <div className="space-y-2">
-                                <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                                    queueMode === 'free_for_all' ? 'border-blue-500 bg-blue-950/30' : 'border-gray-700 hover:border-gray-600'
+                                <label aria-label="Free for All" className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                    form.queueMode === 'free_for_all' ? 'border-blue-500 bg-blue-950/30' : 'border-gray-700 hover:border-gray-600'
                                 }`}>
                                     <input
+                                        id="queue-mode-free"
                                         type="radio"
                                         name="queueMode"
-                                        checked={queueMode === 'free_for_all'}
-                                        onChange={() => setQueueMode('free_for_all')}
+                                        checked={form.queueMode === 'free_for_all'}
+                                        onChange={() => dispatch({ type: 'SET_QUEUE_MODE', value: 'free_for_all' })}
                                         className="accent-blue-500"
                                     />
                                     <div>
@@ -106,14 +154,15 @@ export function CreatePlaylistDialog() {
                                         <div className="text-xs text-gray-500">Anyone can add tracks anytime</div>
                                     </div>
                                 </label>
-                                <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                                    queueMode === 'turn_taking' ? 'border-blue-500 bg-blue-950/30' : 'border-gray-700 hover:border-gray-600'
+                                <label aria-label="Turn Taking" className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                    form.queueMode === 'turn_taking' ? 'border-blue-500 bg-blue-950/30' : 'border-gray-700 hover:border-gray-600'
                                 }`}>
                                     <input
+                                        id="queue-mode-turn"
                                         type="radio"
                                         name="queueMode"
-                                        checked={queueMode === 'turn_taking'}
-                                        onChange={() => setQueueMode('turn_taking')}
+                                        checked={form.queueMode === 'turn_taking'}
+                                        onChange={() => dispatch({ type: 'SET_QUEUE_MODE', value: 'turn_taking' })}
                                         className="accent-blue-500"
                                     />
                                     <div>
@@ -130,10 +179,10 @@ export function CreatePlaylistDialog() {
                     <button onClick={closeCreateDialog} className="btn-ghost">Cancel</button>
                     <button
                         onClick={handleCreate}
-                        disabled={!name.trim() || creating}
+                        disabled={!form.name.trim() || form.creating}
                         className="btn-primary disabled:opacity-50"
                     >
-                        {creating ? 'Creating...' : 'Create'}
+                        {form.creating ? 'Creating...' : 'Create'}
                     </button>
                 </div>
             </div>

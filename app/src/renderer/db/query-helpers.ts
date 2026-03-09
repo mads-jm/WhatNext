@@ -43,5 +43,7 @@ export async function findTrackViewModels(
         addedBy: doc.addedBy,
         addedByName: userMap.get(doc.addedBy)?.displayName,
         durationMs: doc.durationMs,
+        albumArtUrl: doc.albumArtUrl,
+        albumArtLocalPath: doc.albumArtLocalPath,
     }));
 }

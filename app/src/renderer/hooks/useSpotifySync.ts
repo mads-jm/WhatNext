@@ -82,15 +82,17 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
 
                 const newLocalIds = await bulkImportTracks(
                     toAdd.map((t) => {
-                        const spotifyId = (t as MappedTrack).addedBySpotifyId;
+                        const mapped = t as MappedTrack;
+                        const spotifyId = mapped.addedBySpotifyId;
                         return {
                             title: t.title,
                             artists: t.artists,
                             album: t.album,
                             durationMs: t.durationMs,
                             spotifyId: t.spotifyId,
-                            albumArtUrl: (t as MappedTrack).albumArtUrl,
+                            albumArtUrl: mapped.albumArtUrl,
                             addedBy: (spotifyId && spotifyToWhatNext.get(spotifyId)) ?? userId,
+                            addedAt: mapped.addedAt,
                         };
                     }),
                 );
@@ -117,17 +119,21 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
 
 async function downloadArtworkForTracks(tracks: MappedTrack[], trackIds: string[]) {
     const urlToTrackIds = new Map<string, string[]>();
+    const urlToMeta = new Map<string, { albumName: string; artistName: string }>();
     tracks.forEach((t, i) => {
         if (t.albumArtUrl) {
             const ids = urlToTrackIds.get(t.albumArtUrl) ?? [];
             ids.push(trackIds[i]);
             urlToTrackIds.set(t.albumArtUrl, ids);
+            if (!urlToMeta.has(t.albumArtUrl)) {
+                urlToMeta.set(t.albumArtUrl, { albumName: t.album, artistName: t.artists[0] });
+            }
         }
     });
 
     for (const [url, ids] of urlToTrackIds) {
         try {
-            const result = await window.electron?.artwork.download(url);
+            const result = await window.electron?.artwork.download(url, urlToMeta.get(url));
             if (result?.success && result.localPath) {
                 await Promise.all(ids.map((id) => updateTrack(id, { albumArtLocalPath: result.localPath })));
             }

@@ -5,32 +5,52 @@
  * Spotify tracks are denoted with a Spotify icon; future sources will have their own badges.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useReducer } from 'react';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useAddToPlaylist } from '../../hooks/useAddToPlaylist';
 import type { TrackDocType, PlaylistDocType } from '../../db/schemas';
 import type { RxDocument } from 'rxdb';
 import { formatDuration } from '../../utils/format';
+import { artSrc } from '../../utils/artSrc';
 import { SourceBadge } from '../UI/SourceBadge';
+
+type TracksState =
+    | { status: 'loading'; tracks: TrackDocType[] }
+    | { status: 'done'; tracks: TrackDocType[] }
+    | { status: 'error'; tracks: TrackDocType[] };
+
+type TracksAction =
+    | { type: 'SUCCESS'; tracks: TrackDocType[] }
+    | { type: 'ERROR' };
+
+function tracksReducer(state: TracksState, action: TracksAction): TracksState {
+    switch (action.type) {
+        case 'SUCCESS':
+            return { status: 'done', tracks: action.tracks };
+        case 'ERROR':
+            return { status: 'error', tracks: state.tracks };
+    }
+}
 
 export function LibraryView() {
     const { db } = useDatabase();
     const { addingTo, feedback: addedFeedback, add: addToPlaylist } = useAddToPlaylist();
-    const [tracks, setTracks] = useState<TrackDocType[]>([]);
+    const [tracksState, dispatchTracks] = useReducer(tracksReducer, { status: 'loading', tracks: [] });
     const [playlists, setPlaylists] = useState<PlaylistDocType[]>([]);
-    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [sourceFilter, setSourceFilter] = useState<'all' | 'spotify' | 'local'>('all');
+
+    const tracks = tracksState.tracks;
+    const loading = tracksState.status === 'loading';
 
     // Reactive track subscription
     useEffect(() => {
         if (!db) return;
         const sub = db.tracks.find({ sort: [{ addedAt: 'desc' }] }).$.subscribe({
             next: (docs: RxDocument<TrackDocType>[]) => {
-                setTracks(docs.map((d) => d.toJSON() as TrackDocType));
-                setLoading(false);
+                dispatchTracks({ type: 'SUCCESS', tracks: docs.map((d) => d.toJSON() as TrackDocType) });
             },
-            error: () => setLoading(false),
+            error: () => dispatchTracks({ type: 'ERROR' }),
         });
         return () => sub.unsubscribe();
     }, [db]);
@@ -63,8 +83,8 @@ export function LibraryView() {
         });
     }, [tracks, search, sourceFilter]);
 
-    const spotifyCount = useMemo(() => tracks.filter((t) => t.spotifyId).length, [tracks]);
-    const localCount = useMemo(() => tracks.filter((t) => !t.spotifyId).length, [tracks]);
+    const spotifyCount = tracks.filter((t) => t.spotifyId).length;
+    const localCount = tracks.filter((t) => !t.spotifyId).length;
 
     const handleAddToPlaylist = (trackId: string, playlistId: string) => {
         const pl = playlists.find((p) => p.id === playlistId);
@@ -206,11 +226,29 @@ export function LibraryView() {
                                             {idx + 1}
                                         </td>
                                         <td className="px-4 py-2.5">
-                                            <div className="font-medium text-gray-200 truncate max-w-[220px]">
-                                                {track.title}
-                                            </div>
-                                            <div className="text-xs text-gray-500 truncate">
-                                                {track.artists.join(', ')}
+                                            <div className="flex items-center gap-3">
+                                                {artSrc(track.albumArtLocalPath, track.albumArtUrl) ? (
+                                                    <img
+                                                        src={artSrc(track.albumArtLocalPath, track.albumArtUrl)}
+                                                        alt=""
+                                                        className="w-9 h-9 rounded object-cover shrink-0"
+                                                        onError={(e) => {
+                                                            if (track.albumArtUrl) e.currentTarget.src = track.albumArtUrl;
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="w-9 h-9 rounded bg-gray-700 flex items-center justify-center shrink-0">
+                                                        <i className="fa-solid fa-music text-gray-600 text-xs" />
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <div className="font-medium text-gray-200 truncate max-w-[200px]">
+                                                        {track.title}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 truncate">
+                                                        {track.artists.join(', ')}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-4 py-2.5 text-sm text-gray-400 hidden md:table-cell truncate max-w-[160px]">

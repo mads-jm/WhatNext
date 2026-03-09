@@ -208,6 +208,7 @@ export function useSpotifyImport() {
                     spotifyId: t.spotifyId,
                     albumArtUrl: t.albumArtUrl,
                     addedBy: spotifyToWhatNext.get(t.addedBySpotifyId) ?? userId,
+                    addedAt: t.addedAt,
                 })),
             );
 
@@ -228,7 +229,7 @@ export function useSpotifyImport() {
             setState('done');
 
             // Fire-and-forget: download artwork in background after import completes
-            downloadArtworkInBackground(tracksToImport, trackIds, playlist.id, coverArtUrl);
+            downloadArtworkInBackground(tracksToImport, trackIds, playlist.id, coverArtUrl, selectedPlaylist!.name);
         } catch (err) {
             setError(`Import failed: ${err}`);
             setState('error');
@@ -244,20 +245,25 @@ export function useSpotifyImport() {
         trackIds: string[],
         playlistId: string,
         coverArtUrl?: string,
+        playlistName?: string,
     ) => {
-        // Group track IDs by their albumArtUrl to deduplicate downloads
+        // Group track IDs by their albumArtUrl; also capture album/artist for naming
         const urlToTrackIds = new Map<string, string[]>();
+        const urlToMeta = new Map<string, { albumName: string; artistName: string }>();
         importedTracks.forEach((t, i) => {
             if (t.albumArtUrl) {
                 const ids = urlToTrackIds.get(t.albumArtUrl) ?? [];
                 ids.push(trackIds[i]);
                 urlToTrackIds.set(t.albumArtUrl, ids);
+                if (!urlToMeta.has(t.albumArtUrl)) {
+                    urlToMeta.set(t.albumArtUrl, { albumName: t.album, artistName: t.artists[0] });
+                }
             }
         });
 
         for (const [url, ids] of urlToTrackIds) {
             try {
-                const result = await window.electron?.artwork.download(url);
+                const result = await window.electron?.artwork.download(url, urlToMeta.get(url));
                 if (result?.success && result.localPath) {
                     await Promise.all(ids.map((id) => updateTrack(id, { albumArtLocalPath: result.localPath })));
                 }
@@ -269,7 +275,7 @@ export function useSpotifyImport() {
         // Download playlist cover art
         if (coverArtUrl) {
             try {
-                const result = await window.electron?.artwork.download(coverArtUrl);
+                const result = await window.electron?.artwork.download(coverArtUrl, { albumName: playlistName });
                 if (result?.success && result.localPath) {
                     const db = await import('../db/database').then((m) => m.getDatabase());
                     const playlistDoc = await db.playlists.findOne(playlistId).exec();

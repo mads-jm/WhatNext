@@ -4,7 +4,7 @@
  * The Library is the local-first canonical track pool — Spotify is just one source.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useReducer } from 'react';
 import { useDatabase } from '../../hooks/useDatabase';
 import type { TrackDocType } from '../../db/schemas';
 import type { RxDocument } from 'rxdb';
@@ -17,13 +17,33 @@ interface TrackPickerModalProps {
     onClose: () => void;
 }
 
+type TracksState =
+    | { status: 'loading'; allTracks: TrackDocType[] }
+    | { status: 'done'; allTracks: TrackDocType[] }
+    | { status: 'error'; allTracks: TrackDocType[] };
+
+type TracksAction =
+    | { type: 'SUCCESS'; allTracks: TrackDocType[] }
+    | { type: 'ERROR' };
+
+function tracksReducer(state: TracksState, action: TracksAction): TracksState {
+    switch (action.type) {
+        case 'SUCCESS':
+            return { status: 'done', allTracks: action.allTracks };
+        case 'ERROR':
+            return { status: 'error', allTracks: state.allTracks };
+    }
+}
+
 export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPickerModalProps) {
     const { db } = useDatabase();
-    const [allTracks, setAllTracks] = useState<TrackDocType[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [tracksState, dispatchTracks] = useReducer(tracksReducer, { status: 'loading', allTracks: [] });
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [adding, setAdding] = useState(false);
+
+    const allTracks = tracksState.allTracks;
+    const loading = tracksState.status === 'loading';
 
     // Reactive subscription to all tracks
     useEffect(() => {
@@ -33,10 +53,9 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
             sort: [{ addedAt: 'desc' }],
         }).$.subscribe({
             next: (docs: RxDocument<TrackDocType>[]) => {
-                setAllTracks(docs.map((d) => d.toJSON() as TrackDocType));
-                setLoading(false);
+                dispatchTracks({ type: 'SUCCESS', allTracks: docs.map((d) => d.toJSON() as TrackDocType) });
             },
-            error: () => setLoading(false),
+            error: () => dispatchTracks({ type: 'ERROR' }),
         });
 
         return () => subscription.unsubscribe();
@@ -89,7 +108,12 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+            role="button"
+            tabIndex={0}
             onClick={(e) => e.target === e.currentTarget && onClose()}
+            onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) onClose();
+            }}
         >
             <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
                 {/* Header */}
@@ -119,7 +143,6 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
                             placeholder="Search title, artist, album…"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            autoFocus
                             className="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
                         />
                     </div>

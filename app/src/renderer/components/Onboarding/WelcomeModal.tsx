@@ -59,7 +59,6 @@ export function WelcomeModal() {
                     onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                     placeholder="Your display name"
                     className="input w-full mb-4 text-center text-lg"
-                    autoFocus
                     maxLength={50}
                 />
 

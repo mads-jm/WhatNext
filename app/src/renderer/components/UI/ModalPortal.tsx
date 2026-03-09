@@ -89,11 +89,21 @@ export function ModalPortal({
         }
     };
 
+    const handleBackdropKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (closeOnBackdrop) onClose();
+        }
+    };
+
     return createPortal(
         <div
             className="fixed inset-0 flex items-center justify-center"
             style={{ zIndex }}
+            role="button"
+            tabIndex={0}
             onClick={handleBackdropClick}
+            onKeyDown={handleBackdropKeyDown}
         >
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/70" />

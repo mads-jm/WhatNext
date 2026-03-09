@@ -7,8 +7,9 @@ Why this shape:
 - Works with our scripts: tsup builds main/preload into app/dist; Vite serves renderer on 1313 in dev.
 */
 
-import { app, BrowserWindow, globalShortcut, ipcMain, shell, utilityProcess } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, protocol, shell, utilityProcess } from 'electron';
 import type { UtilityProcess } from 'electron';
+import * as fs from 'fs';
 import * as path from 'path';
 import { isDev } from './utils/environment';
 import { getAssetPath } from './utils/path';
@@ -46,10 +47,16 @@ const preloadPath = path.join(__dirname, 'preload.js');
  * - In prod, loads the built index.html from app/dist.
  */
 const createMainWindow = (): BrowserWindow => {
+    // Remove default application menu (File/Edit/View/etc.)
+    Menu.setApplicationMenu(null);
+
     mainWindow = new BrowserWindow({
         width: 1280,
         height: 720,
+        minWidth: 800,
+        minHeight: 500,
         icon: getAssetPath('png', 'wnorb.png'),
+        frame: false,
         webPreferences: {
             // Security posture: no Node APIs in renderer; use preload + contextBridge.
             nodeIntegration: false,
@@ -445,18 +452,49 @@ if (!gotTheLock) {
     });
 }
 
+// Must be called before app is ready
+protocol.registerSchemesAsPrivileged([
+    { scheme: 'wn-art', privileges: { secure: true, standard: true, supportFetchAPI: true } },
+]);
+
 /**
  * App lifecycle
  * - Recreate a window on macOS when activating from the dock with no windows open.
  * - Quit on all windows closed (except macOS).
  * - Clean up global shortcuts on quit.
  */
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    // Serve local artwork files via wn-art:// to work around renderer file:// restrictions.
+    // Path is passed as a query param to avoid Chromium mangling Windows absolute paths in URL segments.
+    protocol.handle('wn-art', async (request) => {
+        const filePath = new URL(request.url).searchParams.get('path');
+        if (!filePath) return new Response(null, { status: 400 });
+        try {
+            const data = await fs.promises.readFile(filePath);
+            const ext = path.extname(filePath).toLowerCase();
+            const mime: Record<string, string> = {
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.webp': 'image/webp',
+            };
+            return new Response(data, {
+                headers: { 'content-type': mime[ext] ?? 'image/jpeg' },
+            });
+        } catch {
+            console.warn('[wn-art] File not found:', filePath);
+            return new Response(null, { status: 404 });
+        }
+    });
+
     // Register protocol handler
     registerProtocolHandler();
 
     // Create main window FIRST so it's ready to receive P2P events
     createMainWindow();
+
+    // Hydrate Spotify client with stored tokens so auth persists across restarts
+    await ensureSpotifyModules();
 
     // THEN spawn P2P utility process after window is created
     // Wait for the window to be ready AND give React time to mount
@@ -591,36 +629,79 @@ ipcMain.handle('file:write', async (_event, filePath: string, content: string) =
 // Artwork Caching
 // ========================================
 
+/** Strip filesystem-illegal characters and trim to a safe length. */
+function sanitizePathSegment(str: string): string {
+    return str.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim().slice(0, 80);
+}
+
+/**
+ * Build human-readable base filename from album/artist metadata.
+ * Returns null if insufficient metadata — caller falls back to hash.
+ */
+function artworkBaseName(albumName?: string, artistName?: string): string | null {
+    if (!albumName) return null;
+    const album = sanitizePathSegment(albumName);
+    if (!album) return null;
+    if (artistName) {
+        const artist = sanitizePathSegment(artistName);
+        if (artist) return `${artist} - ${album}`;
+    }
+    return album;
+}
+
 /**
  * Download and cache artwork (album art or playlist cover) from a remote URL.
- * Extracts a stable image ID from the URL path (works for Spotify CDN URLs).
- * Skips download if already cached. Returns the absolute local file path.
+ * Files are named by album/artist for local-first legibility.
+ * An index.json in the artwork directory maps remote URL → local filename
+ * for deduplication without re-downloading.
  */
-ipcMain.handle('artwork:download', async (_event, url: string) => {
+ipcMain.handle('artwork:download', async (_event, req: { url: string; albumName?: string; artistName?: string }) => {
     try {
-        const artworkDir = path.join(app.getPath('userData'), 'artwork');
-        const fs = await import('fs/promises');
+        const { url, albumName, artistName } = req;
+        const artworkDir = path.join(app.getPath('documents'), 'WhatNext', 'artwork');
+        await fs.promises.mkdir(artworkDir, { recursive: true });
 
-        await fs.mkdir(artworkDir, { recursive: true });
-
-        // Extract stable image ID from URL path — Spotify CDN: /image/<id>
-        const urlPath = new URL(url).pathname;
-        const rawId = urlPath.split('/').filter(Boolean).pop() ?? '';
-        const imageId = rawId.replace(/[^a-zA-Z0-9_-]/g, '') || Buffer.from(url).toString('base64url').slice(0, 40);
-        const localPath = path.join(artworkDir, `${imageId}.jpg`);
-
-        // Skip if already cached
+        // Load index: url → filename
+        const indexPath = path.join(artworkDir, 'index.json');
+        let index: Record<string, string> = {};
         try {
-            await fs.access(localPath);
-            return { success: true, localPath };
-        } catch {
-            // Not cached yet — proceed
+            index = JSON.parse(await fs.promises.readFile(indexPath, 'utf-8'));
+        } catch { /* no index yet */ }
+
+        // Return cached path if index entry exists and file is present
+        if (index[url]) {
+            const cachedPath = path.join(artworkDir, index[url]);
+            try {
+                await fs.promises.access(cachedPath);
+                return { success: true, localPath: cachedPath };
+            } catch {
+                delete index[url]; // stale entry — re-download
+            }
         }
 
+        // Build human-readable filename; fall back to URL hash
+        const indexedNames = new Set(Object.values(index));
+        const baseName = artworkBaseName(albumName, artistName);
+        let filename: string;
+        if (baseName) {
+            let candidate = `${baseName}.jpg`;
+            let n = 2;
+            while (indexedNames.has(candidate)) candidate = `${baseName}-${n++}.jpg`;
+            filename = candidate;
+        } else {
+            const rawId = new URL(url).pathname.split('/').filter(Boolean).pop() ?? '';
+            const imageId = rawId.replace(/[^a-zA-Z0-9_-]/g, '') || Buffer.from(url).toString('base64url').slice(0, 40);
+            filename = `${imageId}.jpg`;
+        }
+
+        const localPath = path.join(artworkDir, filename);
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const buffer = Buffer.from(await response.arrayBuffer());
-        await fs.writeFile(localPath, buffer);
+        await fs.promises.writeFile(localPath, Buffer.from(await response.arrayBuffer()));
+
+        // Persist index
+        index[url] = filename;
+        await fs.promises.writeFile(indexPath, JSON.stringify(index, null, 2));
 
         return { success: true, localPath };
     } catch (error) {

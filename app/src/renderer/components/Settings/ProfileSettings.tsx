@@ -3,7 +3,7 @@
  * Replaces the "Coming soon" placeholder for settings-general.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUserStore } from '../../stores/user-store';
 import {
     updateLocalUserProfile,
@@ -18,6 +18,42 @@ export function ProfileSettings() {
     const [editingName, setEditingName] = useState(false);
     const [nameValue, setNameValue] = useState('');
     const [linking, setLinking] = useState(false);
+
+    useEffect(() => {
+        const cleanupComplete = window.electron?.spotify.onAuthComplete(async () => {
+            try {
+                const profile = await window.electron?.spotify.getProfile();
+                if (profile?.success && profile.userId) {
+                    await linkServiceAccount({
+                        provider: 'spotify',
+                        providerUserId: profile.userId,
+                        displayName: profile.displayName,
+                        avatarUrl: profile.avatarUrl,
+                    });
+                    const u = useUserStore.getState().user;
+                    if (u?.avatarSource === 'none' && profile.avatarUrl) {
+                        await updateLocalUserProfile({
+                            avatarSource: 'spotify',
+                            avatarUrl: profile.avatarUrl,
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to link Spotify profile:', err);
+            } finally {
+                setLinking(false);
+            }
+        });
+
+        const cleanupError = window.electron?.spotify.onAuthError(() => {
+            setLinking(false);
+        });
+
+        return () => {
+            cleanupComplete?.();
+            cleanupError?.();
+        };
+    }, []);
 
     if (loading || !user) {
         return (
@@ -49,12 +85,11 @@ export function ProfileSettings() {
             const result = await window.electron?.spotify.startAuth();
             if (result && !result.success) {
                 console.error('Spotify auth failed:', result.error);
+                setLinking(false);
             }
-            // Actual linking happens in onAuthComplete handler
-            // (see useSpotifyImport or a global listener)
+            // setLinking(false) is handled by the onAuthComplete / onAuthError listeners above
         } catch (err) {
             console.error('Spotify connect error:', err);
-        } finally {
             setLinking(false);
         }
     };
@@ -132,7 +167,6 @@ export function ProfileSettings() {
                                             handleNameSave()
                                         }
                                         className="input flex-1"
-                                        autoFocus
                                         maxLength={50}
                                     />
                                     <button

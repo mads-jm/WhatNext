@@ -94,8 +94,8 @@ const electronHandler = {
     // Artwork Caching
     // ========================================
     artwork: {
-        download: (url: string): Promise<{ success: boolean; localPath?: string; error?: string }> =>
-            ipcRenderer.invoke('artwork:download', url),
+        download: (url: string, meta?: { albumName?: string; artistName?: string }): Promise<{ success: boolean; localPath?: string; error?: string }> =>
+            ipcRenderer.invoke('artwork:download', { url, albumName: meta?.albumName, artistName: meta?.artistName }),
     },
 
     // ========================================
