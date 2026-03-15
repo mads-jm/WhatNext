@@ -15,6 +15,8 @@ import { isDev } from './utils/environment';
 import { getAssetPath } from './utils/path';
 import {
     parseProtocolUrl,
+    createConnectUrl,
+    generateShortCode,
     createIPCMessage,
     MainToUtilityMessageType,
     UtilityToMainMessageType,
@@ -29,7 +31,13 @@ import {
     type NodeErrorPayload,
     type HandshakeCompletePayload,
     type P2PStatusPayload,
+    type ReplicationPullRequestPayload,
 } from '../shared/core';
+import {
+    getRelayAddresses,
+    addRelayAddress,
+    removeRelayAddress,
+} from './relay-config-store';
 
 let mainWindow: BrowserWindow | null = null;
 let p2pUtilityProcess: UtilityProcess | null = null;
@@ -145,10 +153,12 @@ function spawnP2PUtilityProcess(): void {
         p2pUtilityProcess.on('message', (message: IPCMessage) => {
             console.log('[Main] ← Received from utility:', message.type);
 
-            // When utility process is ready, start the P2P node
+            // When utility process is ready, start the P2P node with relay addresses
             if (message.type === UtilityToMainMessageType.READY) {
                 console.log('[Main] ✓ Utility process is READY, sending START_NODE');
-                sendToUtilityProcess(MainToUtilityMessageType.START_NODE, {});
+                const relayAddresses = getRelayAddresses();
+                console.log('[Main] Relay addresses from settings:', relayAddresses.length);
+                sendToUtilityProcess(MainToUtilityMessageType.START_NODE, { relayAddresses });
                 return;
             }
 
@@ -306,6 +316,34 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
                 discoveredPeer.displayName = payload.displayName;
             }
             mainWindow.webContents.send('p2p:handshake-complete', payload);
+            break;
+        }
+
+        case UtilityToMainMessageType.RELAY_CONNECTED: {
+            const payload = message.payload as { connected: boolean; relayMultiaddr: string | null; relayPeerId: string | null };
+            activeRelayMultiaddr = payload.relayMultiaddr;
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_RELAY_STATUS, payload);
+            break;
+        }
+
+        case UtilityToMainMessageType.RELAY_DISCONNECTED: {
+            activeRelayMultiaddr = null;
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_RELAY_STATUS, {
+                connected: false,
+                relayMultiaddr: null,
+                relayPeerId: null,
+            });
+            break;
+        }
+
+        case UtilityToMainMessageType.PEER_PRESENCE_UPDATE:
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_PEER_PRESENCE, message.payload);
+            break;
+
+        case UtilityToMainMessageType.REPLICATION_PULL_REQUEST: {
+            // Utility needs data from renderer's RxDB — forward the request
+            const req = message.payload as ReplicationPullRequestPayload;
+            mainWindow.webContents.send(IPC_CHANNELS.REPLICATION_PULL_REQUEST, req);
             break;
         }
 
@@ -743,6 +781,9 @@ let p2pState: P2PStatusPayload = {
     protocols: [],
 };
 
+// Active relay info (populated when relay connects in utility process)
+let activeRelayMultiaddr: string | null = null;
+
 ipcMain.handle(IPC_CHANNELS.P2P_CONNECT, async (_event, peerId: string) => {
     console.log('[Main] Renderer requested connection to peer:', peerId.slice(0, 20) + '...');
     sendToUtilityProcess(MainToUtilityMessageType.CONNECT_TO_PEER, { peerId });
@@ -970,6 +1011,77 @@ ipcMain.handle(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FULL, async (_event, pla
     } catch (error) {
         return { success: false, error: String(error) };
     }
+});
+
+// ========================================
+// Relay Configuration
+// ========================================
+
+ipcMain.handle(IPC_CHANNELS.P2P_RELAY_GET, () => {
+    return { addresses: getRelayAddresses() };
+});
+
+ipcMain.handle(IPC_CHANNELS.P2P_RELAY_ADD, async (_event, multiaddr: string) => {
+    const addresses = addRelayAddress(multiaddr);
+    // Notify utility process to attempt connection to the new relay
+    sendToUtilityProcess(MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES, { addresses });
+    return { success: true, addresses };
+});
+
+ipcMain.handle(IPC_CHANNELS.P2P_RELAY_REMOVE, async (_event, multiaddr: string) => {
+    const addresses = removeRelayAddress(multiaddr);
+    sendToUtilityProcess(MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES, { addresses });
+    return { success: true, addresses };
+});
+
+// ========================================
+// Session Invite URL
+// ========================================
+
+ipcMain.handle(IPC_CHANNELS.P2P_GET_INVITE_URL, (_event, sessionId?: string) => {
+    const peerId = p2pState.peerId;
+    if (!peerId) {
+        return { success: false, error: 'P2P node not started' };
+    }
+
+    const url = createConnectUrl(peerId, {
+        relay: activeRelayMultiaddr ?? undefined,
+        sessionId,
+    });
+
+    const shortCode = generateShortCode(sessionId ?? peerId);
+
+    return {
+        success: true,
+        url,
+        shortCode,
+        peerId,
+        relayAddr: activeRelayMultiaddr,
+    };
+});
+
+// Join a session by parsing a whtnxt:// URL or a short code
+ipcMain.handle(IPC_CHANNELS.P2P_JOIN_SESSION, (_event, urlOrCode: string) => {
+    const trimmed = urlOrCode.trim();
+    if (trimmed.startsWith('whtnxt://')) {
+        handleProtocolUrl(trimmed);
+        return { success: true };
+    }
+    // Short codes can't be resolved without a rendezvous server (Phase 2).
+    // For now, return a helpful error.
+    return { success: false, error: 'Short codes require a rendezvous server (coming in Phase 2). Please use the full whtnxt:// link.' };
+});
+
+// ========================================
+// Replication Pull Response (renderer → utility bridge)
+// ========================================
+
+// Renderer responds to a REPLICATION_PULL_REQUEST with the data from its RxDB
+ipcMain.handle(IPC_CHANNELS.REPLICATION_PULL_RESPONSE, (_event, payload) => {
+    // Forward the response to the utility process so it can serve the data
+    // to the remote peer's pull-request stream
+    sendToUtilityProcess(MainToUtilityMessageType.REPLICATION_PULL_RESPONSE, payload);
+    return { success: true };
 });
 
 // Handle protocol URLs on macOS (open-url event)

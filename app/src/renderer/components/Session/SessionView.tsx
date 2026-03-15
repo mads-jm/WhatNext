@@ -10,6 +10,7 @@ import { useUserStore } from '../../stores/user-store';
 import { useSessionState } from '../../hooks/useSessionState';
 import { usePlaybackState } from '../../hooks/usePlaybackState';
 import { useTrackSource } from '../../hooks/useTrackSource';
+import { useSessionReplication } from '../../hooks/useSessionReplication';
 import { getDatabase } from '../../db/database';
 import type { PlaylistDocType, TrackDocType, UserDocType } from '../../db/schemas';
 import { SessionSetup } from './SessionSetup';
@@ -19,6 +20,7 @@ import { SessionEmptyState } from './SessionEmptyState';
 import { SessionHeader } from './SessionHeader';
 import { TurnIndicator } from './TurnIndicator';
 import { SessionInfoBar } from './SessionInfoBar';
+import { ShareSessionPanel } from './ShareSessionPanel';
 import { ParticipantRoster } from './ParticipantRoster';
 import { SessionTrackList } from './SessionTrackList';
 
@@ -41,6 +43,7 @@ export function SessionView({ playlistId }: SessionViewProps) {
     const [tracks, setTracks] = useState<TrackDocType[]>([]);
     const [participants, setParticipants] = useState<UserDocType[]>([]);
     const [currentTurnUser, setCurrentTurnUser] = useState<UserDocType | null>(null);
+    const [showSharePanel, setShowSharePanel] = useState(false);
 
     // Subscribe to playlist changes reactively
     useEffect(() => {
@@ -140,6 +143,15 @@ export function SessionView({ playlistId }: SessionViewProps) {
         ? `spotify:playlist:${playlist.linkedSpotifyId}`
         : undefined;
 
+    const handOffPlayback = useNavigationStore((s) => s.handOffPlayback);
+    const takePlayback = useNavigationStore((s) => s.takePlayback);
+    const isPlaybackOwner = !sessionState || sessionState.playbackOwnerId === userId;
+    const coHostIds = sessionState?.coHostIds ?? [];
+    const isCoHost = userId ? coHostIds.includes(userId) : false;
+
+    // Replicate session collections to/from connected peers when session is active
+    useSessionReplication(isActiveSession);
+
     const { error: trackSourceError } = useTrackSource({
         config: sessionState?.trackSource ?? { type: 'manual' },
         playlistId: activeId ?? '',
@@ -182,7 +194,43 @@ export function SessionView({ playlistId }: SessionViewProps) {
             />
 
             {isSpotifyPlayback && (
-                <PlaybackBar enabled contextUri={spotifyContextUri} />
+                <PlaybackBar enabled={isPlaybackOwner} contextUri={spotifyContextUri} />
+            )}
+
+            {/* Playback ownership controls — shown when Spotify is the provider */}
+            {isSpotifyPlayback && (
+                <div className="card card-body flex items-center justify-between py-2">
+                    <span className="text-xs text-gray-400">
+                        {isPlaybackOwner
+                            ? 'You control playback'
+                            : `Playback owned by ${sessionState?.playbackOwnerId}`}
+                    </span>
+                    <div className="flex gap-2">
+                        {!isPlaybackOwner && (isCoHost || userId === sessionState?.hostId) && (
+                            <button
+                                className="btn-ghost text-xs"
+                                onClick={() => userId && takePlayback(userId)}
+                            >
+                                Take Playback
+                            </button>
+                        )}
+                        {isPlaybackOwner && coHostIds.length > 0 && (
+                            <select
+                                className="bg-gray-700 text-white text-xs rounded px-2 py-1"
+                                defaultValue=""
+                                onChange={(e) => {
+                                    if (e.target.value) handOffPlayback(e.target.value);
+                                    e.target.value = '';
+                                }}
+                            >
+                                <option value="" disabled>Hand off to…</option>
+                                {coHostIds.map((id) => (
+                                    <option key={id} value={id}>{id}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                </div>
             )}
 
             {playlist?.queueMode === 'turn_taking' && !playlist.isComplete && (
@@ -202,8 +250,12 @@ export function SessionView({ playlistId }: SessionViewProps) {
                 coverArtUrl={playlist?.coverArtUrl}
                 trackCount={tracks.length}
                 participantCount={participants.length}
-                onShare={() => user && navigator.clipboard.writeText(activeId)}
+                onShare={() => setShowSharePanel((v) => !v)}
             />
+
+            {showSharePanel && (
+                <ShareSessionPanel sessionId={activeId} />
+            )}
 
             <div className="grid grid-cols-3 gap-4">
                 <ParticipantRoster

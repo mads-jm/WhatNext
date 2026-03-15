@@ -16,6 +16,7 @@ interface CommentThreadProps {
 
 export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
     const userId = useUserStore((s) => s.userId);
+    const userDisplayName = useUserStore((s) => s.user?.displayName ?? '');
     const { comments, loading } = useComments(playlistId, trackId);
     const [newBody, setNewBody] = useState('');
     const [replyingTo, setReplyingTo] = useState<string | undefined>();
@@ -28,6 +29,7 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
             playlistId,
             trackId,
             userId,
+            userDisplayName,
             body,
             parentId: replyingTo,
         });

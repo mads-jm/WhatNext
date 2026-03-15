@@ -296,13 +296,14 @@ export interface PlaylistDocType {
     completedFromMode?: 'free_for_all' | 'turn_taking' | 'vote_based'; // queueMode snapshotted at completion time — used to restore on reopen
     coverArtUrl?: string; // Remote cover art URL (Spotify CDN or other source)
     coverArtLocalPath?: string; // Absolute path to locally cached cover art file
+    coHostIds?: string[]; // User IDs of co-hosts who can control playback
 }
 
 export type PlaylistDocument = RxDocument<PlaylistDocType>;
 export type PlaylistCollection = RxCollection<PlaylistDocType>;
 
 export const playlistSchema: RxJsonSchema<PlaylistDocType> = {
-    version: 4,
+    version: 5,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -406,6 +407,10 @@ export const playlistSchema: RxJsonSchema<PlaylistDocType> = {
         },
         coverArtLocalPath: {
             type: 'string',
+        },
+        coHostIds: {
+            type: 'array',
+            items: { type: 'string' },
         },
     },
     required: [

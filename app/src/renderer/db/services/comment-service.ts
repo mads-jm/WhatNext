@@ -13,6 +13,7 @@ export interface CreateCommentInput {
     playlistId: string;
     trackId?: string;
     userId: string;
+    userDisplayName: string;
     body: string;
     parentId?: string;
 }
@@ -32,6 +33,7 @@ export async function createComment(input: CreateCommentInput): Promise<CommentD
         playlistId: input.playlistId,
         trackId: input.trackId,
         userId: input.userId,
+        userDisplayName: input.userDisplayName,
         body: input.body,
         parentId: input.parentId,
         createdAt: now,

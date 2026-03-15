@@ -4,10 +4,10 @@
  *
  * Syncs RxDB documents between peers using JSON-over-stream.
  * Uses checkpoint-based sync with LWW (Last-Write-Wins) conflict resolution.
+ * Updated to libp2p v2+ Stream API (send/closeWrite instead of sink).
  */
 
-import type { Libp2p } from 'libp2p';
-import type { Stream } from '@libp2p/interface';
+import type { Libp2p, Connection, Stream } from '@libp2p/interface';
 import { P2P_CONFIG } from '../../shared/p2p-config';
 
 export type ReplicationMessageType = 'pull-request' | 'pull-response' | 'push' | 'push-ack';
@@ -28,11 +28,12 @@ export interface ReplicationDocument {
 }
 
 /**
- * Read a JSON message from a stream
+ * Read a JSON message from a stream (consumes all chunks until EOF)
  */
 async function readStreamMessage<T>(stream: Stream): Promise<T> {
     const chunks: Uint8Array[] = [];
-    for await (const chunk of stream.source) {
+    // Stream is AsyncIterable<Uint8Array | Uint8ArrayList> in libp2p v2+
+    for await (const chunk of stream) {
         chunks.push(chunk.subarray());
     }
     const combined = new Uint8Array(chunks.reduce((acc, c) => acc + c.length, 0));
@@ -45,11 +46,12 @@ async function readStreamMessage<T>(stream: Stream): Promise<T> {
 }
 
 /**
- * Write a JSON message to a stream
+ * Write a JSON message to a stream and half-close the write side
  */
 async function writeStreamMessage(stream: Stream, data: unknown): Promise<void> {
     const encoded = new TextEncoder().encode(JSON.stringify(data));
-    await stream.sink([encoded]);
+    stream.send(encoded);
+    await stream.close();
 }
 
 export type OnPullRequest = (
@@ -71,7 +73,7 @@ export function registerReplicationProtocol(
     onPullRequest: OnPullRequest,
     onPushReceived: OnPushReceived,
 ): void {
-    node.handle(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION, async ({ stream, connection }) => {
+    node.handle(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION, async (stream: Stream, connection: Connection) => {
         try {
             const message = await readStreamMessage<ReplicationMessage>(stream);
             const remotePeer = connection.remotePeer.toString().slice(0, 12);

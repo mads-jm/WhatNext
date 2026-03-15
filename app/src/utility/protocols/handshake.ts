@@ -3,11 +3,10 @@
  * /whatnext/handshake/1.0.0
  *
  * Exchanged after connection established to share peer metadata.
- * Uses length-prefixed JSON messages over a libp2p stream.
+ * Uses JSON messages over a libp2p stream (libp2p v2+ API).
  */
 
-import type { Libp2p } from 'libp2p';
-import type { Stream } from '@libp2p/interface';
+import type { Libp2p, Connection, Stream } from '@libp2p/interface';
 import { P2P_CONFIG } from '../../shared/p2p-config';
 
 export interface HandshakeData {
@@ -20,11 +19,12 @@ export interface HandshakeData {
 }
 
 /**
- * Read a length-prefixed JSON message from a stream
+ * Read all chunks from a stream and decode as JSON
  */
 async function readMessage<T>(stream: Stream): Promise<T> {
     const chunks: Uint8Array[] = [];
-    for await (const chunk of stream.source) {
+    // Stream is AsyncIterable<Uint8Array | Uint8ArrayList> in libp2p v2+
+    for await (const chunk of stream) {
         chunks.push(chunk.subarray());
     }
     const combined = new Uint8Array(chunks.reduce((acc, c) => acc + c.length, 0));
@@ -38,13 +38,12 @@ async function readMessage<T>(stream: Stream): Promise<T> {
 }
 
 /**
- * Write a JSON message to a stream and close it for writing
+ * Send a JSON message to a stream and half-close for writing
  */
 async function writeMessage(stream: Stream, data: unknown): Promise<void> {
-    const text = JSON.stringify(data);
-    const encoded = new TextEncoder().encode(text);
-    // Push the data and close the write side
-    await stream.sink([encoded]);
+    const encoded = new TextEncoder().encode(JSON.stringify(data));
+    stream.send(encoded);
+    await stream.close();
 }
 
 /**
@@ -55,14 +54,14 @@ export function registerHandshakeProtocol(
     localData: HandshakeData,
     onHandshake: (remotePeerId: string, data: HandshakeData) => void
 ): void {
-    node.handle(P2P_CONFIG.PROTOCOLS.HANDSHAKE, async ({ stream, connection }) => {
+    node.handle(P2P_CONFIG.PROTOCOLS.HANDSHAKE, async (stream: Stream, connection: Connection) => {
         try {
             console.log(`[Handshake] Incoming handshake from ${connection.remotePeer.toString()}`);
 
             // Read remote peer's handshake
             const remoteData = await readMessage<HandshakeData>(stream);
 
-            // Send our handshake back (open new stream for response)
+            // Send our handshake back on a new stream
             const responseStream = await connection.newStream(P2P_CONFIG.PROTOCOLS.HANDSHAKE);
             await writeMessage(responseStream, localData);
 
