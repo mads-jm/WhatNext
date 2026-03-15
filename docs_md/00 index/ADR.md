@@ -15,9 +15,10 @@ in pursuit of fully documenting any decisions made pertaining the architecture t
 [[adr-251110-electron-process-model]]
 [[adr-251110-libp2p-vs-simple-peer]]
 [[adr-260307-session-architecture-provider-abstraction]]
+[[adr-260315-p2p-session-pairing]]
 
 ---
 
-__Last Updated__: 2026-03-08
+__Last Updated__: 2026-03-15
 
 core/index

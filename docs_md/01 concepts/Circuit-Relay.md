@@ -37,18 +37,14 @@ Circuit relay v2 provides the bridge for cross-network connectivity.
 
 ### Configuration
 
-Relay addresses are stored in `app/src/shared/p2p-config.ts` under `P2P_CONFIG.RELAY`:
+Relay addresses are stored in `userData/relay-config.json` and managed via `app/src/main/relay-config-store.ts`. There is no longer a static `RELAY.ADDRESSES` array in `p2p-config.ts` — addresses are loaded dynamically at runtime.
 
-```typescript
-RELAY: {
-    ADDRESSES: [
-        '/ip4/YOUR_VPS_IP/tcp/4001/p2p/RELAY_PEER_ID',
-    ],
-    AUTO_CONNECT: true,
-    RETRY_INTERVAL: 10000,
-    MAX_RETRIES: 5,
-}
-```
+Users add relays through __Settings > P2P__. The relay config store provides `getRelayAddresses()`, `addRelayAddress(addr)`, and `removeRelayAddress(addr)`.
+
+The `RelayManager` class (`app/src/utility/relay-manager.ts`) handles:
+- Auto-connect to all configured addresses on node startup
+- Exponential backoff retry on connection failure
+- Status callbacks forwarded to the renderer via IPC (`P2P_RELAY_STATUS` channel)
 
 ## Key Patterns
 
@@ -60,14 +56,16 @@ RELAY: {
 
 1. Get a VPS with a public IP
 2. `cd relay && npm install && npm start`
-3. Copy the printed multiaddrs into `P2P_CONFIG.RELAY.ADDRESSES`
-4. Ensure ports 4001 (TCP) and 4002 (WS) are open
+3. A `relay-key.json` is created in the relay directory on first run — back this up. The peer ID derived from this key is permanent and must match any previously shared invite URLs.
+4. Copy the printed multiaddr (including the peer ID) into WhatNext Settings > P2P > Add Relay
+5. Ensure ports 4001 (TCP) and 4002 (WS) are open in the VPS firewall
 
 ## Common Pitfalls
 
-- __Relay PeerId changes on restart__: The relay generates a new PeerId each time. All clients must be updated with the new address. Future improvement: persist the PeerId.
-- __Relay limits__: v2 enforces connection duration and data limits. Not suitable for bulk data transfer -- use for signaling and small messages.
+- __Relay PeerId changes on restart (now fixed)__: The relay previously generated a new PeerId on each restart. `relay/relay-server.mjs` now calls `loadOrCreateKey()` which persists an ed25519 key to `relay-key.json`. The peer ID is stable across restarts, which is required since it appears in invite URLs.
+- __Relay limits__: v2 enforces connection duration and data limits. Not suitable for bulk data transfer — use for signaling and small messages. Direct connection upgrade via DCUtR takes over once NAT traversal succeeds.
 - __Port forwarding__: The relay itself must have publicly accessible ports. Ensure firewall rules allow inbound TCP on 4001 and 4002.
+- __@libp2p/rendezvous does not exist on npm__: The package was considered for peer rendezvous but is not published. Invite URLs with encoded peerId + relay address are used instead for remote session joining.
 
 ## Related Concepts
 
