@@ -1,6 +1,7 @@
 /**
  * ParticipantRoster
  * Left-column card listing session participants with their track counts and turn indicator.
+ * Ordered by turnOrder when turn-taking mode is active.
  */
 
 import type { UserDocType, TrackDocType } from '../../db/schemas';
@@ -10,6 +11,7 @@ interface ParticipantRosterProps {
     tracks: TrackDocType[];
     currentUserId: string | null;
     currentTurnUserId?: string | null;
+    turnOrder?: string[];
 }
 
 export function ParticipantRoster({
@@ -17,20 +19,33 @@ export function ParticipantRoster({
     tracks,
     currentUserId,
     currentTurnUserId,
+    turnOrder,
 }: ParticipantRosterProps) {
+    // Display in explicit turn order when available; fall back to roster order
+    const ordered = turnOrder?.length
+        ? turnOrder
+              .map((id) => participants.find((p) => p.id === id))
+              .filter((p): p is UserDocType => p !== undefined)
+        : participants;
+
+    const isTurnTaking = !!turnOrder?.length;
+
     return (
         <div className="card col-span-1" data-testid="participant-list">
             <div className="card-header">
                 <span className="font-medium text-sm">Participants</span>
             </div>
             <div className="card-body space-y-3">
-                {participants.map((p) => {
+                {ordered.map((p, idx) => {
                     const trackCount = tracks.filter((t) => t.addedBy === p.id).length;
                     const isTurn = currentTurnUserId === p.id;
 
                     return (
                         <div key={p.id} className="flex items-center gap-2">
-                            <div className="relative">
+                            {isTurnTaking && (
+                                <span className="text-xs text-gray-600 w-4 text-right shrink-0">{idx + 1}</span>
+                            )}
+                            <div className="relative shrink-0">
                                 <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-300">
                                     {p.displayName.charAt(0).toUpperCase()}
                                 </div>

@@ -51,8 +51,8 @@ const createMainWindow = (): BrowserWindow => {
     Menu.setApplicationMenu(null);
 
     mainWindow = new BrowserWindow({
-        width: 1280,
-        height: 720,
+        width: 1440,
+        height: 900,
         minWidth: 800,
         minHeight: 500,
         icon: getAssetPath('png', 'wnorb.png'),

@@ -185,15 +185,21 @@ export function SessionView({ playlistId }: SessionViewProps) {
                 <PlaybackBar enabled contextUri={spotifyContextUri} />
             )}
 
-            {playlist?.queueMode === 'turn_taking' && (
+            {playlist?.queueMode === 'turn_taking' && !playlist.isComplete && (
                 <TurnIndicator
                     isMyTurn={isMyTurn}
                     currentTurnDisplayName={currentTurnUser?.displayName}
+                    tracksPerTurn={playlist.tracksPerTurn}
+                    turnTracksAdded={playlist.turnTracksAdded}
+                    turnsCompleted={playlist.turnsCompleted}
+                    maxTurns={playlist.maxTurns}
                 />
             )}
 
             <SessionInfoBar
                 playlistName={playlist?.playlistName}
+                coverArtLocalPath={playlist?.coverArtLocalPath}
+                coverArtUrl={playlist?.coverArtUrl}
                 trackCount={tracks.length}
                 participantCount={participants.length}
                 onShare={() => user && navigator.clipboard.writeText(activeId)}
@@ -205,6 +211,7 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     tracks={tracks}
                     currentUserId={userId}
                     currentTurnUserId={playlist?.currentTurnUserId}
+                    turnOrder={playlist?.turnOrder}
                 />
 
                 <SessionTrackList

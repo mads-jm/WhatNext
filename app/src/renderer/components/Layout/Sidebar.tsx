@@ -18,7 +18,7 @@ const navigationItems: NavItem[] = [
         label: 'Workspace',
         icon: 'fa-solid fa-folder-open',
         children: [
-            { id: 'playlists', label: 'Playlists', icon: 'fa-solid fa-list-music' },
+            { id: 'playlists', label: 'Playlists', icon: 'fa-solid fa-headphones' },
             { id: 'library', label: 'Library', icon: 'fa-solid fa-music' },
             { id: 'sessions', label: 'Sessions', icon: 'fa-solid fa-users' },
             { id: 'spotify', label: 'Spotify Import', icon: 'fa-brands fa-spotify' },

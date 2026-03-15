@@ -130,6 +130,26 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                             coverArtLocalPath: oldDoc.coverArtLocalPath ?? undefined,
                         };
                     },
+                    // v1 → v2: Added turn management fields
+                    2(oldDoc: any) {
+                        return {
+                            ...oldDoc,
+                            turnOrder: undefined,
+                            tracksPerTurn: undefined,
+                            turnTracksAdded: undefined,
+                            maxTurns: undefined,
+                            turnsCompleted: undefined,
+                            isComplete: undefined,
+                        };
+                    },
+                    // v2 → v3: Added maxDurationMs
+                    3(oldDoc: any) {
+                        return { ...oldDoc, maxDurationMs: undefined };
+                    },
+                    // v3 → v4: Added completedFromMode
+                    4(oldDoc: any) {
+                        return { ...oldDoc, completedFromMode: undefined };
+                    },
                 },
             },
             comments: {

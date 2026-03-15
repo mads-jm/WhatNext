@@ -49,6 +49,10 @@ export interface CreatePlaylistInput {
     isCollaborative?: boolean;
     isPublic?: boolean;
     queueMode?: 'free_for_all' | 'turn_taking' | 'vote_based';
+    turnOrder?: string[];
+    tracksPerTurn?: number;
+    maxTurns?: number;
+    maxDurationMs?: number;
     coverArtUrl?: string;
 }
 
@@ -60,6 +64,16 @@ export interface UpdatePlaylistInput {
     description?: string;
     tags?: string[];
     linkedSpotifyId?: string;
+    isCollaborative?: boolean;
+    queueMode?: 'free_for_all' | 'turn_taking' | 'vote_based';
+    turnOrder?: string[];
+    tracksPerTurn?: number;
+    maxTurns?: number;
+    maxDurationMs?: number | null;
+    isComplete?: boolean;
+    currentTurnUserId?: string;
+    turnTracksAdded?: number;
+    turnsCompleted?: number;
 }
 
 /**

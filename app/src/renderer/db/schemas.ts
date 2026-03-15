@@ -286,6 +286,14 @@ export interface PlaylistDocType {
     tags: string[]; // User-defined tags
     queueMode?: 'free_for_all' | 'turn_taking' | 'vote_based'; // Collaborative queue behavior
     currentTurnUserId?: string; // For turn_taking mode: whose turn it is
+    turnOrder?: string[]; // Explicit ordered list of user IDs for turn rotation (falls back to [ownerId, ...collaboratorIds])
+    tracksPerTurn?: number; // How many tracks each participant adds before turn advances (default 1)
+    turnTracksAdded?: number; // Tracks added so far in the current turn (reset to 0 when turn advances)
+    maxTurns?: number; // Total person-turns allowed before auto-complete (undefined = unlimited)
+    turnsCompleted?: number; // How many person-turns have been completed (increments each advance)
+    maxDurationMs?: number; // Max total playlist playtime in ms before auto-complete (undefined = unlimited)
+    isComplete?: boolean; // Marks the collaborative playlist as complete — freezes turn-taking
+    completedFromMode?: 'free_for_all' | 'turn_taking' | 'vote_based'; // queueMode snapshotted at completion time — used to restore on reopen
     coverArtUrl?: string; // Remote cover art URL (Spotify CDN or other source)
     coverArtLocalPath?: string; // Absolute path to locally cached cover art file
 }
@@ -294,7 +302,7 @@ export type PlaylistDocument = RxDocument<PlaylistDocType>;
 export type PlaylistCollection = RxCollection<PlaylistDocType>;
 
 export const playlistSchema: RxJsonSchema<PlaylistDocType> = {
-    version: 1,
+    version: 4,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -361,6 +369,37 @@ export const playlistSchema: RxJsonSchema<PlaylistDocType> = {
         currentTurnUserId: {
             type: 'string',
             maxLength: 100,
+        },
+        turnOrder: {
+            type: 'array',
+            items: { type: 'string' },
+        },
+        tracksPerTurn: {
+            type: 'number',
+            minimum: 1,
+        },
+        turnTracksAdded: {
+            type: 'number',
+            minimum: 0,
+        },
+        maxTurns: {
+            type: 'number',
+            minimum: 1,
+        },
+        turnsCompleted: {
+            type: 'number',
+            minimum: 0,
+        },
+        maxDurationMs: {
+            type: 'number',
+            minimum: 0,
+        },
+        isComplete: {
+            type: 'boolean',
+        },
+        completedFromMode: {
+            type: 'string',
+            enum: ['free_for_all', 'turn_taking', 'vote_based'],
         },
         coverArtUrl: {
             type: 'string',

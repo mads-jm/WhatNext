@@ -23,6 +23,7 @@ export async function createPlaylist(
     const db = await getDatabase();
 
     const now = new Date().toISOString();
+    const isTurnTaking = input.queueMode === 'turn_taking';
     const playlist: PlaylistDocType = {
         id: uuidv4(),
         playlistName: input.playlistName,
@@ -38,7 +39,13 @@ export async function createPlaylist(
         spotifySyncMode: input.spotifySyncMode,
         tags: input.tags || [],
         queueMode: input.queueMode,
-        currentTurnUserId: input.queueMode === 'turn_taking' ? input.ownerId : undefined,
+        currentTurnUserId: isTurnTaking ? input.ownerId : undefined,
+        turnOrder: isTurnTaking ? (input.turnOrder ?? undefined) : undefined,
+        tracksPerTurn: isTurnTaking ? (input.tracksPerTurn ?? 1) : undefined,
+        turnTracksAdded: isTurnTaking ? 0 : undefined,
+        maxTurns: isTurnTaking ? input.maxTurns : undefined,
+        turnsCompleted: isTurnTaking ? 0 : undefined,
+        isComplete: false,
         coverArtUrl: input.coverArtUrl,
     };
 
@@ -138,37 +145,147 @@ export async function addTrackToPlaylist(
         return playlist;
     }
 
+    const isTurnTaking = playlist.queueMode === 'turn_taking' && !playlist.isComplete;
+    const tracksPerTurn = playlist.tracksPerTurn ?? 1;
+    const turnTracksAdded = (playlist.turnTracksAdded ?? 0) + 1;
+    const turnFull = isTurnTaking && turnTracksAdded >= tracksPerTurn;
+
     await playlist.update({
         $set: {
             trackIds: [...playlist.trackIds, trackId],
             updatedAt: new Date().toISOString(),
+            ...(isTurnTaking && { turnTracksAdded: turnFull ? 0 : turnTracksAdded }),
         },
     });
 
-    // Auto-advance turn for turn_taking playlists
-    const updated = await db.playlists.findOne(playlistId).exec();
-    if (updated && updated.queueMode === 'turn_taking') {
+    if (turnFull) {
         await advanceTurn(playlistId);
+    }
+
+    // Check duration limit (after adding; re-fetch updated playlist for current trackIds)
+    const maxDurationMs = playlist.maxDurationMs;
+    if (maxDurationMs !== undefined) {
+        const updated = await db.playlists.findOne(playlistId).exec();
+        if (updated && !updated.isComplete) {
+            const trackDocs = await db.tracks
+                .findByIds(updated.trackIds)
+                .exec();
+            const totalMs = Array.from(trackDocs.values()).reduce(
+                (sum, t) => sum + t.durationMs,
+                0
+            );
+            if (totalMs >= maxDurationMs) {
+                await updated.update({
+                    $set: {
+                        isComplete: true,
+                        completedFromMode: updated.queueMode,
+                        updatedAt: new Date().toISOString(),
+                    },
+                });
+            }
+        }
     }
 
     return playlist;
 }
 
 /**
- * Advance turn to next collaborator after a track is added
+ * Advance turn to the next participant.
+ * Respects explicit turnOrder; increments turnsCompleted; auto-completes at maxTurns.
  */
 export async function advanceTurn(playlistId: string): Promise<void> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
-    if (!playlist || playlist.queueMode !== 'turn_taking') return;
+    if (!playlist || playlist.queueMode !== 'turn_taking' || playlist.isComplete) return;
 
-    const allUsers = [playlist.ownerId, ...playlist.collaboratorIds];
-    const currentIndex = allUsers.indexOf(playlist.currentTurnUserId || allUsers[0]);
-    const nextIndex = (currentIndex + 1) % allUsers.length;
+    const order = playlist.turnOrder?.length
+        ? playlist.turnOrder
+        : [playlist.ownerId, ...playlist.collaboratorIds];
+
+    const currentIndex = order.indexOf(playlist.currentTurnUserId || order[0]);
+    const nextIndex = (currentIndex + 1) % order.length;
+    const turnsCompleted = (playlist.turnsCompleted ?? 0) + 1;
+    const maxTurns = playlist.maxTurns;
+    const autoComplete = maxTurns !== undefined && turnsCompleted >= maxTurns;
 
     await playlist.update({
         $set: {
-            currentTurnUserId: allUsers[nextIndex],
+            currentTurnUserId: order[nextIndex],
+            turnsCompleted,
+            turnTracksAdded: 0,
+            updatedAt: new Date().toISOString(),
+            ...(autoComplete && {
+                isComplete: true,
+                completedFromMode: playlist.queueMode,
+            }),
+        },
+    });
+}
+
+/**
+ * Update the explicit turn order for a playlist.
+ */
+export async function setTurnOrder(playlistId: string, order: string[]): Promise<void> {
+    const db = await getDatabase();
+    const playlist = await db.playlists.findOne(playlistId).exec();
+    if (!playlist) return;
+
+    await playlist.update({
+        $set: { turnOrder: order, updatedAt: new Date().toISOString() },
+    });
+}
+
+/**
+ * Configure tracks-per-turn, max-turns cap, and/or max-duration cap.
+ * Pass null to remove a cap.
+ */
+export async function setTurnConfig(
+    playlistId: string,
+    config: { tracksPerTurn?: number; maxTurns?: number | null; maxDurationMs?: number | null }
+): Promise<void> {
+    const db = await getDatabase();
+    const playlist = await db.playlists.findOne(playlistId).exec();
+    if (!playlist) return;
+
+    const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+    if (config.tracksPerTurn !== undefined) updates.tracksPerTurn = config.tracksPerTurn;
+    if (config.maxTurns !== undefined) updates.maxTurns = config.maxTurns ?? undefined;
+    if (config.maxDurationMs !== undefined) updates.maxDurationMs = config.maxDurationMs ?? undefined;
+
+    await playlist.update({ $set: updates });
+}
+
+/**
+ * Mark a collaborative playlist as complete, freezing turn-taking.
+ * Snapshots the current queueMode into completedFromMode so reopen can restore it.
+ */
+export async function markPlaylistComplete(playlistId: string): Promise<void> {
+    const db = await getDatabase();
+    const playlist = await db.playlists.findOne(playlistId).exec();
+    if (!playlist) return;
+
+    await playlist.update({
+        $set: {
+            isComplete: true,
+            completedFromMode: playlist.queueMode,
+            updatedAt: new Date().toISOString(),
+        },
+    });
+}
+
+/**
+ * Reopen a completed playlist, restoring it to its previous active mode.
+ */
+export async function reopenPlaylist(playlistId: string): Promise<void> {
+    const db = await getDatabase();
+    const playlist = await db.playlists.findOne(playlistId).exec();
+    if (!playlist || !playlist.isComplete) return;
+
+    await playlist.update({
+        $set: {
+            isComplete: false,
+            queueMode: playlist.completedFromMode ?? playlist.queueMode,
+            completedFromMode: undefined,
             updatedAt: new Date().toISOString(),
         },
     });

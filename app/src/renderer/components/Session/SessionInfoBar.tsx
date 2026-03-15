@@ -3,8 +3,12 @@
  * Card row showing playlist name, track/participant counts, and a Share button.
  */
 
+import { artSrc } from '../../utils/artSrc';
+
 interface SessionInfoBarProps {
     playlistName?: string | null;
+    coverArtLocalPath?: string;
+    coverArtUrl?: string;
     trackCount: number;
     participantCount: number;
     onShare: () => void;
@@ -12,15 +16,30 @@ interface SessionInfoBarProps {
 
 export function SessionInfoBar({
     playlistName,
+    coverArtLocalPath,
+    coverArtUrl,
     trackCount,
     participantCount,
     onShare,
 }: SessionInfoBarProps) {
+    const imgSrc = artSrc(coverArtLocalPath, coverArtUrl);
+
     return (
         <div className="card card-body flex items-center justify-between" data-testid="session-info-bar">
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                    <i className="fa-solid fa-music text-white text-sm" />
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center overflow-hidden shrink-0">
+                    {imgSrc ? (
+                        <img
+                            src={imgSrc}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                if (coverArtUrl) e.currentTarget.src = coverArtUrl;
+                            }}
+                        />
+                    ) : (
+                        <i className="fa-solid fa-music text-white text-sm" />
+                    )}
                 </div>
                 <div>
                     <p className="font-semibold text-gray-100">{playlistName ?? 'Loading...'}</p>

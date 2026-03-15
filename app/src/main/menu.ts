@@ -19,6 +19,7 @@ export default class MenuBuilder {
     this.mainWindow = mainWindow;
   }
 
+
   buildMenu(): Menu {
     if (
       process.env.NODE_ENV === 'development' ||

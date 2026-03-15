@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useNavigationStore } from '../../stores/navigation-store';
+import { useUserStore } from '../../stores/user-store';
 import { useRxDBDocument } from '../../hooks/useRxDBCollection';
 import { removeTrackFromPlaylist, updatePlaylist } from '../../db/services/playlist-service';
+import {
+    ALLOWED_REACTIONS,
+    REACTION_DISPLAY,
+    toggleReaction,
+    type ReactionEmoji,
+} from '../../db/services/reaction-service';
+import { ContextMenu, type ContextMenuItem } from '../shared/ContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 import { findTrackViewModels } from '../../db/query-helpers';
-import type { PlaylistDocType } from '../../db/schemas';
+import type { PlaylistDocType, UserDocType } from '../../db/schemas';
 import type { TrackViewModel } from '../../db/types';
 import { ReactionBar } from '../Social/ReactionBar';
 import { PlaylistComments } from '../Social/PlaylistComments';
@@ -12,9 +21,20 @@ import { CommentThread } from '../Social/CommentThread';
 import { exportAndSave } from '../../services/export/export-service';
 import { bulkAddTracksToPlaylist } from '../../db/services/playlist-service';
 import { TrackPickerModal } from './TrackPickerModal';
+import { TurnManagementPanel } from './TurnManagementPanel';
+import { TurnSetupModal } from './TurnSetupModal';
 import { formatDuration, formatTotalDuration } from '../../utils/format';
 import { artSrc } from '../../utils/artSrc';
 import { useSpotifySync } from '../../hooks/useSpotifySync';
+
+const EMOJI_LABELS: Record<ReactionEmoji, string> = {
+    fire: 'Fire',
+    heart: 'Love',
+    thumbsdown: 'Nah',
+    mindblown: 'Mind Blown',
+    sleeping: 'Boring',
+    party: 'Party',
+};
 
 interface PlaylistViewProps {
     playlistId?: string;
@@ -23,6 +43,7 @@ interface PlaylistViewProps {
 export function PlaylistView({ playlistId }: PlaylistViewProps) {
     const openSession = useNavigationStore((s) => s.openSession);
     const { db } = useDatabase();
+    const userId = useUserStore((s) => s.userId);
 
     const { doc: playlist, loading: playlistLoading } = useRxDBDocument<PlaylistDocType>(
         () => db && playlistId ? db.playlists.findOne(playlistId).exec() : null,
@@ -31,8 +52,24 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
 
     const { syncState, lastSynced, syncSummary, error: syncError, syncNow } = useSpotifySync(playlist ?? null);
 
+    const { menuState: trackMenuState, openMenu: openTrackMenu, closeMenu: closeTrackMenu } =
+        useContextMenu();
+
     const [expandedTrackComments, setExpandedTrackComments] = useState<string | null>(null);
     const [showTrackPicker, setShowTrackPicker] = useState(false);
+    const [exportOpen, setExportOpen] = useState(false);
+    const exportRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!exportOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+                setExportOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [exportOpen]);
 
     const [tracks, setTracks] = useState<TrackViewModel[]>([]);
     useEffect(() => {
@@ -43,7 +80,49 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
         findTrackViewModels(db, trackIds).then(setTracks);
     }, [db, playlist?.trackIds]);
 
+    // Load participants for the TurnManagementPanel
+    const [participants, setParticipants] = useState<UserDocType[]>([]);
+    useEffect(() => {
+        if (!db || !playlist || !playlist.isCollaborative) {
+            setParticipants([]);
+            return;
+        }
+        const ids = [playlist.ownerId, ...playlist.collaboratorIds];
+        db.users.findByIds(ids).exec().then((map) => {
+            setParticipants(
+                ids
+                    .map((id) => map.get(id))
+                    .filter((u): u is NonNullable<typeof u> => u !== undefined)
+                    .map((u) => u.toJSON() as UserDocType)
+            );
+        });
+    }, [db, playlist?.ownerId, playlist?.collaboratorIds?.join(','), playlist?.isCollaborative]);
+
     const totalDuration = tracks.reduce((acc, t) => acc + (t.durationMs || 0), 0);
+
+    const buildTrackMenuItems = (track: { id: string; title: string }): ContextMenuItem[] => [
+        {
+            id: 'quick-react',
+            label: 'Quick React',
+            icon: '😊',
+            subItems: ALLOWED_REACTIONS.map((emoji) => ({
+                id: `react-${emoji}`,
+                label: EMOJI_LABELS[emoji],
+                icon: REACTION_DISPLAY[emoji],
+                action: () => toggleReaction(userId, track.id, playlistId!, emoji),
+            })),
+        },
+        { id: 'sep-1', label: '', separator: true },
+        {
+            id: 'remove',
+            label: 'Remove Track',
+            icon: 'fa-solid fa-trash',
+            variant: 'danger',
+            requiresConfirm: true,
+            confirmLabel: `Remove "${track.title}"?`,
+            action: () => removeTrackFromPlaylist(playlistId!, track.id),
+        },
+    ];
 
     const handleExport = (format: 'markdown' | 'html') => {
         if (playlistId) exportAndSave(playlistId, format);
@@ -90,11 +169,24 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                         </div>
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                                <span className="badge-muted">Playlist</span>
-                                {playlist.isCollaborative && <span className="badge-accent">Collaborative</span>}
-                                {playlist.queueMode === 'turn_taking' && (
+                                <span className="badge-muted">
+                                    <i className="fa-solid fa-headphones text-xs mr-1" />
+                                    Playlist
+                                </span>
+                                {playlist.isCollaborative && (
+                                    <span className="badge-accent">
+                                        <i className="fa-solid fa-users text-xs mr-1" />
+                                        Shared
+                                    </span>
+                                )}
+                                {playlist.queueMode === 'turn_taking' && !playlist.isComplete && (
                                     <span className="px-1.5 py-0.5 bg-yellow-900/50 text-yellow-400 rounded text-[10px] font-semibold">
                                         Turn-Taking
+                                    </span>
+                                )}
+                                {playlist.isComplete && (
+                                    <span className="px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded text-[10px] font-semibold" title={`Completed from: ${playlist.completedFromMode ?? 'collaborative'}`}>
+                                        Complete
                                     </span>
                                 )}
                             </div>
@@ -135,22 +227,34 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                     <i className="fa-solid fa-share-nodes mr-1" />
                                     Share
                                 </button>
-                                <button
-                                    onClick={() => handleExport('markdown')}
-                                    className="btn-ghost"
-                                    title="Export as Markdown"
-                                >
-                                    <i className="fa-solid fa-file-lines mr-1" />
-                                    Export .md
-                                </button>
-                                <button
-                                    onClick={() => handleExport('html')}
-                                    className="btn-ghost"
-                                    title="Export as HTML"
-                                >
-                                    <i className="fa-solid fa-file-code mr-1" />
-                                    Export .html
-                                </button>
+                                <div className="relative" ref={exportRef}>
+                                    <button
+                                        className="btn-ghost"
+                                        onClick={() => setExportOpen((o) => !o)}
+                                    >
+                                        <i className="fa-solid fa-download mr-1" />
+                                        Export
+                                        <i className="fa-solid fa-chevron-down ml-1.5 text-[10px] opacity-50" />
+                                    </button>
+                                    {exportOpen && (
+                                        <div className="absolute left-0 top-full mt-1.5 min-w-[152px] bg-gray-800 rounded-xl ring-1 ring-white/10 shadow-2xl z-10 p-1">
+                                            <button
+                                                onClick={() => { handleExport('markdown'); setExportOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-2 rounded-lg"
+                                            >
+                                                <i className="fa-solid fa-file-lines text-gray-500" />
+                                                Markdown
+                                            </button>
+                                            <button
+                                                onClick={() => { handleExport('html'); setExportOpen(false); }}
+                                                className="w-full text-left px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-2 rounded-lg"
+                                            >
+                                                <i className="fa-solid fa-file-code text-gray-500" />
+                                                HTML
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                                 {playlist.linkedSpotifyId && (
                                     <button
                                         onClick={syncNow}
@@ -159,7 +263,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                         title="Pull latest changes from Spotify"
                                     >
                                         <i className={`fa-brands fa-spotify mr-1${syncState === 'syncing' ? ' animate-spin' : ''}`} />
-                                        {syncState === 'syncing' ? 'Syncing...' : 'Sync with Spotify'}
+                                        Sync
                                     </button>
                                 )}
                             </div>
@@ -175,6 +279,22 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Turn Management — always visible for all collaborative playlists (async session model) */}
+            {playlist.isCollaborative && playlist.queueMode === 'turn_taking' && (
+                <TurnManagementPanel
+                    playlist={playlist}
+                    participants={participants}
+                    tracks={tracks}
+                    totalDurationMs={totalDuration}
+                    currentUserId={userId}
+                />
+            )}
+
+            {/* First-open setup modal — shown when collaborative but turn-taking not yet configured */}
+            {playlist.isCollaborative && !playlist.queueMode && (
+                <TurnSetupModal playlist={playlist} participants={participants} />
+            )}
 
             {/* Playlist Discussion */}
             <PlaylistComments playlistId={playlistId!} />
@@ -207,7 +327,10 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                             <tbody>
                                 {tracks.map((track, index) => (
                                     <React.Fragment key={track.id}>
-                                        <tr className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                                        <tr
+                                    className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
+                                    onContextMenu={(e) => openTrackMenu(e, buildTrackMenuItems(track))}
+                                >
                                             <td className="px-4 py-3 text-gray-500 text-sm">{index + 1}</td>
                                             <td className="p-0 w-14">
                                                 {artSrc(track.albumArtLocalPath, track.albumArtUrl) ? (
@@ -288,6 +411,14 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                         setShowTrackPicker(false);
                     }}
                     onClose={() => setShowTrackPicker(false)}
+                />
+            )}
+
+            {trackMenuState.visible && (
+                <ContextMenu
+                    items={trackMenuState.items}
+                    position={trackMenuState.position}
+                    onClose={closeTrackMenu}
                 />
             )}
         </div>

@@ -53,7 +53,7 @@ export function SpotifyImportComplete({
                             onClick={() => onGoToPlaylist(createdPlaylistId)}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center gap-2"
                         >
-                            <i className="fa-solid fa-list-music" />
+                            <i className="fa-solid fa-headphones" />
                             Go to Playlist
                         </button>
                     )}
