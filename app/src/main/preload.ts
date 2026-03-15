@@ -17,6 +17,11 @@ import {
     type P2PStatusPayload,
     type ReplicationChangesPayload,
     type ReplicationStatePayload,
+    type RelayStatusPayload,
+    type PeerPresencePayload,
+    type GetInviteUrlResult,
+    type ReplicationPullRequestPayload,
+    type ReplicationPullResponsePayload,
 } from '../shared/core';
 import type { SpotifyPlaylistItem } from './types';
 import type { MappedTrack } from './spotify/spotify-mapper';
@@ -132,6 +137,23 @@ const electronHandler = {
         getStatus: (): Promise<P2PStatusPayload> =>
             ipcRenderer.invoke('p2p:get-status'),
 
+        // Session invite / join
+        getInviteUrl: (sessionId?: string): Promise<GetInviteUrlResult & { success: boolean; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.P2P_GET_INVITE_URL, sessionId),
+
+        joinSession: (urlOrCode: string): Promise<{ success: boolean; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.P2P_JOIN_SESSION, urlOrCode),
+
+        // Relay configuration
+        getRelays: (): Promise<{ addresses: string[] }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.P2P_RELAY_GET),
+
+        addRelay: (multiaddr: string): Promise<{ success: boolean; addresses: string[]; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.P2P_RELAY_ADD, multiaddr),
+
+        removeRelay: (multiaddr: string): Promise<{ success: boolean; addresses: string[]; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.P2P_RELAY_REMOVE, multiaddr),
+
         onNodeStarted: (callback: (data: NodeStartedPayload) => void) => {
             console.log('[Preload] Setting up listener for channel:', IPC_CHANNELS.P2P_NODE_STARTED);
             const listener = (_event: IpcRendererEvent, data: NodeStartedPayload) => {
@@ -181,6 +203,18 @@ const electronHandler = {
             ipcRenderer.on(IPC_CHANNELS.P2P_NODE_ERROR, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_NODE_ERROR, listener);
         },
+
+        onRelayStatus: (callback: (data: RelayStatusPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: RelayStatusPayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.P2P_RELAY_STATUS, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_RELAY_STATUS, listener);
+        },
+
+        onPeerPresence: (callback: (data: PeerPresencePayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: PeerPresencePayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.P2P_PEER_PRESENCE, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_PEER_PRESENCE, listener);
+        },
     },
 
     // ========================================
@@ -193,6 +227,10 @@ const electronHandler = {
         pullChanges: (collection: string, checkpoint: string | null): Promise<{ success: boolean }> =>
             ipcRenderer.invoke(IPC_CHANNELS.REPLICATION_PULL, { collection, checkpoint }),
 
+        // Respond to a pull request from the utility process (renderer provides the data)
+        respondToPullRequest: (response: ReplicationPullResponsePayload): Promise<{ success: boolean }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.REPLICATION_PULL_RESPONSE, response),
+
         onReplicationChanges: (callback: (data: ReplicationChangesPayload) => void) => {
             const listener = (_event: IpcRendererEvent, data: ReplicationChangesPayload) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.REPLICATION_CHANGES, listener);
@@ -203,6 +241,13 @@ const electronHandler = {
             const listener = (_event: IpcRendererEvent, data: ReplicationStatePayload) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.REPLICATION_STATE, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.REPLICATION_STATE, listener);
+        },
+
+        // Listen for pull requests from main (forwarded from utility when a remote peer requests data)
+        onPullRequest: (callback: (data: ReplicationPullRequestPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: ReplicationPullRequestPayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.REPLICATION_PULL_REQUEST, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.REPLICATION_PULL_REQUEST, listener);
         },
     },
 

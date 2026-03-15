@@ -25,6 +25,7 @@ import { webRTC } from '@libp2p/webrtc';
 import { mdns } from '@libp2p/mdns';
 import { identify } from '@libp2p/identify';
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2';
+import { dcutr } from '@libp2p/dcutr';
 import { peerIdFromString } from '@libp2p/peer-id';
 import {
     type IPCMessage,
@@ -33,10 +34,13 @@ import {
     createIPCMessage,
     type ConnectToPeerPayload,
     type DisconnectFromPeerPayload,
+    type ReplicationPullResponsePayload,
 } from '../shared/core';
 import { P2P_CONFIG } from '../shared/p2p-config';
 import { registerHandshakeProtocol, initiateHandshake, type HandshakeData } from './protocols/handshake';
 import { registerReplicationProtocol, pushToRemotePeer, pullFromRemotePeer, type ReplicationDocument } from './protocols/replication';
+import { registerPingProtocol, startPresenceTracking } from './protocols/ping';
+import { RelayManager } from './relay-manager';
 import type {
     PeerDiscoveryEvent,
     PeerConnectionEvent,
@@ -59,6 +63,19 @@ class P2PService {
     private userDisplayName: string | null = null;
     private userAvatarUrl: string | undefined = undefined;
     private userIdentityId: string | null = null;
+
+    // Relay
+    private relayManager: RelayManager | null = null;
+    private activeRelayMultiaddr: string | null = null;
+
+    // Presence
+    private stopPresenceTracking: (() => void) | null = null;
+
+    // Pending pull request promises: requestId -> { resolve, reject }
+    private pendingPullRequests: Map<string, { resolve: (val: ReplicationDocument[]) => void; reject: (err: Error) => void }> = new Map();
+
+    // Relay addresses loaded from settings (passed via START_NODE or UPDATE_RELAY_ADDRESSES)
+    private relayAddresses: string[] = [];
 
     constructor() {
         this.setupMessageListener();
@@ -106,11 +123,16 @@ class P2PService {
 
         try {
             switch (message.type) {
-                case MainToUtilityMessageType.START_NODE:
+                case MainToUtilityMessageType.START_NODE: {
                     this.log('info', '🚀 Handling START_NODE command...');
+                    const startPayload = message.payload as { relayAddresses?: string[] };
+                    if (startPayload.relayAddresses) {
+                        this.relayAddresses = startPayload.relayAddresses;
+                    }
                     await this.startNode();
                     this.log('info', '✓ START_NODE completed');
                     break;
+                }
 
                 case MainToUtilityMessageType.STOP_NODE:
                     await this.stopNode();
@@ -183,6 +205,26 @@ class P2PService {
                     break;
                 }
 
+                case MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES: {
+                    const { addresses } = message.payload as { addresses: string[] };
+                    this.relayAddresses = addresses;
+                    if (this.relayManager) {
+                        await this.relayManager.updateAddresses(addresses);
+                    }
+                    this.log('info', `Relay addresses updated: ${addresses.length} address(es)`);
+                    break;
+                }
+
+                case MainToUtilityMessageType.REPLICATION_PULL_RESPONSE: {
+                    const resp = message.payload as ReplicationPullResponsePayload;
+                    const pending = this.pendingPullRequests.get(resp.requestId);
+                    if (pending) {
+                        this.pendingPullRequests.delete(resp.requestId);
+                        pending.resolve(resp.documents as ReplicationDocument[]);
+                    }
+                    break;
+                }
+
                 default:
                     this.log('warn', `Unknown message type: ${message.type}`);
             }
@@ -220,7 +262,7 @@ class P2PService {
                 // Listen addresses - where this node accepts connections
                 // Configured via shared P2P_CONFIG
                 addresses: {
-                    listen: P2P_CONFIG.LISTEN_ADDRESSES,
+                    listen: [...P2P_CONFIG.LISTEN_ADDRESSES],
                 },
 
                 // LEARNING: Allow node to start even if some listen addresses fail.
@@ -252,7 +294,7 @@ class P2PService {
                 // CRITICAL: serviceName filters to WhatNext peers only
                 peerDiscovery: [
                     mdns({
-                        serviceName: P2P_CONFIG.MDNS_SERVICE_NAME,
+                        serviceTag: P2P_CONFIG.MDNS_SERVICE_NAME,
                         interval: P2P_CONFIG.MDNS_INTERVAL,
                     }),
                 ],
@@ -260,6 +302,10 @@ class P2PService {
                 // Services: Protocols that run on top of connections
                 services: {
                     identify: identify(), // Required by WebRTC transport
+                    // DCUtR: after a relay connection is established, automatically
+                    // attempt hole-punching to upgrade to a direct WebRTC connection.
+                    // The relay becomes a bootstrap step, not a permanent intermediary.
+                    dcutr: dcutr(),
                 },
 
                 // Connection manager settings
@@ -316,6 +362,16 @@ class P2PService {
 
         try {
             this.log('info', 'Stopping libp2p node...');
+
+            // Clean up presence tracking
+            this.stopPresenceTracking?.();
+            this.stopPresenceTracking = null;
+
+            // Clean up relay manager
+            this.relayManager?.dispose();
+            this.relayManager = null;
+            this.activeRelayMultiaddr = null;
+
             await this.libp2pNode.stop();
             this.isStarted = false;
             this.libp2pNode = null;
@@ -357,18 +413,42 @@ class P2PService {
                     version: data.version,
                     capabilities: data.capabilities,
                 });
+
+                // Trigger initial replication pull from the newly joined peer
+                this.triggerInitialReplication(remotePeerId);
             }
         );
 
         // Register replication handler
         registerReplicationProtocol(
             this.libp2pNode,
-            // onPullRequest: forward to main to get data from renderer's RxDB
-            async (collection, checkpoint, _limit) => {
-                // For now, return empty - data lives in renderer process
-                // In full implementation, main would relay to renderer
+            // onPullRequest: request data from renderer via main (async bridge)
+            async (collection, checkpoint, limit) => {
                 this.log('info', `Pull request for ${collection} (checkpoint: ${checkpoint})`);
-                return { documents: [], checkpoint: checkpoint || new Date().toISOString() };
+
+                // Generate a correlation ID and wait for main to relay back renderer's data
+                const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                const documents = await new Promise<ReplicationDocument[]>((resolve, reject) => {
+                    const timer = setTimeout(() => {
+                        this.pendingPullRequests.delete(requestId);
+                        // Resolve empty rather than reject — partial sync is OK for MVP
+                        resolve([]);
+                    }, 5000);
+
+                    this.pendingPullRequests.set(requestId, {
+                        resolve: (docs) => { clearTimeout(timer); resolve(docs); },
+                        reject: (err) => { clearTimeout(timer); reject(err); },
+                    });
+
+                    this.sendToMain(UtilityToMainMessageType.REPLICATION_PULL_REQUEST, {
+                        requestId,
+                        collection,
+                        checkpoint,
+                        limit,
+                    });
+                });
+
+                return { documents, checkpoint: new Date().toISOString() };
             },
             // onPushReceived: forward changes to main -> renderer
             async (collection, documents) => {
@@ -381,31 +461,50 @@ class P2PService {
             }
         );
 
-        this.log('info', 'Protocols registered: handshake, replication');
+        // Register ping/presence protocol
+        registerPingProtocol(this.libp2pNode);
+
+        // Start presence tracking (pings connected peers every 30s)
+        this.stopPresenceTracking = startPresenceTracking(
+            this.libp2pNode,
+            (peerId, online, lastSeenAt) => {
+                this.sendToMain(UtilityToMainMessageType.PEER_PRESENCE_UPDATE, {
+                    peerId,
+                    online,
+                    lastSeenAt,
+                });
+            }
+        );
+
+        this.log('info', 'Protocols registered: handshake, replication, ping');
     }
 
     /**
-     * Connect to configured relay servers for NAT traversal
+     * Connect to configured relay servers for NAT traversal.
+     * Uses RelayManager for retry logic and status tracking.
      */
     private async connectToRelays(): Promise<void> {
         if (!this.libp2pNode) return;
 
-        const relayAddresses = P2P_CONFIG.RELAY.ADDRESSES;
-        if (relayAddresses.length === 0) {
-            this.log('info', 'No relay addresses configured, skipping relay connection');
-            return;
-        }
-
-        for (const addr of relayAddresses) {
-            try {
-                this.log('info', `Connecting to relay: ${addr}`);
-                const { multiaddr } = await import('@multiformats/multiaddr');
-                const ma = multiaddr(addr);
-                await this.libp2pNode.dial(ma);
-                this.log('info', `Connected to relay: ${addr}`);
-            } catch (error) {
-                this.log('warn', `Failed to connect to relay ${addr}: ${error}`);
+        this.relayManager = new RelayManager(
+            this.libp2pNode,
+            this.relayAddresses,
+            (connected, relayMultiaddr, relayPeerId) => {
+                this.activeRelayMultiaddr = relayMultiaddr;
+                this.sendToMain(UtilityToMainMessageType.RELAY_CONNECTED, {
+                    connected,
+                    relayMultiaddr,
+                    relayPeerId,
+                });
+                this.log('info', connected
+                    ? `Relay connected: ${relayMultiaddr}`
+                    : 'Relay disconnected'
+                );
             }
+        );
+
+        if (P2P_CONFIG.RELAY.AUTO_CONNECT) {
+            await this.relayManager.connectAll();
         }
     }
 
@@ -563,6 +662,28 @@ class P2PService {
     }
 
     /**
+     * Pull session-relevant collections from a newly connected peer.
+     * Called after handshake completes to bootstrap replication.
+     */
+    private triggerInitialReplication(peerId: string): void {
+        if (!this.libp2pNode) return;
+
+        const SESSION_COLLECTIONS = ['playlists', 'tracks', 'trackInteractions', 'comments', 'users'];
+
+        for (const collection of SESSION_COLLECTIONS) {
+            const checkpointKey = `${peerId}:${collection}`;
+            const checkpoint = this.replicationCheckpoints.get(checkpointKey) ?? null;
+
+            // pullFromRemotePeer sends a pull-request; the response arrives via
+            // the replication protocol handler (pull-response case in replication.ts).
+            pullFromRemotePeer(this.libp2pNode, peerId, collection, checkpoint)
+                .catch((err) => {
+                    this.log('warn', `Initial pull failed for ${collection} from ${peerId}: ${err}`);
+                });
+        }
+    }
+
+    /**
      * Disconnect from a peer
      */
     private async disconnectFromPeer(
@@ -574,27 +695,34 @@ class P2PService {
 
         try {
             this.log('info', `Disconnecting from peer: ${payload.peerId}`);
-
-            // LEARNING: libp2p's hangUp method closes all connections to a peer
-            // await this.libp2pNode.hangUp(payload.peerId as any);
-
-            // Disconnection event will be emitted by libp2p
+            const { peerIdFromString: fromStr } = await import('@libp2p/peer-id');
+            await this.libp2pNode.hangUp(fromStr(payload.peerId));
         } catch (error) {
             this.log('error', `Failed to disconnect from peer: ${error}`);
         }
     }
 
     /**
-     * Get list of discovered peers
+     * Get list of discovered peers (from peerStore)
      */
     private async getDiscoveredPeers(): Promise<void> {
-        // LEARNING: libp2p's peerStore maintains discovered peers
-        // We'll implement this after understanding peerStore API better
-        this.log('info', 'getDiscoveredPeers() - Not yet implemented');
+        if (!this.libp2pNode) return;
+
+        const peers: Array<{ peerId: string; multiaddrs: string[] }> = [];
+        // peerStore.all() returns Promise<Peer[]> in libp2p v2+
+        const allPeers = await this.libp2pNode.peerStore.all();
+        for (const peer of allPeers) {
+            peers.push({
+                peerId: peer.id.toString(),
+                multiaddrs: peer.addresses.map((a: { multiaddr: { toString(): string } }) => a.multiaddr.toString()),
+            });
+        }
+        this.sendToMain(UtilityToMainMessageType.PEER_DISCOVERED, { peers });
+        this.log('info', `Discovered peers: ${peers.length}`);
     }
 
     /**
-     * Get list of connected peers
+     * Get list of connected peers with presence info
      */
     private async getConnectedPeers(): Promise<void> {
         if (!this.libp2pNode) {
@@ -602,7 +730,27 @@ class P2PService {
         }
 
         const connections = this.libp2pNode.getConnections();
-        this.log('info', `Currently connected to ${connections.length} peers`);
+        const peers = connections.map((conn) => ({
+            peerId: conn.remotePeer.toString(),
+            displayName: this.connectedPeerNames.get(conn.remotePeer.toString()),
+            remoteAddr: conn.remoteAddr.toString(),
+        }));
+
+        this.log('info', `Connected peers: ${peers.length}`);
+        // Return data by including in a message (using REPLICATION_STATE as a status channel is a workaround;
+        // a proper GET_CONNECTED_PEERS_RESPONSE could be added in a future IPC pass)
+        this.sendToMain(UtilityToMainMessageType.REPLICATION_STATE, {
+            connectedPeers: peers,
+            activeRelayMultiaddr: this.activeRelayMultiaddr,
+        });
+    }
+
+    /** Build a shareable invite URL for the current session. */
+    getInviteData(): { peerId: string | null; relayMultiaddr: string | null } {
+        return {
+            peerId: this.libp2pNode?.peerId.toString() ?? null,
+            relayMultiaddr: this.activeRelayMultiaddr,
+        };
     }
 
     /**

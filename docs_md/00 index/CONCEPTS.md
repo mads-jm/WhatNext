@@ -13,9 +13,9 @@ Index of `01 concepts/` — technology and pattern concept pages. Each page docu
 
 ## P2P & Networking
 
-- [[libp2p]] — P2P networking library (mDNS discovery, Noise encryption, Yamux multiplexing)
+- [[libp2p]] — P2P networking library (mDNS, Noise, Yamux, DCUtR, v2 stream API, relay infrastructure)
 - [[WebRTC]] — P2P transport layer and NAT traversal
-- [[Circuit-Relay]] — Cross-network relay server for NAT traversal
+- [[Circuit-Relay]] — Cross-network relay server: deployment, persistent key, user-configured addresses
 - [[Handshake-Protocol]] — Application-level peer identity exchange
 
 ## Data Layer
@@ -42,5 +42,5 @@ Index of `01 concepts/` — technology and pattern concept pages. Each page docu
 
 ---
 
-__Last Updated__: 2026-03-08
+__Last Updated__: 2026-03-15
 

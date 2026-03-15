@@ -30,8 +30,14 @@ export enum MainToUtilityMessageType {
     REPLICATION_PUSH = 'replication_push',
     REPLICATION_PULL = 'replication_pull',
 
+    // Replication pull response (renderer data returned to utility via main)
+    REPLICATION_PULL_RESPONSE = 'replication_pull_response',
+
     // User identity
     SET_USER_IDENTITY = 'set_user_identity',
+
+    // Relay configuration (dynamic, loaded from settings store)
+    UPDATE_RELAY_ADDRESSES = 'update_relay_addresses',
 }
 
 /**
@@ -60,8 +66,18 @@ export enum UtilityToMainMessageType {
     REPLICATION_CHANGES = 'replication_changes',
     REPLICATION_STATE = 'replication_state',
 
+    // Replication pull request (utility needs data from renderer via main)
+    REPLICATION_PULL_REQUEST = 'replication_pull_request',
+
     // Handshake
     HANDSHAKE_COMPLETE = 'handshake_complete',
+
+    // Relay
+    RELAY_CONNECTED = 'relay_connected',
+    RELAY_DISCONNECTED = 'relay_disconnected',
+
+    // Presence
+    PEER_PRESENCE_UPDATE = 'peer_presence_update',
 }
 
 /**
@@ -152,6 +168,19 @@ export const IPC_CHANNELS = {
     P2P_ACCEPT_CONNECTION: 'p2p:accept-connection',
     P2P_REJECT_CONNECTION: 'p2p:reject-connection',
 
+    // P2P invite/join (renderer ↔ main)
+    P2P_GET_INVITE_URL: 'p2p:get-invite-url',
+    P2P_JOIN_SESSION: 'p2p:join-session',
+
+    // Relay configuration (renderer ↔ main)
+    P2P_RELAY_GET: 'p2p:relay-get',
+    P2P_RELAY_ADD: 'p2p:relay-add',
+    P2P_RELAY_REMOVE: 'p2p:relay-remove',
+
+    // Relay + presence events (main → renderer)
+    P2P_RELAY_STATUS: 'p2p:relay-status',
+    P2P_PEER_PRESENCE: 'p2p:peer-presence',
+
     // P2P events (main → renderer)
     P2P_CONNECTION_REQUEST: 'p2p:connection-request',
     P2P_CONNECTION_ESTABLISHED: 'p2p:connection-established',
@@ -170,6 +199,10 @@ export const IPC_CHANNELS = {
     REPLICATION_PULL: 'replication:pull',
     REPLICATION_CHANGES: 'replication:changes',
     REPLICATION_STATE: 'replication:state',
+
+    // Replication pull request/response bridge (main → renderer request; renderer → main response)
+    REPLICATION_PULL_REQUEST: 'replication:pull-request',
+    REPLICATION_PULL_RESPONSE: 'replication:pull-response',
 
     // Spotify integration (renderer -> main)
     SPOTIFY_AUTH_START: 'spotify:auth-start',
@@ -305,6 +338,69 @@ export interface P2PStatusPayload {
     connectedPeers: string[];
     discoveredPeers: PeerMetadata[];
     protocols?: string[];
+}
+
+// ========================================
+// Relay Payloads
+// ========================================
+
+export interface RelayConnectedPayload {
+    relayMultiaddr: string; // The relay address we're connected through
+    relayPeerId: string;
+}
+
+export interface RelayStatusPayload {
+    connected: boolean;
+    relayMultiaddr: string | null;
+    relayPeerId: string | null;
+}
+
+// ========================================
+// Invite URL Payloads
+// ========================================
+
+export interface GetInviteUrlRequest {
+    sessionId?: string; // Optional: include session ID in URL for short-code lookup
+}
+
+export interface GetInviteUrlResult {
+    url: string;        // Full whtnxt:// URL
+    shortCode: string;  // Human-readable short code (e.g. "3K7X")
+    peerId: string;
+    relayAddr: string | null;
+}
+
+// ========================================
+// Presence Payloads
+// ========================================
+
+export interface PeerPresencePayload {
+    peerId: string;
+    online: boolean;
+    lastSeenAt: string; // ISO timestamp
+}
+
+// ========================================
+// Replication Pull Request/Response (bridge)
+// ========================================
+
+export interface ReplicationPullRequestPayload {
+    requestId: string;      // Correlation ID
+    collection: string;
+    checkpoint: string | null;
+    limit?: number;
+}
+
+export interface ReplicationPullResponsePayload {
+    requestId: string;      // Must match request
+    collection: string;
+    documents: Array<{
+        id: string;
+        data: Record<string, unknown>;
+        updatedAt: string;
+        deleted?: boolean;
+    }>;
+    checkpoint: string;
 }
 
 /**

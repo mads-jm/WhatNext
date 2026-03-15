@@ -61,20 +61,29 @@ cd app && npm run build                 # Production build
 
 ---
 
-## Active Development Status (2026-03-08)
+## Active Development Status (2026-03-15)
 
 - ✅ P2P networking foundation (libp2p integration)
 - ✅ RxDB replication over libp2p
 - ✅ Spotify adapter (import + playback)
 - ✅ Sessions v1 (provider-abstracted — [[adr-260307-session-architecture-provider-abstraction]])
 - ✅ Social features (reactions, comments, turn-taking)
+- ✅ Remote sessions via circuit relay + DCUtR ([[adr-260315-p2p-session-pairing]])
+- ✅ RxDB replication wired to sessions (useSessionReplication hook)
+- ✅ Co-host model + playback mutex (coHostIds, playbackOwnerId)
 - 🔜 Open metadata enrichment (MusicBrainz/ListenBrainz)
 - 🔜 Non-Spotify track sources (ManualTrackSource, P2PTrackSource)
-- 🔜 Remote sessions via circuit relay
 
 ---
 
-__Last Updated__: 2026-03-08
-__Documentation Version__: v0.3.2
+## Recent Architecture Decisions
+
+- [[adr-260315-p2p-session-pairing]] — Remote pairing: circuit relay + DCUtR, user-configured relay, invite URL, playback mutex (2026-03-15)
+- [[adr-260307-session-architecture-provider-abstraction]] — Sessions are platform-agnostic; TrackSource/PlaybackProvider abstraction (2026-03-07)
+
+---
+
+__Last Updated__: 2026-03-15
+__Documentation Version__: v0.4.0
 
 

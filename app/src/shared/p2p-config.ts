@@ -111,19 +111,22 @@ export const P2P_CONFIG = {
 
     /**
      * Relay Server Configuration
-     * Circuit relay v2 addresses for NAT traversal
-     * These are tried in order when connecting to remote peers
+     *
+     * Relay addresses are NOT stored here — they live in the user's settings
+     * (relay-config-store.ts) and are loaded at runtime. This preserves user
+     * sovereignty: users configure which relay infrastructure their sessions
+     * use. The relay code (relay/relay-server.mjs) can be self-hosted.
+     *
+     * At startup, main.ts reads addresses from relay-config-store and passes
+     * them to the utility process via the START_NODE or UPDATE_RELAY_ADDRESSES
+     * message payload.
      */
     RELAY: {
-        /** Default relay addresses (configure with your deployed relay) */
-        ADDRESSES: [
-            // Example: '/ip4/YOUR_VPS_IP/tcp/4001/p2p/RELAY_PEER_ID',
-            // Example: '/ip4/YOUR_VPS_IP/tcp/4002/ws/p2p/RELAY_PEER_ID',
-        ] as string[],
-        /** Auto-connect to relay on startup */
+        /** Auto-connect to configured relays on startup */
         AUTO_CONNECT: true,
-        /** Retry connecting to relay after failure */
+        /** Milliseconds between retry attempts after relay connection failure */
         RETRY_INTERVAL: 10000,
+        /** Maximum number of connection attempts per relay address */
         MAX_RETRIES: 5,
     },
 } as const;

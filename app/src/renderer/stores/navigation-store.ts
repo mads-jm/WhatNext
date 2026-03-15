@@ -46,6 +46,8 @@ interface NavigationStore {
     endSession: () => void;
     openCreateDialog: () => void;
     closeCreateDialog: () => void;
+    handOffPlayback: (toUserId: string) => void;
+    takePlayback: (userId: string) => void;
 }
 
 export const useNavigationStore = create<NavigationStore>((set) => ({
@@ -68,6 +70,8 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
             playbackProvider: config.playbackProvider,
             participantIds: config.participantIds,
             hostId: config.hostId,
+            coHostIds: config.coHostIds ?? [],
+            playbackOwnerId: config.hostId, // Host owns playback initially
             startedAt: new Date().toISOString(),
         },
     }),
@@ -78,4 +82,14 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
     })),
     openCreateDialog: () => set({ showCreateDialog: true }),
     closeCreateDialog: () => set({ showCreateDialog: false }),
+    handOffPlayback: (toUserId) => set((state) => ({
+        sessionState: state.sessionState
+            ? { ...state.sessionState, playbackOwnerId: toUserId }
+            : null,
+    })),
+    takePlayback: (userId) => set((state) => ({
+        sessionState: state.sessionState
+            ? { ...state.sessionState, playbackOwnerId: userId }
+            : null,
+    })),
 }));

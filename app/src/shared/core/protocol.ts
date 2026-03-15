@@ -30,7 +30,8 @@ export enum ProtocolAction {
 export interface ParsedProtocolUrl {
     action: ProtocolAction;
     peerId: PeerId;
-    relay?: string; // Optional relay multiaddr
+    relay?: string;    // Optional relay multiaddr
+    sessionId?: string; // Optional session ID (for rendezvous / short-code lookup)
     metadata?: Record<string, string>; // Additional query params
 }
 
@@ -73,10 +74,13 @@ export function parseProtocolUrl(url: string): ParsedProtocolUrl {
         // Extract optional relay multiaddr
         const relay = parsed.searchParams.get('relay') || undefined;
 
+        // Extract optional session ID
+        const sessionId = parsed.searchParams.get('session') || undefined;
+
         // Extract all other query params as metadata
         const metadata: Record<string, string> = {};
         parsed.searchParams.forEach((value, key) => {
-            if (key !== 'relay') {
+            if (key !== 'relay' && key !== 'session') {
                 metadata[key] = value;
             }
         });
@@ -85,6 +89,7 @@ export function parseProtocolUrl(url: string): ParsedProtocolUrl {
             action,
             peerId,
             relay,
+            sessionId,
             metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         };
     } catch (error) {
@@ -106,6 +111,7 @@ export function createConnectUrl(
     peerId: PeerId,
     options?: {
         relay?: string;
+        sessionId?: string;
         metadata?: Record<string, string>;
     }
 ): string {
@@ -115,6 +121,10 @@ export function createConnectUrl(
         url.searchParams.set('relay', options.relay);
     }
 
+    if (options?.sessionId) {
+        url.searchParams.set('session', options.sessionId);
+    }
+
     if (options?.metadata) {
         Object.entries(options.metadata).forEach(([key, value]) => {
             url.searchParams.set(key, value);
@@ -122,6 +132,25 @@ export function createConnectUrl(
     }
 
     return url.toString();
+}
+
+/**
+ * Generate a short human-readable code from a session/peer ID.
+ * Used for voice-chat sharing where a full URL is awkward to dictate.
+ *
+ * Format: 4 uppercase alphanumeric characters (base36 of first 2 bytes).
+ * Collision risk is acceptable for ephemeral session codes.
+ *
+ * @param id - Any string ID (session UUID, peer ID, etc.)
+ * @returns 4-character uppercase code, e.g. "3K7X"
+ */
+export function generateShortCode(id: string): string {
+    // XOR the first 8 characters of the ID into a 16-bit number
+    let hash = 0;
+    for (let i = 0; i < Math.min(id.length, 8); i++) {
+        hash = ((hash << 5) - hash + id.charCodeAt(i)) & 0xffff;
+    }
+    return hash.toString(36).toUpperCase().padStart(4, '0').slice(-4);
 }
 
 /**

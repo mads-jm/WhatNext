@@ -150,6 +150,10 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                     4(oldDoc: any) {
                         return { ...oldDoc, completedFromMode: undefined };
                     },
+                    // v4 → v5: Added coHostIds for co-host model
+                    5(oldDoc: any) {
+                        return { ...oldDoc, coHostIds: oldDoc.coHostIds ?? [] };
+                    },
                 },
             },
             comments: {

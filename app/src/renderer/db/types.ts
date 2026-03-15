@@ -74,6 +74,7 @@ export interface UpdatePlaylistInput {
     currentTurnUserId?: string;
     turnTracksAdded?: number;
     turnsCompleted?: number;
+    coHostIds?: string[];
 }
 
 /**

@@ -15,9 +15,11 @@ Specs are created when a GitHub Issue is opened for a well-scoped feature. Each 
 
 ## Active Specs
 
-*(none yet — add entries here as specs are created)*
+| Spec | Feature | Status |
+|------|---------|--------|
+| [[p2p-session-pairing-spec]] | P2P Session Pairing (Milestones 1–3): relay config store, RelayManager, invite URLs, replication bridge, co-host model | Shipped 2026-03-15 |
 
 ---
 
-__Last Updated__: 2026-03-08
+__Last Updated__: 2026-03-15
 

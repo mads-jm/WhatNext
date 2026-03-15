@@ -48,6 +48,8 @@ export interface SessionState {
     playbackProvider: PlaybackProviderConfig;
     participantIds: string[];   // WhatNext user IDs
     hostId: string;             // WhatNext user ID of the session host
+    coHostIds: string[];        // Additional coordinators with edit rights
+    playbackOwnerId: string;    // Who currently has Spotify playback control (mutex)
     startedAt: string;          // ISO timestamp
 }
 
@@ -58,4 +60,5 @@ export interface StartSessionConfig {
     playbackProvider: PlaybackProviderConfig;
     participantIds: string[];
     hostId: string;
+    coHostIds?: string[];       // Optional at start; defaults to []
 }
