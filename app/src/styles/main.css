@@ -1,167 +1,250 @@
-/* Fonts - must come first before Tailwind */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* Google Fonts — all three families loaded regardless of active theme */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import url('/node_modules/@fortawesome/fontawesome-free/css/all.min.css');
 
 @import "tailwindcss";
 
 /*
-Main stylesheet for WhatNext
-Tailwind v4 with custom utilities
-*/
+ * WhatNext Theme System
+ *
+ * The @theme block maps --wn-* CSS custom properties to Tailwind v4's
+ * internal token system. JavaScript (theme-applicator.ts) sets --wn-* vars
+ * on :root at runtime. Switching themes = updating these vars = instant repaint.
+ *
+ * Components use standard Tailwind classes (bg-primary, text-on-surface, etc.)
+ * and never reference --wn-* directly.
+ */
 
-/* Base styles */
+@theme {
+    /* Colors */
+    --color-primary: var(--wn-primary);
+    --color-primary-dim: var(--wn-primary-dim);
+    --color-on-primary: var(--wn-on-primary);
+    --color-secondary: var(--wn-secondary);
+    --color-tertiary: var(--wn-tertiary);
+    --color-surface: var(--wn-surface);
+    --color-surface-lowest: var(--wn-surface-lowest);
+    --color-surface-high: var(--wn-surface-high);
+    --color-surface-highest: var(--wn-surface-highest);
+    --color-on-surface: var(--wn-on-surface);
+    --color-on-surface-variant: var(--wn-on-surface-variant);
+    --color-outline-variant: var(--wn-outline-variant);
+    --color-error: var(--wn-error);
+
+    /* Fonts */
+    --font-headline: var(--wn-font-headline);
+    --font-body: var(--wn-font-body);
+    --font-mono: var(--wn-font-mono);
+
+    /* Radii */
+    --radius-sm: var(--wn-radius-sm);
+    --radius-lg: var(--wn-radius-lg);
+    --radius-xl: var(--wn-radius-xl);
+    --radius-2xl: var(--wn-radius-2xl);
+}
+
+/* ── Default theme values (Dark / Resilient Nocturne) ────────────────────
+   Applied immediately so the app renders correctly before JS initializes.
+   The theme store overwrites these on :root once it loads. */
+
+:root {
+    --wn-primary: #ba9eff;
+    --wn-primary-dim: #8455ef;
+    --wn-on-primary: #39008c;
+    --wn-secondary: #53ddfc;
+    --wn-tertiary: #ff97b8;
+    --wn-surface: #0e0e10;
+    --wn-surface-lowest: #000000;
+    --wn-surface-high: #1f1f22;
+    --wn-surface-highest: #262528;
+    --wn-on-surface: #f6f3f5;
+    --wn-on-surface-variant: #acaaad;
+    --wn-outline-variant: #48474a;
+    --wn-error: #d73357;
+
+    --wn-font-body: 'Inter', sans-serif;
+    --wn-font-headline: 'Manrope', sans-serif;
+    --wn-font-mono: 'JetBrains Mono', monospace;
+
+    --wn-radius-sm: 0.125rem;
+    --wn-radius-default: 0.25rem;
+    --wn-radius-lg: 0.5rem;
+    --wn-radius-xl: 0.75rem;
+    --wn-radius-2xl: 1rem;
+
+    --wn-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --wn-toolbar-blur: blur(8px);
+}
+
+/* ── Base styles ─────────────────────────────────────────────────────── */
+
 * {
-	outline: none;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-	width: 5px;
-	height: 5px;
-}
-
-::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-	background: rgb(31 41 55);
-	border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-	background: rgb(55 65 81);
-}
-
-::-webkit-scrollbar-corner {
-	background: transparent;
+    outline: none;
 }
 
 body {
-	background-color: #0b0f17;
-	color: #e5e7eb;
-	font-family: 'JetBrains+Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-		'Liberation Mono', 'Courier New', monospace;
+    background-color: var(--wn-surface);
+    color: var(--wn-on-surface);
+    font-family: var(--wn-font-body);
 }
 
-/* Custom utilities using Tailwind v4 @utility directive */
+/* ── Scrollbar ───────────────────────────────────────────────────────── */
 
-/* Button base — applies to every btn-* variant automatically */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--wn-surface-high);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--wn-outline-variant);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* ── Button base ─────────────────────────────────────────────────────── */
+
 @layer base {
-	[class*="btn-"] {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.375rem;
-		padding: 0.375rem 0.75rem;
-		border-radius: 0.5rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		transition-property: color, background-color;
-		transition-duration: 150ms;
+    [class*="btn-"] {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--wn-radius-lg);
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition-property: color, background-color;
+        transition-duration: 150ms;
 
-		&:disabled {
-			opacity: 0.5;
-			pointer-events: none;
-		}
-	}
+        &:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    }
 }
 
-/* Variants — color only */
 @utility btn-primary {
-	background-color: rgb(37 99 235);
-	color: white;
-	&:hover { background-color: rgb(29 78 216); }
+    background-color: var(--wn-primary);
+    color: var(--wn-surface);
+    &:hover { background-color: var(--wn-primary-dim); }
 }
 
 @utility btn-accent {
-	background-color: rgb(236 72 153);
-	color: white;
-	&:hover { background-color: rgb(219 39 119); }
+    background-color: var(--wn-tertiary);
+    color: var(--wn-surface);
+    &:hover { opacity: 0.85; }
 }
 
 @utility btn-ghost {
-	background-color: rgb(31 41 55);
-	color: rgb(156 163 175);
-	&:hover { background-color: rgb(55 65 81); color: rgb(229 231 235); }
+    background-color: transparent;
+    color: var(--wn-on-surface);
+    &:hover { background-color: var(--wn-surface-high); }
 }
+
+/* ── Input ───────────────────────────────────────────────────────────── */
 
 @utility input {
-	width: 100%;
-	padding: 0.5rem 0.75rem;
-	border-radius: 0.375rem;
-	background-color: rgb(17 24 39);
-	color: rgb(243 244 246);
-	border: 1px solid rgb(31 41 55);
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--wn-radius-lg);
+    background-color: var(--wn-surface-high);
+    color: var(--wn-on-surface);
+    border: 1px solid color-mix(in srgb, var(--wn-outline-variant) 30%, transparent);
 
-	&::placeholder {
-		color: rgb(107 114 128);
-	}
+    &::placeholder {
+        color: var(--wn-on-surface-variant);
+    }
+
+    &:focus {
+        border-color: var(--wn-primary);
+    }
 }
 
+/* ── Card ────────────────────────────────────────────────────────────── */
+
 @utility card {
-	border-radius: 0.5rem;
-	background-color: #0f1623;
-	border: 1px solid rgb(31 41 55);
-	box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    border-radius: var(--wn-radius-lg);
+    background-color: var(--wn-surface);
+    border: 1px solid color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
+    box-shadow: var(--wn-card-shadow);
 }
 
 @utility card-header {
-	padding: 0.75rem 1rem;
-	border-bottom: 1px solid rgb(31 41 55);
-	color: rgb(209 213 219);
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
+    color: var(--wn-on-surface);
 }
 
 @utility card-body {
-	padding: 1rem;
+    padding: 1rem;
 }
 
+/* ── Badges ──────────────────────────────────────────────────────────── */
+
 @layer base {
-	[class*="badge-"] {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.125rem 0.5rem;
-		border-radius: 0.25rem;
-		font-size: 0.75rem;
-		font-weight: 600;
-	}
+    [class*="badge-"] {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.125rem 0.5rem;
+        border-radius: var(--wn-radius-default);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
 }
 
 @utility badge-primary {
-	background-color: rgb(37 99 235);
-	color: white;
+    background-color: color-mix(in srgb, var(--wn-primary) 15%, transparent);
+    color: var(--wn-primary);
 }
 
 @utility badge-accent {
-	background-color: rgb(236 72 153);
-	color: white;
+    background-color: color-mix(in srgb, var(--wn-tertiary) 15%, transparent);
+    color: var(--wn-tertiary);
 }
 
 @utility badge-muted {
-	background-color: rgb(31 41 55);
-	color: rgb(209 213 219);
+    background-color: color-mix(in srgb, var(--wn-on-surface-variant) 15%, transparent);
+    color: var(--wn-on-surface-variant);
 }
+
+/* ── Toolbar ─────────────────────────────────────────────────────────── */
 
 @utility toolbar {
-	position: sticky;
-	top: 0;
-	z-index: 20;
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.5rem 0.75rem;
-	background-color: rgba(11, 15, 23, 0.8);
-	backdrop-filter: blur(8px);
-	border-bottom: 1px solid rgb(31 41 55);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: color-mix(in srgb, var(--wn-surface) 80%, transparent);
+    backdrop-filter: var(--wn-toolbar-blur);
+    border-bottom: 1px solid color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
 }
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
 
 @utility sidebar {
-	height: 100%;
-	width: 16rem;
-	background-color: #0f1623;
-	border-right: 1px solid rgb(31 41 55);
+    height: 100%;
+    width: 16rem;
+    background-color: var(--wn-surface-lowest);
+    border-right: 1px solid color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
 }
 
+/* ── Link ────────────────────────────────────────────────────────────── */
+
 @utility link {
-	color: rgb(96 165 250);
-	text-underline-offset: 4px;
+    color: var(--wn-primary);
+    text-underline-offset: 4px;
+    &:hover { color: var(--wn-primary-dim); }
 }

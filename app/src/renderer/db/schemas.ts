@@ -442,6 +442,7 @@ export interface CommentDocType {
     trackId?: string; // If set → track comment; if absent → playlist-level comment
     userId: string; // Author's user ID
     userDisplayName: string;
+    userAvatarUrl?: string; // Snapshot of author's avatar at comment time
     body: string; // Comment text
     parentId?: string; // For threaded replies; absent = top-level comment
     createdAt: string; // ISO timestamp
@@ -453,7 +454,7 @@ export type CommentDocument = RxDocument<CommentDocType>;
 export type CommentCollection = RxCollection<CommentDocType>;
 
 export const commentSchema: RxJsonSchema<CommentDocType> = {
-    version: 0,
+    version: 1,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -477,6 +478,9 @@ export const commentSchema: RxJsonSchema<CommentDocType> = {
             type: 'string',
             maxLength: 100,
         },
+        userAvatarUrl: {
+            type: 'string',
+        },
         body: {
             type: 'string',
         },
@@ -499,7 +503,7 @@ export const commentSchema: RxJsonSchema<CommentDocType> = {
         },
     },
     required: ['id', 'playlistId', 'userId', 'userDisplayName', 'body', 'createdAt', 'updatedAt', 'isDeleted'],
-    indexes: ['playlistId', 'updatedAt'], // trackId not indexed — optional fields can't be indexed with Dexie
+    indexes: ['playlistId', 'updatedAt'],
 };
 
 // ========================================

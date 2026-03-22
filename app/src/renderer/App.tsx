@@ -8,6 +8,7 @@ import { WelcomeModal } from './components/Onboarding/WelcomeModal';
 import { PlaybackBar } from './components/Session/PlaybackBar';
 import { useDatabaseStore } from './stores/database-store';
 import { useUserStore } from './stores/user-store';
+import { useThemeStore } from './stores/theme-store';
 import { useNavigationStore, VIEW_TITLES } from './stores/navigation-store';
 import { useSessionState } from './hooks/useSessionState';
 import { setupReplicationListeners } from './db/replication-handler';
@@ -22,8 +23,10 @@ function App() {
     const isSpotifyPlayback = sessionState?.playbackProvider?.type === 'spotify';
     const isPlaybackOwner = !sessionState || sessionState.playbackOwnerId === userId;
 
-    // Initialize database, user identity, and replication on startup
+    // Initialize theme (sync), then database + user identity
     useEffect(() => {
+        useThemeStore.getState().initialize();
+
         useDatabaseStore
             .getState()
             .initialize()

@@ -26,6 +26,7 @@ const navigationItems: NavItem[] = [
     // Settings
     { id: 'settings-general', label: 'General', icon: 'fa-solid fa-sliders', section: 'Settings' },
     { id: 'settings-storage', label: 'Storage', icon: 'fa-solid fa-database', section: 'Settings' },
+    { id: 'settings-appearance', label: 'Appearance', icon: 'fa-solid fa-palette', section: 'Settings' },
 ];
 
 // Group items by section for visual labels

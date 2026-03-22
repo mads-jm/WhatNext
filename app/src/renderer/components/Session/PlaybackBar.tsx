@@ -35,13 +35,16 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
     const handleSkipNext = async () => spotify?.skipNext();
     const handleSkipPrevious = async () => spotify?.skipPrevious();
 
-    const handleOpenSpotify = () => {
-        if (contextUri) {
-            window.electron?.shell.openExternal(
-                `https://open.spotify.com/${contextUri.replace('spotify:', '').replace(':', '/')}`
-            );
-        } else {
-            window.electron?.shell.openExternal('https://open.spotify.com');
+    const handleOpenSpotify = async () => {
+        // Try desktop app first, fall back to web
+        const desktopUri = contextUri || 'spotify:';
+        const webUrl = contextUri
+            ? `https://open.spotify.com/${contextUri.replace('spotify:', '').replace(/:/g, '/')}`
+            : 'https://open.spotify.com';
+
+        const result = await window.electron?.shell.openExternal(desktopUri);
+        if (!result?.success) {
+            window.electron?.shell.openExternal(webUrl);
         }
     };
 

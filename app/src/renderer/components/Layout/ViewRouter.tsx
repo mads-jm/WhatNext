@@ -14,6 +14,7 @@ import { P2PSettings } from '../Settings/P2PSettings';
 import { DevDashboard } from '../Dev/DevDashboard';
 import { ProfileSettings } from '../Settings/ProfileSettings';
 import { StorageSettings } from '../Settings/StorageSettings';
+import { ThemeSettings } from '../Settings/ThemeSettings';
 
 export function ViewRouter() {
     const activeView = useNavigationStore((s) => s.activeView);
@@ -57,6 +58,9 @@ export function ViewRouter() {
 
         case 'settings-storage':
             return <StorageSettings />;
+
+        case 'settings-appearance':
+            return <ThemeSettings />;
 
         default:
             return null;

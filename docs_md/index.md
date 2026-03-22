@@ -33,6 +33,9 @@ date modified: Monday, March 9th 2026, 12:20:36 am
 - __[[architecture-whatnext]]__ — Architecture Design Document (MVP baseline)
 - __[[the-walled-garden-cracks]]__ — Coordinator model and Spotify strategy (Feb 2026)
 - __[[workflow-story-to-pr]]__ — Development workflow: Story → Issue → Spec → Commit → PR
+- __[[coding-standards]]__ — Coding standards: architecture boundaries, state management, testing, naming
+- __[[Theme-System]]__ — CSS Variable Bridge pattern for runtime-switchable themes (Tailwind v4, Electron, cross-platform)
+- __[[whtnxt_beyondmvp]]__ — Post-MVP design language, UX drivers, and component patterns from prototype exploration
 
 ---
 
@@ -56,7 +59,11 @@ cd app && npm run build                 # Production build
 | RxDB database | `app/src/renderer/db/database.ts` |
 | Schemas | `app/src/renderer/db/schemas.ts` |
 | IPC channels + payload types | `app/src/shared/core/ipc-protocol.ts` |
+| Portable core types | `app/src/shared/core/types.ts` (ReplicationSink, P2P types) |
+| Portable utils | `app/src/renderer/utils/` (turn, artwork, reactions, comments, playback) |
 | Session view | `app/src/renderer/components/Session/SessionView.tsx` |
+| Companion server | `app/src/main/companion/companion-server.ts` |
+| Companion web UI | `app/src/companion-web/index.html` |
 | Spotify OAuth | `app/src/main/spotify/spotify-auth.ts` |
 
 ---
@@ -71,6 +78,7 @@ cd app && npm run build                 # Production build
 - ✅ Remote sessions via circuit relay + DCUtR ([[adr-260315-p2p-session-pairing]])
 - ✅ RxDB replication wired to sessions (useSessionReplication hook)
 - ✅ Co-host model + playback mutex (coHostIds, playbackOwnerId)
+- ✅ Companion client — phone browser session viewer ([[Companion-Client]], [[companion-client-spec]])
 - 🔜 Open metadata enrichment (MusicBrainz/ListenBrainz)
 - 🔜 Non-Spotify track sources (ManualTrackSource, P2PTrackSource)
 
@@ -78,12 +86,13 @@ cd app && npm run build                 # Production build
 
 ## Recent Architecture Decisions
 
+- [[adr-260315-companion-client-architecture]] — Phone companion: Electron-served HTTP + WebSocket for zero-install mobile session participation (2026-03-15)
 - [[adr-260315-p2p-session-pairing]] — Remote pairing: circuit relay + DCUtR, user-configured relay, invite URL, playback mutex (2026-03-15)
 - [[adr-260307-session-architecture-provider-abstraction]] — Sessions are platform-agnostic; TrackSource/PlaybackProvider abstraction (2026-03-07)
 
 ---
 
-__Last Updated__: 2026-03-15
-__Documentation Version__: v0.4.0
+__Last Updated__: 2026-03-21
+__Documentation Version__: v0.4.1
 
 

@@ -14,6 +14,7 @@ export interface CreateCommentInput {
     trackId?: string;
     userId: string;
     userDisplayName: string;
+    userAvatarUrl?: string;
     body: string;
     parentId?: string;
 }
@@ -37,6 +38,7 @@ export async function createComment(
         trackId: input.trackId,
         userId: input.userId,
         userDisplayName: input.userDisplayName,
+        userAvatarUrl: input.userAvatarUrl,
         body: input.body,
         parentId: input.parentId,
         createdAt: now,

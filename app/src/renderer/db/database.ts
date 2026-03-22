@@ -158,6 +158,12 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
             },
             comments: {
                 schema: commentSchema,
+                migrationStrategies: {
+                    // v0 → v1: Added userAvatarUrl
+                    1(oldDoc: any) {
+                        return { ...oldDoc, userAvatarUrl: undefined };
+                    },
+                },
             },
         });
 

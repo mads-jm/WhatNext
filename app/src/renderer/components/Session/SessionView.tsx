@@ -21,6 +21,7 @@ import { SessionHeader } from './SessionHeader';
 import { TurnIndicator } from './TurnIndicator';
 import { SessionInfoBar } from './SessionInfoBar';
 import { ShareSessionPanel } from './ShareSessionPanel';
+import { CompanionSharePanel } from './CompanionSharePanel';
 import { ParticipantRoster } from './ParticipantRoster';
 import { SessionTrackList } from './SessionTrackList';
 import { TrackEndingWarning } from './TrackEndingWarning';
@@ -287,7 +288,10 @@ export function SessionView({ playlistId }: SessionViewProps) {
                 />
 
                 {showSharePanel && (
-                    <ShareSessionPanel sessionId={activeId} />
+                    <>
+                        <ShareSessionPanel sessionId={activeId} />
+                        <CompanionSharePanel sessionActive={isActiveSession} />
+                    </>
                 )}
 
                 <ParticipantRoster

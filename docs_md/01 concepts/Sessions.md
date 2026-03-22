@@ -182,6 +182,17 @@ The snapshot ID check short-circuits the track-processing loop but still makes t
 
 `advanceTurn` is called inside the per-track loop. If multiple tracks arrived since the last poll (e.g. app was backgrounded), the turn will advance for each of them in sequence within a single poll cycle. This is correct behaviour — each added track counts as one turn — but can feel fast if tracks were queued up offline.
 
+### Participant Roles
+
+| Role | Platform | Capabilities |
+|------|----------|-------------|
+| **Host** (coordinator) | Electron desktop | Full control: playback, queue, import, session lifecycle |
+| **Co-host** | Electron desktop (P2P) | Playback transfer, queue edits |
+| **Desktop participant** | Electron desktop (P2P) | Add tracks, react, comment (via RxDB replication) |
+| **Companion participant** | Phone browser | View-only: see queue/playback, react, request more time |
+
+Companion participants connect via the [[Companion-Client]] — a lightweight web page served by the coordinator's Electron app over local WiFi. They don't need WhatNext installed or a Spotify account.
+
 ## Related Concepts
 
 - [[adr-260307-session-architecture-provider-abstraction]] — The architectural decision this implements
@@ -189,6 +200,7 @@ The snapshot ID check short-circuits the track-processing loop but still makes t
 - [[RxDB]] — All session data (tracks, participants) persists here
 - [[React-Patterns]] — Subscription patterns used in SessionView
 - [[the-walled-garden-cracks]] — Coordinator model rationale
+- [[Companion-Client]] — Phone browser session viewer for lightweight participation
 
 ## References
 
@@ -201,6 +213,8 @@ The snapshot ID check short-circuits the track-processing loop but still makes t
 - Playback bar: `app/src/renderer/components/Session/PlaybackBar.tsx`
 - Navigation store: `app/src/renderer/stores/navigation-store.ts`
 - User service: `app/src/renderer/db/services/user-service.ts`
+- Companion bridge hook: `app/src/renderer/hooks/useCompanionBridge.ts`
+- Companion server: `app/src/main/companion/companion-server.ts`
 - Milestone note: [[note-260307-sessions-v1-implementation]]
 
 ---

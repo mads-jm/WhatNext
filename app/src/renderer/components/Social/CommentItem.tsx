@@ -43,16 +43,24 @@ export function CommentItem({
     };
 
     const timeAgo = formatTimeAgo(comment.createdAt);
-    // TODO : userId -> userName
-    // Worth persisting to comment still
+    const displayName = comment.userDisplayName || comment.userId;
+
     return (
         <div className={`${depth > 0 ? 'ml-6 border-l border-outline-variant/50 pl-3' : ''}`}>
             <div className="py-2">
                 <div className="flex items-center gap-2 mb-1">
-                    <div className="w-5 h-5 rounded-full bg-primary-dim/60 flex items-center justify-center text-on-surface text-[10px] font-bold shrink-0">
-                        {(comment.userId || '?')[0].toUpperCase()}
+                    <div className="w-5 h-5 rounded-full bg-primary-dim/60 flex items-center justify-center text-on-surface text-[10px] font-bold shrink-0 overflow-hidden">
+                        {comment.userAvatarUrl ? (
+                            <img
+                                src={comment.userAvatarUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            (displayName || '?')[0].toUpperCase()
+                        )}
                     </div>
-                    <span className="text-xs font-medium text-on-surface">{comment.userId}</span>
+                    <span className="text-xs font-medium text-on-surface">{displayName}</span>
                     <span className="text-xs text-on-surface-variant">{timeAgo}</span>
                 </div>
 
