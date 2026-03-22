@@ -16,6 +16,7 @@ export interface MappedTrack {
     albumArtUrl?: string;
     addedAt: string;
     addedBySpotifyId: string; // Spotify user ID — resolved to WhatNext userId in the renderer
+    addedByDisplayName?: string; // Spotify display name (when available)
 }
 
 /**

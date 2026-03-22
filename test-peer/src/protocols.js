@@ -24,7 +24,8 @@ import { P2P_CONFIG } from './p2p-config.js';
  */
 async function readStreamMessage(stream) {
     const chunks = [];
-    for await (const chunk of stream.source) {
+    // Stream is AsyncIterable directly in libp2p v2+ (no .source property)
+    for await (const chunk of stream) {
         chunks.push(chunk.subarray());
     }
     const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
@@ -46,7 +47,8 @@ async function readStreamMessage(stream) {
  */
 async function writeStreamMessage(stream, data) {
     const encoded = new TextEncoder().encode(JSON.stringify(data));
-    await stream.sink([encoded]);
+    stream.send(encoded);
+    await stream.close();
 }
 
 // ─── Handshake Protocol ──────────────────────────────────────────────────────
@@ -64,7 +66,7 @@ async function writeStreamMessage(stream, data) {
  * @param {(remotePeerId: string, data: object) => void} onHandshake
  */
 export function registerHandshakeProtocol(node, localData, onHandshake) {
-    node.handle(P2P_CONFIG.PROTOCOLS.HANDSHAKE, async ({ stream, connection }) => {
+    node.handle(P2P_CONFIG.PROTOCOLS.HANDSHAKE, async (stream, connection) => {
         try {
             const remotePeerId = connection.remotePeer.toString();
             console.log(`[Handshake] Incoming from ${remotePeerId.slice(0, 12)}...`);
@@ -117,7 +119,7 @@ export async function initiateHandshake(node, remotePeerId, localData) {
  * @param {(collection: string, documents: object[], checkpoint: string) => void} onPullResponse
  */
 export function registerReplicationProtocol(node, onPullRequest, onPushReceived, onPullResponse) {
-    node.handle(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION, async ({ stream, connection }) => {
+    node.handle(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION, async (stream, connection) => {
         try {
             const message = await readStreamMessage(stream);
             const remotePeer = connection.remotePeer.toString().slice(0, 12);

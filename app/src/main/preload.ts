@@ -30,6 +30,12 @@ import type {
     SpotifyDevice,
     SpotifyStartPlaybackParams,
     SpotifyPlaylistTracksFullResult,
+    SpotifyPlaylistSnapshotResult,
+    CompanionStartResult,
+    CompanionInfoResult,
+    CompanionClientEventPayload,
+    CompanionReactionPayload,
+    CompanionTimeRequestPayload,
 } from '../shared/core/ipc-protocol';
 
 const electronHandler = {
@@ -111,6 +117,10 @@ const electronHandler = {
             url: string
         ): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke('shell:open-external', url),
+        openPath: (
+            dirPath: string
+        ): Promise<{ success: boolean; error?: string }> =>
+            ipcRenderer.invoke('shell:open-path', dirPath),
     },
 
     // ========================================
@@ -307,9 +317,87 @@ const electronHandler = {
         skipPrevious: (params?: { deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_SKIP_PREVIOUS, params),
 
+        seekPlayback: (params: { positionMs: number; deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_SEEK_PLAYBACK, params),
+
         // Enhanced playlist polling
         getPlaylistTracksFull: (playlistId: string): Promise<SpotifyPlaylistTracksFullResult> =>
             ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FULL, playlistId),
+
+        getPlaylistSnapshot: (playlistId: string): Promise<SpotifyPlaylistSnapshotResult> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_SNAPSHOT, playlistId),
+
+        getPlaylistTracksFrom: (playlistId: string, offset: number, knownSnapshotId?: string): Promise<SpotifyPlaylistTracksFullResult> =>
+            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FROM, playlistId, offset, knownSnapshotId),
+    },
+
+    // ========================================
+    // Companion Server
+    // ========================================
+    companion: {
+        start: (): Promise<CompanionStartResult> =>
+            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_START),
+
+        stop: (): Promise<void> =>
+            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_STOP),
+
+        getInfo: (): Promise<CompanionInfoResult | null> =>
+            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_GET_INFO),
+
+        respondToTimeRequest: (clientId: string, action: 'seen' | 'granted'): Promise<void> =>
+            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_TIME_REQUEST_RESPOND, { clientId, action }),
+
+        generateQrCode: (url: string): Promise<string> =>
+            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_QR_CODE, url),
+
+        // Relay tunnel
+        startRelayTunnel: (relayHost: string): Promise<{ sessionCode: string; relayUrl: string }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_RELAY_START, relayHost),
+
+        stopRelayTunnel: (): Promise<void> =>
+            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_RELAY_STOP),
+
+        getRelayTunnelInfo: (): Promise<{ sessionCode: string; relayUrl: string } | null> =>
+            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_RELAY_INFO),
+
+        // State push (renderer → main → phone clients)
+        pushPlayback: (state: unknown): void => {
+            ipcRenderer.send(IPC_CHANNELS.COMPANION_PUSH_PLAYBACK, state);
+        },
+        pushTracks: (tracks: unknown): void => {
+            ipcRenderer.send(IPC_CHANNELS.COMPANION_PUSH_TRACKS, tracks);
+        },
+        pushParticipants: (participants: unknown): void => {
+            ipcRenderer.send(IPC_CHANNELS.COMPANION_PUSH_PARTICIPANTS, participants);
+        },
+        pushTurn: (turnState: unknown): void => {
+            ipcRenderer.send(IPC_CHANNELS.COMPANION_PUSH_TURN, turnState);
+        },
+        pushSessionSnapshot: (snapshot: unknown): void => {
+            ipcRenderer.send(IPC_CHANNELS.COMPANION_PUSH_SESSION_SNAPSHOT, snapshot);
+        },
+
+        // Events (main → renderer)
+        onClientJoined: (callback: (data: CompanionClientEventPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: CompanionClientEventPayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.COMPANION_CLIENT_JOINED, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_CLIENT_JOINED, listener);
+        },
+        onClientLeft: (callback: (data: CompanionClientEventPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: CompanionClientEventPayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.COMPANION_CLIENT_LEFT, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_CLIENT_LEFT, listener);
+        },
+        onReaction: (callback: (data: CompanionReactionPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: CompanionReactionPayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.COMPANION_REACTION, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_REACTION, listener);
+        },
+        onTimeRequest: (callback: (data: CompanionTimeRequestPayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: CompanionTimeRequestPayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.COMPANION_TIME_REQUEST, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_TIME_REQUEST, listener);
+        },
     },
 
     // ========================================

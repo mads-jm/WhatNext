@@ -59,7 +59,8 @@ export type ServerToPhoneMessage =
     | { type: 'participants:update'; data: { participants: CompanionParticipant[] } }
     | { type: 'turn:update'; data: CompanionTurnState }
     | { type: 'reaction:broadcast'; data: { clientId: string; displayName: string; emoji: string; trackId: string | null } }
-    | { type: 'time-request:ack'; data: { status: 'seen' | 'granted' } };
+    | { type: 'time-request:ack'; data: { status: 'seen' | 'granted' } }
+    | { type: 'join:ack'; data: { isHost: boolean } };
 
 // ========================================
 // Phone → Server Messages
@@ -96,7 +97,36 @@ export function parsePhoneMessage(raw: string): PhoneToServerMessage | null {
         if (typeof parsed !== 'object' || parsed === null || typeof parsed.type !== 'string') {
             return null;
         }
-        return parsed as PhoneToServerMessage;
+
+        switch (parsed.type) {
+            case 'join':
+                if (typeof parsed.displayName !== 'string' || parsed.displayName.trim().length === 0) {
+                    return null;
+                }
+                return { type: 'join', displayName: parsed.displayName.trim().slice(0, 30) };
+
+            case 'reaction':
+                if (typeof parsed.emoji !== 'string' || parsed.emoji.length === 0 || parsed.emoji.length > 8) {
+                    return null;
+                }
+                return {
+                    type: 'reaction',
+                    emoji: parsed.emoji,
+                    trackId: typeof parsed.trackId === 'string' ? parsed.trackId : null,
+                };
+
+            case 'time-request':
+                return {
+                    type: 'time-request',
+                    trackId: typeof parsed.trackId === 'string' ? parsed.trackId : null,
+                };
+
+            case 'heartbeat':
+                return { type: 'heartbeat' };
+
+            default:
+                return null;
+        }
     } catch {
         return null;
     }

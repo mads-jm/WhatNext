@@ -7,7 +7,16 @@ Why this shape:
 - Works with our scripts: tsup builds main/preload into app/dist; Vite serves renderer on 1313 in dev.
 */
 
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, protocol, shell, utilityProcess } from 'electron';
+import {
+    app,
+    BrowserWindow,
+    globalShortcut,
+    ipcMain,
+    Menu,
+    protocol,
+    shell,
+    utilityProcess,
+} from 'electron';
 import type { UtilityProcess } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -155,10 +164,17 @@ function spawnP2PUtilityProcess(): void {
 
             // When utility process is ready, start the P2P node with relay addresses
             if (message.type === UtilityToMainMessageType.READY) {
-                console.log('[Main] ✓ Utility process is READY, sending START_NODE');
+                console.log(
+                    '[Main] ✓ Utility process is READY, sending START_NODE',
+                );
                 const relayAddresses = getRelayAddresses();
-                console.log('[Main] Relay addresses from settings:', relayAddresses.length);
-                sendToUtilityProcess(MainToUtilityMessageType.START_NODE, { relayAddresses });
+                console.log(
+                    '[Main] Relay addresses from settings:',
+                    relayAddresses.length,
+                );
+                sendToUtilityProcess(MainToUtilityMessageType.START_NODE, {
+                    relayAddresses,
+                });
                 return;
             }
 
@@ -171,13 +187,15 @@ function spawnP2PUtilityProcess(): void {
         });
 
         p2pUtilityProcess.on('exit', (code) => {
-            console.error(`[Main] ✗ P2P utility process exited with code ${code}`);
+            console.error(
+                `[Main] ✗ P2P utility process exited with code ${code}`,
+            );
             p2pUtilityProcess = null;
 
             // Notify renderer of error
             if (mainWindow) {
                 mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_ERROR, {
-                    error: `Utility process exited with code ${code}`
+                    error: `Utility process exited with code ${code}`,
                 });
             }
         });
@@ -198,12 +216,14 @@ function spawnP2PUtilityProcess(): void {
         // Note: We no longer send START_NODE here.
         // We wait for the READY message from the utility process first.
         console.log('[Main] Waiting for utility process READY signal...');
-
     } catch (error) {
-        console.error('[Main] ✗ FATAL: Failed to spawn utility process:', error);
+        console.error(
+            '[Main] ✗ FATAL: Failed to spawn utility process:',
+            error,
+        );
         if (mainWindow) {
             mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_ERROR, {
-                error: `Failed to spawn utility process: ${error}`
+                error: `Failed to spawn utility process: ${error}`,
             });
         }
     }
@@ -212,7 +232,10 @@ function spawnP2PUtilityProcess(): void {
 /**
  * Send message to utility process
  */
-function sendToUtilityProcess(type: string, payload: Record<string, unknown>): void {
+function sendToUtilityProcess(
+    type: string,
+    payload: Record<string, unknown>,
+): void {
     if (!p2pUtilityProcess) {
         console.error('[Main] Cannot send to utility process: not spawned');
         return;
@@ -228,7 +251,9 @@ function sendToUtilityProcess(type: string, payload: Record<string, unknown>): v
 function handleUtilityProcessMessage(message: IPCMessage): void {
     // Relay utility process events to renderer
     if (!mainWindow) {
-        console.warn('[Main] mainWindow not available, cannot send to renderer');
+        console.warn(
+            '[Main] mainWindow not available, cannot send to renderer',
+        );
         return;
     }
 
@@ -245,7 +270,10 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
 
     console.log('[Main] → Relaying to renderer:', message.type);
     console.log('[Main] Renderer URL:', mainWindow.webContents.getURL());
-    console.log('[Main] Renderer is loading:', mainWindow.webContents.isLoading());
+    console.log(
+        '[Main] Renderer is loading:',
+        mainWindow.webContents.isLoading(),
+    );
 
     switch (message.type) {
         case UtilityToMainMessageType.NODE_STARTED: {
@@ -261,16 +289,24 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
         case UtilityToMainMessageType.PEER_DISCOVERED: {
             const payload = message.payload as PeerDiscoveredPayload;
             console.log('[Main] Sending PEER_DISCOVERED to renderer:', payload);
-            const exists = p2pState.discoveredPeers.some(p => p.peerId === payload.peer.peerId);
+            const exists = p2pState.discoveredPeers.some(
+                (p) => p.peerId === payload.peer.peerId,
+            );
             if (!exists) {
                 p2pState.discoveredPeers.push(payload.peer);
             }
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_PEER_DISCOVERED, payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_PEER_DISCOVERED,
+                payload,
+            );
             break;
         }
 
         case UtilityToMainMessageType.CONNECTION_REQUEST:
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_REQUEST, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_CONNECTION_REQUEST,
+                message.payload,
+            );
             break;
 
         case UtilityToMainMessageType.CONNECTION_ESTABLISHED: {
@@ -278,39 +314,59 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
             if (!p2pState.connectedPeers.includes(payload.peerId)) {
                 p2pState.connectedPeers.push(payload.peerId);
             }
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED, payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED,
+                payload,
+            );
             break;
         }
 
         case UtilityToMainMessageType.CONNECTION_FAILED:
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_FAILED, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_CONNECTION_FAILED,
+                message.payload,
+            );
             break;
 
         case UtilityToMainMessageType.CONNECTION_CLOSED: {
             const payload = message.payload as ConnectionClosedPayload;
-            p2pState.connectedPeers = p2pState.connectedPeers.filter(id => id !== payload.peerId);
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_CLOSED, payload);
+            p2pState.connectedPeers = p2pState.connectedPeers.filter(
+                (id) => id !== payload.peerId,
+            );
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_CONNECTION_CLOSED,
+                payload,
+            );
             break;
         }
 
         case UtilityToMainMessageType.NODE_ERROR:
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_ERROR, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_NODE_ERROR,
+                message.payload,
+            );
             break;
 
         case UtilityToMainMessageType.REPLICATION_CHANGES:
             console.log('[Main] Relaying replication changes to renderer');
-            mainWindow.webContents.send(IPC_CHANNELS.REPLICATION_CHANGES, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.REPLICATION_CHANGES,
+                message.payload,
+            );
             break;
 
         case UtilityToMainMessageType.REPLICATION_STATE:
-            mainWindow.webContents.send(IPC_CHANNELS.REPLICATION_STATE, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.REPLICATION_STATE,
+                message.payload,
+            );
             break;
 
         case UtilityToMainMessageType.HANDSHAKE_COMPLETE: {
             const payload = message.payload as HandshakeCompletePayload;
             console.log('[Main] Handshake complete:', payload);
             const discoveredPeer = p2pState.discoveredPeers.find(
-                (p) => p.peerId === payload.peerId
+                (p) => p.peerId === payload.peerId,
             );
             if (discoveredPeer) {
                 discoveredPeer.displayName = payload.displayName;
@@ -320,7 +376,11 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
         }
 
         case UtilityToMainMessageType.RELAY_CONNECTED: {
-            const payload = message.payload as { connected: boolean; relayMultiaddr: string | null; relayPeerId: string | null };
+            const payload = message.payload as {
+                connected: boolean;
+                relayMultiaddr: string | null;
+                relayPeerId: string | null;
+            };
             activeRelayMultiaddr = payload.relayMultiaddr;
             mainWindow.webContents.send(IPC_CHANNELS.P2P_RELAY_STATUS, payload);
             break;
@@ -337,13 +397,19 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
         }
 
         case UtilityToMainMessageType.PEER_PRESENCE_UPDATE:
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_PEER_PRESENCE, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_PEER_PRESENCE,
+                message.payload,
+            );
             break;
 
         case UtilityToMainMessageType.REPLICATION_PULL_REQUEST: {
             // Utility needs data from renderer's RxDB — forward the request
             const req = message.payload as ReplicationPullRequestPayload;
-            mainWindow.webContents.send(IPC_CHANNELS.REPLICATION_PULL_REQUEST, req);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.REPLICATION_PULL_REQUEST,
+                req,
+            );
             break;
         }
 
@@ -355,8 +421,8 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
 /**
  * Handle whtnxt:// protocol URLs
  */
- // TODO : just do a match in the try{} here or route in a more extensible way.
- // Protocol should be a clear API boundary and structurally documented in /docs for easy consumption and provider implementation.
+// TODO : just do a match in the try{} here or route in a more extensible way.
+// Protocol should be a clear API boundary and structurally documented in /docs for easy consumption and provider implementation.
 function handleProtocolUrl(url: string): void {
     console.log('[Main] Handling protocol URL:', url);
 
@@ -403,20 +469,26 @@ async function handleSpotifyCallbackUrl(url: string): Promise<void> {
             return;
         }
 
-        const { handleSpotifyCallback } = await import('./spotify/spotify-auth');
+        const { handleSpotifyCallback } =
+            await import('./spotify/spotify-auth');
         const result = await handleSpotifyCallback(code);
 
         if (result.success && result.tokens) {
             // TODO : need a UX pass on token expiry, right now you have to see an error within a flow. We should proactively refresh and/or prompt the user before it becomes an interuption.
             const { saveTokens } = await import('./spotify/token-store');
-            const { initSpotifyClient } = await import('./spotify/spotify-client');
+            const { initSpotifyClient } =
+                await import('./spotify/spotify-client');
             saveTokens(result.tokens);
             initSpotifyClient(result.tokens);
             console.log('[Main] Spotify auth complete!');
-            mainWindow?.webContents.send('spotify:auth-complete', { success: true });
+            mainWindow?.webContents.send('spotify:auth-complete', {
+                success: true,
+            });
         } else {
             console.error('[Main] Spotify auth failed:', result.error);
-            mainWindow?.webContents.send('spotify:auth-error', { error: result.error });
+            mainWindow?.webContents.send('spotify:auth-error', {
+                error: result.error,
+            });
         }
 
         if (mainWindow) {
@@ -441,8 +513,12 @@ function registerProtocolHandler(): void {
         // In dev: process.execPath = electron.exe, process.argv[1] = dist/main.js
         // We need to register both so Windows re-launches correctly.
         const appPath = path.resolve(process.argv[1]);
-        if (!app.isDefaultProtocolClient('whtnxt', process.execPath, [appPath])) {
-            app.setAsDefaultProtocolClient('whtnxt', process.execPath, [appPath]);
+        if (
+            !app.isDefaultProtocolClient('whtnxt', process.execPath, [appPath])
+        ) {
+            app.setAsDefaultProtocolClient('whtnxt', process.execPath, [
+                appPath,
+            ]);
             console.log('[Main] Registered whtnxt:// protocol (dev mode)');
             console.log('[Main]   execPath:', process.execPath);
             console.log('[Main]   appPath:', appPath);
@@ -492,7 +568,10 @@ if (!gotTheLock) {
 
 // Must be called before app is ready
 protocol.registerSchemesAsPrivileged([
-    { scheme: 'wn-art', privileges: { secure: true, standard: true, supportFetchAPI: true } },
+    {
+        scheme: 'wn-art',
+        privileges: { secure: true, standard: true, supportFetchAPI: true },
+    },
 ]);
 
 /**
@@ -657,11 +736,14 @@ ipcMain.handle('dialog:save-file', async (_event, options) => {
 // ========================================
 // File Write (for export)
 // ========================================
-ipcMain.handle('file:write', async (_event, filePath: string, content: string) => {
-    const fs = await import('fs/promises');
-    await fs.writeFile(filePath, content, 'utf-8');
-    return { success: true };
-});
+ipcMain.handle(
+    'file:write',
+    async (_event, filePath: string, content: string) => {
+        const fs = await import('fs/promises');
+        await fs.writeFile(filePath, content, 'utf-8');
+        return { success: true };
+    },
+);
 
 // ========================================
 // Artwork Caching
@@ -669,14 +751,20 @@ ipcMain.handle('file:write', async (_event, filePath: string, content: string) =
 
 /** Strip filesystem-illegal characters and trim to a safe length. */
 function sanitizePathSegment(str: string): string {
-    return str.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim().slice(0, 80);
+    return str
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, '')
+        .trim()
+        .slice(0, 80);
 }
 
 /**
  * Build human-readable base filename from album/artist metadata.
  * Returns null if insufficient metadata — caller falls back to hash.
  */
-function artworkBaseName(albumName?: string, artistName?: string): string | null {
+function artworkBaseName(
+    albumName?: string,
+    artistName?: string,
+): string | null {
     if (!albumName) return null;
     const album = sanitizePathSegment(albumName);
     if (!album) return null;
@@ -693,60 +781,85 @@ function artworkBaseName(albumName?: string, artistName?: string): string | null
  * An index.json in the artwork directory maps remote URL → local filename
  * for deduplication without re-downloading.
  */
-ipcMain.handle('artwork:download', async (_event, req: { url: string; albumName?: string; artistName?: string }) => {
-    try {
-        const { url, albumName, artistName } = req;
-        const artworkDir = path.join(app.getPath('documents'), 'WhatNext', 'artwork');
-        await fs.promises.mkdir(artworkDir, { recursive: true });
-
-        // Load index: url → filename
-        const indexPath = path.join(artworkDir, 'index.json');
-        let index: Record<string, string> = {};
+ipcMain.handle(
+    'artwork:download',
+    async (
+        _event,
+        req: { url: string; albumName?: string; artistName?: string },
+    ) => {
         try {
-            index = JSON.parse(await fs.promises.readFile(indexPath, 'utf-8'));
-        } catch { /* no index yet */ }
+            const { url, albumName, artistName } = req;
+            const artworkDir = path.join(
+                app.getPath('documents'),
+                'WhatNext',
+                'artwork',
+            );
+            await fs.promises.mkdir(artworkDir, { recursive: true });
 
-        // Return cached path if index entry exists and file is present
-        if (index[url]) {
-            const cachedPath = path.join(artworkDir, index[url]);
+            // Load index: url → filename
+            const indexPath = path.join(artworkDir, 'index.json');
+            let index: Record<string, string> = {};
             try {
-                await fs.promises.access(cachedPath);
-                return { success: true, localPath: cachedPath };
+                index = JSON.parse(
+                    await fs.promises.readFile(indexPath, 'utf-8'),
+                );
             } catch {
-                delete index[url]; // stale entry — re-download
+                /* no index yet */
             }
+
+            // Return cached path if index entry exists and file is present
+            if (index[url]) {
+                const cachedPath = path.join(artworkDir, index[url]);
+                try {
+                    await fs.promises.access(cachedPath);
+                    return { success: true, localPath: cachedPath };
+                } catch {
+                    delete index[url]; // stale entry — re-download
+                }
+            }
+
+            // Build human-readable filename; fall back to URL hash
+            const indexedNames = new Set(Object.values(index));
+            const baseName = artworkBaseName(albumName, artistName);
+            let filename: string;
+            if (baseName) {
+                let candidate = `${baseName}.jpg`;
+                let n = 2;
+                while (indexedNames.has(candidate))
+                    candidate = `${baseName}-${n++}.jpg`;
+                filename = candidate;
+            } else {
+                const rawId =
+                    new URL(url).pathname.split('/').filter(Boolean).pop() ??
+                    '';
+                const imageId =
+                    rawId.replace(/[^a-zA-Z0-9_-]/g, '') ||
+                    Buffer.from(url).toString('base64url').slice(0, 40);
+                filename = `${imageId}.jpg`;
+            }
+
+            const localPath = path.join(artworkDir, filename);
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await fs.promises.writeFile(
+                localPath,
+                Buffer.from(await response.arrayBuffer()),
+            );
+
+            // Persist index
+            index[url] = filename;
+            await fs.promises.writeFile(
+                indexPath,
+                JSON.stringify(index, null, 2),
+            );
+
+            return { success: true, localPath };
+        } catch (error) {
+            console.error('[Main] artwork:download failed:', error);
+            return { success: false, error: String(error) };
         }
-
-        // Build human-readable filename; fall back to URL hash
-        const indexedNames = new Set(Object.values(index));
-        const baseName = artworkBaseName(albumName, artistName);
-        let filename: string;
-        if (baseName) {
-            let candidate = `${baseName}.jpg`;
-            let n = 2;
-            while (indexedNames.has(candidate)) candidate = `${baseName}-${n++}.jpg`;
-            filename = candidate;
-        } else {
-            const rawId = new URL(url).pathname.split('/').filter(Boolean).pop() ?? '';
-            const imageId = rawId.replace(/[^a-zA-Z0-9_-]/g, '') || Buffer.from(url).toString('base64url').slice(0, 40);
-            filename = `${imageId}.jpg`;
-        }
-
-        const localPath = path.join(artworkDir, filename);
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        await fs.promises.writeFile(localPath, Buffer.from(await response.arrayBuffer()));
-
-        // Persist index
-        index[url] = filename;
-        await fs.promises.writeFile(indexPath, JSON.stringify(index, null, 2));
-
-        return { success: true, localPath };
-    } catch (error) {
-        console.error('[Main] artwork:download failed:', error);
-        return { success: false, error: String(error) };
-    }
-});
+    },
+);
 
 // ========================================
 // External Links
@@ -757,14 +870,36 @@ ipcMain.handle('shell:open-external', async (_event, url: string) => {
     // Security: validate URL before opening
     try {
         const parsedUrl = new URL(url);
-        if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
-            await shell.openExternal(url);
-            return { success: true };
+        const allowedProtocols = ['http:', 'https:', 'spotify:'];
+        if (!allowedProtocols.includes(parsedUrl.protocol)) {
+            return { success: false, error: 'Invalid protocol' };
         }
-        return { success: false, error: 'Invalid protocol' };
+
+        // Custom protocol URIs (e.g. spotify:) need Windows start command
+        // because shell.openExternal often rejects non-http protocols
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+            const { exec } = await import('child_process');
+            return new Promise((resolve) => {
+                exec(`start "" "${url}"`, (error) => {
+                    if (error) {
+                        resolve({ success: false, error: error.message });
+                    } else {
+                        resolve({ success: true });
+                    }
+                });
+            });
+        }
+
+        await shell.openExternal(url);
+        return { success: true };
     } catch (error) {
         return { success: false, error: 'Invalid URL' };
     }
+});
+
+ipcMain.handle('shell:open-path', async (_event, dirPath: string) => {
+    const result = await shell.openPath(dirPath);
+    return { success: result === '', error: result || undefined };
 });
 
 // ========================================
@@ -785,13 +920,18 @@ let p2pState: P2PStatusPayload = {
 let activeRelayMultiaddr: string | null = null;
 
 ipcMain.handle(IPC_CHANNELS.P2P_CONNECT, async (_event, peerId: string) => {
-    console.log('[Main] Renderer requested connection to peer:', peerId.slice(0, 20) + '...');
+    console.log(
+        '[Main] Renderer requested connection to peer:',
+        peerId.slice(0, 20) + '...',
+    );
     sendToUtilityProcess(MainToUtilityMessageType.CONNECT_TO_PEER, { peerId });
     return { success: true };
 });
 
 ipcMain.handle(IPC_CHANNELS.P2P_DISCONNECT, async (_event, peerId: string) => {
-    sendToUtilityProcess(MainToUtilityMessageType.DISCONNECT_FROM_PEER, { peerId });
+    sendToUtilityProcess(MainToUtilityMessageType.DISCONNECT_FROM_PEER, {
+        peerId,
+    });
     return { success: true };
 });
 
@@ -810,18 +950,35 @@ ipcMain.handle('p2p:get-status', async () => {
 // User Identity Relay (renderer → utility)
 // ========================================
 
-ipcMain.handle('user:set-identity', async (_event, identity: { displayName: string; avatarUrl?: string; userId: string }) => {
-    console.log('[Main] Setting user identity for P2P:', identity.displayName);
-    sendToUtilityProcess(MainToUtilityMessageType.SET_USER_IDENTITY, identity);
-    return { success: true };
-});
+ipcMain.handle(
+    'user:set-identity',
+    async (
+        _event,
+        identity: { displayName: string; avatarUrl?: string; userId: string },
+    ) => {
+        console.log(
+            '[Main] Setting user identity for P2P:',
+            identity.displayName,
+        );
+        sendToUtilityProcess(
+            MainToUtilityMessageType.SET_USER_IDENTITY,
+            identity,
+        );
+        return { success: true };
+    },
+);
 
 // ========================================
 // Replication Relay (renderer ↔ utility)
 // ========================================
 
 ipcMain.handle(IPC_CHANNELS.REPLICATION_PUSH, async (_event, payload) => {
-    console.log('[Main] Replication push:', payload.collection, payload.documents?.length, 'docs');
+    console.log(
+        '[Main] Replication push:',
+        payload.collection,
+        payload.documents?.length,
+        'docs',
+    );
     sendToUtilityProcess(MainToUtilityMessageType.REPLICATION_PUSH, payload);
     return { success: true };
 });
@@ -841,7 +998,8 @@ let spotifyInitialized = false;
 async function ensureSpotifyModules(): Promise<void> {
     if (!spotifyInitialized) {
         try {
-            const { loadStoredTokens } = await import('./spotify/spotify-client');
+            const { loadStoredTokens } =
+                await import('./spotify/spotify-client');
             loadStoredTokens();
             spotifyInitialized = true;
         } catch (e) {
@@ -877,10 +1035,21 @@ ipcMain.handle('spotify:get-playlists', async () => {
 
 ipcMain.handle('spotify:get-tracks', async (_event, playlistId: string) => {
     try {
-        const { getPlaylistTracks } = await import('./spotify/spotify-client');
+        const { getPlaylistTracks, resolveSpotifyDisplayNames } =
+            await import('./spotify/spotify-client');
         const { mapSpotifyTracks } = await import('./spotify/spotify-mapper');
         const result = await getPlaylistTracks(playlistId);
         const mapped = mapSpotifyTracks(result.items);
+
+        // Enrich with display names from /users/{id} endpoint
+        const uniqueUserIds = [
+            ...new Set(mapped.map((t) => t.addedBySpotifyId)),
+        ];
+        const displayNames = await resolveSpotifyDisplayNames(uniqueUserIds);
+        for (const track of mapped) {
+            track.addedByDisplayName = displayNames.get(track.addedBySpotifyId);
+        }
+
         return { success: true, tracks: mapped, total: result.total };
     } catch (error) {
         return { success: false, error: String(error) };
@@ -902,32 +1071,43 @@ ipcMain.handle('spotify:get-profile', async () => {
     }
 });
 
-ipcMain.handle('spotify:sync-playlist', async (_event, linkedSpotifyId: string) => {
-    try {
-        const { getPlaylistTracks } = await import('./spotify/spotify-client');
-        const { mapSpotifyTracks } = await import('./spotify/spotify-mapper');
+ipcMain.handle(
+    'spotify:sync-playlist',
+    async (_event, linkedSpotifyId: string) => {
+        try {
+            const { getPlaylistTracks } =
+                await import('./spotify/spotify-client');
+            const { mapSpotifyTracks } =
+                await import('./spotify/spotify-mapper');
 
-        // Paginate through ALL tracks — playlists can exceed 100 tracks
-        // TODO : ... is this? Is this limiting to 100?
-        const allItems: Awaited<ReturnType<typeof getPlaylistTracks>>['items'] = [];
-        let offset = 0;
-        const limit = 100;
-        let total = Infinity;
+            // Paginate through ALL tracks — playlists can exceed 100 tracks
+            // TODO : ... is this? Is this limiting to 100?
+            const allItems: Awaited<
+                ReturnType<typeof getPlaylistTracks>
+            >['items'] = [];
+            let offset = 0;
+            const limit = 100;
+            let total = Infinity;
 
-        while (offset < total) {
-            const page = await getPlaylistTracks(linkedSpotifyId, limit, offset);
-            total = page.total;
-            allItems.push(...page.items);
-            offset += page.items.length;
-            if (page.items.length < limit) break;
+            while (offset < total) {
+                const page = await getPlaylistTracks(
+                    linkedSpotifyId,
+                    limit,
+                    offset,
+                );
+                total = page.total;
+                allItems.push(...page.items);
+                offset += page.items.length;
+                if (page.items.length < limit) break;
+            }
+
+            const mapped = mapSpotifyTracks(allItems);
+            return { success: true, tracks: mapped, total: allItems.length };
+        } catch (error) {
+            return { success: false, error: String(error) };
         }
-
-        const mapped = mapSpotifyTracks(allItems);
-        return { success: true, tracks: mapped, total: allItems.length };
-    } catch (error) {
-        return { success: false, error: String(error) };
-    }
-});
+    },
+);
 
 // ========================================
 // Spotify Playback Control
@@ -963,55 +1143,135 @@ ipcMain.handle(IPC_CHANNELS.SPOTIFY_START_PLAYBACK, async (_event, params) => {
     }
 });
 
-ipcMain.handle(IPC_CHANNELS.SPOTIFY_PAUSE_PLAYBACK, async (_event, params?: { deviceId?: string }) => {
-    try {
-        const { pausePlayback } = await import('./spotify/spotify-client');
-        await pausePlayback(params?.deviceId);
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: String(error) };
-    }
-});
+ipcMain.handle(
+    IPC_CHANNELS.SPOTIFY_PAUSE_PLAYBACK,
+    async (_event, params?: { deviceId?: string }) => {
+        try {
+            const { pausePlayback } = await import('./spotify/spotify-client');
+            await pausePlayback(params?.deviceId);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    },
+);
 
-ipcMain.handle(IPC_CHANNELS.SPOTIFY_RESUME_PLAYBACK, async (_event, params?: { deviceId?: string }) => {
-    try {
-        const { resumePlayback } = await import('./spotify/spotify-client');
-        await resumePlayback(params?.deviceId);
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: String(error) };
-    }
-});
+ipcMain.handle(
+    IPC_CHANNELS.SPOTIFY_RESUME_PLAYBACK,
+    async (_event, params?: { deviceId?: string }) => {
+        try {
+            const { resumePlayback } = await import('./spotify/spotify-client');
+            await resumePlayback(params?.deviceId);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    },
+);
 
-ipcMain.handle(IPC_CHANNELS.SPOTIFY_SKIP_NEXT, async (_event, params?: { deviceId?: string }) => {
-    try {
-        const { skipToNext } = await import('./spotify/spotify-client');
-        await skipToNext(params?.deviceId);
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: String(error) };
-    }
-});
+ipcMain.handle(
+    IPC_CHANNELS.SPOTIFY_SKIP_NEXT,
+    async (_event, params?: { deviceId?: string }) => {
+        try {
+            const { skipToNext } = await import('./spotify/spotify-client');
+            await skipToNext(params?.deviceId);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    },
+);
 
-ipcMain.handle(IPC_CHANNELS.SPOTIFY_SKIP_PREVIOUS, async (_event, params?: { deviceId?: string }) => {
-    try {
-        const { skipToPrevious } = await import('./spotify/spotify-client');
-        await skipToPrevious(params?.deviceId);
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: String(error) };
-    }
-});
+ipcMain.handle(
+    IPC_CHANNELS.SPOTIFY_SKIP_PREVIOUS,
+    async (_event, params?: { deviceId?: string }) => {
+        try {
+            const { skipToPrevious } = await import('./spotify/spotify-client');
+            await skipToPrevious(params?.deviceId);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    },
+);
 
-ipcMain.handle(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FULL, async (_event, playlistId: string) => {
-    try {
-        const { getPlaylistTracksFull } = await import('./spotify/spotify-client');
-        const result = await getPlaylistTracksFull(playlistId);
-        return { success: true, tracks: result.tracks, total: result.total, snapshotId: result.snapshotId };
-    } catch (error) {
-        return { success: false, error: String(error) };
-    }
-});
+ipcMain.handle(
+    IPC_CHANNELS.SPOTIFY_SEEK_PLAYBACK,
+    async (_event, params: { positionMs: number; deviceId?: string }) => {
+        try {
+            const { seekToPosition } = await import('./spotify/spotify-client');
+            await seekToPosition(params.positionMs, params.deviceId);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    },
+);
+
+ipcMain.handle(
+    IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FULL,
+    async (_event, playlistId: string) => {
+        try {
+            const { getPlaylistTracksFull } =
+                await import('./spotify/spotify-client');
+            const result = await getPlaylistTracksFull(playlistId);
+            return {
+                success: true,
+                tracks: result.tracks,
+                total: result.total,
+                snapshotId: result.snapshotId,
+            };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    },
+);
+
+ipcMain.handle(
+    IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_SNAPSHOT,
+    async (_event, playlistId: string) => {
+        try {
+            const { getPlaylistSnapshot } =
+                await import('./spotify/spotify-client');
+            const result = await getPlaylistSnapshot(playlistId);
+            return {
+                success: true,
+                snapshotId: result.snapshotId,
+                total: result.total,
+            };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    },
+);
+
+ipcMain.handle(
+    IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FROM,
+    async (
+        _event,
+        playlistId: string,
+        offset: number,
+        knownSnapshotId?: string,
+    ) => {
+        try {
+            const { getPlaylistTracksFrom } =
+                await import('./spotify/spotify-client');
+            const result = await getPlaylistTracksFrom(
+                playlistId,
+                offset,
+                knownSnapshotId,
+            );
+            return {
+                success: true,
+                tracks: result.tracks,
+                total: result.total,
+                snapshotId: result.snapshotId,
+            };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    },
+);
 
 // ========================================
 // Relay Configuration
@@ -1021,44 +1281,57 @@ ipcMain.handle(IPC_CHANNELS.P2P_RELAY_GET, () => {
     return { addresses: getRelayAddresses() };
 });
 
-ipcMain.handle(IPC_CHANNELS.P2P_RELAY_ADD, async (_event, multiaddr: string) => {
-    const addresses = addRelayAddress(multiaddr);
-    // Notify utility process to attempt connection to the new relay
-    sendToUtilityProcess(MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES, { addresses });
-    return { success: true, addresses };
-});
+ipcMain.handle(
+    IPC_CHANNELS.P2P_RELAY_ADD,
+    async (_event, multiaddr: string) => {
+        const addresses = addRelayAddress(multiaddr);
+        // Notify utility process to attempt connection to the new relay
+        sendToUtilityProcess(MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES, {
+            addresses,
+        });
+        return { success: true, addresses };
+    },
+);
 
-ipcMain.handle(IPC_CHANNELS.P2P_RELAY_REMOVE, async (_event, multiaddr: string) => {
-    const addresses = removeRelayAddress(multiaddr);
-    sendToUtilityProcess(MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES, { addresses });
-    return { success: true, addresses };
-});
+ipcMain.handle(
+    IPC_CHANNELS.P2P_RELAY_REMOVE,
+    async (_event, multiaddr: string) => {
+        const addresses = removeRelayAddress(multiaddr);
+        sendToUtilityProcess(MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES, {
+            addresses,
+        });
+        return { success: true, addresses };
+    },
+);
 
 // ========================================
 // Session Invite URL
 // ========================================
 
-ipcMain.handle(IPC_CHANNELS.P2P_GET_INVITE_URL, (_event, sessionId?: string) => {
-    const peerId = p2pState.peerId;
-    if (!peerId) {
-        return { success: false, error: 'P2P node not started' };
-    }
+ipcMain.handle(
+    IPC_CHANNELS.P2P_GET_INVITE_URL,
+    (_event, sessionId?: string) => {
+        const peerId = p2pState.peerId;
+        if (!peerId) {
+            return { success: false, error: 'P2P node not started' };
+        }
 
-    const url = createConnectUrl(peerId, {
-        relay: activeRelayMultiaddr ?? undefined,
-        sessionId,
-    });
+        const url = createConnectUrl(peerId, {
+            relay: activeRelayMultiaddr ?? undefined,
+            sessionId,
+        });
 
-    const shortCode = generateShortCode(sessionId ?? peerId);
+        const shortCode = generateShortCode(sessionId ?? peerId);
 
-    return {
-        success: true,
-        url,
-        shortCode,
-        peerId,
-        relayAddr: activeRelayMultiaddr,
-    };
-});
+        return {
+            success: true,
+            url,
+            shortCode,
+            peerId,
+            relayAddr: activeRelayMultiaddr,
+        };
+    },
+);
 
 // Join a session by parsing a whtnxt:// URL or a short code
 ipcMain.handle(IPC_CHANNELS.P2P_JOIN_SESSION, (_event, urlOrCode: string) => {
@@ -1069,7 +1342,10 @@ ipcMain.handle(IPC_CHANNELS.P2P_JOIN_SESSION, (_event, urlOrCode: string) => {
     }
     // Short codes can't be resolved without a rendezvous server (Phase 2).
     // For now, return a helpful error.
-    return { success: false, error: 'Short codes require a rendezvous server (coming in Phase 2). Please use the full whtnxt:// link.' };
+    return {
+        success: false,
+        error: 'Short codes require a rendezvous server (coming in Phase 2). Please use the full whtnxt:// link.',
+    };
 });
 
 // ========================================
@@ -1080,9 +1356,138 @@ ipcMain.handle(IPC_CHANNELS.P2P_JOIN_SESSION, (_event, urlOrCode: string) => {
 ipcMain.handle(IPC_CHANNELS.REPLICATION_PULL_RESPONSE, (_event, payload) => {
     // Forward the response to the utility process so it can serve the data
     // to the remote peer's pull-request stream
-    sendToUtilityProcess(MainToUtilityMessageType.REPLICATION_PULL_RESPONSE, payload);
+    sendToUtilityProcess(
+        MainToUtilityMessageType.REPLICATION_PULL_RESPONSE,
+        payload,
+    );
     return { success: true };
 });
+
+// ========================================
+// Companion Server
+// ========================================
+
+ipcMain.handle(IPC_CHANNELS.COMPANION_START, async () => {
+    const { startCompanionServer, isCompanionServerRunning } =
+        await import('./companion/companion-server');
+
+    if (isCompanionServerRunning()) {
+        const { getCompanionServerInfo } =
+            await import('./companion/companion-server');
+        const info = getCompanionServerInfo();
+        return { port: info?.port ?? 0, localIp: info?.localIp ?? '127.0.0.1' };
+    }
+
+    const { port, localIp } = await startCompanionServer({
+        onClientJoined: (client) => {
+            mainWindow?.webContents.send(IPC_CHANNELS.COMPANION_CLIENT_JOINED, {
+                clientId: client.id,
+                displayName: client.displayName,
+            });
+        },
+        onClientLeft: (client) => {
+            mainWindow?.webContents.send(IPC_CHANNELS.COMPANION_CLIENT_LEFT, {
+                clientId: client.id,
+                displayName: client.displayName,
+            });
+        },
+        onReaction: (clientId, displayName, emoji, trackId) => {
+            mainWindow?.webContents.send(IPC_CHANNELS.COMPANION_REACTION, {
+                clientId,
+                displayName,
+                emoji,
+                trackId,
+            });
+        },
+        onTimeRequest: (clientId, displayName, trackId) => {
+            mainWindow?.webContents.send(IPC_CHANNELS.COMPANION_TIME_REQUEST, {
+                clientId,
+                displayName,
+                trackId,
+            });
+        },
+    });
+
+    return { port, localIp };
+});
+
+ipcMain.handle(IPC_CHANNELS.COMPANION_STOP, async () => {
+    const { stopCompanionServer } =
+        await import('./companion/companion-server');
+    stopCompanionServer();
+});
+
+ipcMain.handle(IPC_CHANNELS.COMPANION_QR_CODE, async (_event, url: string) => {
+    const QRCode = await import('qrcode');
+    return QRCode.toDataURL(url, { width: 256, margin: 2, color: { dark: '#e5e7ebff', light: '#11182700' } });
+});
+
+ipcMain.handle(IPC_CHANNELS.COMPANION_GET_INFO, async () => {
+    const { getCompanionServerInfo } =
+        await import('./companion/companion-server');
+    return getCompanionServerInfo();
+});
+
+ipcMain.handle(IPC_CHANNELS.COMPANION_RELAY_START, async (_event, relayHost: string) => {
+    const { startRelayTunnel } = await import('./companion/companion-server');
+    return startRelayTunnel(relayHost);
+});
+
+ipcMain.handle(IPC_CHANNELS.COMPANION_RELAY_STOP, async () => {
+    const { stopRelayTunnel } = await import('./companion/companion-server');
+    stopRelayTunnel();
+});
+
+ipcMain.handle(IPC_CHANNELS.COMPANION_RELAY_INFO, async () => {
+    const { getRelayTunnelInfo } = await import('./companion/companion-server');
+    return getRelayTunnelInfo();
+});
+
+ipcMain.handle(
+    IPC_CHANNELS.COMPANION_TIME_REQUEST_RESPOND,
+    async (
+        _event,
+        payload: { clientId: string; action: 'seen' | 'granted' },
+    ) => {
+        const { sendTimeRequestAck } =
+            await import('./companion/companion-server');
+        sendTimeRequestAck(payload.clientId, payload.action);
+    },
+);
+
+// Companion state push (renderer → main → phone clients via WebSocket)
+ipcMain.on(IPC_CHANNELS.COMPANION_PUSH_PLAYBACK, async (_event, state) => {
+    const { pushPlaybackUpdate } = await import('./companion/companion-server');
+    pushPlaybackUpdate(state);
+});
+
+ipcMain.on(IPC_CHANNELS.COMPANION_PUSH_TRACKS, async (_event, tracks) => {
+    const { pushTracksUpdate } = await import('./companion/companion-server');
+    pushTracksUpdate(tracks);
+});
+
+ipcMain.on(
+    IPC_CHANNELS.COMPANION_PUSH_PARTICIPANTS,
+    async (_event, participants) => {
+        const { pushParticipantsUpdate } =
+            await import('./companion/companion-server');
+        pushParticipantsUpdate(participants);
+    },
+);
+
+ipcMain.on(IPC_CHANNELS.COMPANION_PUSH_TURN, async (_event, turnState) => {
+    const { pushTurnUpdate } = await import('./companion/companion-server');
+    pushTurnUpdate(turnState);
+});
+
+ipcMain.on(
+    IPC_CHANNELS.COMPANION_PUSH_SESSION_SNAPSHOT,
+    async (_event, snapshot) => {
+        const { pushSessionSnapshot } =
+            await import('./companion/companion-server');
+        pushSessionSnapshot(snapshot);
+    },
+);
 
 // Handle protocol URLs on macOS (open-url event)
 app.on('open-url', (event, url) => {

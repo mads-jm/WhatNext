@@ -29,6 +29,7 @@ import { identify } from '@libp2p/identify';
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2';
 import { FaultTolerance } from '@libp2p/interface';
 import { peerIdFromString } from '@libp2p/peer-id';
+import { multiaddr } from '@multiformats/multiaddr';
 import { randomUUID } from 'crypto';
 import chalk from 'chalk';
 import readline from 'readline';
@@ -81,6 +82,7 @@ const LOCAL_HANDSHAKE_DATA = {
 let node = null;
 let discoveredPeers = new Map(); // peerId -> { multiaddrs, timestamp }
 let connectedPeers = new Set();  // Set<peerId string>
+let relayAddresses = [];         // multiaddr strings for circuit relay servers
 
 // Hoisted readline interface so protocol callbacks can call rl.prompt().
 const rl = readline.createInterface({
@@ -114,7 +116,7 @@ async function startNode() {
             ],
             peerDiscovery: [
                 mdns({
-                    serviceName: P2P_CONFIG.MDNS_SERVICE_NAME,
+                    serviceTag: P2P_CONFIG.MDNS_SERVICE_NAME,
                     interval: P2P_CONFIG.MDNS_INTERVAL,
                 }),
             ],
@@ -288,6 +290,12 @@ function showHelp() {
     console.log(chalk.white('  peers-info') + chalk.gray('                    Show handshake info for connected peers'));
     console.log(chalk.white('  vote [n] <trackIdx> <+1|-1>') + chalk.gray('  Send vote for a track to peer n'));
     console.log(chalk.white('  session') + chalk.gray('                       Show full session state (collections, checkpoints)'));
+    console.log('');
+    console.log(chalk.bold('  Relay'));
+    console.log(chalk.white('  relay-add <multiaddr>') + chalk.gray('          Add and connect to a relay server'));
+    console.log(chalk.white('  relay-list') + chalk.gray('                    List configured relay servers'));
+    console.log(chalk.white('  relay-connect') + chalk.gray('                 Reconnect to all configured relays'));
+    console.log(chalk.white('  relay-remove <n>') + chalk.gray('              Remove relay by index'));
     console.log('');
     console.log(chalk.bold('  General'));
     console.log(chalk.white('  help') + chalk.gray('                          Show this help'));
@@ -538,6 +546,116 @@ async function cmdVote(args) {
 }
 
 // ========================================
+// Relay commands
+// ========================================
+
+/**
+ * Connect to a relay server by multiaddr.
+ * @param {string} addr - full multiaddr string including /p2p/<peerId>
+ */
+async function cmdRelayAdd(addr) {
+    if (!addr) {
+        console.log(chalk.red('\n❌ Usage: relay-add <multiaddr>\n'));
+        console.log(chalk.gray('   Example: relay-add /ip4/1.2.3.4/tcp/4002/ws/p2p/12D3KooW...\n'));
+        return;
+    }
+
+    if (!addr.startsWith('/')) {
+        console.log(chalk.red('\n❌ Invalid multiaddr: must start with /\n'));
+        return;
+    }
+    if (!addr.includes('/p2p/')) {
+        console.log(chalk.red('\n❌ Multiaddr must include /p2p/<PeerId> component\n'));
+        return;
+    }
+
+    if (relayAddresses.includes(addr)) {
+        console.log(chalk.yellow('\n⚠️  Relay already in list\n'));
+        return;
+    }
+
+    relayAddresses.push(addr);
+    console.log(chalk.cyan(`\n📡 Connecting to relay: ${addr}\n`));
+
+    try {
+        const ma = multiaddr(addr);
+        await node.dial(ma);
+        console.log(chalk.green('✅ Relay connected!\n'));
+    } catch (err) {
+        console.log(chalk.red(`❌ Relay connection failed: ${err.message}\n`));
+        console.log(chalk.gray('   The address was saved — it will be retried on "relay-connect".\n'));
+    }
+}
+
+/**
+ * Reconnect to all saved relay addresses.
+ */
+async function cmdRelayConnect() {
+    if (relayAddresses.length === 0) {
+        console.log(chalk.yellow('\n⚠️  No relay addresses configured. Use "relay-add <multiaddr>" first.\n'));
+        return;
+    }
+
+    console.log(chalk.cyan(`\n📡 Connecting to ${relayAddresses.length} relay(s)...\n`));
+
+    for (const addr of relayAddresses) {
+        try {
+            const ma = multiaddr(addr);
+            await node.dial(ma);
+            console.log(chalk.green(`  ✅ ${addr.slice(0, 50)}...`));
+        } catch (err) {
+            console.log(chalk.red(`  ❌ ${addr.slice(0, 50)}... — ${err.message}`));
+        }
+    }
+    console.log('');
+}
+
+/**
+ * Remove a relay address by index.
+ * @param {string|undefined} indexArg
+ */
+function cmdRelayRemove(indexArg) {
+    if (relayAddresses.length === 0) {
+        console.log(chalk.yellow('\n⚠️  No relay addresses configured.\n'));
+        return;
+    }
+
+    if (indexArg === undefined) {
+        console.log(chalk.red('\n❌ Usage: relay-remove <n>\n'));
+        return;
+    }
+
+    const idx = parseInt(indexArg, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= relayAddresses.length) {
+        console.log(chalk.red(`\n❌ Index out of range (1–${relayAddresses.length})\n`));
+        return;
+    }
+
+    const removed = relayAddresses.splice(idx, 1)[0];
+    console.log(chalk.yellow(`\n🗑️  Removed relay: ${removed}\n`));
+}
+
+function cmdRelayList() {
+    if (relayAddresses.length === 0) {
+        console.log(chalk.yellow('\n⚠️  No relay addresses configured. Use "relay-add <multiaddr>" to add one.\n'));
+        return;
+    }
+
+    console.log(chalk.cyan(`\n📡 Relay Servers (${relayAddresses.length}):\n`));
+
+    relayAddresses.forEach((addr, i) => {
+        // Check if we're currently connected to this relay's peer
+        const peerIdMatch = addr.match(/\/p2p\/(.+)$/);
+        const relayPeerId = peerIdMatch ? peerIdMatch[1] : null;
+        const isConnected = relayPeerId && connectedPeers.has(relayPeerId);
+        const status = isConnected ? chalk.green('[CONNECTED]') : chalk.gray('[DISCONNECTED]');
+
+        console.log(chalk.white(`  ${i + 1}. `) + status);
+        console.log(chalk.gray(`     ${addr}\n`));
+    });
+}
+
+// ========================================
 // CLI Interface
 // ========================================
 
@@ -613,6 +731,28 @@ function startCLI() {
             case 'session':
             case 'ss':
                 console.log(formatSessionDisplay());
+                break;
+
+            // ── Relay commands ──────────────────────────────────────────────
+
+            case 'relay-add':
+            case 'ra':
+                await cmdRelayAdd(args.join(' '));
+                break;
+
+            case 'relay-list':
+            case 'rl':
+                cmdRelayList();
+                break;
+
+            case 'relay-connect':
+            case 'rc':
+                await cmdRelayConnect();
+                break;
+
+            case 'relay-remove':
+            case 'rr':
+                cmdRelayRemove(args[0]);
                 break;
 
             // ── General ─────────────────────────────────────────────────────

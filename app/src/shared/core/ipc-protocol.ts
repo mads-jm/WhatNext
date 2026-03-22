@@ -219,9 +219,35 @@ export const IPC_CHANNELS = {
     SPOTIFY_RESUME_PLAYBACK: 'spotify:resume-playback',
     SPOTIFY_SKIP_NEXT: 'spotify:skip-next',
     SPOTIFY_SKIP_PREVIOUS: 'spotify:skip-previous',
+    SPOTIFY_SEEK_PLAYBACK: 'spotify:seek-playback',
 
     // Enhanced playlist polling with attribution data (renderer → main)
     SPOTIFY_GET_PLAYLIST_TRACKS_FULL: 'spotify:get-playlist-tracks-full',
+    SPOTIFY_GET_PLAYLIST_SNAPSHOT: 'spotify:get-playlist-snapshot',
+    SPOTIFY_GET_PLAYLIST_TRACKS_FROM: 'spotify:get-playlist-tracks-from',
+
+    // Companion server (renderer ↔ main)
+    COMPANION_START: 'companion:start',
+    COMPANION_STOP: 'companion:stop',
+    COMPANION_GET_INFO: 'companion:get-info',
+    COMPANION_TIME_REQUEST_RESPOND: 'companion:time-request-respond',
+    COMPANION_QR_CODE: 'companion:qr-code',
+    COMPANION_RELAY_START: 'companion:relay-start',
+    COMPANION_RELAY_STOP: 'companion:relay-stop',
+    COMPANION_RELAY_INFO: 'companion:relay-info',
+
+    // Companion state push (renderer → main, forwarded to phone clients)
+    COMPANION_PUSH_PLAYBACK: 'companion:push-playback',
+    COMPANION_PUSH_TRACKS: 'companion:push-tracks',
+    COMPANION_PUSH_PARTICIPANTS: 'companion:push-participants',
+    COMPANION_PUSH_TURN: 'companion:push-turn',
+    COMPANION_PUSH_SESSION_SNAPSHOT: 'companion:push-session-snapshot',
+
+    // Companion events (main → renderer)
+    COMPANION_CLIENT_JOINED: 'companion:client-joined',
+    COMPANION_CLIENT_LEFT: 'companion:client-left',
+    COMPANION_REACTION: 'companion:reaction',
+    COMPANION_TIME_REQUEST: 'companion:time-request',
 } as const;
 
 // ========================================
@@ -273,6 +299,14 @@ export interface SpotifyFullTrackItem {
     albumArtUrl?: string;
     addedAt: string;
     addedBySpotifyId: string;   // Spotify user ID for attribution
+    addedByDisplayName?: string; // Spotify display name (when available)
+}
+
+export interface SpotifyPlaylistSnapshotResult {
+    success: boolean;
+    snapshotId?: string;
+    total?: number;
+    error?: string;
 }
 
 export interface SpotifyPlaylistTracksFullResult {
@@ -401,6 +435,39 @@ export interface ReplicationPullResponsePayload {
         deleted?: boolean;
     }>;
     checkpoint: string;
+}
+
+// ========================================
+// Companion Payloads
+// ========================================
+
+export interface CompanionStartResult {
+    port: number;
+    localIp: string;
+}
+
+export interface CompanionInfoResult {
+    port: number;
+    localIp: string;
+    connectedClients: number;
+}
+
+export interface CompanionClientEventPayload {
+    clientId: string;
+    displayName: string;
+}
+
+export interface CompanionReactionPayload {
+    clientId: string;
+    displayName: string;
+    emoji: string;
+    trackId: string | null;
+}
+
+export interface CompanionTimeRequestPayload {
+    clientId: string;
+    displayName: string;
+    trackId: string | null;
 }
 
 /**

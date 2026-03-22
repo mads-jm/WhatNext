@@ -144,3 +144,12 @@ export interface FileTransferMetadata {
     mimeType: string;
     chunks: number;
 }
+
+/**
+ * Replication sink: pushes local changes to remote peers.
+ * Services accept this as an optional dependency to stay decoupled from IPC/window.electron.
+ */
+export type ReplicationSink = (
+    collection: string,
+    documents: Array<{ id: string; data: Record<string, unknown>; updatedAt: string }>
+) => Promise<void>;

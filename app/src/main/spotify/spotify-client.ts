@@ -115,6 +115,42 @@ export async function getCurrentUser(): Promise<{
 }
 
 /**
+ * Get a public Spotify user's profile by ID.
+ * Returns display_name (and other public fields).
+ */
+export async function getUserProfile(userId: string): Promise<{
+    id: string;
+    display_name: string;
+    images: Array<{ url: string; height: number; width: number }>;
+}> {
+    return spotifyFetch(`/users/${encodeURIComponent(userId)}`);
+}
+
+/**
+ * Batch-resolve Spotify user IDs to display names.
+ * Fires one request per unique ID (Spotify has no batch endpoint).
+ * Failures are silently skipped — the caller falls back to the raw ID.
+ */
+export async function resolveSpotifyDisplayNames(
+    userIds: string[]
+): Promise<Map<string, string>> {
+    const results = new Map<string, string>();
+    await Promise.all(
+        userIds.map(async (id) => {
+            try {
+                const profile = await getUserProfile(id);
+                if (profile.display_name) {
+                    results.set(id, profile.display_name);
+                }
+            } catch {
+                // Skip — caller will use the raw Spotify ID as fallback
+            }
+        })
+    );
+    return results;
+}
+
+/**
  * Check if client is authenticated
  */
 export function isAuthenticated(): boolean {
@@ -246,9 +282,93 @@ export async function skipToPrevious(deviceId?: string): Promise<void> {
     await spotifyFetchRaw(`/me/player/previous${query}`, { method: 'POST' });
 }
 
+/**
+ * Seek to a position in the currently playing track.
+ */
+export async function seekToPosition(positionMs: number, deviceId?: string): Promise<void> {
+    const params = new URLSearchParams({ position_ms: String(positionMs) });
+    if (deviceId) params.set('device_id', deviceId);
+    await spotifyFetchRaw(`/me/player/seek?${params}`, { method: 'PUT' });
+}
+
 // ========================================
 // Enhanced Playlist Polling (with attribution)
 // ========================================
+
+// In-memory cache for Spotify display names — survives across polls
+const displayNameCache = new Map<string, string>();
+
+/**
+ * Lightweight check: fetch only snapshot_id and total track count.
+ * One tiny API call (~200 bytes) to decide whether a full fetch is needed.
+ */
+export async function getPlaylistSnapshot(playlistId: string): Promise<{
+    snapshotId: string;
+    total: number;
+}> {
+    const data = await spotifyFetch<{
+        snapshot_id: string;
+        tracks: { total: number };
+    }>(`/playlists/${playlistId}?fields=${encodeURIComponent('snapshot_id,tracks.total')}`);
+    return { snapshotId: data.snapshot_id, total: data.tracks.total };
+}
+
+type RawPlaylistTrackItem = {
+    track: { id: string; name: string; artists: Array<{ name: string }>; album: { name: string; images: Array<{ url: string }> }; duration_ms: number } | null;
+    added_at: string;
+    added_by: { id: string };
+};
+
+/**
+ * Fetch tracks from a playlist starting at a given offset.
+ * Paginates automatically from `offset` to end. Uses field filtering.
+ */
+export async function getPlaylistTracksFrom(playlistId: string, offset: number, knownSnapshotId?: string): Promise<{
+    tracks: SpotifyFullTrackItem[];
+    total: number;
+    snapshotId: string;
+}> {
+    const fields = 'items(track(id,name,artists(name),album(name,images),duration_ms),added_at,added_by(id)),total,next,offset,limit';
+    const allItems: RawPlaylistTrackItem[] = [];
+
+    type PageResponse = { items: RawPlaylistTrackItem[]; total: number; next: string | null };
+    let url: string | null = `/playlists/${playlistId}/tracks?offset=${offset}&limit=100&fields=${encodeURIComponent(fields)}`;
+    let total = 0;
+
+    while (url) {
+        const pageData: PageResponse = await spotifyFetch<PageResponse>(url);
+        allItems.push(...pageData.items);
+        total = pageData.total;
+        url = pageData.next;
+    }
+
+    // Use provided snapshotId if available, otherwise fetch separately
+    let snapshotId: string;
+    if (knownSnapshotId) {
+        snapshotId = knownSnapshotId;
+    } else {
+        const snapshotData = await spotifyFetch<{ snapshot_id: string }>(
+            `/playlists/${playlistId}?fields=snapshot_id`
+        );
+        snapshotId = snapshotData.snapshot_id;
+    }
+
+    const tracks = mapRawItems(allItems);
+
+    // Resolve only unknown display names
+    const unknownUserIds = [...new Set(tracks.map((t) => t.addedBySpotifyId))]
+        .filter((id) => !displayNameCache.has(id));
+    if (unknownUserIds.length > 0) {
+        const resolved = await resolveSpotifyDisplayNames(unknownUserIds);
+        for (const [id, name] of resolved) displayNameCache.set(id, name);
+    }
+    for (const track of tracks) {
+        const cached = displayNameCache.get(track.addedBySpotifyId);
+        if (cached) track.addedByDisplayName = cached;
+    }
+
+    return { tracks, total, snapshotId };
+}
 
 /**
  * Fetch all tracks from a playlist including who added each one.
@@ -259,37 +379,11 @@ export async function getPlaylistTracksFull(playlistId: string): Promise<{
     total: number;
     snapshotId: string;
 }> {
-    const fields = 'snapshot_id,tracks.items(track(id,name,artists(name),album(name,images),duration_ms),added_at,added_by(id)),tracks.total,tracks.next,tracks.offset,tracks.limit';
-    const firstData = await spotifyFetch<{
-        snapshot_id: string;
-        tracks: {
-            items: Array<{
-                track: { id: string; name: string; artists: Array<{ name: string }>; album: { name: string; images: Array<{ url: string }> }; duration_ms: number } | null;
-                added_at: string;
-                added_by: { id: string };
-            }>;
-            total: number;
-            next: string | null;
-        };
-    }>(`/playlists/${playlistId}?fields=${encodeURIComponent(fields)}`);
+    return getPlaylistTracksFrom(playlistId, 0);
+}
 
-    const snapshotId = firstData.snapshot_id;
-    const allItems = [...firstData.tracks.items];
-    let total = firstData.tracks.total;
-    let nextUrl = firstData.tracks.next;
-
-    while (nextUrl) {
-        const pageData = await spotifyFetch<{
-            items: typeof allItems;
-            total: number;
-            next: string | null;
-        }>(nextUrl);
-        allItems.push(...pageData.items);
-        total = pageData.total;
-        nextUrl = pageData.next;
-    }
-
-    const tracks: SpotifyFullTrackItem[] = allItems
+function mapRawItems(items: RawPlaylistTrackItem[]): SpotifyFullTrackItem[] {
+    return items
         .filter((item) => item.track !== null)
         .map((item) => {
             const track = item.track!;
@@ -304,6 +398,4 @@ export async function getPlaylistTracksFull(playlistId: string): Promise<{
                 addedBySpotifyId: item.added_by.id,
             };
         });
-
-    return { tracks, total, snapshotId };
 }
