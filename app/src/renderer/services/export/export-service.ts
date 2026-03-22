@@ -5,10 +5,7 @@
 
 import { getDatabase } from '../../db/database';
 import { findTracksByIds } from '../../db/query-helpers';
-import {
-    ALLOWED_REACTIONS,
-    type ReactionEmoji,
-} from '../../db/services/reaction-service';
+import { ALLOWED_REACTIONS, type ReactionEmoji } from '../../../shared/core/reactions';
 import type { ExportPlaylist, ExportTrack, ExportComment, ExportFormat } from './export-types';
 import { formatAsMarkdown } from './markdown-formatter';
 import { formatAsHtml } from './html-formatter';
@@ -21,8 +18,12 @@ import type { CommentDocType } from '../../db/schemas';
 export async function exportAndSave(playlistId: string, format: ExportFormat): Promise<void> {
     const content = await exportPlaylist(playlistId, format);
     const ext = format === 'markdown' ? 'md' : 'html';
+    const defaultDir = localStorage.getItem('whatnext:defaultExportDir');
+    const defaultPath = defaultDir
+        ? `${defaultDir}/playlist-export.${ext}`
+        : `playlist-export.${ext}`;
     const result = await window.electron?.dialog.saveFile({
-        defaultPath: `playlist-export.${ext}`,
+        defaultPath,
         filters: [{ name: format === 'markdown' ? 'Markdown' : 'HTML', extensions: [ext] }],
     });
     if (result && !result.canceled && result.filePath) {

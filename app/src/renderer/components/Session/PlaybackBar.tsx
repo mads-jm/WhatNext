@@ -12,9 +12,16 @@ interface PlaybackBarProps {
 }
 
 export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
-    const { state, error } = usePlaybackState(enabled);
+    const { state, error, refresh } = usePlaybackState(enabled);
 
     const spotify = window.electron?.spotify;
+
+    const handleRewind30 = async () => {
+        if (!spotify || !state) return;
+        const newPosition = Math.max(0, state.progressMs - 30_000);
+        await spotify.seekPlayback({ positionMs: newPosition });
+        refresh();
+    };
 
     const handlePlayPause = async () => {
         if (!spotify) return;
@@ -42,8 +49,8 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
 
     if (error) {
         return (
-            <div className="card card-body flex items-center gap-3 text-sm text-gray-500">
-                <i className="fa-brands fa-spotify text-green-500" />
+            <div className="card card-body flex items-center gap-3 text-sm text-on-surface-variant">
+                <i className="fa-brands fa-spotify text-primary" />
                 <span>Spotify unavailable: {error}</span>
             </div>
         );
@@ -51,11 +58,11 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
 
     if (!state) {
         return (
-            <div className="card card-body flex items-center gap-3 text-sm text-gray-500">
-                <i className="fa-brands fa-spotify text-green-500" />
+            <div className="card card-body flex items-center gap-3 text-sm text-on-surface-variant">
+                <i className="fa-brands fa-spotify text-primary" />
                 <span>No active Spotify device.</span>
                 <button
-                    className="btn-ghost text-xs text-blue-400 hover:text-blue-300 p-0"
+                    className="btn-ghost text-xs text-primary hover:text-primary-dim p-0"
                     onClick={handleOpenSpotify}
                 >
                     Open Spotify
@@ -81,10 +88,10 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
             <div className="flex-1 min-w-0">
                 {state.trackTitle ? (
                     <div className="space-y-0.5">
-                        <p className="text-sm font-medium text-gray-100 truncate">
+                        <p className="text-sm font-medium text-on-surface truncate">
                             {state.trackTitle}
                         </p>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2 text-xs text-on-surface-variant">
                             {state.trackArtists && (
                                 <span className="truncate">{state.trackArtists.join(', ')}</span>
                             )}
@@ -97,7 +104,7 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
                         </div>
                     </div>
                 ) : (
-                    <p className="text-sm text-gray-500">Nothing playing</p>
+                    <p className="text-sm text-on-surface-variant">Nothing playing</p>
                 )}
             </div>
 
@@ -105,6 +112,14 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
             <div className="flex items-center gap-2">
                 <button className="btn-ghost p-2" onClick={handleSkipPrevious} title="Previous">
                     <i className="fa-solid fa-backward-step" />
+                </button>
+                <button
+                    className="btn-ghost p-2 relative"
+                    onClick={handleRewind30}
+                    title="Rewind 30 seconds"
+                >
+                    <i className="fa-solid fa-rotate-left text-sm" />
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[8px] font-bold leading-none">30</span>
                 </button>
                 <button
                     className="btn-primary p-2 rounded-full w-9 h-9 flex items-center justify-center"
@@ -120,16 +135,16 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
 
             {/* Progress bar */}
             <div className="flex items-center gap-2 w-48 shrink-0">
-                <span className="text-xs text-gray-500 w-8 text-right">
+                <span className="text-xs text-on-surface-variant w-8 text-right">
                     {formatTime(state.progressMs)}
                 </span>
-                <div className="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
+                <div className="flex-1 h-1 bg-surface-high rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-green-500 rounded-full transition-all"
+                        className="h-full bg-primary rounded-full transition-all"
                         style={{ width: `${progressPercent}%` }}
                     />
                 </div>
-                <span className="text-xs text-gray-500 w-8">
+                <span className="text-xs text-on-surface-variant w-8">
                     {formatTime(state.durationMs)}
                 </span>
             </div>

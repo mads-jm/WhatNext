@@ -15,17 +15,17 @@ export function ConnectionStatus() {
     const stateConfig = {
         offline: {
             icon: 'fa-circle',
-            color: 'text-gray-500',
+            color: 'text-on-surface-variant',
             label: 'Offline',
         },
         connecting: {
             icon: 'fa-circle-notch fa-spin',
-            color: 'text-yellow-500',
+            color: 'text-secondary',
             label: 'Connecting',
         },
         connected: {
             icon: 'fa-circle',
-            color: 'text-green-500',
+            color: 'text-primary',
             label: 'Connected',
         },
     };
@@ -33,9 +33,9 @@ export function ConnectionStatus() {
     const config = stateConfig[state];
 
     return (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-900 border border-gray-800">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-outline-variant">
             <i className={`fa-solid ${config.icon} ${config.color} text-xs`} />
-            <span className="text-sm text-gray-300">{config.label}</span>
+            <span className="text-sm text-on-surface">{config.label}</span>
             {state === 'connected' && peerCount > 0 && (
                 <span className="badge-primary ml-1">{peerCount}</span>
             )}

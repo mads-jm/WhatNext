@@ -3,7 +3,7 @@
  * Intermediate representation for playlist export.
  */
 
-import type { ReactionEmoji } from '../../db/services/reaction-service';
+import type { ReactionEmoji } from '../../../shared/core/reactions';
 
 export interface ExportComment {
     author: string;

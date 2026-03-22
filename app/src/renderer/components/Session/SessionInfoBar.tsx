@@ -27,7 +27,7 @@ export function SessionInfoBar({
     return (
         <div className="card card-body flex items-center justify-between" data-testid="session-info-bar">
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center overflow-hidden shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-dim to-primary flex items-center justify-center overflow-hidden shrink-0">
                     {imgSrc ? (
                         <img
                             src={imgSrc}
@@ -38,12 +38,12 @@ export function SessionInfoBar({
                             }}
                         />
                     ) : (
-                        <i className="fa-solid fa-music text-white text-sm" />
+                        <i className="fa-solid fa-music text-on-surface text-sm" />
                     )}
                 </div>
                 <div>
-                    <p className="font-semibold text-gray-100">{playlistName ?? 'Loading...'}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-semibold text-on-surface">{playlistName ?? 'Loading...'}</p>
+                    <p className="text-xs text-on-surface-variant">
                         {trackCount} tracks &middot; {participantCount} participant{participantCount !== 1 ? 's' : ''}
                     </p>
                 </div>

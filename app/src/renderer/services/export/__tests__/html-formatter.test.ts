@@ -1,22 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-
-// Mock reaction-service to break the reaction-service → database → window import chain.
-// The formatters only use REACTION_DISPLAY at runtime; the database is never needed.
-vi.mock('../../../db/services/reaction-service', () => ({
-    REACTION_DISPLAY: {
-        fire: '🔥',
-        heart: '❤️',
-        thumbsdown: '👎',
-        mindblown: '🤯',
-        sleeping: '😴',
-        party: '🎉',
-    },
-    ALLOWED_REACTIONS: ['fire', 'heart', 'thumbsdown', 'mindblown', 'sleeping', 'party'],
-}));
+import { describe, it, expect } from 'vitest';
 
 import { formatAsHtml } from '../html-formatter';
 import type { ExportPlaylist, ExportTrack, ExportComment } from '../export-types';
-import type { ReactionEmoji } from '../../../db/services/reaction-service';
+import type { ReactionEmoji } from '../../../../shared/core/reactions';
 
 function makeTrack(overrides: Partial<ExportTrack> = {}): ExportTrack {
     return {

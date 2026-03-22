@@ -10,8 +10,10 @@ import { LibraryView } from '../Library/LibraryView';
 import { SessionView } from '../Session/SessionView';
 import { SpotifyImport } from '../Spotify/SpotifyImport';
 import { P2PStatus } from '../P2P/P2PStatus';
+import { P2PSettings } from '../Settings/P2PSettings';
 import { DevDashboard } from '../Dev/DevDashboard';
 import { ProfileSettings } from '../Settings/ProfileSettings';
+import { StorageSettings } from '../Settings/StorageSettings';
 
 export function ViewRouter() {
     const activeView = useNavigationStore((s) => s.activeView);
@@ -50,22 +52,11 @@ export function ViewRouter() {
         case 'settings-general':
             return <ProfileSettings />;
 
-        case 'settings-p2p':
-        case 'settings-storage': {
-            const settingsTitle: Record<string, string> = {
-                'settings-p2p': 'P2P Configuration',
-                'settings-storage': 'Storage Settings',
-            };
-            return (
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <div className="text-center text-gray-600">
-                        <i className="fa-solid fa-gear text-4xl mb-4" />
-                        <h3 className="text-lg font-medium mb-2">{settingsTitle[activeView]}</h3>
-                        <p className="text-sm">Configuration options coming soon</p>
-                    </div>
-                </div>
-            );
-        }
+        case 'p2p-config':
+            return <P2PSettings />;
+
+        case 'settings-storage':
+            return <StorageSettings />;
 
         default:
             return null;

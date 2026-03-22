@@ -32,6 +32,7 @@ import { identify } from '@libp2p/identify';
 import { circuitRelayServer } from '@libp2p/circuit-relay-v2';
 import { generateKeyPair } from '@libp2p/crypto/keys';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { startCompanionTunnel } from './companion-tunnel.mjs';
 
 const KEY_PATH = process.env.RELAY_KEY_PATH ?? './relay-key.json';
 const TCP_PORT = parseInt(process.env.RELAY_TCP_PORT ?? '4001', 10);
@@ -148,6 +149,15 @@ async function main() {
     }
     console.log('');
     console.log('Key file:', KEY_PATH, '(keep this to preserve peer ID across restarts)');
+
+    // Start companion tunnel
+    try {
+        const { port: companionPort } = await startCompanionTunnel();
+        console.log(`\nCompanion tunnel available on port ${companionPort}`);
+        console.log('Phone viewers connect to: http://<relay-ip>:' + companionPort + '/s/<SESSION_CODE>');
+    } catch (err) {
+        console.warn('[Relay] Companion tunnel failed to start:', err.message);
+    }
 
     // Graceful shutdown
     const shutdown = async () => {

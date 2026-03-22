@@ -13,9 +13,9 @@ import { useTrackSource } from '../../hooks/useTrackSource';
 import { useSessionReplication } from '../../hooks/useSessionReplication';
 import { getDatabase } from '../../db/database';
 import type { PlaylistDocType, TrackDocType, UserDocType } from '../../db/schemas';
+import { computeEffectiveTurn } from '../../utils/turn-helpers';
+import { advanceTurn } from '../../db/services/playlist-service';
 import { SessionSetup } from './SessionSetup';
-import { PlaybackBar } from './PlaybackBar';
-import { PlaylistComments } from '../Social/PlaylistComments';
 import { SessionEmptyState } from './SessionEmptyState';
 import { SessionHeader } from './SessionHeader';
 import { TurnIndicator } from './TurnIndicator';
@@ -23,6 +23,8 @@ import { SessionInfoBar } from './SessionInfoBar';
 import { ShareSessionPanel } from './ShareSessionPanel';
 import { ParticipantRoster } from './ParticipantRoster';
 import { SessionTrackList } from './SessionTrackList';
+import { TrackEndingWarning } from './TrackEndingWarning';
+import { SessionFeed } from './SessionFeed';
 
 interface SessionViewProps {
     playlistId?: string;
@@ -123,9 +125,15 @@ export function SessionView({ playlistId }: SessionViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionState?.participantIds.join(',')]);
 
-    // Resolve current turn user display name
+    // Resolve current turn user display name using effective (track-derived) turn user
+    const effectiveTurnUserId = (() => {
+        if (!playlist || playlist.queueMode !== 'turn_taking' || playlist.isComplete) return undefined;
+        const state = computeEffectiveTurn(playlist, tracks);
+        return state.effectiveTurnUserId;
+    })();
+
     useEffect(() => {
-        const turnId = playlist?.currentTurnUserId;
+        const turnId = effectiveTurnUserId;
         if (!turnId) { setCurrentTurnUser(null); return; }
         let alive = true;
 
@@ -136,7 +144,20 @@ export function SessionView({ playlistId }: SessionViewProps) {
         });
 
         return () => { alive = false; };
-    }, [playlist?.currentTurnUserId]);
+    }, [effectiveTurnUserId]);
+
+    // Auto-advance when track history shows the quota is full but DB hasn't caught up
+    const turnQuotaFull = effectiveTurnUserId !== undefined &&
+        playlist !== null &&
+        playlist.queueMode === 'turn_taking' &&
+        !playlist.isComplete &&
+        computeEffectiveTurn(playlist, tracks).turnQuotaFull;
+
+    useEffect(() => {
+        if (turnQuotaFull && activeId) {
+            advanceTurn(activeId);
+        }
+    }, [turnQuotaFull, activeId]);
 
     const isSpotifyPlayback = sessionState?.playbackProvider.type === 'spotify';
     const spotifyContextUri = playlist?.linkedSpotifyId
@@ -152,13 +173,21 @@ export function SessionView({ playlistId }: SessionViewProps) {
     // Replicate session collections to/from connected peers when session is active
     useSessionReplication(isActiveSession);
 
-    const { error: trackSourceError } = useTrackSource({
+    const { error: trackSourceError, syncNow, syncing: trackSourceSyncing } = useTrackSource({
         config: sessionState?.trackSource ?? { type: 'manual' },
         playlistId: activeId ?? '',
         enabled: isActiveSession,
     });
 
     const { state: playbackState } = usePlaybackState(isActiveSession && isSpotifyPlayback);
+
+    // Determine if there's a next track after the currently playing one
+    const hasNextTrack = (() => {
+        if (!playbackState?.currentTrackExternalId || tracks.length === 0) return true; // no warning when unknown
+        const currentIdx = tracks.findIndex((t) => t.spotifyId === playbackState.currentTrackExternalId);
+        if (currentIdx === -1) return true; // playing something not in our list
+        return currentIdx < tracks.length - 1;
+    })();
 
     // ----------------------------------------
     // Empty state
@@ -177,9 +206,11 @@ export function SessionView({ playlistId }: SessionViewProps) {
     // ----------------------------------------
     // Active session
     // ----------------------------------------
-    const isMyTurn =
-        playlist?.queueMode === 'turn_taking' &&
-        playlist.currentTurnUserId === userId;
+    // Derive turn state from actual track list — resilient to stored counter drift
+    const turnState = playlist?.queueMode === 'turn_taking' && !playlist.isComplete
+        ? computeEffectiveTurn(playlist, tracks)
+        : null;
+    const isMyTurn = turnState !== null && turnState.effectiveTurnUserId === userId;
 
     const handleEndSession = () => {
         endSession();
@@ -187,82 +218,83 @@ export function SessionView({ playlistId }: SessionViewProps) {
     };
 
     return (
-        <div className="space-y-4">
-            <SessionHeader
-                onEndSession={handleEndSession}
-                trackSourceError={trackSourceError}
-            />
-
-            {isSpotifyPlayback && (
-                <PlaybackBar enabled={isPlaybackOwner} contextUri={spotifyContextUri} />
-            )}
-
-            {/* Playback ownership controls — shown when Spotify is the provider */}
-            {isSpotifyPlayback && (
-                <div className="card card-body flex items-center justify-between py-2">
-                    <span className="text-xs text-gray-400">
-                        {isPlaybackOwner
-                            ? 'You control playback'
-                            : `Playback owned by ${sessionState?.playbackOwnerId}`}
-                    </span>
-                    <div className="flex gap-2">
-                        {!isPlaybackOwner && (isCoHost || userId === sessionState?.hostId) && (
-                            <button
-                                className="btn-ghost text-xs"
-                                onClick={() => userId && takePlayback(userId)}
-                            >
-                                Take Playback
-                            </button>
-                        )}
-                        {isPlaybackOwner && coHostIds.length > 0 && (
-                            <select
-                                className="bg-gray-700 text-white text-xs rounded px-2 py-1"
-                                defaultValue=""
-                                onChange={(e) => {
-                                    if (e.target.value) handOffPlayback(e.target.value);
-                                    e.target.value = '';
-                                }}
-                            >
-                                <option value="" disabled>Hand off to…</option>
-                                {coHostIds.map((id) => (
-                                    <option key={id} value={id}>{id}</option>
-                                ))}
-                            </select>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {playlist?.queueMode === 'turn_taking' && !playlist.isComplete && (
-                <TurnIndicator
-                    isMyTurn={isMyTurn}
-                    currentTurnDisplayName={currentTurnUser?.displayName}
-                    tracksPerTurn={playlist.tracksPerTurn}
-                    turnTracksAdded={playlist.turnTracksAdded}
-                    turnsCompleted={playlist.turnsCompleted}
-                    maxTurns={playlist.maxTurns}
+        <div className="flex gap-4 h-full">
+            {/* Main content */}
+            <div className="flex-1 space-y-4 overflow-y-auto">
+                <SessionHeader
+                    onEndSession={handleEndSession}
+                    trackSourceError={trackSourceError}
                 />
-            )}
 
-            <SessionInfoBar
-                playlistName={playlist?.playlistName}
-                coverArtLocalPath={playlist?.coverArtLocalPath}
-                coverArtUrl={playlist?.coverArtUrl}
-                trackCount={tracks.length}
-                participantCount={participants.length}
-                onShare={() => setShowSharePanel((v) => !v)}
-            />
+                <TrackEndingWarning playbackState={playbackState} hasNextTrack={hasNextTrack} />
 
-            {showSharePanel && (
-                <ShareSessionPanel sessionId={activeId} />
-            )}
+                {/* Playback ownership controls — shown when Spotify is the provider */}
+                {isSpotifyPlayback && (
+                    <div className="card card-body flex items-center justify-between py-2">
+                        <span className="text-xs text-on-surface-variant">
+                            {isPlaybackOwner
+                                ? 'You control playback'
+                                : `Playback owned by ${sessionState?.playbackOwnerId}`}
+                        </span>
+                        <div className="flex gap-2">
+                            {!isPlaybackOwner && (isCoHost || userId === sessionState?.hostId) && (
+                                <button
+                                    className="btn-ghost text-xs"
+                                    onClick={() => userId && takePlayback(userId)}
+                                >
+                                    Take Playback
+                                </button>
+                            )}
+                            {isPlaybackOwner && coHostIds.length > 0 && (
+                                <select
+                                    className="bg-surface-high text-on-surface text-xs rounded px-2 py-1"
+                                    defaultValue=""
+                                    onChange={(e) => {
+                                        if (e.target.value) handOffPlayback(e.target.value);
+                                        e.target.value = '';
+                                    }}
+                                >
+                                    <option value="" disabled>Hand off to...</option>
+                                    {coHostIds.map((id) => (
+                                        <option key={id} value={id}>{id}</option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                    </div>
+                )}
 
-            <div className="grid grid-cols-3 gap-4">
+                {turnState && playlist && (
+                    <TurnIndicator
+                        isMyTurn={isMyTurn}
+                        currentTurnDisplayName={currentTurnUser?.displayName}
+                        currentTurnAvatarUrl={currentTurnUser?.avatarUrl}
+                        currentTurnAvatarLocalPath={currentTurnUser?.avatarLocalPath}
+                        tracksPerTurn={playlist.tracksPerTurn}
+                        turnTracksAdded={turnState.turnTracksAdded}
+                        turnsCompleted={playlist.turnsCompleted}
+                        maxTurns={playlist.maxTurns}
+                    />
+                )}
+
+                <SessionInfoBar
+                    playlistName={playlist?.playlistName}
+                    coverArtLocalPath={playlist?.coverArtLocalPath}
+                    coverArtUrl={playlist?.coverArtUrl}
+                    trackCount={tracks.length}
+                    participantCount={participants.length}
+                    onShare={() => setShowSharePanel((v) => !v)}
+                />
+
+                {showSharePanel && (
+                    <ShareSessionPanel sessionId={activeId} />
+                )}
+
                 <ParticipantRoster
                     participants={participants}
                     tracks={tracks}
                     currentUserId={userId}
-                    currentTurnUserId={playlist?.currentTurnUserId}
+                    currentTurnUserId={turnState?.effectiveTurnUserId ?? playlist?.currentTurnUserId}
                     turnOrder={playlist?.turnOrder}
                 />
 
@@ -272,10 +304,13 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     playlistId={activeId}
                     isLiveSync={sessionState?.trackSource.type === 'spotify-collab'}
                     currentTrackExternalId={playbackState?.currentTrackExternalId}
+                    onSyncNow={syncNow ?? undefined}
+                    syncing={trackSourceSyncing}
                 />
             </div>
 
-            <PlaylistComments playlistId={activeId} />
+            {/* Session Feed sidebar */}
+            <SessionFeed playlistId={activeId} />
         </div>
     );
 }

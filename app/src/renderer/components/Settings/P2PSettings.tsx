@@ -91,13 +91,13 @@ export function P2PSettings() {
 
     return (
         <div className="p-6 max-w-2xl">
-            <h2 className="text-lg font-semibold text-white mb-1">Relay Servers</h2>
-            <p className="text-sm text-gray-400 mb-6">
+            <h2 className="text-lg font-semibold text-on-surface mb-1">Relay Servers</h2>
+            <p className="text-sm text-on-surface-variant mb-6">
                 Relay servers enable WhatNext sessions between friends on different networks.
                 Your session data routes through the relay you choose — WhatNext does not
                 control this. You can{' '}
                 <button
-                    className="text-blue-400 underline cursor-pointer"
+                    className="text-primary underline cursor-pointer"
                     onClick={() => window.electron?.shell.openExternal('https://github.com/mads-jm/WhatNext/tree/main/relay')}
                 >
                     self-host the relay
@@ -108,28 +108,28 @@ export function P2PSettings() {
             {/* Current relay list */}
             <div className="space-y-2 mb-6">
                 {relays.length === 0 && (
-                    <div className="text-sm text-gray-500 py-3 text-center border border-dashed border-gray-700 rounded-lg">
+                    <div className="text-sm text-on-surface-variant py-3 text-center border border-dashed border-outline-variant rounded-lg">
                         No relay servers configured. Add one below to enable remote sessions.
                     </div>
                 )}
                 {relays.map((relay) => (
                     <div
                         key={relay.address}
-                        className="flex items-center gap-3 bg-gray-800 rounded-lg px-4 py-3"
+                        className="flex items-center gap-3 bg-surface-high rounded-lg px-4 py-3"
                     >
                         {/* Status dot */}
                         <span
-                            className={`w-2 h-2 rounded-full flex-shrink-0 ${relay.connected ? 'bg-green-400' : 'bg-gray-600'}`}
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${relay.connected ? 'bg-primary' : 'bg-outline-variant'}`}
                             title={relay.connected ? 'Connected' : 'Not connected'}
                         />
                         {/* Address */}
-                        <span className="text-xs text-gray-300 font-mono break-all flex-1">
+                        <span className="text-xs text-on-surface font-mono break-all flex-1">
                             {relay.address}
                         </span>
                         {/* Remove */}
                         <button
                             onClick={() => handleRemove(relay.address)}
-                            className="text-gray-500 hover:text-red-400 transition-colors text-sm flex-shrink-0"
+                            className="text-on-surface-variant hover:text-error transition-colors text-sm flex-shrink-0"
                             title="Remove relay"
                         >
                             ✕
@@ -140,9 +140,10 @@ export function P2PSettings() {
 
             {/* Add new relay */}
             <div className="space-y-2">
-                <label className="text-sm text-gray-300 font-medium">Add Relay Address</label>
+                <label htmlFor="p2p-relay-address" className="text-sm text-on-surface font-medium">Add Relay Address</label>
                 <div className="flex gap-2">
                     <input
+                        id="p2p-relay-address"
                         type="text"
                         value={newAddress}
                         onChange={(e) => {
@@ -151,20 +152,20 @@ export function P2PSettings() {
                         }}
                         onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                         placeholder="/ip4/1.2.3.4/tcp/4001/p2p/12D3KooW…"
-                        className="flex-1 bg-gray-700 text-white text-xs font-mono rounded-lg px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                        className="flex-1 bg-surface-high text-on-surface text-xs font-mono rounded-lg px-3 py-2 border border-outline-variant focus:border-primary focus:outline-none"
                     />
                     <button
                         onClick={handleAdd}
                         disabled={adding || !newAddress.trim()}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm rounded-lg transition-colors"
+                        className="px-4 py-2 bg-primary hover:bg-primary-dim disabled:bg-surface-high disabled:text-on-surface-variant text-surface text-sm rounded-lg transition-colors"
                     >
                         {adding ? 'Adding…' : 'Add'}
                     </button>
                 </div>
                 {addError && (
-                    <p className="text-xs text-red-400">{addError}</p>
+                    <p className="text-xs text-error">{addError}</p>
                 )}
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-on-surface-variant">
                     Paste the multiaddr shown when you start the relay server (includes /p2p/&lt;PeerID&gt;).
                 </p>
             </div>

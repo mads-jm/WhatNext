@@ -37,17 +37,17 @@ export function WelcomeModal() {
             closeOnBackdrop={false}
             closeOnEscape={false}
         >
-            <div className="bg-gray-900 border border-gray-700 rounded-xl p-8 w-full max-w-md shadow-2xl text-center">
+            <div className="bg-surface border border-outline-variant rounded-xl p-8 w-full max-w-md shadow-2xl text-center">
                 <img
                     src={wnorbIcon}
                     alt="WhatNext"
                     className="w-16 h-16 mx-auto mb-4 rounded-2xl"
                 />
 
-                <h2 className="text-2xl font-bold text-gray-100 mb-2">
+                <h2 className="text-2xl font-bold text-on-surface mb-2">
                     Welcome to WhatNext
                 </h2>
-                <p className="text-gray-400 text-sm mb-6">
+                <p className="text-on-surface-variant text-sm mb-6">
                     Choose a name that others will see when you collaborate on
                     playlists.
                 </p>
@@ -72,7 +72,7 @@ export function WelcomeModal() {
                     </button>
                     <button
                         onClick={handleSkip}
-                        className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                        className="text-sm text-on-surface-variant hover:text-on-surface transition-colors"
                     >
                         Skip for now
                     </button>

@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import type { PlaylistDocType, UserDocType } from '../../db/schemas';
 import type { TrackViewModel } from '../../db/types';
 import { setTurnOrder, setTurnConfig, markPlaylistComplete, reopenPlaylist, advanceTurn } from '../../db/services/playlist-service';
+import { inferTurnTracksAdded, resolvedTurnOrder } from '../../utils/turn-helpers';
 
 interface TurnManagementPanelProps {
     playlist: PlaylistDocType;
@@ -35,31 +36,13 @@ function parseHoursInput(raw: string): number | null {
     return Math.round(num * 3_600_000);
 }
 
-/**
- * Derive how many tracks the current turn user has added this turn by walking
- * backwards through the track list and counting their consecutive trailing additions,
- * up to tracksPerTurn. This is resilient to stored counter drift.
- */
-function inferTurnTracksAdded(
-    tracks: TrackViewModel[],
-    currentTurnUserId: string | undefined,
-    tracksPerTurn: number
-): number {
-    if (!currentTurnUserId || tracks.length === 0) return 0;
-    let count = 0;
-    for (let i = tracks.length - 1; i >= 0 && count < tracksPerTurn; i--) {
-        if (tracks[i].addedBy === currentTurnUserId) count++;
-        else break;
-    }
-    return count;
-}
 
 // ─── Small reusable controls ──────────────────────────────────────────────────
 
 function ConfigField({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 w-20 shrink-0">{label}</span>
+            <span className="text-xs text-on-surface-variant w-20 shrink-0">{label}</span>
             {children}
         </div>
     );
@@ -85,7 +68,7 @@ function NumberInput({ value, min = 1, onChange }: { value: number; min?: number
             onChange={(e) => setRaw(e.target.value)}
             onBlur={commit}
             onKeyDown={(e) => e.key === 'Enter' && commit()}
-            className="w-16 bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-200 focus:outline-none focus:border-gray-500 [appearance:textfield]"
+            className="w-16 bg-surface-high border border-outline-variant rounded px-2 py-0.5 text-sm text-on-surface focus:outline-none focus:border-primary [appearance:textfield]"
         />
     );
 }
@@ -95,7 +78,7 @@ function DurationInput({ valueMs, onChange }: { valueMs: number; onChange: (ms: 
         const h = ms / 3_600_000;
         return Number.isInteger(h) ? String(h) : h.toFixed(1);
     };
-    const [raw, setRaw] = useState(toDisplay(valueMs));
+    const [raw, setRaw] = useState(() => toDisplay(valueMs));
 
     useEffect(() => { setRaw(toDisplay(valueMs)); }, [valueMs]);
 
@@ -114,9 +97,9 @@ function DurationInput({ valueMs, onChange }: { valueMs: number; onChange: (ms: 
                 onBlur={commit}
                 onKeyDown={(e) => e.key === 'Enter' && commit()}
                 placeholder="8"
-                className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-200 focus:outline-none focus:border-gray-500"
+                className="w-14 bg-surface-high border border-outline-variant rounded px-2 py-0.5 text-sm text-on-surface focus:outline-none focus:border-primary"
             />
-            <span className="text-xs text-gray-600">hr</span>
+            <span className="text-xs text-outline-variant">hr</span>
         </div>
     );
 }
@@ -124,10 +107,9 @@ function DurationInput({ valueMs, onChange }: { valueMs: number; onChange: (ms: 
 // ─────────────────────────────────────────────────────────────────────────────
 
 function resolvedOrder(playlist: PlaylistDocType, participants: UserDocType[]): string[] {
-    if (playlist.turnOrder?.length) return playlist.turnOrder;
-    const ids = [playlist.ownerId, ...playlist.collaboratorIds];
+    const order = resolvedTurnOrder(playlist);
     // Keep only ids that exist in participants, preserve order
-    return ids.filter((id) => participants.some((p) => p.id === id));
+    return order.filter((id) => participants.some((p) => p.id === id));
 }
 
 function displayName(userId: string, participants: UserDocType[]): string {
@@ -201,42 +183,42 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                 </span>
                 {isComplete ? (
                     <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-on-surface-variant">
                             {playlist.completedFromMode === 'turn_taking' ? 'Turn-taking' : playlist.completedFromMode ?? 'Collaborative'}
                         </span>
                         <button
                             onClick={() => reopenPlaylist(playlist.id)}
-                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            className="text-xs text-primary hover:text-primary-dim transition-colors"
                             title="Reopen and resume from previous mode"
                         >
                             Reopen
                         </button>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-on-surface-variant">
                         {maxTurns !== undefined && (
                             <span>{turnsCompleted} / {maxTurns} turns</span>
                         )}
                         {!confirmComplete ? (
                             <button
                                 onClick={() => setConfirmComplete(true)}
-                                className="text-gray-500 hover:text-gray-300 transition-colors"
+                                className="text-on-surface-variant hover:text-on-surface transition-colors"
                                 title="Mark session as complete"
                             >
                                 Mark complete
                             </button>
                         ) : (
                             <span className="flex items-center gap-1">
-                                <span className="text-yellow-400">Complete?</span>
+                                <span className="text-secondary">Complete?</span>
                                 <button
                                     onClick={() => { markPlaylistComplete(playlist.id); setConfirmComplete(false); }}
-                                    className="text-green-400 hover:text-green-300 font-medium"
+                                    className="text-primary hover:text-primary-dim font-medium"
                                 >
                                     Yes
                                 </button>
                                 <button
                                     onClick={() => setConfirmComplete(false)}
-                                    className="text-gray-500 hover:text-gray-300"
+                                    className="text-on-surface-variant hover:text-on-surface"
                                 >
                                     No
                                 </button>
@@ -251,16 +233,16 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                 {!isComplete && (
                     <div
                         className={`flex items-center gap-3 p-2 rounded-lg ${
-                            isMyTurn ? 'bg-green-900/20 border border-green-700/40' : 'bg-gray-800/40'
+                            isMyTurn ? 'bg-primary/10 border border-primary/30' : 'bg-surface-high/40'
                         }`}
                     >
                         {isMyTurn ? (
                             <>
                                 <span className="relative flex h-2.5 w-2.5 shrink-0">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
                                 </span>
-                                <span className="text-sm font-semibold text-green-400">
+                                <span className="text-sm font-semibold text-primary">
                                     {tracksPerTurn === 1
                                         ? 'Your turn — add a track'
                                         : `Your turn — ${tracksPerTurn - turnTracksAdded} track${tracksPerTurn - turnTracksAdded !== 1 ? 's' : ''} left`}
@@ -268,21 +250,21 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                             </>
                         ) : awaitingContributor ? (
                             <>
-                                <i className="fa-solid fa-ellipsis text-gray-600 text-xs shrink-0" />
-                                <span className="text-sm text-gray-500 italic">
+                                <i className="fa-solid fa-ellipsis text-outline-variant text-xs shrink-0" />
+                                <span className="text-sm text-on-surface-variant italic">
                                     What's next? Waiting for a collaborator to join.
                                 </span>
                             </>
                         ) : (
                             <>
-                                <i className="fa-solid fa-hourglass-half text-gray-500 text-xs shrink-0" />
-                                <span className="text-sm text-gray-400">
+                                <i className="fa-solid fa-hourglass-half text-on-surface-variant text-xs shrink-0" />
+                                <span className="text-sm text-on-surface-variant">
                                     Waiting for{' '}
-                                    <span className="font-medium text-gray-300">
+                                    <span className="font-medium text-on-surface">
                                         {nextParticipant?.displayName}
                                     </span>
                                     {!turnQuotaFull && tracksPerTurn > 1 && (
-                                        <span className="text-gray-600">
+                                        <span className="text-outline-variant">
                                             {' '}· {turnTracksAdded}/{tracksPerTurn} tracks
                                         </span>
                                     )}
@@ -292,7 +274,7 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                         {!isMyTurn && !awaitingContributor && (
                             <button
                                 onClick={handleSkipTurn}
-                                className="ml-auto text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                                className="ml-auto text-xs text-outline-variant hover:text-on-surface-variant transition-colors"
                                 title="Skip current turn"
                             >
                                 Skip
@@ -309,26 +291,26 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                             <div
                                 key={userId}
                                 className={`flex items-center gap-2 px-2 py-1.5 rounded ${
-                                    isCurrent ? 'bg-gray-700/60' : ''
+                                    isCurrent ? 'bg-surface-high/60' : ''
                                 }`}
                             >
-                                <span className="text-xs text-gray-600 w-4 text-right shrink-0">{idx + 1}</span>
-                                <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300 shrink-0">
+                                <span className="text-xs text-outline-variant w-4 text-right shrink-0">{idx + 1}</span>
+                                <div className="w-6 h-6 rounded-full bg-surface-high flex items-center justify-center text-xs font-bold text-on-surface shrink-0">
                                     {displayName(userId, participants).charAt(0).toUpperCase()}
                                 </div>
-                                <span className={`text-sm flex-1 truncate ${isCurrent ? 'text-gray-100 font-medium' : 'text-gray-400'}`}>
+                                <span className={`text-sm flex-1 truncate ${isCurrent ? 'text-on-surface font-medium' : 'text-on-surface-variant'}`}>
                                     {displayName(userId, participants)}
-                                    {userId === currentUserId && <span className="ml-1 text-xs text-gray-600">(you)</span>}
+                                    {userId === currentUserId && <span className="ml-1 text-xs text-outline-variant">(you)</span>}
                                 </span>
                                 {isCurrent && !isComplete && !awaitingContributor && (
-                                    <i className="fa-solid fa-chevron-right text-green-500 text-xs shrink-0" />
+                                    <i className="fa-solid fa-chevron-right text-primary text-xs shrink-0" />
                                 )}
                                 {!isComplete && (
                                     <div className="flex gap-0.5 shrink-0">
                                         <button
                                             onClick={() => moveUp(idx)}
                                             disabled={idx === 0}
-                                            className="text-gray-600 hover:text-gray-300 disabled:opacity-20 px-1"
+                                            className="text-outline-variant hover:text-on-surface disabled:opacity-20 px-1"
                                             title="Move up"
                                         >
                                             <i className="fa-solid fa-chevron-up text-xs" />
@@ -336,7 +318,7 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                                         <button
                                             onClick={() => moveDown(idx)}
                                             disabled={idx === order.length - 1}
-                                            className="text-gray-600 hover:text-gray-300 disabled:opacity-20 px-1"
+                                            className="text-outline-variant hover:text-on-surface disabled:opacity-20 px-1"
                                             title="Move down"
                                         >
                                             <i className="fa-solid fa-chevron-down text-xs" />
@@ -350,7 +332,7 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
 
                 {/* Config: tracks per turn, turn limit, duration limit */}
                 {!isComplete && (
-                    <div className="space-y-2 pt-2 border-t border-gray-800">
+                    <div className="space-y-2 pt-2 border-t border-outline-variant">
                         {/* Row 1: tracks/turn + max turns */}
                         <div className="flex items-center gap-4 flex-wrap">
                             <ConfigField label="Tracks / turn">
@@ -371,17 +353,17 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                                         />
                                         <button
                                             onClick={() => setTurnConfig(playlist.id, { maxTurns: null })}
-                                            className="text-gray-600 hover:text-gray-400 transition-colors text-xs"
+                                            className="text-outline-variant hover:text-on-surface-variant transition-colors text-xs"
                                             title="Remove cap"
                                         >
                                             ✕
                                         </button>
-                                        <span className="text-xs text-gray-600">({turnsCompleted} done)</span>
+                                        <span className="text-xs text-outline-variant">({turnsCompleted} done)</span>
                                     </div>
                                 ) : (
                                     <button
                                         onClick={() => setTurnConfig(playlist.id, { maxTurns: turnsCompleted + order.length })}
-                                        className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                                        className="text-xs text-outline-variant hover:text-on-surface-variant transition-colors"
                                     >
                                         + set limit
                                     </button>
@@ -400,19 +382,19 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                                         />
                                         <button
                                             onClick={() => setTurnConfig(playlist.id, { maxDurationMs: null })}
-                                            className="text-gray-600 hover:text-gray-400 transition-colors text-xs"
+                                            className="text-outline-variant hover:text-on-surface-variant transition-colors text-xs"
                                             title="Remove limit"
                                         >
                                             ✕
                                         </button>
-                                        <span className="text-xs text-gray-600">
+                                        <span className="text-xs text-outline-variant">
                                             ({formatDurationHuman(totalDurationMs)} now)
                                         </span>
                                     </div>
                                 ) : (
                                     <button
                                         onClick={() => setTurnConfig(playlist.id, { maxDurationMs: 8 * 3_600_000 })}
-                                        className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                                        className="text-xs text-outline-variant hover:text-on-surface-variant transition-colors"
                                     >
                                         + set limit
                                     </button>

@@ -5,15 +5,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import type { PeerMetadata, P2PStatusPayload } from '../../shared/core';
-
-export interface LogEntry {
-    id: number;
-    time: string;
-    level: string;
-    message: string;
-}
-
-let logIdCounter = 0;
+import { useDebugLogStore } from '../stores/debug-log-store';
+import type { LogEntry } from '../stores/debug-log-store';
 
 export function useP2PDevStatus() {
     const [status, setStatus] = useState<P2PStatusPayload>({
@@ -27,21 +20,17 @@ export function useP2PDevStatus() {
 
     const [selectedPeer, setSelectedPeer] = useState<PeerMetadata | null>(null);
     const [connectUrl, setConnectUrl] = useState('');
-    const [logs, setLogs] = useState<LogEntry[]>([]);
+    const logs = useDebugLogStore((s) => s.logs);
     const [expandedSections, setExpandedSections] = useState({
         nodeInfo: true,
         discoveredPeers: true,
         connectedPeers: true,
         logs: true,
         peerDetails: false,
-        testing: false,
     });
 
     const addLog = useCallback((level: 'info' | 'warn' | 'error' | 'success', message: string) => {
-        const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
-        const id = ++logIdCounter;
-        setLogs((prev) => [...prev.slice(-49), { id, time: timestamp, level, message }]);
-        console.log(`[P2P UI ${timestamp}] [${level.toUpperCase()}] ${message}`);
+        useDebugLogStore.getState().addLog(level, message);
     }, []);
 
     // Polling & event listeners

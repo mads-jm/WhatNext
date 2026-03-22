@@ -15,15 +15,15 @@ export function P2PStatus() {
     const p2p = useP2PDevStatus();
     const { status, expandedSections } = p2p;
 
-    const nodeStatusColor = status.nodeStarted ? 'bg-green-500' : 'bg-yellow-500 animate-pulse';
+    const nodeStatusColor = status.nodeStarted ? 'bg-primary' : 'bg-secondary animate-pulse';
     const nodeStatusText = status.nodeStarted ? 'Online' : 'Starting...';
 
     return (
         <div className="space-y-4 font-mono text-sm">
             {/* Header */}
-            <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-500">
-                <h1 className="text-2xl font-bold text-gray-800 mb-1">P2P Development Interface</h1>
-                <p className="text-xs text-gray-600">v0.0.1 Alpha &middot; Learning &amp; Exploration Mode</p>
+            <div className="bg-surface-high rounded-lg p-4 border-l-4 border-primary">
+                <h1 className="text-2xl font-bold text-on-surface mb-1">Network Control</h1>
+                <p className="text-xs text-on-surface-variant">Your node, your rules &mdash; direct peer connections with no intermediary</p>
             </div>
 
             {/* Node Status */}
@@ -48,7 +48,7 @@ export function P2PStatus() {
 
                             <div>
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-gray-600 font-semibold text-xs">Connection URL:</span>
+                                    <span className="text-on-surface-variant font-semibold text-xs">Connection URL:</span>
                                     <button
                                         onClick={() =>
                                             p2p.copyToClipboard(
@@ -56,24 +56,24 @@ export function P2PStatus() {
                                                 'Connection URL',
                                             )
                                         }
-                                        className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                                        className="px-2 py-1 bg-primary text-on-surface rounded text-xs hover:bg-primary-dim"
                                     >
                                         Copy URL
                                     </button>
                                 </div>
-                                <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs font-mono text-blue-900 break-all">
+                                <div className="bg-primary/10 border border-primary/20 rounded p-2 text-xs font-mono text-primary break-all">
                                     whtnxt://connect/{status.peerId ?? ''}
                                 </div>
                             </div>
 
                             {status.multiaddrs.length > 0 && (
                                 <div>
-                                    <span className="text-gray-600 font-semibold text-xs">
+                                    <span className="text-on-surface-variant font-semibold text-xs">
                                         Listening Addresses ({status.multiaddrs.length}):
                                     </span>
                                     <div className="mt-1 space-y-1">
                                         {status.multiaddrs.map((addr) => (
-                                            <div key={addr} className="bg-gray-100 rounded px-2 py-1 text-xs break-all">
+                                            <div key={addr} className="bg-surface-high rounded px-2 py-1 text-xs break-all">
                                                 {addr}
                                             </div>
                                         ))}
@@ -83,14 +83,14 @@ export function P2PStatus() {
 
                             {(status.protocols?.length ?? 0) > 0 && (
                                 <div>
-                                    <span className="text-gray-600 font-semibold text-xs">
+                                    <span className="text-on-surface-variant font-semibold text-xs">
                                         Supported Protocols ({status.protocols?.length ?? 0}):
                                     </span>
                                     <div className="mt-1 flex flex-wrap gap-1">
                                         {(status.protocols ?? []).map((protocol) => (
                                             <span
                                                 key={protocol}
-                                                className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs"
+                                                className="bg-primary/15 text-primary px-2 py-1 rounded text-xs"
                                             >
                                                 {protocol}
                                             </span>
@@ -117,10 +117,10 @@ export function P2PStatus() {
                 title="Discovered Peers"
                 expanded={expandedSections.discoveredPeers}
                 onToggle={() => p2p.toggleSection('discoveredPeers')}
-                badge={<span className="text-xs font-semibold text-gray-600">{status.discoveredPeers.length}</span>}
+                badge={<span className="text-xs font-semibold text-on-surface-variant">{status.discoveredPeers.length}</span>}
             >
                 {status.discoveredPeers.length === 0 ? (
-                    <p className="text-xs text-gray-500 italic">
+                    <p className="text-xs text-on-surface-variant italic">
                         No peers discovered. Ensure another WhatNext instance is running on the same network.
                     </p>
                 ) : (
@@ -144,16 +144,16 @@ export function P2PStatus() {
                 title="Active Connections"
                 expanded={expandedSections.connectedPeers}
                 onToggle={() => p2p.toggleSection('connectedPeers')}
-                badge={<span className="text-xs font-semibold text-green-600">{status.connectedPeers.length}</span>}
+                badge={<span className="text-xs font-semibold text-primary">{status.connectedPeers.length}</span>}
             >
                 {status.connectedPeers.length === 0 ? (
-                    <p className="text-xs text-gray-500 italic">No active connections</p>
+                    <p className="text-xs text-on-surface-variant italic">No active connections</p>
                 ) : (
                     <div className="flex flex-wrap gap-2">
                         {status.connectedPeers.map((peerId) => (
                             <div
                                 key={peerId}
-                                className="bg-green-100 text-green-800 px-3 py-1 rounded text-xs font-semibold"
+                                className="bg-primary/15 text-primary px-3 py-1 rounded text-xs font-semibold"
                             >
                                 {peerId.slice(0, 12)}...
                             </div>
@@ -173,40 +173,12 @@ export function P2PStatus() {
                 </P2PSection>
             )}
 
-            {/* Data Transfer Testing */}
-            <P2PSection
-                title="Data Transfer Testing"
-                expanded={expandedSections.testing}
-                onToggle={() => p2p.toggleSection('testing')}
-                badge={<span className="text-xs text-orange-600 font-semibold">COMING SOON</span>}
-            >
-                <div className="space-y-3">
-                    <p className="text-xs text-gray-600 italic">
-                        Testing utilities for playlist sync and file transfer will be added here.
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button
-                            disabled
-                            className="px-3 py-2 bg-gray-200 text-gray-500 rounded text-xs cursor-not-allowed"
-                        >
-                            Send Test Message
-                        </button>
-                        <button
-                            disabled
-                            className="px-3 py-2 bg-gray-200 text-gray-500 rounded text-xs cursor-not-allowed"
-                        >
-                            Send Test File
-                        </button>
-                    </div>
-                </div>
-            </P2PSection>
-
             {/* Debug Logs */}
             <P2PSection
                 title="Debug Log"
                 expanded={expandedSections.logs}
                 onToggle={() => p2p.toggleSection('logs')}
-                badge={<span className="text-xs text-gray-600">{p2p.logs.length}/50</span>}
+                badge={<span className="text-xs text-on-surface-variant">{p2p.logs.length}/50</span>}
             >
                 <P2PDebugLog logs={p2p.logs} />
             </P2PSection>

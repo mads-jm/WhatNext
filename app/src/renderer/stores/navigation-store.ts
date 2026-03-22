@@ -16,7 +16,7 @@ export type ViewId =
     | 'p2p-status'
     | 'dev-dashboard'
     | 'settings-general'
-    | 'settings-p2p'
+    | 'p2p-config'
     | 'settings-storage';
 
 export const VIEW_TITLES: Record<ViewId, string> = {
@@ -28,7 +28,7 @@ export const VIEW_TITLES: Record<ViewId, string> = {
     'p2p-status': 'P2P Network Status',
     'dev-dashboard': 'Developer Dashboard',
     'settings-general': 'General Settings',
-    'settings-p2p': 'P2P Configuration',
+    'p2p-config': 'Relay Configuration',
     'settings-storage': 'Storage Settings',
 };
 

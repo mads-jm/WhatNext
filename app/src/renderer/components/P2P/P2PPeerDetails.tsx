@@ -17,7 +17,7 @@ export function P2PPeerDetails({ peer, onClose }: P2PPeerDetailsProps) {
                 <h3 className="font-bold text-sm">Connection Details</h3>
                 <button
                     onClick={onClose}
-                    className="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs"
+                    className="px-2 py-1 bg-surface-high hover:bg-outline-variant rounded text-xs"
                 >
                     Close
                 </button>
@@ -34,10 +34,10 @@ export function P2PPeerDetails({ peer, onClose }: P2PPeerDetailsProps) {
 
                 {(peer.protocols?.length ?? 0) > 0 && (
                     <div>
-                        <span className="font-semibold text-gray-700">Protocols ({peer.protocols!.length}):</span>
+                        <span className="font-semibold text-on-surface-variant">Protocols ({peer.protocols!.length}):</span>
                         <div className="mt-1 space-y-1">
                             {peer.protocols!.map((protocol: string) => (
-                                <div key={protocol} className="bg-purple-50 rounded px-2 py-1 font-mono">
+                                <div key={protocol} className="bg-primary/10 rounded px-2 py-1 font-mono">
                                     {protocol}
                                 </div>
                             ))}
@@ -47,10 +47,10 @@ export function P2PPeerDetails({ peer, onClose }: P2PPeerDetailsProps) {
 
                 {(peer.multiaddrs?.length ?? 0) > 0 && (
                     <div>
-                        <span className="font-semibold text-gray-700">Multiaddrs ({peer.multiaddrs!.length}):</span>
+                        <span className="font-semibold text-on-surface-variant">Multiaddrs ({peer.multiaddrs!.length}):</span>
                         <div className="mt-1 space-y-1">
                             {peer.multiaddrs!.map((addr: string) => (
-                                <div key={addr} className="bg-gray-100 rounded px-2 py-1 font-mono break-all">
+                                <div key={addr} className="bg-surface-high rounded px-2 py-1 font-mono break-all">
                                     {addr}
                                 </div>
                             ))}

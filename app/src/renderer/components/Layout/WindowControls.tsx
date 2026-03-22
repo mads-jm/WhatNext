@@ -23,7 +23,7 @@ export function WindowControls() {
     }, []);
 
     const btnBase =
-        'flex items-center justify-center w-11 h-full transition-colors duration-100 select-none';
+        'flex items-center justify-center w-11 h-full transition-colors duration-100 select-none text-on-surface-variant hover:text-on-surface';
 
     return (
         <div
@@ -32,7 +32,7 @@ export function WindowControls() {
         >
             {/* Minimize */}
             <button
-                className={`${btnBase} hover:bg-white/10 text-gray-400 hover:text-gray-100`}
+                className={`${btnBase} hover:bg-surface-high/60`}
                 onClick={() => window.electron?.window.minimize()}
                 title="Minimize"
             >
@@ -43,7 +43,7 @@ export function WindowControls() {
 
             {/* Maximize / Restore */}
             <button
-                className={`${btnBase} hover:bg-white/10 text-gray-400 hover:text-gray-100`}
+                className={`${btnBase} hover:bg-surface-high/60`}
                 onClick={() => window.electron?.window.maximize()}
                 title={isMaximized ? 'Restore' : 'Maximize'}
             >
@@ -63,7 +63,7 @@ export function WindowControls() {
 
             {/* Close */}
             <button
-                className={`${btnBase} hover:bg-red-500 text-gray-400 hover:text-white`}
+                className={`${btnBase} hover:bg-error hover:text-surface`}
                 onClick={() => window.electron?.window.close()}
                 title="Close"
             >

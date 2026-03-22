@@ -20,13 +20,13 @@ export function PlaylistComments({ playlistId }: PlaylistCommentsProps) {
         <div className="card mb-4">
             <button
                 onClick={() => setExpanded(!expanded)}
-                className="card-header w-full flex items-center justify-between cursor-pointer hover:bg-gray-800/30 transition-colors"
+                className="card-header w-full flex items-center justify-between cursor-pointer hover:bg-surface-high/30 transition-colors"
             >
                 <span className="font-medium">
-                    <i className="fa-solid fa-comments mr-2 text-gray-500" />
+                    <i className="fa-solid fa-comments mr-2 text-on-surface-variant" />
                     Discussion {commentCount > 0 && `(${commentCount})`}
                 </span>
-                <i className={`fa-solid fa-chevron-${expanded ? 'up' : 'down'} text-gray-500 text-sm`} />
+                <i className={`fa-solid fa-chevron-${expanded ? 'up' : 'down'} text-on-surface-variant text-sm`} />
             </button>
             {expanded && (
                 <div className="card-body">

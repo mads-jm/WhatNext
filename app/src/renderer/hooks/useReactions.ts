@@ -6,15 +6,10 @@
 import { useState, useEffect } from 'react';
 import { useDatabase } from './useDatabase';
 import type { TrackInteractionDocType } from '../db/schemas';
-import {
-    ALLOWED_REACTIONS,
-    type ReactionEmoji,
-} from '../db/services/reaction-service';
+import type { ReactionEmoji } from '../../shared/core/reactions';
+import { aggregateReactions, type ReactionSummary } from '../utils/reaction-helpers';
 
-export interface ReactionSummary {
-    count: number;
-    userReacted: boolean;
-}
+export type { ReactionSummary };
 
 export function useReactions(
     trackId: string | undefined,
@@ -39,34 +34,8 @@ export function useReactions(
 
         const subscription = query.$.subscribe({
             next: (docs) => {
-                const map = new Map<ReactionEmoji, ReactionSummary>();
-
-                for (const emoji of ALLOWED_REACTIONS) {
-                    map.set(emoji, { count: 0, userReacted: false });
-                }
-
-                for (const doc of docs) {
-                    const data = doc as unknown as TrackInteractionDocType;
-                    if (data.value !== 1) continue;
-
-                    let emoji: ReactionEmoji | undefined;
-                    try {
-                        const parsed = JSON.parse(data.metadata || '{}');
-                        emoji = parsed.emoji as ReactionEmoji;
-                    } catch {
-                        continue;
-                    }
-
-                    if (!emoji || !map.has(emoji)) continue;
-
-                    const entry = map.get(emoji)!;
-                    entry.count += 1;
-                    if (data.userId === userId) {
-                        entry.userReacted = true;
-                    }
-                }
-
-                setReactions(map);
+                const data = docs.map((d) => d as unknown as TrackInteractionDocType);
+                setReactions(aggregateReactions(data, userId));
                 setLoading(false);
             },
             error: () => {

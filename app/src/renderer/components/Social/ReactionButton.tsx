@@ -3,7 +3,7 @@
  * Highlighted when the local user has reacted.
  */
 
-import { REACTION_DISPLAY, type ReactionEmoji } from '../../db/services/reaction-service';
+import { REACTION_DISPLAY, type ReactionEmoji } from '../../../shared/core/reactions';
 
 interface ReactionButtonProps {
     emoji: ReactionEmoji;
@@ -18,8 +18,8 @@ export function ReactionButton({ emoji, count, userReacted, onClick }: ReactionB
             onClick={onClick}
             className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors ${
                 userReacted
-                    ? 'bg-blue-900/60 border border-blue-500/50 text-blue-300'
-                    : 'bg-gray-800/60 border border-gray-700/50 text-gray-400 hover:bg-gray-700/60'
+                    ? 'bg-primary/15 border border-primary/50 text-primary'
+                    : 'bg-surface-high/60 border border-outline-variant/50 text-on-surface-variant hover:bg-surface-high/80'
             }`}
             title={emoji}
         >

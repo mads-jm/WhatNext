@@ -64,6 +64,7 @@ export interface UpdatePlaylistInput {
     description?: string;
     tags?: string[];
     linkedSpotifyId?: string;
+    collaboratorIds?: string[];
     isCollaborative?: boolean;
     queueMode?: 'free_for_all' | 'turn_taking' | 'vote_based';
     turnOrder?: string[];

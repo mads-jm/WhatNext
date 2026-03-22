@@ -46,14 +46,14 @@ export function CommentItem({
     // TODO : userId -> userName
     // Worth persisting to comment still
     return (
-        <div className={`${depth > 0 ? 'ml-6 border-l border-gray-700/50 pl-3' : ''}`}>
+        <div className={`${depth > 0 ? 'ml-6 border-l border-outline-variant/50 pl-3' : ''}`}>
             <div className="py-2">
                 <div className="flex items-center gap-2 mb-1">
-                    <div className="w-5 h-5 rounded-full bg-purple-600/60 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                    <div className="w-5 h-5 rounded-full bg-primary-dim/60 flex items-center justify-center text-on-surface text-[10px] font-bold shrink-0">
                         {(comment.userId || '?')[0].toUpperCase()}
                     </div>
-                    <span className="text-xs font-medium text-gray-300">{comment.userId}</span>
-                    <span className="text-xs text-gray-600">{timeAgo}</span>
+                    <span className="text-xs font-medium text-on-surface">{comment.userId}</span>
+                    <span className="text-xs text-on-surface-variant">{timeAgo}</span>
                 </div>
 
                 {editing ? (
@@ -61,26 +61,26 @@ export function CommentItem({
                         <textarea
                             value={editBody}
                             onChange={(e) => setEditBody(e.target.value)}
-                            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 resize-none"
+                            className="w-full bg-surface-high border border-outline-variant rounded px-2 py-1 text-sm text-on-surface resize-none"
                             rows={2}
                         />
                         <div className="flex gap-1 mt-1">
-                            <button onClick={handleSaveEdit} className="text-xs text-blue-400 hover:text-blue-300">
+                            <button onClick={handleSaveEdit} className="text-xs text-primary hover:text-primary-dim">
                                 Save
                             </button>
-                            <button onClick={handleCancelEdit} className="text-xs text-gray-500 hover:text-gray-400">
+                            <button onClick={handleCancelEdit} className="text-xs text-on-surface-variant hover:text-on-surface">
                                 Cancel
                             </button>
                         </div>
                     </div>
                 ) : (
                     <div className="ml-7">
-                        <p className="text-sm text-gray-300">{comment.body}</p>
+                        <p className="text-sm text-on-surface">{comment.body}</p>
                         <div className="flex gap-2 mt-1">
                             {depth === 0 && (
                                 <button
                                     onClick={() => onReply(comment.id)}
-                                    className="text-xs text-gray-500 hover:text-gray-300"
+                                    className="text-xs text-on-surface-variant hover:text-on-surface"
                                 >
                                     Reply
                                 </button>
@@ -89,13 +89,13 @@ export function CommentItem({
                                 <>
                                     <button
                                         onClick={() => setEditing(true)}
-                                        className="text-xs text-gray-500 hover:text-gray-300"
+                                        className="text-xs text-on-surface-variant hover:text-on-surface"
                                     >
                                         Edit
                                     </button>
                                     <button
                                         onClick={() => onDelete(comment.id)}
-                                        className="text-xs text-gray-500 hover:text-red-400"
+                                        className="text-xs text-on-surface-variant hover:text-error"
                                     >
                                         Delete
                                     </button>

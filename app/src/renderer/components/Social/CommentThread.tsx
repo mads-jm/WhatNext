@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useComments } from '../../hooks/useComments';
 import { useUserStore } from '../../stores/user-store';
 import { createComment, updateComment, deleteComment } from '../../db/services/comment-service';
+import { pushLocalChanges } from '../../db/replication-handler';
 import { CommentItem } from './CommentItem';
 
 interface CommentThreadProps {
@@ -32,7 +33,7 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
             userDisplayName,
             body,
             parentId: replyingTo,
-        });
+        }, pushLocalChanges);
         setNewBody('');
         setReplyingTo(undefined);
     };
@@ -49,11 +50,11 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
     };
 
     const handleEdit = async (id: string, body: string) => {
-        await updateComment(id, { body }, userId);
+        await updateComment(id, { body }, userId, pushLocalChanges);
     };
 
     const handleDelete = async (id: string) => {
-        await deleteComment(id, userId);
+        await deleteComment(id, userId, pushLocalChanges);
     };
 
     const handleReply = (parentId: string) => {
@@ -61,13 +62,13 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
     };
 
     if (loading) {
-        return <div className="text-xs text-gray-600 py-2">Loading comments...</div>;
+        return <div className="text-xs text-on-surface-variant py-2">Loading comments...</div>;
     }
 
     return (
         <div>
             {comments.length === 0 && (
-                <div className="text-xs text-gray-600 py-2">No comments yet</div>
+                <div className="text-xs text-on-surface-variant py-2">No comments yet</div>
             )}
 
             {comments.map(({ comment, replies }) => (
@@ -86,10 +87,10 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
             <div className="mt-2">
                 {replyingTo && (
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-blue-400">Replying to comment</span>
+                        <span className="text-xs text-primary">Replying to comment</span>
                         <button
                             onClick={() => setReplyingTo(undefined)}
-                            className="text-xs text-gray-500 hover:text-gray-300"
+                            className="text-xs text-on-surface-variant hover:text-on-surface"
                         >
                             Cancel
                         </button>
@@ -102,12 +103,12 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
                         onChange={(e) => setNewBody(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={replyingTo ? 'Write a reply...' : 'Add a comment...'}
-                        className="flex-1 bg-gray-800/60 border border-gray-700/50 rounded px-2 py-1.5 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500/50 focus:outline-none"
+                        className="flex-1 bg-surface-high/60 border border-outline-variant/50 rounded px-2 py-1.5 text-sm text-on-surface placeholder-on-surface-variant focus:border-primary/50 focus:outline-none"
                     />
                     <button
                         onClick={handleSubmit}
                         disabled={!newBody.trim()}
-                        className="px-3 py-1.5 bg-blue-600/80 text-white text-sm rounded disabled:opacity-30 hover:bg-blue-500/80 transition-colors"
+                        className="px-3 py-1.5 bg-primary/80 text-surface text-sm rounded disabled:opacity-30 hover:bg-primary-dim/80 transition-colors"
                     >
                         <i className="fa-solid fa-paper-plane" />
                     </button>

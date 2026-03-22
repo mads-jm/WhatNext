@@ -16,7 +16,7 @@ export function SessionHeader({ onEndSession, trackSourceError }: SessionHeaderP
                 End Session
             </button>
             {trackSourceError && (
-                <span className="text-xs text-red-400">
+                <span className="text-xs text-error">
                     <i className="fa-solid fa-triangle-exclamation mr-1" />
                     Sync error: {trackSourceError}
                 </span>

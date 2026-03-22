@@ -4,12 +4,9 @@ import { useNavigationStore } from '../../stores/navigation-store';
 import { useUserStore } from '../../stores/user-store';
 import { useRxDBDocument } from '../../hooks/useRxDBCollection';
 import { removeTrackFromPlaylist, updatePlaylist } from '../../db/services/playlist-service';
-import {
-    ALLOWED_REACTIONS,
-    REACTION_DISPLAY,
-    toggleReaction,
-    type ReactionEmoji,
-} from '../../db/services/reaction-service';
+import { toggleReaction } from '../../db/services/reaction-service';
+import { ALLOWED_REACTIONS, REACTION_DISPLAY, type ReactionEmoji } from '../../../shared/core/reactions';
+import { pushLocalChanges } from '../../db/replication-handler';
 import { ContextMenu, type ContextMenuItem } from '../shared/ContextMenu';
 import { useContextMenu } from '../../hooks/useContextMenu';
 import { findTrackViewModels } from '../../db/query-helpers';
@@ -109,7 +106,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                 id: `react-${emoji}`,
                 label: EMOJI_LABELS[emoji],
                 icon: REACTION_DISPLAY[emoji],
-                action: () => toggleReaction(userId, track.id, playlistId!, emoji),
+                action: () => toggleReaction(userId, track.id, playlistId!, emoji, pushLocalChanges),
             })),
         },
         { id: 'sep-1', label: '', separator: true },
@@ -130,7 +127,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
 
     if (!playlistId) {
         return (
-            <div className="flex items-center justify-center h-full text-gray-600">
+            <div className="flex items-center justify-center h-full text-on-surface-variant">
                 <div className="text-center">
                     <i className="fa-solid fa-arrow-left text-4xl mb-4" />
                     <p>Select a playlist to view details</p>
@@ -140,11 +137,11 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
     }
 
     if (playlistLoading) {
-        return <div className="text-gray-500 text-center py-12">Loading...</div>;
+        return <div className="text-on-surface-variant text-center py-12">Loading...</div>;
     }
 
     if (!playlist) {
-        return <div className="text-gray-500 text-center py-12">Playlist not found</div>;
+        return <div className="text-on-surface-variant text-center py-12">Playlist not found</div>;
     }
 
     return (
@@ -153,7 +150,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
             <div className="card mb-4">
                 <div className="card-body">
                     <div className="flex items-start gap-4">
-                        <div className="w-32 h-32 rounded-lg shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+                        <div className="w-32 h-32 rounded-lg shrink-0 overflow-hidden bg-gradient-to-br from-primary-dim to-primary flex items-center justify-center">
                             {playlist.coverArtLocalPath || playlist.coverArtUrl ? (
                                 <img
                                     src={artSrc(playlist.coverArtLocalPath, playlist.coverArtUrl)}
@@ -164,7 +161,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                     }}
                                 />
                             ) : (
-                                <i className="fa-solid fa-music text-4xl text-white opacity-50" />
+                                <i className="fa-solid fa-music text-4xl text-on-surface opacity-50" />
                             )}
                         </div>
                         <div className="flex-1">
@@ -180,28 +177,28 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                     </span>
                                 )}
                                 {playlist.queueMode === 'turn_taking' && !playlist.isComplete && (
-                                    <span className="px-1.5 py-0.5 bg-yellow-900/50 text-yellow-400 rounded text-[10px] font-semibold">
+                                    <span className="px-1.5 py-0.5 bg-secondary/15 text-secondary rounded text-[10px] font-semibold">
                                         Turn-Taking
                                     </span>
                                 )}
                                 {playlist.isComplete && (
-                                    <span className="px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded text-[10px] font-semibold" title={`Completed from: ${playlist.completedFromMode ?? 'collaborative'}`}>
+                                    <span className="px-1.5 py-0.5 bg-surface-high text-on-surface-variant rounded text-[10px] font-semibold" title={`Completed from: ${playlist.completedFromMode ?? 'collaborative'}`}>
                                         Complete
                                     </span>
                                 )}
                             </div>
                             <h2 className="text-3xl font-bold mb-2">{playlist.playlistName}</h2>
                             {playlist.description && (
-                                <p className="text-sm text-gray-400 mb-2">{playlist.description}</p>
+                                <p className="text-sm text-on-surface-variant mb-2">{playlist.description}</p>
                             )}
-                            <p className="text-sm text-gray-500 mb-4">
+                            <p className="text-sm text-on-surface-variant mb-4">
                                 {tracks.length} tracks {totalDuration > 0 && <>• {formatTotalDuration(totalDuration)}</>}
                             </p>
                             <div className="flex gap-2">
                                 {playlist.isCollaborative ? (
                                     <button
                                         onClick={() => openSession(playlist.id)}
-                                        className="btn-accent"
+                                        className="btn-primary"
                                     >
                                         <i className="fa-solid fa-satellite-dish mr-1" />
                                         Open Session
@@ -218,7 +215,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                 ) : null}
                                 <button
                                     onClick={() => setShowTrackPicker(true)}
-                                    className="btn-accent"
+                                    className="btn-primary"
                                 >
                                     <i className="fa-solid fa-plus mr-1" />
                                     Add tracks
@@ -237,19 +234,19 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                         <i className="fa-solid fa-chevron-down ml-1.5 text-[10px] opacity-50" />
                                     </button>
                                     {exportOpen && (
-                                        <div className="absolute left-0 top-full mt-1.5 min-w-[152px] bg-gray-800 rounded-xl ring-1 ring-white/10 shadow-2xl z-10 p-1">
+                                        <div className="absolute left-0 top-full mt-1.5 min-w-[152px] bg-surface-high rounded-xl ring-1 ring-white/10 shadow-2xl z-10 p-1">
                                             <button
                                                 onClick={() => { handleExport('markdown'); setExportOpen(false); }}
-                                                className="w-full text-left px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-2 rounded-lg"
+                                                className="w-full text-left px-3 py-1.5 text-sm text-on-surface-variant hover:bg-surface-high hover:text-on-surface transition-colors flex items-center gap-2 rounded-lg"
                                             >
-                                                <i className="fa-solid fa-file-lines text-gray-500" />
+                                                <i className="fa-solid fa-file-lines text-on-surface-variant" />
                                                 Markdown
                                             </button>
                                             <button
                                                 onClick={() => { handleExport('html'); setExportOpen(false); }}
-                                                className="w-full text-left px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-2 rounded-lg"
+                                                className="w-full text-left px-3 py-1.5 text-sm text-on-surface-variant hover:bg-surface-high hover:text-on-surface transition-colors flex items-center gap-2 rounded-lg"
                                             >
-                                                <i className="fa-solid fa-file-code text-gray-500" />
+                                                <i className="fa-solid fa-file-code text-on-surface-variant" />
                                                 HTML
                                             </button>
                                         </div>
@@ -268,12 +265,12 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                 )}
                             </div>
                             {playlist.linkedSpotifyId && syncState === 'done' && syncSummary && (
-                                <p className="text-xs text-gray-500 mt-2">
+                                <p className="text-xs text-on-surface-variant mt-2">
                                     Synced {lastSynced?.toLocaleTimeString()} · +{syncSummary.added} added, {syncSummary.removed} removed
                                 </p>
                             )}
                             {playlist.linkedSpotifyId && syncState === 'error' && (
-                                <p className="text-xs text-red-400 mt-2">Sync failed: {syncError}</p>
+                                <p className="text-xs text-error mt-2">Sync failed: {syncError}</p>
                             )}
                         </div>
                     </div>
@@ -306,14 +303,14 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {tracks.length === 0 ? (
-                        <div className="text-center py-12 text-gray-600">
+                        <div className="text-center py-12 text-outline-variant">
                             <i className="fa-solid fa-music text-4xl mb-4" />
                             <p>No tracks yet</p>
                             <p className="text-sm mt-2">Import tracks from Spotify or add them manually</p>
                         </div>
                     ) : (
                         <table className="w-full">
-                            <thead className="text-xs text-gray-500 uppercase border-b border-gray-800">
+                            <thead className="text-xs text-on-surface-variant uppercase border-b border-outline-variant">
                                 <tr>
                                     <th className="text-left px-4 py-2 w-8">#</th>
                                     <th className="w-14"></th>
@@ -328,10 +325,10 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                 {tracks.map((track, index) => (
                                     <React.Fragment key={track.id}>
                                         <tr
-                                    className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
+                                    className="border-b border-outline-variant/50 hover:bg-surface-high/30 transition-colors"
                                     onContextMenu={(e) => openTrackMenu(e, buildTrackMenuItems(track))}
                                 >
-                                            <td className="px-4 py-3 text-gray-500 text-sm">{index + 1}</td>
+                                            <td className="px-4 py-3 text-on-surface-variant text-sm">{index + 1}</td>
                                             <td className="p-0 w-14">
                                                 {artSrc(track.albumArtLocalPath, track.albumArtUrl) ? (
                                                     <img
@@ -343,19 +340,19 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                                         }}
                                                     />
                                                 ) : (
-                                                    <div className="w-14 h-14 bg-gray-800 flex items-center justify-center">
-                                                        <i className="fa-solid fa-music text-gray-700 text-sm" />
+                                                    <div className="w-14 h-14 bg-surface-high flex items-center justify-center">
+                                                        <i className="fa-solid fa-music text-outline-variant text-sm" />
                                                     </div>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="font-medium text-gray-100">{track.title}</div>
-                                                <div className="text-sm text-gray-400">{track.artists.join(', ')}</div>
+                                                <div className="font-medium text-on-surface">{track.title}</div>
+                                                <div className="text-sm text-on-surface-variant">{track.artists.join(', ')}</div>
                                                 <ReactionBar trackId={track.id} playlistId={playlistId!} />
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-gray-400">{track.album}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-500">{track.addedByName ?? track.addedBy}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-500 text-right">
+                                            <td className="px-4 py-3 text-sm text-on-surface-variant">{track.album}</td>
+                                            <td className="px-4 py-3 text-sm text-on-surface-variant">{track.addedByName ?? track.addedBy}</td>
+                                            <td className="px-4 py-3 text-sm text-on-surface-variant text-right">
                                                 {formatDuration(track.durationMs)}
                                             </td>
                                             <td className="px-4 py-3">
@@ -366,8 +363,8 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                                         )}
                                                         className={`transition-colors ${
                                                             expandedTrackComments === track.id
-                                                                ? 'text-blue-400'
-                                                                : 'text-gray-600 hover:text-gray-300'
+                                                                ? 'text-primary'
+                                                                : 'text-on-surface-variant hover:text-on-surface'
                                                         }`}
                                                         title="Comments"
                                                     >
@@ -375,7 +372,7 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                                     </button>
                                                     <button
                                                         onClick={() => removeTrackFromPlaylist(playlistId!, track.id)}
-                                                        className="text-gray-600 hover:text-red-400 transition-colors"
+                                                        className="text-outline-variant hover:text-error transition-colors"
                                                         title="Remove track"
                                                     >
                                                         <i className="fa-solid fa-xmark" />
@@ -384,8 +381,8 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                                             </td>
                                         </tr>
                                         {expandedTrackComments === track.id && (
-                                            <tr className="border-b border-gray-800/50">
-                                                <td colSpan={7} className="px-4 py-3 bg-gray-900/30">
+                                            <tr className="border-b border-outline-variant/50">
+                                                <td colSpan={7} className="px-4 py-3 bg-surface/30">
                                                     <CommentThread
                                                         playlistId={playlistId!}
                                                         trackId={track.id}

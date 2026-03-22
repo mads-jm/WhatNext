@@ -57,7 +57,7 @@ export function ProfileSettings() {
 
     if (loading || !user) {
         return (
-            <div className="text-gray-500 text-center py-12">
+            <div className="text-on-surface-variant text-center py-12">
                 Loading profile...
             </div>
         );
@@ -140,7 +140,7 @@ export function ProfileSettings() {
                 <div className="card-body">
                     <div className="flex items-center gap-6">
                         {/* Avatar */}
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shrink-0 overflow-hidden">
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary-dim to-primary flex items-center justify-center text-surface text-2xl font-bold shrink-0 overflow-hidden">
                             {user.avatarUrl ? (
                                 <img
                                     src={user.avatarUrl}
@@ -184,21 +184,21 @@ export function ProfileSettings() {
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2">
-                                    <h3 className="text-xl font-bold text-gray-100">
+                                    <h3 className="text-xl font-bold text-on-surface">
                                         {user.displayName}
                                     </h3>
                                     <button
                                         onClick={startEditName}
-                                        className="text-gray-500 hover:text-gray-300 transition-colors"
+                                        className="text-on-surface-variant hover:text-on-surface transition-colors"
                                     >
                                         <i className="fa-solid fa-pen text-xs" />
                                     </button>
                                 </div>
                             )}
-                            <p className="text-xs text-gray-500 mt-1 font-mono">
+                            <p className="text-xs text-on-surface-variant mt-1 font-mono">
                                 ID: {user.id.slice(0, 16)}...
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-on-surface-variant">
                                 Member since{' '}
                                 {new Date(user.createdAt).toLocaleDateString()}
                             </p>
@@ -214,23 +214,23 @@ export function ProfileSettings() {
                 </div>
                 <div className="card-body space-y-3">
                     {/* Spotify */}
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-gray-800/50">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-surface-high/50">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                                <i className="fa-brands fa-spotify text-white text-lg" />
+                            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                                <i className="fa-brands fa-spotify text-surface text-lg" />
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-gray-200">
+                                <div className="text-sm font-medium text-on-surface">
                                     Spotify
                                 </div>
                                 {spotifyLink ? (
-                                    <div className="text-xs text-green-400">
+                                    <div className="text-xs text-primary">
                                         Connected as{' '}
                                         {spotifyLink.displayName ||
                                             spotifyLink.providerUserId}
                                     </div>
                                 ) : (
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-on-surface-variant">
                                         Not connected
                                     </div>
                                 )}
@@ -239,7 +239,7 @@ export function ProfileSettings() {
                         {spotifyLink ? (
                             <button
                                 onClick={handleSpotifyUnlink}
-                                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                                className="text-xs text-error hover:text-error/80 transition-colors"
                             >
                                 Unlink
                             </button>
@@ -258,17 +258,17 @@ export function ProfileSettings() {
                     {['Apple Music', 'YouTube Music'].map((service) => (
                         <div
                             key={service}
-                            className="flex items-center justify-between p-3 rounded-lg bg-gray-800/30 opacity-50"
+                            className="flex items-center justify-between p-3 rounded-lg bg-surface-high/30 opacity-50"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                                    <i className="fa-solid fa-music text-gray-400" />
+                                <div className="w-10 h-10 bg-surface-high rounded-full flex items-center justify-center">
+                                    <i className="fa-solid fa-music text-on-surface-variant" />
                                 </div>
                                 <div>
-                                    <div className="text-sm font-medium text-gray-400">
+                                    <div className="text-sm font-medium text-on-surface-variant">
                                         {service}
                                     </div>
-                                    <div className="text-xs text-gray-600">
+                                    <div className="text-xs text-on-surface-variant">
                                         Coming in Phase 2
                                     </div>
                                 </div>

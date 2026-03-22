@@ -213,38 +213,5 @@ export async function resetDatabase(): Promise<WhatNextDatabase> {
     return initDatabase();
 }
 
-// Development helper: expose reset function to window
-if (process.env.NODE_ENV !== 'production') {
-    (window as any).resetRxDB = async () => {
-        console.log('[Dev] Resetting RxDB database...');
-        try {
-            await resetDatabase();
-        } catch (err) {
-            console.warn('[Dev] Failed to reset via API, clearing IndexedDB directly...', err);
-            // If reset fails, clear IndexedDB directly
-            const dbs = await indexedDB.databases();
-            for (const db of dbs) {
-                if (db.name?.startsWith('whatnext_db') || db.name?.includes('rxdb')) {
-                    console.log(`[Dev] Deleting database: ${db.name}`);
-                    indexedDB.deleteDatabase(db.name);
-                }
-            }
-        }
-        console.log('[Dev] Database reset complete. Reloading page...');
-        window.location.reload();
-    };
-
-    // Additional helper to directly nuke all RxDB-related IndexedDB databases
-    (window as any).nukeRxDB = async () => {
-        console.log('[Dev] Nuking all RxDB databases from IndexedDB...');
-        const dbs = await indexedDB.databases();
-        for (const db of dbs) {
-            if (db.name?.startsWith('whatnext_db') || db.name?.includes('rxdb')) {
-                console.log(`[Dev] Deleting database: ${db.name}`);
-                indexedDB.deleteDatabase(db.name);
-            }
-        }
-        console.log('[Dev] All RxDB databases deleted. Reloading page...');
-        window.location.reload();
-    };
-}
+// Load dev helpers (window.resetRxDB, window.nukeRxDB) as side-effect
+import('./dev-helpers');

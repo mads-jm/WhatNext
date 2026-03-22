@@ -6,19 +6,11 @@
 
 import { getDatabase } from '../database';
 import type { TrackInteractionDocType, TrackInteractionDocument } from '../schemas';
-import { pushLocalChanges } from '../replication-handler';
+import type { ReplicationSink } from '../../../shared/core/types';
+import type { ReactionEmoji } from '../../../shared/core/reactions';
 
-export const ALLOWED_REACTIONS = ['fire', 'heart', 'thumbsdown', 'mindblown', 'sleeping', 'party'] as const;
-export type ReactionEmoji = (typeof ALLOWED_REACTIONS)[number];
-
-export const REACTION_DISPLAY: Record<ReactionEmoji, string> = {
-    fire: '\uD83D\uDD25',
-    heart: '\u2764\uFE0F',
-    thumbsdown: '\uD83D\uDC4E',
-    mindblown: '\uD83E\uDD2F',
-    sleeping: '\uD83D\uDE34',
-    party: '\uD83C\uDF89',
-};
+// Re-export so barrel (services/index.ts) consumers don't break
+export { ALLOWED_REACTIONS, REACTION_DISPLAY, type ReactionEmoji } from '../../../shared/core/reactions';
 
 function reactionId(userId: string, trackId: string, emoji: ReactionEmoji): string {
     return `${userId}_${trackId}_reaction_${emoji}`;
@@ -31,7 +23,8 @@ export async function toggleReaction(
     userId: string,
     trackId: string,
     playlistId: string,
-    emoji: ReactionEmoji
+    emoji: ReactionEmoji,
+    replicationSink?: ReplicationSink,
 ): Promise<TrackInteractionDocument> {
     const db = await getDatabase();
     const id = reactionId(userId, trackId, emoji);
@@ -47,7 +40,7 @@ export async function toggleReaction(
             },
         });
 
-        await pushLocalChanges('trackInteractions', [{
+        await replicationSink?.('trackInteractions', [{
             id,
             data: { ...existing.toJSON(), value: newValue, updatedAt: now },
             updatedAt: now,
@@ -69,7 +62,7 @@ export async function toggleReaction(
     };
     const doc = await db.trackInteractions.insert(reaction);
 
-    await pushLocalChanges('trackInteractions', [{
+    await replicationSink?.('trackInteractions', [{
         id,
         data: reaction as unknown as Record<string, unknown>,
         updatedAt: now,

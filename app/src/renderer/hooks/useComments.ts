@@ -7,11 +7,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useDatabase } from './useDatabase';
 import type { CommentDocType } from '../db/schemas';
 import type { RxDocument } from 'rxdb';
+import { buildCommentTree, type CommentWithReplies } from '../utils/comment-helpers';
 
-export interface CommentWithReplies {
-    comment: CommentDocType;
-    replies: CommentDocType[];
-}
+export type { CommentWithReplies };
 
 export function useComments(
     playlistId: string | undefined,
@@ -49,33 +47,10 @@ export function useComments(
         return () => subscription.unsubscribe();
     }, [db, playlistId]);
 
-    const comments = useMemo(() => {
-        // Filter by trackId context
-        const filtered = allComments.filter((c) => {
-            if (trackId !== undefined) {
-                return c.trackId === trackId;
-            }
-            // Playlist-level comments: no trackId
-            return !c.trackId;
-        });
-
-        // Separate top-level from replies
-        const topLevel = filtered.filter((c) => !c.parentId);
-        const replyMap = new Map<string, CommentDocType[]>();
-
-        for (const c of filtered) {
-            if (c.parentId) {
-                const existing = replyMap.get(c.parentId) || [];
-                existing.push(c);
-                replyMap.set(c.parentId, existing);
-            }
-        }
-
-        return topLevel.map((comment) => ({
-            comment,
-            replies: replyMap.get(comment.id) || [],
-        }));
-    }, [allComments, trackId]);
+    const comments = useMemo(
+        () => buildCommentTree(allComments, trackId),
+        [allComments, trackId],
+    );
 
     return { comments, loading };
 }

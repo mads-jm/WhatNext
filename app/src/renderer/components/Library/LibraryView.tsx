@@ -99,13 +99,13 @@ export function LibraryView() {
                     <div className="flex items-start justify-between gap-4">
                         <div>
                             <h2 className="text-2xl font-bold mb-1">Library</h2>
-                            <p className="text-sm text-gray-400">
+                            <p className="text-sm text-on-surface-variant">
                                 Your local-first track collection — every track imported into WhatNext lives here.
                             </p>
                         </div>
                         <div className="text-right shrink-0">
-                            <p className="text-3xl font-bold text-white">{tracks.length}</p>
-                            <p className="text-xs text-gray-500">tracks</p>
+                            <p className="text-3xl font-bold text-on-surface">{tracks.length}</p>
+                            <p className="text-xs text-on-surface-variant">tracks</p>
                         </div>
                     </div>
 
@@ -115,8 +115,8 @@ export function LibraryView() {
                             onClick={() => setSourceFilter('all')}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                                 sourceFilter === 'all'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ? 'bg-primary text-surface'
+                                    : 'bg-surface-high text-on-surface-variant hover:bg-outline-variant'
                             }`}
                         >
                             <i className="fa-solid fa-layer-group" />
@@ -126,8 +126,8 @@ export function LibraryView() {
                             onClick={() => setSourceFilter('spotify')}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                                 sourceFilter === 'spotify'
-                                    ? 'bg-green-700 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ? 'bg-primary text-surface'
+                                    : 'bg-surface-high text-on-surface-variant hover:bg-outline-variant'
                             }`}
                         >
                             <i className="fa-brands fa-spotify" />
@@ -137,8 +137,8 @@ export function LibraryView() {
                             onClick={() => setSourceFilter('local')}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                                 sourceFilter === 'local'
-                                    ? 'bg-gray-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ? 'bg-primary text-surface'
+                                    : 'bg-surface-high text-on-surface-variant hover:bg-outline-variant'
                             }`}
                         >
                             <i className="fa-solid fa-hard-drive" />
@@ -151,25 +151,25 @@ export function LibraryView() {
             {/* Search + feedback */}
             <div className="flex items-center gap-3 mb-3">
                 <div className="relative flex-1">
-                    <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+                    <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm" />
                     <input
                         type="text"
                         placeholder="Search title, artist, album…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                        className="w-full pl-9 pr-4 py-2 bg-surface-high border border-outline-variant rounded-lg text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary"
                     />
                     {search && (
                         <button
                             onClick={() => setSearch('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
                         >
                             <i className="fa-solid fa-xmark" />
                         </button>
                     )}
                 </div>
                 {addedFeedback && (
-                    <span className="text-xs text-green-400 flex items-center gap-1 whitespace-nowrap">
+                    <span className="text-xs text-primary flex items-center gap-1 whitespace-nowrap">
                         <i className="fa-solid fa-check" />
                         {addedFeedback}
                     </span>
@@ -188,25 +188,25 @@ export function LibraryView() {
 
                 <div className="flex-1 overflow-y-auto">
                     {loading ? (
-                        <div className="flex items-center justify-center py-16 text-gray-500">
+                        <div className="flex items-center justify-center py-16 text-on-surface-variant">
                             <i className="fa-solid fa-spinner fa-spin mr-2" />
                             Loading Library…
                         </div>
                     ) : tracks.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-gray-600">
-                            <i className="fa-solid fa-music text-5xl mb-4 text-gray-700" />
+                        <div className="flex flex-col items-center justify-center py-16 text-on-surface-variant">
+                            <i className="fa-solid fa-music text-5xl mb-4 text-on-surface-variant" />
                             <h3 className="text-lg font-medium mb-2">Library is empty</h3>
                             <p className="text-sm text-center max-w-xs">
                                 Import tracks from Spotify to populate your Library. All imported tracks appear here regardless of which playlist they're in.
                             </p>
                         </div>
                     ) : filteredTracks.length === 0 ? (
-                        <div className="flex items-center justify-center py-16 text-gray-600">
+                        <div className="flex items-center justify-center py-16 text-on-surface-variant">
                             <p className="text-sm">No tracks match your search.</p>
                         </div>
                     ) : (
                         <table className="w-full">
-                            <thead className="sticky top-0 bg-gray-900 text-xs text-gray-500 uppercase border-b border-gray-800">
+                            <thead className="sticky top-0 bg-surface text-xs text-on-surface-variant uppercase border-b border-outline-variant">
                                 <tr>
                                     <th className="text-left px-4 py-2 w-8">#</th>
                                     <th className="text-left px-4 py-2">Title</th>
@@ -220,9 +220,9 @@ export function LibraryView() {
                                 {filteredTracks.map((track, idx) => (
                                     <tr
                                         key={track.id}
-                                        className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors group"
+                                        className="border-b border-outline-variant/50 hover:bg-surface-high/30 transition-colors group"
                                     >
-                                        <td className="px-4 py-2.5 text-gray-600 text-sm tabular-nums">
+                                        <td className="px-4 py-2.5 text-on-surface-variant text-sm tabular-nums">
                                             {idx + 1}
                                         </td>
                                         <td className="px-4 py-2.5">
@@ -237,27 +237,27 @@ export function LibraryView() {
                                                         }}
                                                     />
                                                 ) : (
-                                                    <div className="w-9 h-9 rounded bg-gray-700 flex items-center justify-center shrink-0">
-                                                        <i className="fa-solid fa-music text-gray-600 text-xs" />
+                                                    <div className="w-9 h-9 rounded bg-surface-high flex items-center justify-center shrink-0">
+                                                        <i className="fa-solid fa-music text-on-surface-variant text-xs" />
                                                     </div>
                                                 )}
                                                 <div className="min-w-0">
-                                                    <div className="font-medium text-gray-200 truncate max-w-[200px]">
+                                                    <div className="font-medium text-on-surface truncate max-w-[200px]">
                                                         {track.title}
                                                     </div>
-                                                    <div className="text-xs text-gray-500 truncate">
+                                                    <div className="text-xs text-on-surface-variant truncate">
                                                         {track.artists.join(', ')}
                                                     </div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-2.5 text-sm text-gray-400 hidden md:table-cell truncate max-w-[160px]">
+                                        <td className="px-4 py-2.5 text-sm text-on-surface-variant hidden md:table-cell truncate max-w-[160px]">
                                             {track.album}
                                         </td>
                                         <td className="px-4 py-2.5">
                                             <SourceBadge track={track} />
                                         </td>
-                                        <td className="px-4 py-2.5 text-right text-sm text-gray-500 tabular-nums">
+                                        <td className="px-4 py-2.5 text-right text-sm text-on-surface-variant tabular-nums">
                                             {formatDuration(track.durationMs)}
                                         </td>
                                         <td className="px-4 py-2.5">
@@ -266,7 +266,7 @@ export function LibraryView() {
                                                 <div className="relative group/add">
                                                     <button
                                                         disabled={addingTo?.trackId === track.id}
-                                                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-gray-400 hover:text-gray-200 hover:bg-gray-700 transition-all disabled:opacity-50"
+                                                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-high transition-all disabled:opacity-50"
                                                         title="Add to playlist"
                                                     >
                                                         {addingTo?.trackId === track.id ? (
@@ -276,15 +276,15 @@ export function LibraryView() {
                                                         )}
                                                     </button>
                                                     {/* Dropdown on hover */}
-                                                    <div className="hidden group-hover/add:block absolute right-0 top-full mt-1 w-52 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-10 py-1">
-                                                        <p className="px-3 py-1.5 text-[10px] text-gray-500 uppercase tracking-wide font-semibold border-b border-gray-700 mb-1">
+                                                    <div className="hidden group-hover/add:block absolute right-0 top-full mt-1 w-52 bg-surface-high border border-outline-variant rounded-lg shadow-xl z-10 py-1">
+                                                        <p className="px-3 py-1.5 text-[10px] text-on-surface-variant uppercase tracking-wide font-semibold border-b border-outline-variant mb-1">
                                                             Add to playlist
                                                         </p>
                                                         {playlists.map((pl) => (
                                                             <button
                                                                 key={pl.id}
                                                                 onClick={() => handleAddToPlaylist(track.id, pl.id)}
-                                                                className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors truncate"
+                                                                className="w-full text-left px-3 py-2 text-sm text-on-surface hover:bg-surface-high hover:text-on-surface transition-colors truncate"
                                                             >
                                                                 {pl.playlistName}
                                                             </button>

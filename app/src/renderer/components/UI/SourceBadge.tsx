@@ -10,7 +10,7 @@ export function SourceBadge({ track }: { track: TrackDocType }) {
         return (
             <span
                 title={`Spotify · ${track.spotifyId}`}
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-900/40 text-green-400"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/15 text-primary"
             >
                 <i className="fa-brands fa-spotify" />
                 Spotify
@@ -20,7 +20,7 @@ export function SourceBadge({ track }: { track: TrackDocType }) {
     return (
         <span
             title="Local file"
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-700 text-gray-400"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-high text-on-surface-variant"
         >
             <i className="fa-solid fa-hard-drive" />
             Local

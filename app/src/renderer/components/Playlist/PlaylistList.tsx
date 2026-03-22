@@ -58,7 +58,7 @@ export function PlaylistList() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="text-gray-500 text-sm">Loading playlists...</div>
+                <div className="text-on-surface-variant text-sm">Loading playlists...</div>
             </div>
         );
     }
@@ -83,13 +83,13 @@ export function PlaylistList() {
                     onContextMenu={(e) => openMenu(e, buildPlaylistMenuItems(playlist))}
                     className={`card w-full text-left cursor-pointer transition-colors ${
                         selectedPlaylistId === playlist.id
-                            ? 'border-blue-500 bg-blue-950/20'
-                            : 'hover:border-gray-600'
+                            ? 'border-primary bg-primary/10'
+                            : 'hover:border-outline-variant'
                     }`}
                 >
                     <div className="card-body">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-md shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-md shrink-0 overflow-hidden bg-gradient-to-br from-primary-dim to-primary flex items-center justify-center">
                                 {(playlist.coverArtLocalPath || playlist.coverArtUrl) ? (
                                     <img
                                         src={artSrc(playlist.coverArtLocalPath, playlist.coverArtUrl)}
@@ -100,12 +100,12 @@ export function PlaylistList() {
                                         }}
                                     />
                                 ) : (
-                                    <i className="fa-solid fa-music text-white text-xs opacity-50" />
+                                    <i className="fa-solid fa-music text-on-surface text-xs opacity-50" />
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <h3 className="font-semibold text-gray-100 truncate">
+                                    <h3 className="font-semibold text-on-surface truncate">
                                         {playlist.playlistName}
                                     </h3>
                                     {playlist.isCollaborative && (
@@ -115,17 +115,17 @@ export function PlaylistList() {
                                         </span>
                                     )}
                                     {playlist.queueMode === 'turn_taking' && (
-                                        <span className="px-1.5 py-0.5 bg-yellow-900/50 text-yellow-400 rounded text-[10px] font-semibold shrink-0">
+                                        <span className="px-1.5 py-0.5 bg-secondary/15 text-secondary rounded text-[10px] font-semibold shrink-0">
                                             Turns
                                         </span>
                                     )}
                                 </div>
                                 {playlist.description && (
-                                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                                    <p className="text-xs text-on-surface-variant mt-0.5 truncate">
                                         {playlist.description}
                                     </p>
                                 )}
-                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                <div className="flex items-center gap-3 mt-1 text-xs text-on-surface-variant">
                                     <span>
                                         <i className="fa-solid fa-music mr-1.5" />
                                         {playlist.trackIds.length} tracks
@@ -145,11 +145,11 @@ export function PlaylistList() {
             {playlists.length === 0 && (
                 <div className="card">
                     <div className="card-body text-center py-12">
-                        <i className="fa-solid fa-headphones text-4xl text-gray-700 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-400 mb-2">
+                        <i className="fa-solid fa-headphones text-4xl text-outline-variant mb-4" />
+                        <h3 className="text-lg font-medium text-on-surface-variant mb-2">
                             No Playlists Yet
                         </h3>
-                        <p className="text-sm text-gray-600 mb-4">
+                        <p className="text-sm text-outline-variant mb-4">
                             Create your first playlist to get started
                         </p>
                     </div>

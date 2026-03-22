@@ -46,10 +46,10 @@ export interface ContextMenuProps {
 
 const ITEM_BASE =
     'w-full text-left px-3 py-1.5 text-sm transition-colors flex items-center gap-2 rounded-lg select-none';
-const ITEM_DEFAULT = 'text-gray-300 hover:bg-gray-700 hover:text-white';
-const ITEM_DANGER = 'text-red-400 hover:bg-red-900/30 hover:text-red-300';
+const ITEM_DEFAULT = 'text-on-surface hover:bg-surface-high hover:text-on-surface';
+const ITEM_DANGER = 'text-error hover:bg-error/10 hover:text-error';
 const MENU_SHELL =
-    'fixed z-50 bg-gray-800 rounded-xl ring-1 ring-white/10 shadow-2xl p-1 min-w-[180px]';
+    'fixed z-50 bg-surface-high rounded-xl ring-1 ring-white/10 shadow-2xl p-1 min-w-[180px]';
 
 function itemCls(variant?: 'default' | 'danger') {
     return `${ITEM_BASE} ${variant === 'danger' ? ITEM_DANGER : ITEM_DEFAULT}`;
@@ -60,7 +60,7 @@ function MenuIcon({ icon, variant }: { icon: string; variant?: 'default' | 'dang
         return (
             <i
                 className={`${icon} w-4 text-center text-xs ${
-                    variant === 'danger' ? 'text-red-500' : 'text-gray-500'
+                    variant === 'danger' ? 'text-error' : 'text-on-surface-variant'
                 }`}
             />
         );
@@ -123,7 +123,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     if (confirmItem) {
         return createPortal(
             <div ref={menuRef} style={{ top: pos.y, left: pos.x }} className={MENU_SHELL}>
-                <p className="px-3 py-1.5 text-xs text-gray-500 border-b border-gray-700 mb-1 truncate">
+                <p className="px-3 py-1.5 text-xs text-on-surface-variant border-b border-outline-variant mb-1 truncate">
                     {confirmItem.confirmLabel ?? `${confirmItem.label}?`}
                 </p>
                 <button
@@ -133,11 +133,11 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
                     }}
                     className={itemCls('danger')}
                 >
-                    <i className="fa-solid fa-triangle-exclamation w-4 text-center text-xs text-red-500" />
+                    <i className="fa-solid fa-triangle-exclamation w-4 text-center text-xs text-error" />
                     Confirm
                 </button>
                 <button onClick={() => setConfirmItem(null)} className={itemCls()}>
-                    <i className="fa-solid fa-xmark w-4 text-center text-xs text-gray-500" />
+                    <i className="fa-solid fa-xmark w-4 text-center text-xs text-on-surface-variant" />
                     Cancel
                 </button>
             </div>,
@@ -150,7 +150,9 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
         <div ref={menuRef} style={{ top: pos.y, left: pos.x }} className={MENU_SHELL}>
             {items.map((item, index) => {
                 if (item.separator) {
-                    return <div key={`sep-${index}`} className="border-t border-gray-700 my-1" />;
+                    // Separators have no stable id; position among separators is stable for a given menu
+                    const sepIndex = items.slice(0, index).filter((i) => 'separator' in i && i.separator).length;
+                    return <div key={`sep-${sepIndex}`} className="border-t border-outline-variant my-1" />;
                 }
                 // TypeScript now narrows item to ContextMenuAction below this point
                 if (item.subItems?.length) {
@@ -166,12 +168,12 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
                                 {item.icon && <MenuIcon icon={item.icon} variant={item.variant} />}
                                 <span className="flex-1">{item.label}</span>
                                 <i
-                                    className={`fa-solid fa-chevron-${flyLeft ? 'left' : 'right'} text-[10px] text-gray-600`}
+                                    className={`fa-solid fa-chevron-${flyLeft ? 'left' : 'right'} text-[10px] text-on-surface-variant`}
                                 />
                             </button>
                             {open && (
                                 <div
-                                    className={`absolute top-0 ${flyLeft ? 'right-full mr-1' : 'left-full ml-1'} bg-gray-800 rounded-xl ring-1 ring-white/10 shadow-2xl p-1 min-w-[152px]`}
+                                    className={`absolute top-0 ${flyLeft ? 'right-full mr-1' : 'left-full ml-1'} bg-surface-high rounded-xl ring-1 ring-white/10 shadow-2xl p-1 min-w-[152px]`}
                                 >
                                     {item.subItems.map((sub) => (
                                         <button

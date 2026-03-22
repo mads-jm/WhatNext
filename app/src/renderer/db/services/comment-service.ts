@@ -7,7 +7,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../database';
 import type { CommentDocType, CommentDocument } from '../schemas';
-import { pushLocalChanges } from '../replication-handler';
+import type { ReplicationSink } from '../../../shared/core/types';
 
 export interface CreateCommentInput {
     playlistId: string;
@@ -25,7 +25,10 @@ export interface UpdateCommentInput {
 /**
  * Create a new comment and push to peers.
  */
-export async function createComment(input: CreateCommentInput): Promise<CommentDocument> {
+export async function createComment(
+    input: CreateCommentInput,
+    replicationSink?: ReplicationSink,
+): Promise<CommentDocument> {
     const db = await getDatabase();
     const now = new Date().toISOString();
     const comment: CommentDocType = {
@@ -42,7 +45,7 @@ export async function createComment(input: CreateCommentInput): Promise<CommentD
     };
     const doc = await db.comments.insert(comment);
 
-    await pushLocalChanges('comments', [{
+    await replicationSink?.('comments', [{
         id: comment.id,
         data: comment as unknown as Record<string, unknown>,
         updatedAt: now,
@@ -57,7 +60,8 @@ export async function createComment(input: CreateCommentInput): Promise<CommentD
 export async function updateComment(
     id: string,
     updates: UpdateCommentInput,
-    userId: string
+    userId: string,
+    replicationSink?: ReplicationSink,
 ): Promise<CommentDocument | null> {
     const db = await getDatabase();
     const comment = await db.comments.findOne(id).exec();
@@ -71,7 +75,7 @@ export async function updateComment(
         },
     });
 
-    await pushLocalChanges('comments', [{
+    await replicationSink?.('comments', [{
         id,
         data: { ...comment.toJSON(), body: updates.body, updatedAt: now },
         updatedAt: now,
@@ -83,7 +87,11 @@ export async function updateComment(
 /**
  * Soft-delete a comment. Only the author can delete.
  */
-export async function deleteComment(id: string, userId: string): Promise<boolean> {
+export async function deleteComment(
+    id: string,
+    userId: string,
+    replicationSink?: ReplicationSink,
+): Promise<boolean> {
     const db = await getDatabase();
     const comment = await db.comments.findOne(id).exec();
     if (!comment || comment.userId !== userId) return false;
@@ -96,7 +104,7 @@ export async function deleteComment(id: string, userId: string): Promise<boolean
         },
     });
 
-    await pushLocalChanges('comments', [{
+    await replicationSink?.('comments', [{
         id,
         data: { ...comment.toJSON(), isDeleted: true, updatedAt: now },
         updatedAt: now,

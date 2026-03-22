@@ -135,17 +135,28 @@ export async function getAllUsers(): Promise<UserDocType[]> {
 }
 
 /**
- * Create a session participant — a non-local user linked to a Spotify account.
+ * Create a session participant — a non-local user, optionally linked to a Spotify account.
  * Used by the host to register people before or during a session.
+ * When spotifyUserId is omitted, creates a local-only participant (no service linkage).
  */
 export async function createSessionParticipant(
     displayName: string,
-    spotifyUserId: string,
+    spotifyUserId?: string,
     spotifyDisplayName?: string,
     avatarUrl?: string
 ): Promise<UserDocument> {
     const db = await getDatabase();
     const now = new Date().toISOString();
+
+    const linkedAccounts = spotifyUserId
+        ? [{
+            provider: 'spotify',
+            providerUserId: spotifyUserId,
+            displayName: spotifyDisplayName,
+            avatarUrl,
+            linkedAt: now,
+        }]
+        : [];
 
     return db.users.insert({
         id: uuidv4(),
@@ -153,13 +164,7 @@ export async function createSessionParticipant(
         avatarSource: avatarUrl ? 'spotify' : 'none',
         avatarUrl,
         isLocal: false,
-        linkedAccounts: [{
-            provider: 'spotify',
-            providerUserId: spotifyUserId,
-            displayName: spotifyDisplayName,
-            avatarUrl,
-            linkedAt: now,
-        }],
+        linkedAccounts,
         lastSeenAt: now,
         createdAt: now,
         updatedAt: now,
@@ -167,19 +172,65 @@ export async function createSessionParticipant(
 }
 
 /**
+ * Update a participant's display name (nickname).
+ * Works for any non-local user. Useful for renaming auto-created stubs
+ * or setting local nicknames that will carry forward to peer reconciliation.
+ */
+export async function updateParticipantDisplayName(
+    userId: string,
+    displayName: string
+): Promise<UserDocument | null> {
+    const db = await getDatabase();
+    const user = await db.users.findOne(userId).exec();
+    if (!user || user.isLocal) return null;
+
+    await user.update({
+        $set: {
+            displayName,
+            updatedAt: new Date().toISOString(),
+        },
+    });
+    return user;
+}
+
+/**
  * Find a WhatNext user by their linked Spotify user ID.
  * Used during track polling to map Spotify's added_by.id → WhatNext userId.
  * Returns null if no matching profile exists.
+ *
+ * When `displayName` is provided and the existing user still has a placeholder
+ * name (the Spotify ID itself, or "Unknown"), backfill it automatically.
  */
-export async function resolveSpotifyUser(spotifyUserId: string): Promise<UserDocType | null> {
+export async function resolveSpotifyUser(
+    spotifyUserId: string,
+    displayName?: string
+): Promise<UserDocType | null> {
     const db = await getDatabase();
     const all = await db.users.find().exec();
-    const match = all.find((u) =>
+    const matches = all.filter((u) =>
         u.linkedAccounts.some(
             (a) => a.provider === 'spotify' && a.providerUserId === spotifyUserId
         )
     );
-    return match ? match.toJSON() as UserDocType : null;
+    if (matches.length === 0) return null;
+
+    // Prefer the local user when multiple users share the same Spotify ID
+    // (can happen if a stub was created before the coordinator linked their account)
+    const match = matches.find((u) => u.isLocal) ?? matches[0];
+
+    // Backfill display name if the existing record has a placeholder
+    const isPlaceholder =
+        match.displayName === 'Unknown' || match.displayName === spotifyUserId;
+    if (displayName && isPlaceholder) {
+        await match.update({
+            $set: {
+                displayName,
+                updatedAt: new Date().toISOString(),
+            },
+        });
+    }
+
+    return match.toJSON() as UserDocType;
 }
 
 /**

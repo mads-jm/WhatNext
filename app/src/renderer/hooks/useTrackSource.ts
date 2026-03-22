@@ -2,25 +2,29 @@
  * useTrackSource
  * Polling loop for the track source configured for a session.
  * Currently implements the spotify-collab source strategy.
+ *
+ * Two-phase poll:
+ *  1. Lightweight snapshot check (~200 bytes) — skip if nothing changed
+ *  2. If total grew, fetch only the new tail; full diff deferred to manual sync
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getDatabase } from '../db/database';
 import {
-    addTrackToPlaylist,
-    advanceTurn,
+    bulkAddTracksToPlaylist,
+    removeTrackFromPlaylist,
 } from '../db/services/playlist-service';
+import { bulkImportTracks } from '../db/services/track-service';
 import {
-    resolveSpotifyUser,
     createSessionParticipant,
 } from '../db/services/user-service';
 import type {
     TrackSourceConfig,
     IncomingTrack,
 } from '../../shared/session-interfaces';
+import type { SpotifyFullTrackItem } from '../../shared/core/ipc-protocol';
 
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS = 2000;
 
 export interface UseTrackSourceOptions {
     config: TrackSourceConfig;
@@ -33,6 +37,124 @@ export interface UseTrackSourceResult {
     syncing: boolean;
     lastSyncAt: string | null;
     error: string | null;
+    syncNow: (() => void) | null;
+}
+
+/**
+ * Given an array of incoming Spotify tracks, import any that are new to the DB
+ * and ensure all are present in the playlist. Returns the incoming tracks that
+ * were brand new (for the onNewTracks callback).
+ */
+async function processIncomingTracks(
+    tracks: SpotifyFullTrackItem[],
+    playlistId: string
+): Promise<IncomingTrack[]> {
+    if (tracks.length === 0) return [];
+
+    const db = await getDatabase();
+
+    // Query only the playlist (already targeted) and tracks matching incoming spotifyIds
+    const incomingSpotifyIds = tracks.map((t) => t.spotifyId);
+    const [currentPlaylist, matchingLocalTracks] = await Promise.all([
+        db.playlists.findOne(playlistId).exec(),
+        db.tracks.find({ selector: { spotifyId: { $in: incomingSpotifyIds } } }).exec(),
+    ]);
+
+    const playlistTrackIds = new Set(currentPlaylist?.trackIds ?? []);
+
+    // Index local tracks by spotifyId for O(1) lookup
+    const localBySpotifyId = new Map<string, string>();
+    for (const t of matchingLocalTracks) {
+        if (t.spotifyId) localBySpotifyId.set(t.spotifyId, t.id);
+    }
+
+    // Classify incoming tracks
+    const existingToAdd: string[] = [];
+    const brandNew: SpotifyFullTrackItem[] = [];
+
+    for (const track of tracks) {
+        const localId = localBySpotifyId.get(track.spotifyId);
+        if (localId) {
+            if (!playlistTrackIds.has(localId)) existingToAdd.push(localId);
+        } else {
+            brandNew.push(track);
+        }
+    }
+
+    // Only resolve users when there are brand-new tracks that need it
+    const spotifyToWhatNext = new Map<string, string>();
+    const newCollaboratorIds: string[] = [];
+
+    if (brandNew.length > 0) {
+        const uniqueSpotifyUserIds = [...new Set(brandNew.map((t) => t.addedBySpotifyId))];
+        const allUsers = await db.users.find().exec();
+
+        for (const spotifyId of uniqueSpotifyUserIds) {
+            const match = allUsers.find((u) =>
+                u.linkedAccounts.some(
+                    (a) => a.provider === 'spotify' && a.providerUserId === spotifyId
+                )
+            );
+            if (match) {
+                spotifyToWhatNext.set(spotifyId, match.id);
+            } else {
+                const displayName = brandNew.find((t) => t.addedBySpotifyId === spotifyId)?.addedByDisplayName;
+                const participant = await createSessionParticipant(
+                    displayName || spotifyId,
+                    spotifyId,
+                    displayName
+                );
+                spotifyToWhatNext.set(spotifyId, participant.id);
+                if (!currentPlaylist?.collaboratorIds.includes(participant.id)) {
+                    newCollaboratorIds.push(participant.id);
+                }
+            }
+        }
+    }
+
+    // Bulk-insert new tracks + add all to playlist
+    let newTrackIds: string[] = [];
+    if (brandNew.length > 0) {
+        newTrackIds = await bulkImportTracks(
+            brandNew.map((t) => ({
+                title: t.title,
+                artists: t.artists,
+                album: t.album,
+                durationMs: t.durationMs,
+                spotifyId: t.spotifyId,
+                addedAt: t.addedAt,
+                addedBy: spotifyToWhatNext.get(t.addedBySpotifyId)!,
+                albumArtUrl: t.albumArtUrl,
+            }))
+        );
+    }
+
+    const allToAdd = [...existingToAdd, ...newTrackIds];
+    if (allToAdd.length > 0) {
+        await bulkAddTracksToPlaylist(playlistId, allToAdd);
+    }
+
+    // Persist new collaborators in one update
+    if (newCollaboratorIds.length > 0 && currentPlaylist) {
+        await currentPlaylist.update({
+            $set: {
+                collaboratorIds: [...currentPlaylist.collaboratorIds, ...newCollaboratorIds],
+                updatedAt: new Date().toISOString(),
+            },
+        });
+    }
+
+    return brandNew.map((t) => ({
+        title: t.title,
+        artists: t.artists,
+        album: t.album,
+        durationMs: t.durationMs,
+        externalId: t.spotifyId,
+        externalSource: 'spotify',
+        albumArtUrl: t.albumArtUrl,
+        addedAt: t.addedAt,
+        addedByExternalId: t.addedBySpotifyId,
+    }));
 }
 
 export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceResult {
@@ -43,14 +165,29 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
     const [error, setError] = useState<string | null>(null);
 
     const lastSnapshotIdRef = useRef<string | null>(null);
+    const lastTotalRef = useRef<number>(0);
+    const pollRef = useRef<(() => Promise<void>) | null>(null);
+    const syncingRef = useRef(false);
 
     useEffect(() => {
-        if (!enabled || config.type !== 'spotify-collab') return;
+        if (!enabled || config.type !== 'spotify-collab') {
+            pollRef.current = null;
+            return;
+        }
 
         let cancelled = false;
 
+        // Seed lastTotalRef from local playlist so first poll doesn't re-fetch everything
+        getDatabase().then((db) =>
+            db.playlists.findOne(playlistId).exec()
+        ).then((pl) => {
+            if (pl && lastTotalRef.current === 0) {
+                lastTotalRef.current = pl.trackIds.length;
+            }
+        });
+
         const poll = async () => {
-            if (cancelled) return;
+            if (cancelled || syncingRef.current) return;
 
             const spotify = window.electron?.spotify;
             if (!spotify) {
@@ -58,100 +195,99 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                 return;
             }
 
+            syncingRef.current = true;
             setSyncing(true);
             try {
-                const result = await spotify.getPlaylistTracksFull(
+                // ── Phase 1: lightweight snapshot check (~200 bytes) ──────
+                const snapshot = await spotify.getPlaylistSnapshot(
                     config.spotifyPlaylistId
                 );
 
                 if (cancelled) return;
 
-                if (!result.success) {
-                    setError(result.error ?? 'Failed to fetch playlist tracks');
-                    setSyncing(false);
+                if (!snapshot.success) {
+                    setError(snapshot.error ?? 'Failed to check playlist');
                     return;
                 }
 
-                const tracks = result.tracks ?? [];
-                const snapshotId = result.snapshotId ?? null;
+                const snapshotId = snapshot.snapshotId ?? null;
+                const remoteTotal = snapshot.total ?? 0;
 
-                // Short-circuit if playlist hasn't changed
+                // Nothing changed — skip entirely
                 if (snapshotId && snapshotId === lastSnapshotIdRef.current) {
-                    setSyncing(false);
                     setLastSyncAt(new Date().toISOString());
                     return;
                 }
 
-                lastSnapshotIdRef.current = snapshotId;
+                // ── Phase 2: fetch only what's new ────────────────────────
+                const localTotal = lastTotalRef.current;
 
-                const db = await getDatabase();
-                const newIncoming: IncomingTrack[] = [];
+                if (remoteTotal > localTotal) {
+                    // Tracks were added — fetch only the tail
+                    const result = await spotify.getPlaylistTracksFrom(
+                        config.spotifyPlaylistId,
+                        localTotal,
+                        snapshotId ?? undefined
+                    );
 
-                for (const track of tracks) {
-                    if (cancelled) break;
+                    if (cancelled) return;
 
-                    // Check if we've already imported this Spotify track
-                    const existing = await db.tracks
-                        .find({ selector: { spotifyId: track.spotifyId } })
-                        .exec();
-
-                    if (existing.length > 0) continue;
-
-                    // Map Spotify user → WhatNext user
-                    let addedByUserId: string;
-                    const resolved = await resolveSpotifyUser(track.addedBySpotifyId);
-
-                    if (resolved) {
-                        addedByUserId = resolved.id;
-                    } else {
-                        const participant = await createSessionParticipant(
-                            'Unknown',
-                            track.addedBySpotifyId
-                        );
-                        addedByUserId = participant.id;
+                    if (!result.success) {
+                        setError(result.error ?? 'Failed to fetch new tracks');
+                        return;
                     }
 
-                    const trackId = uuidv4();
-                    await db.tracks.insert({
-                        id: trackId,
-                        title: track.title,
-                        artists: track.artists,
-                        album: track.album,
-                        durationMs: track.durationMs,
-                        spotifyId: track.spotifyId,
-                        addedAt: track.addedAt,
-                        addedBy: addedByUserId,
-                    });
+                    const newTracks = result.tracks ?? [];
+                    const newIncoming = await processIncomingTracks(newTracks, playlistId);
 
-                    await addTrackToPlaylist(playlistId, trackId);
+                    if (!cancelled && newIncoming.length > 0) {
+                        onNewTracks?.(newIncoming);
+                    }
+                } else if (remoteTotal < localTotal) {
+                    // Tracks were removed — need full sync to find which ones
+                    const result = await spotify.getPlaylistTracksFull(
+                        config.spotifyPlaylistId
+                    );
 
-                    // Auto-advance turn if the adder matches the current turn holder
-                    const playlist = await db.playlists.findOne(playlistId).exec();
-                    if (
-                        playlist?.queueMode === 'turn_taking' &&
-                        playlist.currentTurnUserId === addedByUserId
-                    ) {
-                        await advanceTurn(playlistId);
+                    if (cancelled) return;
+
+                    if (!result.success) {
+                        setError(result.error ?? 'Failed to sync playlist');
+                        return;
                     }
 
-                    newIncoming.push({
-                        title: track.title,
-                        artists: track.artists,
-                        album: track.album,
-                        durationMs: track.durationMs,
-                        externalId: track.spotifyId,
-                        externalSource: 'spotify',
-                        albumArtUrl: track.albumArtUrl,
-                        addedAt: track.addedAt,
-                        addedByExternalId: track.addedBySpotifyId,
-                    });
-                }
+                    const tracks = result.tracks ?? [];
 
-                if (!cancelled && newIncoming.length > 0) {
-                    onNewTracks?.(newIncoming);
+                    // Process additions (handles re-added tracks too)
+                    const newIncoming = await processIncomingTracks(tracks, playlistId);
+
+                    if (!cancelled && newIncoming.length > 0) {
+                        onNewTracks?.(newIncoming);
+                    }
+
+                    // Detect removals
+                    if (!cancelled) {
+                        const db = await getDatabase();
+                        const spotifyIdSet = new Set(tracks.map((t) => t.spotifyId));
+                        const playlistDoc = await db.playlists.findOne(playlistId).exec();
+                        if (playlistDoc) {
+                            const localTracks = await db.tracks
+                                .find({ selector: { id: { $in: playlistDoc.trackIds } } })
+                                .exec();
+                            for (const local of localTracks) {
+                                if (cancelled) break;
+                                if (local.spotifyId && !spotifyIdSet.has(local.spotifyId)) {
+                                    await removeTrackFromPlaylist(playlistId, local.id);
+                                }
+                            }
+                        }
+                    }
                 }
+                // else: total same but snapshot changed → reorder only, skip for now
 
                 if (!cancelled) {
+                    lastSnapshotIdRef.current = snapshotId;
+                    lastTotalRef.current = remoteTotal;
                     setError(null);
                     setLastSyncAt(new Date().toISOString());
                 }
@@ -160,23 +296,32 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                     setError(err instanceof Error ? err.message : String(err));
                 }
             } finally {
-                if (!cancelled) setSyncing(false);
+                if (!cancelled) {
+                    setSyncing(false);
+                    syncingRef.current = false;
+                }
             }
         };
 
+        pollRef.current = poll;
         poll();
         const id = setInterval(poll, POLL_INTERVAL_MS);
 
         return () => {
             cancelled = true;
+            pollRef.current = null;
             clearInterval(id);
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enabled, config.type, playlistId]);
 
+    const syncNow = useCallback(() => {
+        pollRef.current?.();
+    }, []);
+
     if (config.type === 'manual' || config.type === 'p2p') {
-        return { syncing: false, lastSyncAt: null, error: null };
+        return { syncing: false, lastSyncAt: null, error: null, syncNow: null };
     }
 
-    return { syncing, lastSyncAt, error };
+    return { syncing, lastSyncAt, error, syncNow };
 }

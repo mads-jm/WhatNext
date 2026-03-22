@@ -12,7 +12,7 @@ import {
     createSessionParticipant,
     getAllUsers,
 } from '../../db/services/user-service';
-import { getPlaylist } from '../../db/services/playlist-service';
+import { getPlaylist, updatePlaylist } from '../../db/services/playlist-service';
 import type {
     TrackSourceConfig,
     PlaybackProviderConfig,
@@ -139,8 +139,7 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
         dispatch({ type: 'SET_NEW_PARTICIPANT_ERROR', error: null });
         const name = newParticipant.name.trim();
         if (!name) { dispatch({ type: 'SET_NEW_PARTICIPANT_ERROR', error: 'Display name is required' }); return; }
-        const spotifyId = newParticipant.spotifyUsername.trim();
-        if (!spotifyId) { dispatch({ type: 'SET_NEW_PARTICIPANT_ERROR', error: 'Spotify username is required' }); return; }
+        const spotifyId = newParticipant.spotifyUsername.trim() || undefined;
 
         try {
             const doc = await createSessionParticipant(name, spotifyId);
@@ -150,8 +149,18 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
         }
     };
 
-    const handleStart = () => {
+    const handleStart = async () => {
         if (!user) return;
+
+        // Persist participants as playlist collaborators so turn-taking and
+        // playlist views can see them independent of ephemeral session state.
+        if (participantIds.length > 0) {
+            await updatePlaylist(playlistId, {
+                collaboratorIds: participantIds,
+                isCollaborative: true,
+            });
+        }
+
         startSession({
             playlistId,
             trackSource,
@@ -166,7 +175,7 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
         <div className="space-y-4 max-w-xl">
             <div className="card">
                 <div className="card-header flex items-center gap-2">
-                    <i className="fa-solid fa-users text-blue-400" />
+                    <i className="fa-solid fa-users text-primary" />
                     <span className="font-medium">Start a Session</span>
                 </div>
 
@@ -174,7 +183,7 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                     <div className="card-body space-y-4">
                         {/* Track source */}
                         <div>
-                            <p className="text-sm font-medium text-gray-300 mb-2">Track Source</p>
+                            <p className="text-sm font-medium text-on-surface mb-2">Track Source</p>
                             {linkedSpotifyId ? (
                                 <div className="space-y-2">
                                     <label className="flex items-start gap-3 cursor-pointer">
@@ -189,11 +198,11 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                             }
                                         />
                                         <div>
-                                            <p className="text-sm font-medium text-gray-200">Spotify Collaborative Playlist</p>
-                                            <p className="text-xs text-gray-500">
+                                            <p className="text-sm font-medium text-on-surface">Spotify Collaborative Playlist</p>
+                                            <p className="text-xs text-on-surface-variant">
                                                 Polls{' '}
-                                                <code className="bg-gray-900 px-1 rounded">{linkedSpotifyId}</code>
-                                                {' '}every 5 seconds for new tracks
+                                                <code className="bg-surface px-1 rounded">{linkedSpotifyId}</code>
+                                                {' '}for new tracks
                                             </p>
                                         </div>
                                     </label>
@@ -207,8 +216,8 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                             onChange={() => dispatch({ type: 'SET_TRACK_SOURCE', source: { type: 'manual' } })}
                                         />
                                         <div>
-                                            <p className="text-sm font-medium text-gray-200">Manual</p>
-                                            <p className="text-xs text-gray-500">
+                                            <p className="text-sm font-medium text-on-surface">Manual</p>
+                                            <p className="text-xs text-on-surface-variant">
                                                 No Spotify polling — metadata only
                                             </p>
                                         </div>
@@ -216,13 +225,13 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    <p className="text-xs text-gray-500">
+                                    <p className="text-xs text-on-surface-variant">
                                         No Spotify playlist linked. Using manual mode.
                                         Link a Spotify playlist to enable Spotify sync.
                                     </p>
                                     <label className="flex items-center gap-3">
                                         <input type="radio" name="trackSource" checked readOnly />
-                                        <span className="text-sm text-gray-300">Manual</span>
+                                        <span className="text-sm text-on-surface">Manual</span>
                                     </label>
                                 </div>
                             )}
@@ -230,7 +239,7 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
 
                         {/* Playback provider */}
                         <div>
-                            <p className="text-sm font-medium text-gray-300 mb-2">Playback</p>
+                            <p className="text-sm font-medium text-on-surface mb-2">Playback</p>
                             <div className="space-y-2">
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <input
@@ -239,8 +248,8 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                         checked={playbackProvider.type === 'spotify'}
                                         onChange={() => dispatch({ type: 'SET_PLAYBACK_PROVIDER', provider: { type: 'spotify' } })}
                                     />
-                                    <span className="text-sm text-gray-200">
-                                        <i className="fa-brands fa-spotify text-green-500 mr-2" />
+                                    <span className="text-sm text-on-surface">
+                                        <i className="fa-brands fa-spotify text-primary mr-2" />
                                         Spotify
                                     </span>
                                 </label>
@@ -251,7 +260,7 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                         checked={playbackProvider.type === 'none'}
                                         onChange={() => dispatch({ type: 'SET_PLAYBACK_PROVIDER', provider: { type: 'none' } })}
                                     />
-                                    <span className="text-sm text-gray-200">None (metadata only)</span>
+                                    <span className="text-sm text-on-surface">None (metadata only)</span>
                                 </label>
                             </div>
                         </div>
@@ -265,37 +274,48 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
 
                 {step === 2 && (
                     <div className="card-body space-y-4">
-                        <button className="btn-ghost text-sm p-0 text-gray-400" onClick={() => dispatch({ type: 'SET_STEP', step: 1 })}>
+                        <button className="btn-ghost text-sm p-0 text-on-surface-variant" onClick={() => dispatch({ type: 'SET_STEP', step: 1 })}>
                             <i className="fa-solid fa-arrow-left mr-1" />
                             Back
                         </button>
 
                         {suggestedUsers.length > 0 && (
                             <div>
-                                <p className="text-sm font-medium text-gray-300 mb-2">Known participants</p>
+                                <p className="text-sm font-medium text-on-surface mb-2">Known participants</p>
                                 <div className="space-y-2">
-                                    {suggestedUsers.map((u) => (
-                                        <label key={u.id} className="flex items-center gap-3 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                aria-label={u.displayName}
-                                                checked={participantIds.includes(u.id)}
-                                                onChange={() => dispatch({ type: 'TOGGLE_PARTICIPANT', userId: u.id })}
-                                            />
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300">
-                                                    {u.displayName.charAt(0).toUpperCase()}
+                                    {suggestedUsers.map((u) => {
+                                        const spotifyLink = u.linkedAccounts.find((a) => a.provider === 'spotify');
+                                        return (
+                                            <label key={u.id} className="flex items-center gap-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    aria-label={u.displayName}
+                                                    checked={participantIds.includes(u.id)}
+                                                    onChange={() => dispatch({ type: 'TOGGLE_PARTICIPANT', userId: u.id })}
+                                                />
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-surface-high flex items-center justify-center text-xs font-bold text-on-surface">
+                                                        {u.displayName.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm text-on-surface">{u.displayName}</span>
+                                                        {spotifyLink && (
+                                                            <span className="ml-2 text-xs text-on-surface-variant">
+                                                                <i className="fa-brands fa-spotify text-primary mr-0.5" />
+                                                                {spotifyLink.providerUserId}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <span className="text-sm text-gray-200">{u.displayName}</span>
-                                            </div>
-                                        </label>
-                                    ))}
+                                            </label>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
 
                         <div>
-                            <p className="text-sm font-medium text-gray-300 mb-2">Add new participant</p>
+                            <p className="text-sm font-medium text-on-surface mb-2">Add new participant</p>
                             <div className="space-y-2">
                                 <input
                                     className="input text-sm w-full"
@@ -305,12 +325,12 @@ export function SessionSetup({ playlistId, onStart }: SessionSetupProps) {
                                 />
                                 <input
                                     className="input text-sm w-full"
-                                    placeholder="Spotify username"
+                                    placeholder="Spotify username (optional)"
                                     value={newParticipant.spotifyUsername}
                                     onChange={(e) => dispatch({ type: 'UPDATE_NEW_PARTICIPANT', field: 'spotifyUsername', value: e.target.value })}
                                 />
-                                {newParticipant.error && <p className="text-xs text-red-400">{newParticipant.error}</p>}
-                                <button className="btn-ghost text-sm border border-gray-700" onClick={handleAddParticipant}>
+                                {newParticipant.error && <p className="text-xs text-error">{newParticipant.error}</p>}
+                                <button className="btn-ghost text-sm border border-outline-variant" onClick={handleAddParticipant}>
                                     <i className="fa-solid fa-plus mr-1" />
                                     Add
                                 </button>

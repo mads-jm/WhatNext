@@ -5,7 +5,7 @@
  */
 
 import type { ExportPlaylist, ExportComment } from './export-types';
-import { REACTION_DISPLAY, type ReactionEmoji } from '../../db/services/reaction-service';
+import { REACTION_DISPLAY, type ReactionEmoji } from '../../../shared/core/reactions';
 
 export function formatAsHtml(data: ExportPlaylist): string {
     const tracksHtml = data.tracks.map((track, i) => {
