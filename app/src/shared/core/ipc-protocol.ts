@@ -254,6 +254,7 @@ export const IPC_CHANNELS = {
 
     // Download service (renderer ↔ main)
     DOWNLOAD_CHECK_BACKENDS: 'download:check-backends',
+    DOWNLOAD_SUGGEST_BACKEND: 'download:suggest-backend',
     DOWNLOAD_RESOLVE: 'download:resolve',
     DOWNLOAD_START: 'download:start',
     DOWNLOAD_CANCEL: 'download:cancel',

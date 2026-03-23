@@ -421,6 +421,9 @@ const electronHandler = {
         checkBackends: (): Promise<BackendStatusResult[]> =>
             ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_CHECK_BACKENDS),
 
+        suggestBackend: (url: string): Promise<string> =>
+            ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_SUGGEST_BACKEND, url),
+
         resolve: (req: DownloadResolveRequest): Promise<ResolvedTrack[]> =>
             ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_RESOLVE, req),
 

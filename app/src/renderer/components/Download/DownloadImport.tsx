@@ -14,6 +14,7 @@ import { BackendPicker } from './BackendPicker';
 import { DownloadTrackSelector } from './DownloadTrackSelector';
 import { DownloadProgress } from './DownloadProgress';
 import { DownloadComplete } from './DownloadComplete';
+import { LibraryDownload } from './LibraryDownload';
 
 type Tab = 'url' | 'library' | 'local';
 
@@ -73,7 +74,7 @@ export function DownloadImport() {
             )}
 
             {activeTab === 'library' && (
-                <LibraryTabPlaceholder />
+                <LibraryDownload />
             )}
         </div>
     );
@@ -214,22 +215,4 @@ function UrlTab({
     }
 
     return null;
-}
-
-// ---------------------------------------------------------------------------
-// Library Download tab — placeholder for Phase D
-// ---------------------------------------------------------------------------
-
-function LibraryTabPlaceholder() {
-    return (
-        <div className="flex flex-col items-center justify-center py-20 gap-4 border border-dashed border-outline-variant/30 rounded-xl">
-            <i className="fa-solid fa-cloud-arrow-down text-3xl text-on-surface-variant" />
-            <div className="text-center">
-                <p className="text-on-surface font-medium">Library Download</p>
-                <p className="text-sm text-on-surface-variant mt-1">
-                    Download audio for existing Spotify tracks. Coming in Phase D.
-                </p>
-            </div>
-        </div>
-    );
 }

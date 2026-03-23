@@ -7,25 +7,23 @@ import type {
 
 // Lazy-load the downloader service to avoid pulling it in until first use.
 // The service module is pure Node.js (no Electron imports).
-let _YtdlpBackend: typeof import('../../../../service/downloader/index').YtdlpBackend | null = null;
-let _AudioStore: typeof import('../../../../service/downloader/index').AudioStore | null = null;
+type Mod = typeof import('../../../../service/downloader/index');
+let _mod: Mod | null = null;
 
-async function getDownloaderModules() {
-    if (!_YtdlpBackend || !_AudioStore) {
-        const mod = await import('../../../../service/downloader/index');
-        _YtdlpBackend = mod.YtdlpBackend;
-        _AudioStore = mod.AudioStore;
+async function getDownloaderModules(): Promise<Mod> {
+    if (!_mod) {
+        _mod = await import('../../../../service/downloader/index');
     }
-    return { YtdlpBackend: _YtdlpBackend!, AudioStore: _AudioStore! };
+    return _mod;
 }
 
 // Registry of backend instances (initialised lazily)
-type BackendRegistry = {
-    ytdlp: import('../../../../service/downloader/backend').DownloadBackend | null;
-};
+type BackendId = 'ytdlp' | 'spotdl';
+type BackendRegistry = Record<BackendId, import('../../../../service/downloader/backend').DownloadBackend | null>;
 
 const backends: BackendRegistry = {
     ytdlp: null,
+    spotdl: null,
 };
 
 let audioStore: import('../../../../service/downloader/audio-store').AudioStore | null = null;
@@ -33,8 +31,8 @@ let storeReady = false;
 
 async function ensureStore(): Promise<import('../../../../service/downloader/audio-store').AudioStore> {
     if (audioStore && storeReady) return audioStore;
-    const { AudioStore } = await getDownloaderModules();
-    audioStore = new AudioStore();
+    const mod = await getDownloaderModules();
+    audioStore = new mod.AudioStore();
     await audioStore.init();
     storeReady = true;
     return audioStore;
@@ -43,12 +41,14 @@ async function ensureStore(): Promise<import('../../../../service/downloader/aud
 async function getBackend(
     id: string,
 ): Promise<import('../../../../service/downloader/backend').DownloadBackend> {
-    const { YtdlpBackend } = await getDownloaderModules();
+    const mod = await getDownloaderModules();
     if (id === 'ytdlp') {
-        if (!backends.ytdlp) {
-            backends.ytdlp = new YtdlpBackend();
-        }
+        if (!backends.ytdlp) backends.ytdlp = new mod.YtdlpBackend();
         return backends.ytdlp!;
+    }
+    if (id === 'spotdl') {
+        if (!backends.spotdl) backends.spotdl = new mod.SpotdlBackend();
+        return backends.spotdl!;
     }
     throw new Error(`Unknown download backend: "${id}"`);
 }
@@ -66,17 +66,23 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
     // Returns the install status of all known backends.
     // -----------------------------------------------------------------------
     ipcMain.handle(IPC_CHANNELS.DOWNLOAD_CHECK_BACKENDS, async (): Promise<BackendStatusResult[]> => {
-        const backend = await getBackend('ytdlp');
-        const status = await backend.checkInstalled();
+        const [ytdlp, spotdl] = await Promise.all([
+            getBackend('ytdlp').then((b) => b.checkInstalled()),
+            getBackend('spotdl').then((b) => b.checkInstalled()),
+        ]);
         return [
-            {
-                id: 'ytdlp',
-                name: 'yt-dlp',
-                installed: status.installed,
-                version: status.version,
-                error: status.error,
-            },
+            { id: 'ytdlp', name: 'yt-dlp', ...ytdlp },
+            { id: 'spotdl', name: 'spotDL', ...spotdl },
         ];
+    });
+
+    // -----------------------------------------------------------------------
+    // download:suggest-backend
+    // Returns the suggested backend id for a given URL.
+    // -----------------------------------------------------------------------
+    ipcMain.handle(IPC_CHANNELS.DOWNLOAD_SUGGEST_BACKEND, async (_e, url: string): Promise<string> => {
+        const mod = await getDownloaderModules();
+        return mod.suggestBackend(url);
     });
 
     // -----------------------------------------------------------------------
