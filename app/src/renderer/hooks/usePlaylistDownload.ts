@@ -17,7 +17,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useUserStore } from '../stores/user-store';
-import { bulkImportTracks } from '../db/services/track-service';
+import { bulkImportTracks, updateTrack } from '../db/services/track-service';
 import type { BackendStatusResult } from '../../shared/core/ipc-protocol';
 import type { ResolvedTrack, DownloadEvent } from '../../../../service/downloader/types';
 
@@ -176,8 +176,10 @@ export function usePlaylistDownload() {
             setCompletedCount((n) => {
                 const newCount = n + 1;
                 if (newCount >= toDownload.length) {
-                    // All tracks done — import into RxDB then transition
-                    void importCompleted(toDownload, completedPaths, userId);
+                    // All tracks done — import into RxDB, enrich with purchase links, then transition
+                    void importCompleted(toDownload, completedPaths, userId).then(() =>
+                        setState('done'),
+                    );
                 }
                 return newCount;
             });
@@ -255,27 +257,51 @@ export function usePlaylistDownload() {
     };
 }
 
-/** Import completed downloads into RxDB. Fire-and-forget; called internally. */
+/** Import completed downloads into RxDB, then fire-and-forget purchase link enrichment. */
 async function importCompleted(
     tracks: ResolvedTrack[],
     completedPaths: Map<string, string>,
     userId: string,
-) {
-    const toImport = tracks
-        .filter((t) => completedPaths.has(t.sourceUrl))
-        .map((t) => ({
-            title: t.title,
-            artists: t.artists,
-            album: t.album,
-            durationMs: t.durationMs,
-            source: t.sourceProvider,
-            sourceUrl: t.sourceUrl,
-            localFilePath: completedPaths.get(t.sourceUrl),
-            albumArtUrl: t.thumbnailUrl,
-            addedBy: userId,
-            addedAt: new Date().toISOString(),
-        }));
-    if (toImport.length > 0) {
-        await bulkImportTracks(toImport);
+): Promise<void> {
+    const completed = tracks.filter((t) => completedPaths.has(t.sourceUrl));
+    if (completed.length === 0) return;
+
+    const toImport = completed.map((t) => ({
+        title: t.title,
+        artists: t.artists,
+        album: t.album,
+        durationMs: t.durationMs,
+        source: t.sourceProvider,
+        sourceUrl: t.sourceUrl,
+        localFilePath: completedPaths.get(t.sourceUrl),
+        albumArtUrl: t.thumbnailUrl,
+        addedBy: userId,
+        addedAt: new Date().toISOString(),
+    }));
+
+    const ids = await bulkImportTracks(toImport);
+
+    // Background enrichment — fire-and-forget, does not block state transition
+    void enrichWithPurchaseLinks(completed, ids);
+}
+
+/** Resolve purchase links for downloaded tracks and persist to RxDB. */
+async function enrichWithPurchaseLinks(tracks: ResolvedTrack[], ids: string[]): Promise<void> {
+    for (let i = 0; i < tracks.length; i++) {
+        const track = tracks[i];
+        const id = ids[i];
+        if (!track || !id) continue;
+        try {
+            const links = await window.electron?.purchase.resolve({
+                title: track.title,
+                artists: track.artists,
+                album: track.album || undefined,
+            });
+            if (links && links.length > 0) {
+                await updateTrack(id, { purchaseLinks: links });
+            }
+        } catch {
+            // Non-fatal — enrichment is best-effort
+        }
     }
 }

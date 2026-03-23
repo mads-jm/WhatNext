@@ -263,6 +263,10 @@ export const IPC_CHANNELS = {
     DOWNLOAD_PROGRESS: 'download:progress',
     DOWNLOAD_TRACK_COMPLETE: 'download:track-complete',
     DOWNLOAD_ERROR: 'download:error',
+
+    // Purchase link resolution (renderer ↔ main)
+    PURCHASE_RESOLVE: 'purchase:resolve',
+    PURCHASE_RESOLVE_BATCH: 'purchase:resolve-batch',
 } as const;
 
 // ========================================
@@ -535,6 +539,23 @@ export interface BackendStatusResult {
 export interface DownloadResolveRequest {
     backend: string;
     input: { type: 'url' | 'spotify-ids'; url?: string; spotifyIds?: string[] };
+}
+
+// ========================================
+// Purchase Link Resolution Payloads
+// ========================================
+
+export interface PurchaseResolvePayload {
+    title: string;
+    artists: string[];
+    album?: string;
+}
+
+export interface PurchaseLinkResult {
+    provider: string;
+    url: string;
+    label?: string;
+    resolvedAt: string;
 }
 
 /**

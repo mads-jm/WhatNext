@@ -39,6 +39,8 @@ import type {
     ScanDirectoryResult,
     BackendStatusResult,
     DownloadResolveRequest,
+    PurchaseResolvePayload,
+    PurchaseLinkResult,
 } from '../shared/core/ipc-protocol';
 // Download service types (service module — pure Node, no Electron)
 // Import only the types we need for the preload bridge signature.
@@ -450,6 +452,17 @@ const electronHandler = {
             ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_ERROR, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_ERROR, listener);
         },
+    },
+
+    // ========================================
+    // Purchase Link Resolution
+    // ========================================
+    purchase: {
+        resolve: (req: PurchaseResolvePayload): Promise<PurchaseLinkResult[]> =>
+            ipcRenderer.invoke(IPC_CHANNELS.PURCHASE_RESOLVE, req),
+
+        resolveBatch: (reqs: PurchaseResolvePayload[]): Promise<PurchaseLinkResult[][]> =>
+            ipcRenderer.invoke(IPC_CHANNELS.PURCHASE_RESOLVE_BATCH, reqs),
     },
 
     // ========================================

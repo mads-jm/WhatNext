@@ -161,9 +161,18 @@ export function useLibraryDownload() {
             setCompletedCount((n) => {
                 const newCount = n + 1;
                 if (newCount >= toDownload.length) {
-                    void patchTrackDocs(urlToDocId, completedPaths, preferredFormat).then(() =>
-                        setState('done'),
-                    );
+                    void patchTrackDocs(urlToDocId, completedPaths, preferredFormat).then(() => {
+                        setState('done');
+                        // Background enrichment — fire-and-forget after state transitions
+                        void enrichLibraryTracksWithPurchaseLinks(
+                            toDownload.map((d) => ({
+                                id: d.id,
+                                title: d.title,
+                                artists: d.artists ?? [],
+                                album: d.album ?? '',
+                            })),
+                        );
+                    });
                 }
                 return newCount;
             });
@@ -233,7 +242,7 @@ export function useLibraryDownload() {
     };
 }
 
-/** Patch existing track documents with downloaded file paths. */
+/** Patch existing track documents with downloaded file paths, then enrich with purchase links. */
 async function patchTrackDocs(
     urlToDocId: Map<string, string>,
     completedPaths: Map<string, string>,
@@ -246,6 +255,26 @@ async function patchTrackDocs(
                 localFilePath,
                 audioFormat: format === 'best_audio' ? 'mp3' : format,
             });
+        }
+    }
+}
+
+/** Resolve purchase links for library tracks and persist to RxDB. Fire-and-forget. */
+export async function enrichLibraryTracksWithPurchaseLinks(
+    tracks: Array<{ id: string; title: string; artists: string[]; album: string }>,
+): Promise<void> {
+    for (const track of tracks) {
+        try {
+            const links = await window.electron?.purchase.resolve({
+                title: track.title,
+                artists: track.artists,
+                album: track.album || undefined,
+            });
+            if (links && links.length > 0) {
+                await updateTrack(track.id, { purchaseLinks: links });
+            }
+        } catch {
+            // Non-fatal
         }
     }
 }

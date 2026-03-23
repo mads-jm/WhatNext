@@ -616,6 +616,10 @@ app.whenReady().then(async () => {
         await registerDownloadHandlers(mainWindow);
     }
 
+    // Register purchase link resolution handlers (background enrichment, no window needed)
+    const { registerPurchaseHandlers } = await import('./downloader/purchase-ipc');
+    await registerPurchaseHandlers();
+
     // Hydrate Spotify client with stored tokens so auth persists across restarts
     await ensureSpotifyModules();
 
