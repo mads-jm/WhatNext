@@ -16,6 +16,7 @@ import { DevDashboard } from '../Dev/DevDashboard';
 import { ProfileSettings } from '../Settings/ProfileSettings';
 import { StorageSettings } from '../Settings/StorageSettings';
 import { ThemeSettings } from '../Settings/ThemeSettings';
+import { DownloadImport } from '../Download/DownloadImport';
 
 export function ViewRouter() {
     const activeView = useNavigationStore((s) => s.activeView);
@@ -47,6 +48,9 @@ export function ViewRouter() {
 
         case 'localImport':
             return <LocalImportView />;
+
+        case 'download':
+            return <DownloadImport />;
 
         case 'p2p-status':
             return <P2PStatus />;

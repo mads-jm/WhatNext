@@ -19,6 +19,7 @@ const navigationItems: NavItem[] = [
     { id: 'sessions', label: 'Sessions', icon: 'fa-solid fa-users', section: 'Workspace' },
     { id: 'spotify', label: 'Spotify Import', icon: 'fa-brands fa-spotify', section: 'Workspace' },
     { id: 'localImport', label: 'Local Files', icon: 'fa-solid fa-folder-open', section: 'Workspace' },
+    { id: 'download', label: 'Download', icon: 'fa-solid fa-cloud-arrow-down', section: 'Workspace' },
     // P2P Network
     { id: 'p2p-status', label: 'Network Status', icon: 'fa-solid fa-signal', section: 'Network' },
     { id: 'p2p-config', label: 'Relay Servers', icon: 'fa-solid fa-tower-broadcast', section: 'Network' },

@@ -48,7 +48,7 @@ async function getBackend(
         if (!backends.ytdlp) {
             backends.ytdlp = new YtdlpBackend();
         }
-        return backends.ytdlp;
+        return backends.ytdlp!;
     }
     throw new Error(`Unknown download backend: "${id}"`);
 }
