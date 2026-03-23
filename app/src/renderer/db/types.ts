@@ -18,6 +18,7 @@ export type {
     TrackInteractionDocument,
     WhatNextDatabase,
 } from './schemas';
+export type { PurchaseLink } from '../../shared/core/download-types';
 
 /**
  * Flat track object for UI rendering.
@@ -33,6 +34,15 @@ export interface TrackViewModel {
     durationMs: number;
     albumArtUrl?: string;
     albumArtLocalPath?: string;
+    // Audio Acquisition Service fields (v2)
+    localFilePath?: string;
+    localFileSize?: number;
+    source?: string;
+    sourceUrl?: string;
+    audioFormat?: string;
+    audioBitrate?: number;
+    purchaseLinks?: import('../../shared/core/download-types').PurchaseLink[];
+    userPurchased?: boolean;
 }
 
 /**
@@ -91,6 +101,15 @@ export interface CreateTrackInput {
     notes?: string;
     addedBy?: string;
     addedAt?: string;
+    // Audio Acquisition Service fields (v2)
+    localFilePath?: string;
+    localFileSize?: number;
+    source?: string;
+    sourceUrl?: string;
+    audioFormat?: string;
+    audioBitrate?: number;
+    purchaseLinks?: import('../../shared/core/download-types').PurchaseLink[];
+    userPurchased?: boolean;
 }
 
 /**
@@ -105,6 +124,15 @@ export interface UpdateTrackInput {
     albumArtUrl?: string;
     albumArtLocalPath?: string;
     notes?: string;
+    // Audio Acquisition Service fields (v2)
+    localFilePath?: string;
+    localFileSize?: number;
+    source?: string;
+    sourceUrl?: string;
+    audioFormat?: string;
+    audioBitrate?: number;
+    purchaseLinks?: import('../../shared/core/download-types').PurchaseLink[];
+    userPurchased?: boolean;
 }
 
 /**

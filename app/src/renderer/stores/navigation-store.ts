@@ -13,6 +13,7 @@ export type ViewId =
     | 'sessions'
     | 'session'
     | 'spotify'
+    | 'localImport'
     | 'p2p-status'
     | 'dev-dashboard'
     | 'settings-general'
@@ -26,6 +27,7 @@ export const VIEW_TITLES: Record<ViewId, string> = {
     sessions: 'Collaborative Sessions',
     session: 'Active Session',
     spotify: 'Spotify Import',
+    localImport: 'Import Local Files',
     'p2p-status': 'P2P Network Status',
     'dev-dashboard': 'Developer Dashboard',
     'settings-general': 'General Settings',

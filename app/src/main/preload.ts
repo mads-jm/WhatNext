@@ -36,6 +36,7 @@ import type {
     CompanionClientEventPayload,
     CompanionReactionPayload,
     CompanionTimeRequestPayload,
+    ScanDirectoryResult,
 } from '../shared/core/ipc-protocol';
 
 const electronHandler = {
@@ -398,6 +399,14 @@ const electronHandler = {
             ipcRenderer.on(IPC_CHANNELS.COMPANION_TIME_REQUEST, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_TIME_REQUEST, listener);
         },
+    },
+
+    // ========================================
+    // Media / Local File Import
+    // ========================================
+    media: {
+        scanDirectory: (dirPath: string): Promise<ScanDirectoryResult> =>
+            ipcRenderer.invoke(IPC_CHANNELS.MEDIA_SCAN_DIRECTORY, dirPath),
     },
 
     // ========================================

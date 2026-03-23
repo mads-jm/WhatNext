@@ -38,7 +38,7 @@ export function LibraryView() {
     const [tracksState, dispatchTracks] = useReducer(tracksReducer, { status: 'loading', tracks: [] });
     const [playlists, setPlaylists] = useState<PlaylistDocType[]>([]);
     const [search, setSearch] = useState('');
-    const [sourceFilter, setSourceFilter] = useState<'all' | 'spotify' | 'local'>('all');
+    const [sourceFilter, setSourceFilter] = useState<'all' | 'spotify' | 'local' | 'manual'>('all');
 
     const tracks = tracksState.tracks;
     const loading = tracksState.status === 'loading';
@@ -66,13 +66,16 @@ export function LibraryView() {
         return () => sub.unsubscribe();
     }, [db]);
 
+    // Resolve the effective source for a track (with pre-migration fallback)
+    const resolveSource = (t: TrackDocType): string =>
+        t.source ?? (t.spotifyId ? 'spotify' : 'manual');
+
     // Filter tracks
     const filteredTracks = useMemo(() => {
         const q = search.toLowerCase().trim();
         return tracks.filter((t) => {
-            // Source filter
-            if (sourceFilter === 'spotify' && !t.spotifyId) return false;
-            if (sourceFilter === 'local' && t.spotifyId) return false;
+            // Source filter — uses source field with fallback for pre-migration tracks
+            if (sourceFilter !== 'all' && resolveSource(t) !== sourceFilter) return false;
             // Text search
             if (!q) return true;
             return (
@@ -81,10 +84,11 @@ export function LibraryView() {
                 t.album.toLowerCase().includes(q)
             );
         });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tracks, search, sourceFilter]);
 
-    const spotifyCount = tracks.filter((t) => t.spotifyId).length;
-    const localCount = tracks.filter((t) => !t.spotifyId).length;
+    const spotifyCount = tracks.filter((t) => resolveSource(t) === 'spotify').length;
+    const localCount = tracks.filter((t) => resolveSource(t) === 'local').length;
 
     const handleAddToPlaylist = (trackId: string, playlistId: string) => {
         const pl = playlists.find((p) => p.id === playlistId);
@@ -110,7 +114,7 @@ export function LibraryView() {
                     </div>
 
                     {/* Source breakdown */}
-                    <div className="flex gap-3 mt-4">
+                    <div className="flex flex-wrap gap-3 mt-4">
                         <button
                             onClick={() => setSourceFilter('all')}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
@@ -142,7 +146,7 @@ export function LibraryView() {
                             }`}
                         >
                             <i className="fa-solid fa-hard-drive" />
-                            Local <span className="font-semibold">{localCount}</span>
+                            Local Files <span className="font-semibold">{localCount}</span>
                         </button>
                     </div>
                 </div>

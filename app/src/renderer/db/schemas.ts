@@ -10,6 +10,7 @@ import type {
     RxCollection,
     RxDatabase,
 } from 'rxdb';
+import type { PurchaseLink } from '../../shared/core/download-types';
 
 // ========================================
 // User/Peer Schema
@@ -133,13 +134,22 @@ export interface TrackDocType {
     addedAt: string; // ISO timestamp
     addedBy: string; // User ID of who added this track
     notes?: string; // User notes (local user only)
+    // Audio Acquisition Service fields (v2)
+    localFilePath?: string; // Absolute path to audio file on disk
+    localFileSize?: number; // File size in bytes
+    source?: string; // 'spotify' | 'youtube' | 'soundcloud' | 'bandcamp' | 'local' | 'manual'
+    sourceUrl?: string; // Original URL (YouTube, SoundCloud, Bandcamp page)
+    audioFormat?: string; // 'opus' | 'aac' | 'mp3' | 'flac' | 'wav'
+    audioBitrate?: number; // kbps
+    purchaseLinks?: PurchaseLink[]; // Bandcamp, Beatport, etc.
+    userPurchased?: boolean; // Self-reported "I bought this"
 }
 
 export type TrackDocument = RxDocument<TrackDocType>;
 export type TrackCollection = RxCollection<TrackDocType>;
 
 export const trackSchema: RxJsonSchema<TrackDocType> = {
-    version: 1,
+    version: 2,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -184,6 +194,45 @@ export const trackSchema: RxJsonSchema<TrackDocType> = {
         },
         notes: {
             type: 'string',
+        },
+        // Audio Acquisition Service fields (v2)
+        localFilePath: {
+            type: 'string',
+        },
+        localFileSize: {
+            type: 'number',
+            minimum: 0,
+        },
+        source: {
+            type: 'string',
+            maxLength: 20, // 'spotify' | 'youtube' | 'soundcloud' | 'bandcamp' | 'local' | 'manual'
+        },
+        sourceUrl: {
+            type: 'string',
+        },
+        audioFormat: {
+            type: 'string',
+            maxLength: 10, // 'opus' | 'aac' | 'mp3' | 'flac' | 'wav'
+        },
+        audioBitrate: {
+            type: 'number',
+            minimum: 0,
+        },
+        purchaseLinks: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    provider: { type: 'string', maxLength: 30 },
+                    url: { type: 'string' },
+                    label: { type: 'string' },
+                    resolvedAt: { type: 'string', maxLength: 30 },
+                },
+                required: ['provider', 'url', 'resolvedAt'],
+            },
+        },
+        userPurchased: {
+            type: 'boolean',
         },
     },
     required: ['id', 'title', 'artists', 'album', 'durationMs', 'addedAt', 'addedBy'],

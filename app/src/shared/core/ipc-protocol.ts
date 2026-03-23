@@ -248,6 +248,9 @@ export const IPC_CHANNELS = {
     COMPANION_CLIENT_LEFT: 'companion:client-left',
     COMPANION_REACTION: 'companion:reaction',
     COMPANION_TIME_REQUEST: 'companion:time-request',
+
+    // Media / local file import (renderer → main)
+    MEDIA_SCAN_DIRECTORY: 'media:scan-directory',
 } as const;
 
 // ========================================
@@ -323,6 +326,9 @@ export interface SpotifyPlaylistTracksFullResult {
 
 export interface ReplicationPushPayload {
     collection: string;
+    // NOTE: when pushing track documents, callers MUST strip localFilePath and
+    // localFileSize before including them in data. These are device-local paths
+    // and must never be shared with P2P peers.
     documents: Array<{
         id: string;
         data: Record<string, unknown>;
@@ -468,6 +474,38 @@ export interface CompanionTimeRequestPayload {
     clientId: string;
     displayName: string;
     trackId: string | null;
+}
+
+// ========================================
+// Media / Local File Import
+// ========================================
+
+/**
+ * A mapped local track ready for import into RxDB.
+ * Mirrors MappedLocalTrack from local-media-mapper.ts but defined here
+ * so it can be used as the IPC wire type without importing from main process code.
+ */
+export interface ScanDirectoryTrack {
+    id: string;
+    title: string;
+    artists: string[];
+    album: string;
+    durationMs: number;
+    localFilePath: string;
+    localFileSize: number;
+    source: 'local';
+    addedAt: string;
+}
+
+export interface ScanDirectoryResult {
+    success: boolean;
+    tracks?: ScanDirectoryTrack[];
+    stats?: {
+        scanned: number;
+        supported: number;
+        skipped: number;
+    };
+    error?: string;
 }
 
 /**

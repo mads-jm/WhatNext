@@ -1489,6 +1489,32 @@ ipcMain.on(
     },
 );
 
+// ========================================
+// Media / Local File Import
+// ========================================
+
+ipcMain.handle(
+    IPC_CHANNELS.MEDIA_SCAN_DIRECTORY,
+    async (_event, dirPath: string) => {
+        try {
+            const { scanDirectory } = await import('./media/scanner');
+            const { mapLocalFiles } = await import('./media/local-media-mapper');
+
+            const scanResult = await scanDirectory(dirPath);
+            const tracks = mapLocalFiles(scanResult.files);
+
+            return {
+                success: true,
+                tracks,
+                stats: scanResult.stats,
+            };
+        } catch (error) {
+            console.error('[Main] media:scan-directory failed:', error);
+            return { success: false, error: String(error) };
+        }
+    },
+);
+
 // Handle protocol URLs on macOS (open-url event)
 app.on('open-url', (event, url) => {
     event.preventDefault();

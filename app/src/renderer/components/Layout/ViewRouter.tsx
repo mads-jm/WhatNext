@@ -7,6 +7,7 @@ import { useNavigationStore } from '../../stores/navigation-store';
 import { PlaylistList } from '../Playlist/PlaylistList';
 import { PlaylistView } from '../Playlist/PlaylistView';
 import { LibraryView } from '../Library/LibraryView';
+import { LocalImportView } from '../Library/LocalImportView';
 import { SessionView } from '../Session/SessionView';
 import { SpotifyImport } from '../Spotify/SpotifyImport';
 import { P2PStatus } from '../P2P/P2PStatus';
@@ -43,6 +44,9 @@ export function ViewRouter() {
 
         case 'spotify':
             return <SpotifyImport />;
+
+        case 'localImport':
+            return <LocalImportView />;
 
         case 'p2p-status':
             return <P2PStatus />;

@@ -114,6 +114,21 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                             albumArtLocalPath: oldDoc.albumArtLocalPath ?? undefined,
                         };
                     },
+                    // v1 → v2: Added Audio Acquisition Service fields
+                    // Backfills source: Spotify tracks get 'spotify', others get 'manual'
+                    2(oldDoc: any) {
+                        return {
+                            ...oldDoc,
+                            localFilePath: undefined,
+                            localFileSize: undefined,
+                            source: oldDoc.spotifyId ? 'spotify' : 'manual',
+                            sourceUrl: undefined,
+                            audioFormat: undefined,
+                            audioBitrate: undefined,
+                            purchaseLinks: undefined,
+                            userPurchased: undefined,
+                        };
+                    },
                 },
             },
             trackInteractions: {
