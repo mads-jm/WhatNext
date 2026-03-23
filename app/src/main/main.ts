@@ -610,6 +610,12 @@ app.whenReady().then(async () => {
     // Create main window FIRST so it's ready to receive P2P events
     createMainWindow();
 
+    // Register download IPC handlers (requires mainWindow for renderer event forwarding)
+    if (mainWindow) {
+        const { registerDownloadHandlers } = await import('./downloader/downloader-ipc');
+        await registerDownloadHandlers(mainWindow);
+    }
+
     // Hydrate Spotify client with stored tokens so auth persists across restarts
     await ensureSpotifyModules();
 

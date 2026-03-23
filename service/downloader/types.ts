@@ -1,0 +1,53 @@
+export interface ResolvedTrack {
+    sourceId: string;
+    sourceUrl: string;
+    sourceProvider: 'youtube' | 'soundcloud' | 'bandcamp' | 'spotify';
+    title: string;
+    artists: string[];
+    album: string;
+    durationMs: number;
+    thumbnailUrl?: string;
+    availableFormats: AudioFormatOption[];
+    spotifyId?: string;
+}
+
+export interface AudioFormatOption {
+    formatId: string;
+    codec: string;      // 'opus' | 'aac' | 'mp3' | 'flac' | 'wav'
+    bitrate?: number;   // kbps
+    filesize?: number;  // bytes, estimated
+}
+
+export interface DownloadInput {
+    type: 'url' | 'spotify-ids';
+    url?: string;
+    spotifyIds?: string[];
+}
+
+export interface DownloadStartRequest {
+    backend: string;    // 'ytdlp' | 'spotdl' | 'spytify'
+    tracks: Array<{
+        sourceUrl: string;
+        sourceProvider: string;
+        preferredFormat: string;  // 'best_audio' | 'opus' | 'mp3' | 'flac'
+    }>;
+    outputDir?: string;
+}
+
+export interface DownloadEvent {
+    type: 'progress' | 'complete' | 'error';
+    sourceUrl: string;
+    percent?: number;
+    speed?: string;
+    eta?: string;
+    localFilePath?: string;
+    audioFormat?: string;
+    audioBitrate?: number;
+    error?: string;
+}
+
+export interface PurchaseResolveRequest {
+    title: string;
+    artists: string[];
+    album?: string;
+}

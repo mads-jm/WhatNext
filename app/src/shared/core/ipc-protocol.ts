@@ -251,6 +251,17 @@ export const IPC_CHANNELS = {
 
     // Media / local file import (renderer → main)
     MEDIA_SCAN_DIRECTORY: 'media:scan-directory',
+
+    // Download service (renderer ↔ main)
+    DOWNLOAD_CHECK_BACKENDS: 'download:check-backends',
+    DOWNLOAD_RESOLVE: 'download:resolve',
+    DOWNLOAD_START: 'download:start',
+    DOWNLOAD_CANCEL: 'download:cancel',
+
+    // Download events (main → renderer)
+    DOWNLOAD_PROGRESS: 'download:progress',
+    DOWNLOAD_TRACK_COMPLETE: 'download:track-complete',
+    DOWNLOAD_ERROR: 'download:error',
 } as const;
 
 // ========================================
@@ -506,6 +517,23 @@ export interface ScanDirectoryResult {
         skipped: number;
     };
     error?: string;
+}
+
+// ========================================
+// Download Service Payloads
+// ========================================
+
+export interface BackendStatusResult {
+    id: string;
+    name: string;
+    installed: boolean;
+    version?: string;
+    error?: string;
+}
+
+export interface DownloadResolveRequest {
+    backend: string;
+    input: { type: 'url' | 'spotify-ids'; url?: string; spotifyIds?: string[] };
 }
 
 /**

@@ -81,6 +81,8 @@ cd app && npm run build                 # Production build
 - ✅ Companion client — phone browser session viewer ([[Companion-Client]], [[companion-client-spec]])
 - 🔜 Open metadata enrichment (MusicBrainz/ListenBrainz)
 - 🔜 Non-Spotify track sources (ManualTrackSource, P2PTrackSource)
+- 📋 Local file import adapter spec'd ([[local-file-import-adapter]], [[tapec-integration-analysis]])
+- 📋 Audio acquisition service spec'd ([[audio-acquisition-service]]) — merged local import + cloud download with pluggable backends (yt-dlp, spotDL, Spytify) and artist purchase link attribution
 
 ---
 
@@ -92,7 +94,7 @@ cd app && npm run build                 # Production build
 
 ---
 
-__Last Updated__: 2026-03-21
-__Documentation Version__: v0.4.1
+__Last Updated__: 2026-03-22
+__Documentation Version__: v0.4.2
 
 

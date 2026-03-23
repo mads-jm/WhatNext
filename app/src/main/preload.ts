@@ -37,7 +37,12 @@ import type {
     CompanionReactionPayload,
     CompanionTimeRequestPayload,
     ScanDirectoryResult,
+    BackendStatusResult,
+    DownloadResolveRequest,
 } from '../shared/core/ipc-protocol';
+// Download service types (service module — pure Node, no Electron)
+// Import only the types we need for the preload bridge signature.
+import type { ResolvedTrack, DownloadStartRequest, DownloadEvent } from '../../../service/downloader/types';
 
 const electronHandler = {
     // ========================================
@@ -407,6 +412,41 @@ const electronHandler = {
     media: {
         scanDirectory: (dirPath: string): Promise<ScanDirectoryResult> =>
             ipcRenderer.invoke(IPC_CHANNELS.MEDIA_SCAN_DIRECTORY, dirPath),
+    },
+
+    // ========================================
+    // Download Service
+    // ========================================
+    download: {
+        checkBackends: (): Promise<BackendStatusResult[]> =>
+            ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_CHECK_BACKENDS),
+
+        resolve: (req: DownloadResolveRequest): Promise<ResolvedTrack[]> =>
+            ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_RESOLVE, req),
+
+        start: (req: DownloadStartRequest): Promise<void> =>
+            ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_START, req),
+
+        cancel: (): Promise<void> =>
+            ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_CANCEL),
+
+        onProgress: (cb: (event: DownloadEvent) => void) => {
+            const listener = (_e: IpcRendererEvent, ev: DownloadEvent) => cb(ev);
+            ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_PROGRESS, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_PROGRESS, listener);
+        },
+
+        onTrackComplete: (cb: (event: DownloadEvent) => void) => {
+            const listener = (_e: IpcRendererEvent, ev: DownloadEvent) => cb(ev);
+            ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE, listener);
+        },
+
+        onError: (cb: (event: DownloadEvent) => void) => {
+            const listener = (_e: IpcRendererEvent, ev: DownloadEvent) => cb(ev);
+            ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_ERROR, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_ERROR, listener);
+        },
     },
 
     // ========================================
