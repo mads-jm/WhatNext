@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigationStore } from '../../stores/navigation-store';
+import { useCompanionStore } from '../../stores/companion-store';
 import { useUserStore } from '../../stores/user-store';
 import { useSessionState } from '../../hooks/useSessionState';
 import { usePlaybackState } from '../../hooks/usePlaybackState';
@@ -165,6 +166,7 @@ export function SessionView({ playlistId }: SessionViewProps) {
         ? `spotify:playlist:${playlist.linkedSpotifyId}`
         : undefined;
 
+    const clearCompanion = useCompanionStore((s) => s.clearAll);
     const handOffPlayback = useNavigationStore((s) => s.handOffPlayback);
     const takePlayback = useNavigationStore((s) => s.takePlayback);
     const isPlaybackOwner = !sessionState || sessionState.playbackOwnerId === userId;
@@ -214,6 +216,7 @@ export function SessionView({ playlistId }: SessionViewProps) {
     const isMyTurn = turnState !== null && turnState.effectiveTurnUserId === userId;
 
     const handleEndSession = () => {
+        clearCompanion();
         endSession();
         navigate('playlists');
     };

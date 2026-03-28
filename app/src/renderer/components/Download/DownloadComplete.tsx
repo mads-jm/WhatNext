@@ -37,6 +37,10 @@ export function DownloadComplete({ tracks, progress, onReset }: DownloadComplete
                 <p className="text-sm text-on-surface-variant mt-1">
                     Added to your library with source badges.
                 </p>
+                <p className="text-xs text-on-surface-variant/70 mt-2 flex items-center justify-center gap-1.5">
+                    <i className="fa-solid fa-circle-notch fa-spin text-[10px]" />
+                    Purchase links resolving in background — will appear on track rows shortly.
+                </p>
             </div>
 
             {failed.length > 0 && (

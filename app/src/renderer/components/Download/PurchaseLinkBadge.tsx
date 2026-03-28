@@ -91,8 +91,8 @@ export function PurchaseLinkBadge({ links, maxVisible = 1, className = '' }: Pur
 
     return (
         <div className={`flex flex-wrap items-center gap-1 ${className}`}>
-            {visible.map((link, i) => (
-                <PurchaseLinkPill key={`${link.provider}-${i}`} link={link} />
+            {visible.map((link) => (
+                <PurchaseLinkPill key={link.url} link={link} />
             ))}
             {!expanded && overflow > 0 && (
                 <button
@@ -132,11 +132,11 @@ export function SupportArtistSection({
             </p>
 
             <div className="flex flex-col gap-1">
-                {links.map((link, i) => {
+                {links.map((link) => {
                     const cfg = PROVIDER_CONFIG[link.provider] ?? DEFAULT_CONFIG;
                     return (
                         <button
-                            key={`${link.provider}-${i}`}
+                            key={link.url}
                             onClick={() => window.electron?.shell.openExternal(link.url)}
                             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-on-surface hover:bg-surface-high transition-colors text-left"
                         >

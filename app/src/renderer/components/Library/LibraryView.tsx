@@ -38,7 +38,7 @@ export function LibraryView() {
     const [tracksState, dispatchTracks] = useReducer(tracksReducer, { status: 'loading', tracks: [] });
     const [playlists, setPlaylists] = useState<PlaylistDocType[]>([]);
     const [search, setSearch] = useState('');
-    const [sourceFilter, setSourceFilter] = useState<'all' | 'spotify' | 'local' | 'manual'>('all');
+    const [sourceFilter, setSourceFilter] = useState<'all' | 'spotify' | 'local' | 'youtube' | 'soundcloud' | 'bandcamp' | 'manual'>('all');
 
     const tracks = tracksState.tracks;
     const loading = tracksState.status === 'loading';
@@ -89,6 +89,9 @@ export function LibraryView() {
 
     const spotifyCount = tracks.filter((t) => resolveSource(t) === 'spotify').length;
     const localCount = tracks.filter((t) => resolveSource(t) === 'local').length;
+    const youtubeCount = tracks.filter((t) => resolveSource(t) === 'youtube').length;
+    const soundcloudCount = tracks.filter((t) => resolveSource(t) === 'soundcloud').length;
+    const bandcampCount = tracks.filter((t) => resolveSource(t) === 'bandcamp').length;
 
     const handleAddToPlaylist = (trackId: string, playlistId: string) => {
         const pl = playlists.find((p) => p.id === playlistId);
@@ -148,6 +151,45 @@ export function LibraryView() {
                             <i className="fa-solid fa-hard-drive" />
                             Local Files <span className="font-semibold">{localCount}</span>
                         </button>
+                        {youtubeCount > 0 && (
+                            <button
+                                onClick={() => setSourceFilter('youtube')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                    sourceFilter === 'youtube'
+                                        ? 'bg-primary text-surface'
+                                        : 'bg-surface-high text-on-surface-variant hover:bg-outline-variant'
+                                }`}
+                            >
+                                <i className="fa-brands fa-youtube" />
+                                YouTube <span className="font-semibold">{youtubeCount}</span>
+                            </button>
+                        )}
+                        {soundcloudCount > 0 && (
+                            <button
+                                onClick={() => setSourceFilter('soundcloud')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                    sourceFilter === 'soundcloud'
+                                        ? 'bg-primary text-surface'
+                                        : 'bg-surface-high text-on-surface-variant hover:bg-outline-variant'
+                                }`}
+                            >
+                                <i className="fa-brands fa-soundcloud" />
+                                SoundCloud <span className="font-semibold">{soundcloudCount}</span>
+                            </button>
+                        )}
+                        {bandcampCount > 0 && (
+                            <button
+                                onClick={() => setSourceFilter('bandcamp')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                    sourceFilter === 'bandcamp'
+                                        ? 'bg-primary text-surface'
+                                        : 'bg-surface-high text-on-surface-variant hover:bg-outline-variant'
+                                }`}
+                            >
+                                <i className="fa-brands fa-bandcamp" />
+                                Bandcamp <span className="font-semibold">{bandcampCount}</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

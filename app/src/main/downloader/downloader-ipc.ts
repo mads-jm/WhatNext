@@ -18,12 +18,13 @@ async function getDownloaderModules(): Promise<Mod> {
 }
 
 // Registry of backend instances (initialised lazily)
-type BackendId = 'ytdlp' | 'spotdl';
+type BackendId = 'ytdlp' | 'spotdl' | 'spytify';
 type BackendRegistry = Record<BackendId, import('../../../../service/downloader/backend').DownloadBackend | null>;
 
 const backends: BackendRegistry = {
     ytdlp: null,
     spotdl: null,
+    spytify: null,
 };
 
 let audioStore: import('../../../../service/downloader/audio-store').AudioStore | null = null;
@@ -50,6 +51,10 @@ async function getBackend(
         if (!backends.spotdl) backends.spotdl = new mod.SpotdlBackend();
         return backends.spotdl!;
     }
+    if (id === 'spytify') {
+        if (!backends.spytify) backends.spytify = new mod.SpytifyBackend();
+        return backends.spytify!;
+    }
     throw new Error(`Unknown download backend: "${id}"`);
 }
 
@@ -66,13 +71,15 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
     // Returns the install status of all known backends.
     // -----------------------------------------------------------------------
     ipcMain.handle(IPC_CHANNELS.DOWNLOAD_CHECK_BACKENDS, async (): Promise<BackendStatusResult[]> => {
-        const [ytdlp, spotdl] = await Promise.all([
+        const [ytdlp, spotdl, spytify] = await Promise.all([
             getBackend('ytdlp').then((b) => b.checkInstalled()),
             getBackend('spotdl').then((b) => b.checkInstalled()),
+            getBackend('spytify').then((b) => b.checkInstalled()),
         ]);
         return [
             { id: 'ytdlp', name: 'yt-dlp', ...ytdlp },
             { id: 'spotdl', name: 'spotDL', ...spotdl },
+            { id: 'spytify', name: 'Spytify', ...spytify },
         ];
     });
 
@@ -139,6 +146,18 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
                     for (let i = 0; i < resolvedTracks.length; i++) {
                         const singleTrack = resolvedTracks[i];
                         const format = req.tracks[i]?.preferredFormat ?? 'best_audio';
+
+                        // Dedup check — skip backend if we already have this file on disk.
+                        const existingPath = store.getExisting(singleTrack.sourceUrl);
+                        if (existingPath) {
+                            win.webContents.send(IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE, {
+                                type: 'complete',
+                                sourceUrl: singleTrack.sourceUrl,
+                                localFilePath: existingPath,
+                            });
+                            continue;
+                        }
+
                         for await (const event of backend.download([singleTrack], {
                             outputDir,
                             preferredFormat: format,

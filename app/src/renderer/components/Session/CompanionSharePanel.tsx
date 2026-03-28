@@ -5,20 +5,25 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useCompanionStore } from '../../stores/companion-store';
 
 interface CompanionSharePanelProps {
     sessionActive: boolean;
 }
 
 export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps) {
-    const [serverInfo, setServerInfo] = useState<{ port: number; localIp: string } | null>(null);
+    const serverInfo = useCompanionStore((s) => s.serverInfo);
+    const relayUrl = useCompanionStore((s) => s.relayUrl);
+    const setServerInfo = useCompanionStore((s) => s.setServerInfo);
+    const setRelayUrl = useCompanionStore((s) => s.setRelayUrl);
+    const clearAll = useCompanionStore((s) => s.clearAll);
+
     const [localQr, setLocalQr] = useState<string | null>(null);
     const [starting, setStarting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [localCopied, setLocalCopied] = useState(false);
 
     // Relay tunnel state
-    const [relayUrl, setRelayUrl] = useState<string | null>(null);
     const [relayQr, setRelayQr] = useState<string | null>(null);
     const [relayConnecting, setRelayConnecting] = useState(false);
     const [relayError, setRelayError] = useState<string | null>(null);
@@ -53,14 +58,13 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
         if (!companion) return;
         try {
             await companion.stop();
-            setServerInfo(null);
+            clearAll();
             setLocalQr(null);
-            setRelayUrl(null);
             setRelayQr(null);
         } catch {
             // ignore
         }
-    }, [companion]);
+    }, [companion, clearAll]);
 
     // Stop when session ends
     useEffect(() => {
@@ -107,7 +111,7 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
         } catch {
             // ignore
         }
-    }, [companion]);
+    }, [companion, setRelayUrl]);
 
     // ---- Copy helpers ----
 

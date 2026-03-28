@@ -16,6 +16,7 @@ import { DevDashboard } from '../Dev/DevDashboard';
 import { ProfileSettings } from '../Settings/ProfileSettings';
 import { StorageSettings } from '../Settings/StorageSettings';
 import { ThemeSettings } from '../Settings/ThemeSettings';
+import { DownloadSettings } from '../Settings/DownloadSettings';
 import { DownloadImport } from '../Download/DownloadImport';
 
 export function ViewRouter() {
@@ -69,6 +70,9 @@ export function ViewRouter() {
 
         case 'settings-appearance':
             return <ThemeSettings />;
+
+        case 'settings-download':
+            return <DownloadSettings />;
 
         default:
             return null;

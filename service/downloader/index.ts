@@ -1,5 +1,6 @@
 export { YtdlpBackend } from './backends/ytdlp-backend';
 export { SpotdlBackend } from './backends/spotdl-backend';
+export { SpytifyBackend } from './backends/spytify-backend';
 export type { DownloadBackend, BackendStatus, DownloadOptions } from './backend';
 export type {
     ResolvedTrack,
@@ -10,10 +11,13 @@ export type {
     PurchaseResolveRequest,
 } from './types';
 export { AudioStore } from './audio-store';
+export { PurchaseResolver } from './purchase-resolver';
+export type { PurchaseLink } from './types';
 
 import type { DownloadBackend } from './backend';
 import { YtdlpBackend } from './backends/ytdlp-backend';
 import { SpotdlBackend } from './backends/spotdl-backend';
+import { SpytifyBackend } from './backends/spytify-backend';
 
 /**
  * Factory: get a download backend by id.
@@ -25,6 +29,8 @@ export function createBackend(id: string): DownloadBackend {
             return new YtdlpBackend();
         case 'spotdl':
             return new SpotdlBackend();
+        case 'spytify':
+            return new SpytifyBackend();
         default:
             throw new Error(`Unknown download backend: "${id}"`);
     }

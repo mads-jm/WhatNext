@@ -77,7 +77,7 @@ export class PurchaseResolver {
         }
 
         this.cache[key] = links;
-        void this._saveCache();
+        this._saveCache();
         return links;
     }
 
@@ -136,7 +136,8 @@ export class PurchaseResolver {
         const now = new Date().toISOString();
         const links: PurchaseLink[] = [];
 
-        for (const rel of relData.relations ?? []) {
+        const relations = Array.isArray(relData.relations) ? relData.relations : [];
+        for (const rel of relations) {
             if (!purchaseTypes.has(rel.type)) continue;
             const url = rel.url?.resource;
             if (!url) continue;
@@ -177,15 +178,16 @@ export class PurchaseResolver {
         const trackUrlPattern = /href="(https?:\/\/[a-z0-9-]+\.bandcamp\.com\/track\/[^"?#]+)"/gi;
         const matches = [...html.matchAll(trackUrlPattern)];
 
-        // Take the first result that looks like it matches the artist
+        // Take the first result whose Bandcamp subdomain contains the full artist slug.
+        // Using full slug prevents short prefixes ("mac", "lcd") from matching unrelated artists.
+        // If the artist name is very short (≤3 chars) skip the check to avoid false negatives.
         const artistSlug = artist.toLowerCase().replace(/[^a-z0-9]/g, '');
         for (const match of matches.slice(0, 5)) {
             const url = match[1];
             if (!url) continue;
             const urlLower = url.toLowerCase();
-            // Fuzzy: check if artist slug appears in the subdomain
             const subdomain = urlLower.match(/https?:\/\/([^.]+)\.bandcamp/)?.[1] ?? '';
-            if (artistSlug.length > 2 && !subdomain.includes(artistSlug.slice(0, 3))) continue;
+            if (artistSlug.length > 3 && !subdomain.includes(artistSlug)) continue;
 
             return [{
                 provider: 'bandcamp',
@@ -210,16 +212,21 @@ export class PurchaseResolver {
         this.bcLastRequest = Date.now();
     }
 
-    private async _saveCache(): Promise<void> {
-        try {
-            await fs.promises.writeFile(
-                this.cachePath,
-                JSON.stringify(this.cache, null, 2),
-                'utf8',
-            );
-        } catch {
-            // Non-fatal cache write failure
-        }
+    // Serialised write chain — prevents concurrent writes from stomping each other.
+    private _saveCacheChain: Promise<void> = Promise.resolve();
+
+    private _saveCache(): void {
+        this._saveCacheChain = this._saveCacheChain.then(async () => {
+            try {
+                await fs.promises.writeFile(
+                    this.cachePath,
+                    JSON.stringify(this.cache, null, 2),
+                    'utf8',
+                );
+            } catch {
+                // Non-fatal cache write failure
+            }
+        });
     }
 }
 

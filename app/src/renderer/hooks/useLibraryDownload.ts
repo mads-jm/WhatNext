@@ -24,7 +24,6 @@ import type { TrackProgress } from './usePlaylistDownload';
 export type LibraryDownloadState =
     | 'loading'
     | 'idle'
-    | 'selecting'
     | 'downloading'
     | 'done'
     | 'error';
@@ -41,6 +40,7 @@ export function useLibraryDownload() {
     const [error, setError] = useState<string | null>(null);
 
     const unsubscribeRefs = useRef<Array<() => void>>([]);
+    const isMountedRef = useRef(true);
 
     const cleanupListeners = useCallback(() => {
         unsubscribeRefs.current.forEach((unsub) => unsub());
@@ -78,7 +78,13 @@ export function useLibraryDownload() {
         };
     }, []);
 
-    useEffect(() => () => cleanupListeners(), [cleanupListeners]);
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            cleanupListeners();
+        };
+    }, [cleanupListeners]);
 
     const toggleTrack = useCallback((id: string) => {
         setSelectedIds((prev) => {
@@ -105,8 +111,9 @@ export function useLibraryDownload() {
 
         // Build a stable sourceUrl for each track so we can correlate events.
         // spotDL receives the spotify track URL; events come back keyed by that URL.
+        // candidates are pre-filtered to have a truthy spotifyId; assert here for type safety.
         const spotifyUrls = toDownload.map(
-            (d) => `https://open.spotify.com/track/${d.spotifyId}`,
+            (d) => `https://open.spotify.com/track/${d.spotifyId!}`,
         );
         const urlToDocId = new Map<string, string>(
             toDownload.map((d, i) => [spotifyUrls[i], d.id]),
@@ -123,6 +130,7 @@ export function useLibraryDownload() {
         cleanupListeners();
 
         const completedPaths = new Map<string, string>(); // sourceUrl → localFilePath
+        let localCompleted = 0; // Local counter — avoids async calls inside React state updaters
 
         const unsubProgress = window.electron?.download.onProgress((event: DownloadEvent) => {
             setProgress((prev) => {
@@ -158,24 +166,21 @@ export function useLibraryDownload() {
                 }
                 return next;
             });
-            setCompletedCount((n) => {
-                const newCount = n + 1;
-                if (newCount >= toDownload.length) {
-                    void patchTrackDocs(urlToDocId, completedPaths, preferredFormat).then(() => {
-                        setState('done');
-                        // Background enrichment — fire-and-forget after state transitions
-                        void enrichLibraryTracksWithPurchaseLinks(
-                            toDownload.map((d) => ({
-                                id: d.id,
-                                title: d.title,
-                                artists: d.artists ?? [],
-                                album: d.album ?? '',
-                            })),
-                        );
-                    });
-                }
-                return newCount;
-            });
+            localCompleted += 1;
+            setCompletedCount(localCompleted);
+            if (localCompleted >= toDownload.length) {
+                void patchTrackDocs(urlToDocId, completedPaths, preferredFormat).then(() => {
+                    if (isMountedRef.current) setState('done');
+                    void enrichLibraryTracksWithPurchaseLinks(
+                        toDownload.map((d) => ({
+                            id: d.id,
+                            title: d.title,
+                            artists: d.artists ?? [],
+                            album: d.album ?? '',
+                        })),
+                    );
+                });
+            }
         });
 
         const unsubError = window.electron?.download.onError((event: DownloadEvent) => {
@@ -260,7 +265,7 @@ async function patchTrackDocs(
 }
 
 /** Resolve purchase links for library tracks and persist to RxDB. Fire-and-forget. */
-export async function enrichLibraryTracksWithPurchaseLinks(
+async function enrichLibraryTracksWithPurchaseLinks(
     tracks: Array<{ id: string; title: string; artists: string[]; album: string }>,
 ): Promise<void> {
     for (const track of tracks) {

@@ -41,9 +41,9 @@ function ThemeCard({
         >
             {/* Color swatches */}
             <div className="flex gap-1.5 mb-3">
-                {swatches.map((color, i) => (
+                {swatches.map((color) => (
                     <div
-                        key={i}
+                        key={color}
                         className="w-6 h-6 rounded-full border border-outline-variant/20"
                         style={{ backgroundColor: color }}
                     />

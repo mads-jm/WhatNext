@@ -3,29 +3,32 @@ import { IPC_CHANNELS } from '../../shared/core/ipc-protocol';
 import type { PurchaseResolvePayload, PurchaseLinkResult } from '../../shared/core/ipc-protocol';
 
 type Mod = typeof import('../../../../service/downloader/index');
-let _mod: Mod | null = null;
+let _modPromise: Promise<Mod> | null = null;
 
-async function getDownloaderModules(): Promise<Mod> {
-    if (!_mod) {
-        _mod = await import('../../../../service/downloader/index');
+function getDownloaderModules(): Promise<Mod> {
+    if (!_modPromise) {
+        _modPromise = import('../../../../service/downloader/index');
     }
-    return _mod;
+    return _modPromise;
 }
 
-let resolver: import('../../../../service/downloader/purchase-resolver').PurchaseResolver | null = null;
+// Promise-based singleton — concurrent callers await the same init, no double-init race.
+let resolverPromise: Promise<import('../../../../service/downloader/purchase-resolver').PurchaseResolver> | null = null;
 
-async function getResolver() {
-    if (!resolver) {
-        const mod = await getDownloaderModules();
-        resolver = new mod.PurchaseResolver();
-        await resolver.init();
+function getResolver() {
+    if (!resolverPromise) {
+        resolverPromise = getDownloaderModules().then(async (mod) => {
+            const r = new mod.PurchaseResolver();
+            await r.init();
+            return r;
+        });
     }
-    return resolver;
+    return resolverPromise;
 }
 
 export async function registerPurchaseHandlers(): Promise<void> {
-    // Pre-init the resolver (loads disk cache)
-    await getResolver();
+    // Kick off resolver init eagerly so the cache is warm before the first IPC call.
+    void getResolver();
 
     // -----------------------------------------------------------------------
     // purchase:resolve

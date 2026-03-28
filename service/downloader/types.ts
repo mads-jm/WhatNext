@@ -51,3 +51,10 @@ export interface PurchaseResolveRequest {
     artists: string[];
     album?: string;
 }
+
+export interface PurchaseLink {
+    provider: string;   // 'bandcamp' | 'beatport' | 'itunes' | 'amazon'
+    url: string;
+    label?: string;     // e.g. "Buy on Bandcamp ($1+)"
+    resolvedAt: string; // ISO timestamp
+}

@@ -138,6 +138,7 @@ export function usePlaylistDownload() {
         cleanupListeners();
 
         const completedPaths = new Map<string, string>(); // sourceUrl → localFilePath
+        let localCompleted = 0; // Local counter — avoids async calls inside React state updaters
 
         const unsubProgress = window.electron?.download.onProgress((event: DownloadEvent) => {
             setProgress((prev) => {
@@ -173,16 +174,14 @@ export function usePlaylistDownload() {
                 }
                 return next;
             });
-            setCompletedCount((n) => {
-                const newCount = n + 1;
-                if (newCount >= toDownload.length) {
-                    // All tracks done — import into RxDB, enrich with purchase links, then transition
-                    void importCompleted(toDownload, completedPaths, userId).then(() =>
-                        setState('done'),
-                    );
-                }
-                return newCount;
-            });
+            localCompleted += 1;
+            setCompletedCount(localCompleted);
+            if (localCompleted >= toDownload.length) {
+                // All tracks done — import into RxDB, enrich with purchase links, then transition
+                void importCompleted(toDownload, completedPaths, userId).then(() =>
+                    setState('done'),
+                );
+            }
         });
 
         const unsubError = window.electron?.download.onError((event: DownloadEvent) => {

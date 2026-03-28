@@ -80,7 +80,7 @@ export function parseProtocolUrl(url: string): ParsedProtocolUrl {
         // Extract all other query params as metadata
         const metadata: Record<string, string> = {};
         parsed.searchParams.forEach((value, key) => {
-            if (key !== 'relay' && key !== 'session') {
+            if (key !== 'relay') {
                 metadata[key] = value;
             }
         });

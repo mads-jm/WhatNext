@@ -28,7 +28,7 @@ export function LibraryDownload() {
         );
     }
 
-    if (lib.state === 'idle' || lib.state === 'selecting') {
+    if (lib.state === 'idle') {
         if (lib.candidates.length === 0) {
             return <EmptyState />;
         }
@@ -48,10 +48,11 @@ export function LibraryDownload() {
                 {/* Format + actions row */}
                 <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
-                        <label className="text-xs uppercase tracking-widest text-on-surface-variant shrink-0">
+                        <label htmlFor="library-format" className="text-xs uppercase tracking-widest text-on-surface-variant shrink-0">
                             Format
                         </label>
                         <select
+                            id="library-format"
                             value={lib.preferredFormat}
                             onChange={(e) => lib.setPreferredFormat(e.target.value)}
                             className="bg-surface-high border border-outline-variant/20 rounded-lg px-3 py-1.5 text-sm text-on-surface focus:outline-none focus:border-primary/50"
@@ -113,7 +114,7 @@ export function LibraryDownload() {
     if (lib.state === 'downloading') {
         return (
             <LibraryProgress
-                tracks={lib.candidates.filter((d) => lib.selectedIds.has(d.id))}
+                tracks={lib.candidates.filter((d) => lib.selectedIds.has(d.id) && !!d.spotifyId)}
                 progress={lib.progress}
                 completedCount={lib.completedCount}
                 onCancel={lib.cancel}
@@ -255,7 +256,8 @@ function LibraryProgress({
 
             <div className="space-y-3">
                 {tracks.map((track) => {
-                    const url = `https://open.spotify.com/track/${track.spotifyId}`;
+                    // spotifyId is guaranteed non-null by the filter applied at the call site
+                    const url = `https://open.spotify.com/track/${track.spotifyId!}`;
                     const p = progress.get(url) ?? {
                         sourceUrl: url,
                         percent: 0,

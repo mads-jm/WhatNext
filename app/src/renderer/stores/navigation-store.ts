@@ -20,7 +20,8 @@ export type ViewId =
     | 'settings-general'
     | 'p2p-config'
     | 'settings-storage'
-    | 'settings-appearance';
+    | 'settings-appearance'
+    | 'settings-download';
 
 export const VIEW_TITLES: Record<ViewId, string> = {
     playlists: 'My Playlists',
@@ -36,6 +37,7 @@ export const VIEW_TITLES: Record<ViewId, string> = {
     'p2p-config': 'Relay Configuration',
     'settings-storage': 'Storage Settings',
     'settings-appearance': 'Appearance',
+    'settings-download': 'Download Settings',
 };
 
 interface NavigationStore {

@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { useNavigationStore } from '../../stores/navigation-store';
+import { DownloadDisclaimerModal, hasAcceptedDisclaimer } from './DownloadDisclaimerModal';
 import { usePlaylistDownload } from '../../hooks/usePlaylistDownload';
 import { BackendGate } from './BackendGate';
 import { BackendPicker } from './BackendPicker';
@@ -21,6 +22,7 @@ type Tab = 'url' | 'library' | 'local';
 export function DownloadImport() {
     const navigate = useNavigationStore((s) => s.navigate);
     const [activeTab, setActiveTab] = useState<Tab>('url');
+    const [disclaimerAccepted, setDisclaimerAccepted] = useState(hasAcceptedDisclaimer);
 
     const dl = usePlaylistDownload();
 
@@ -28,6 +30,11 @@ export function DownloadImport() {
     const isChecking = dl.state === 'checking';
 
     return (
+        <>
+        <DownloadDisclaimerModal
+            open={!disclaimerAccepted}
+            onAccept={() => setDisclaimerAccepted(true)}
+        />
         <div className="flex flex-col gap-6 p-6 max-w-4xl">
             {/* Header */}
             <div>
@@ -77,6 +84,7 @@ export function DownloadImport() {
                 <LibraryDownload />
             )}
         </div>
+        </>
     );
 }
 
@@ -117,11 +125,12 @@ function UrlTab({
 
                 {/* URL input */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs uppercase tracking-widest text-on-surface-variant">
+                    <label htmlFor="url-input" className="text-xs uppercase tracking-widest text-on-surface-variant">
                         Paste a URL
                     </label>
                     <div className="flex gap-2">
                         <input
+                            id="url-input"
                             type="url"
                             value={dl.url}
                             onChange={(e) => dl.setUrl(e.target.value)}

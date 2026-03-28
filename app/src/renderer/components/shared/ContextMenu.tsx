@@ -74,7 +74,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
     const [confirmItem, setConfirmItem] = useState<ContextMenuAction | null>(null);
     const [activeSubMenu, setActiveSubMenu] = useState<string | null>(null);
-    const [pos, setPos] = useState(position);
+    const [pos, setPos] = useState({ x: 0, y: 0 });
 
     // Nudge the menu inside the viewport after it renders
     useLayoutEffect(() => {

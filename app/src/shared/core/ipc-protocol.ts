@@ -551,12 +551,10 @@ export interface PurchaseResolvePayload {
     album?: string;
 }
 
-export interface PurchaseLinkResult {
-    provider: string;
-    url: string;
-    label?: string;
-    resolvedAt: string;
-}
+// Re-export the canonical PurchaseLink type as PurchaseLinkResult so that IPC
+// return values are directly assignable to UpdateTrackInput.purchaseLinks without
+// a cast — the two were structurally identical duplicates.
+export type { PurchaseLink as PurchaseLinkResult } from './download-types';
 
 /**
  * Type-safe IPC message creator
