@@ -31,6 +31,7 @@ export const P2P_CONFIG = {
         HANDSHAKE: '/whatnext/handshake/1.0.0',
         PLAYLIST_SYNC: '/whatnext/playlist-sync/1.0.0',
         RXDB_REPLICATION: '/whatnext/rxdb-replication/1.0.0',
+        FILE_TRANSFER: '/whatnext/file-transfer/1.0.0',
     },
 
     /**

@@ -12,6 +12,15 @@
 
 import { peerIdFromString } from '@libp2p/peer-id';
 import { P2P_CONFIG } from './p2p-config.js';
+import {
+    getTestFile,
+    getActiveTransfers,
+    startTransfer,
+    recordChunk,
+    completeTransfer,
+    failTransfer,
+    cancelTransferRecord,
+} from './file-transfer-store.js';
 
 // ─── Stream helpers ──────────────────────────────────────────────────────────
 
@@ -219,6 +228,445 @@ export async function pullCollection(node, remotePeerId, collection, checkpoint,
         checkpoint,
         limit,
     });
+}
+
+// ─── File Transfer Protocol ───────────────────────────────────────────────────
+
+const FILE_TRANSFER_CHUNK_SIZE = 65536;       // 64KB
+const FILE_TRANSFER_MAX_MESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
+
+/**
+ * Encode a message with a 4-byte big-endian length prefix.
+ *
+ * @param {unknown} data
+ * @returns {Uint8Array}
+ */
+function encodeFramed(data) {
+    const json = new TextEncoder().encode(JSON.stringify(data));
+    const frame = new Uint8Array(4 + json.length);
+    const view = new DataView(frame.buffer);
+    view.setUint32(0, json.length, false); // big-endian
+    frame.set(json, 4);
+    return frame;
+}
+
+/**
+ * Accumulate raw bytes from an async iterator until `needed` bytes are available.
+ * Returns null if the iterator ends before enough bytes arrive.
+ *
+ * @param {AsyncIterator<Uint8Array|{subarray():Uint8Array}>} iter
+ * @param {number} needed
+ * @param {Uint8Array} carry - bytes already read from a previous partial read
+ * @returns {Promise<{buf: Uint8Array, rest: Uint8Array}|null>}
+ */
+async function accumulateBytes(iter, needed, carry) {
+    let buf = carry;
+    while (buf.length < needed) {
+        const { value, done } = await iter.next();
+        if (done || value === undefined) return null;
+        const chunk = value instanceof Uint8Array ? value : value.subarray();
+        const merged = new Uint8Array(buf.length + chunk.length);
+        merged.set(buf, 0);
+        merged.set(chunk, buf.length);
+        buf = merged;
+    }
+    return { buf: buf.slice(0, needed), rest: buf.slice(needed) };
+}
+
+/**
+ * Read a single length-prefixed JSON message from an async iterator.
+ * `carry` holds any bytes already read from a previous partial read.
+ *
+ * @param {AsyncIterator<Uint8Array|{subarray():Uint8Array}>} iter
+ * @param {Uint8Array} carry
+ * @returns {Promise<{message: object, rest: Uint8Array}|null>}
+ */
+async function readFramedMessage(iter, carry) {
+    const headerResult = await accumulateBytes(iter, 4, carry);
+    if (!headerResult) return null;
+
+    const view = new DataView(headerResult.buf.buffer, headerResult.buf.byteOffset);
+    const length = view.getUint32(0, false); // big-endian
+
+    if (length === 0) {
+        throw new Error('readFramedMessage: rejected zero-length message');
+    }
+    if (length > FILE_TRANSFER_MAX_MESSAGE_SIZE) {
+        throw new Error(`readFramedMessage: rejected oversized message (length=${length})`);
+    }
+
+    const bodyResult = await accumulateBytes(iter, length, headerResult.rest);
+    if (!bodyResult) return null;
+
+    try {
+        const message = JSON.parse(new TextDecoder().decode(bodyResult.buf));
+        return { message, rest: bodyResult.rest };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Serve all chunks of a file to a peer on an already-open stream.
+ * Writes file-header → N×file-chunk → file-complete.
+ *
+ * @param {import('@libp2p/interface').Stream} stream
+ * @param {object} fileEntry - from getTestFile()
+ * @param {number} offsetBytes - resume offset
+ */
+async function serveFile(stream, fileEntry, offsetBytes) {
+    const { sha256, data: buf, sizeBytes } = fileEntry;
+
+    stream.send(encodeFramed({
+        type: 'file-header',
+        sha256,
+        totalBytes: sizeBytes,
+        chunkSize: FILE_TRANSFER_CHUNK_SIZE,
+    }));
+
+    let offset = offsetBytes;
+    while (offset < buf.length) {
+        const end = Math.min(offset + FILE_TRANSFER_CHUNK_SIZE, buf.length);
+        const chunk = buf.slice(offset, end);
+        stream.send(encodeFramed({
+            type: 'file-chunk',
+            sha256,
+            offset,
+            data: chunk.toString('base64'),
+        }));
+        offset = end;
+    }
+
+    stream.send(encodeFramed({ type: 'file-complete', sha256 }));
+    try { await stream.close(); } catch { /* ignore */ }
+}
+
+/**
+ * Read response messages off a stream we opened for a file-request.
+ * Accumulates chunks, fires onProgress, resolves when file-complete arrives.
+ *
+ * @param {AsyncIterator} iter
+ * @param {Uint8Array} carry
+ * @param {string} remotePeerId
+ * @param {string} sha256
+ * @param {import('@libp2p/interface').Stream} stream
+ * @param {(bytesReceived: number, totalBytes: number) => void} onProgress
+ * @returns {Promise<void>}
+ */
+async function receiveFileStream(iter, carry, remotePeerId, sha256, stream, onProgress) {
+    let remaining = carry;
+    let totalBytes = 0;
+
+    while (true) {
+        const result = await readFramedMessage(iter, remaining);
+        if (!result) break;
+
+        const { message, rest } = result;
+        remaining = rest;
+
+        switch (message.type) {
+            case 'file-header': {
+                totalBytes = message.totalBytes;
+                console.log(`[FileTransfer] Receiving ${sha256.slice(0, 8)}... totalBytes=${totalBytes}`);
+                break;
+            }
+
+            case 'file-chunk': {
+                const chunkBuf = Buffer.from(message.data, 'base64');
+                recordChunk(sha256, message.offset, chunkBuf);
+                onProgress(totalBytes);
+                break;
+            }
+
+            case 'file-complete': {
+                console.log(`[FileTransfer] Complete: ${sha256.slice(0, 8)}...`);
+                completeTransfer(sha256);
+                try { await stream.close(); } catch { /* ignore */ }
+                return;
+            }
+
+            case 'file-error': {
+                console.error(`[FileTransfer] Error from peer: ${message.error}`);
+                failTransfer(sha256, message.error);
+                try { await stream.close(); } catch { /* ignore */ }
+                return;
+            }
+
+            case 'transfer-cancel': {
+                console.log(`[FileTransfer] Transfer cancelled by remote`);
+                cancelTransferRecord(sha256);
+                try { await stream.close(); } catch { /* ignore */ }
+                return;
+            }
+
+            default:
+                console.warn(`[FileTransfer] Unexpected message in receive stream: ${message.type}`);
+                break;
+        }
+    }
+}
+
+/**
+ * Register the /whatnext/file-transfer/1.0.0 protocol handler.
+ *
+ * Single-process divergence from the Electron app: serving is done inline in
+ * the handler rather than via IPC callbacks, since we have direct Buffer access.
+ *
+ * @param {import('libp2p').Libp2p} node
+ * @param {object} callbacks
+ * @param {() => object[]} callbacks.getLocalFiles - returns getAllTestFiles()
+ * @param {(sha256: string, filename: string, totalBytes: number, peerId: string) => void} callbacks.onTransferStarted
+ * @param {(sha256: string, bytesReceived: number, totalBytes: number) => void} callbacks.onProgress
+ * @param {(sha256: string, buf: Buffer, filename: string) => Promise<void>} callbacks.onComplete
+ * @param {(sha256: string, error: string) => void} callbacks.onError
+ * @param {(sha256: string) => void} callbacks.onCancelled
+ */
+export function registerFileTransferProtocol(node, callbacks) {
+    node.handle(P2P_CONFIG.PROTOCOLS.FILE_TRANSFER, async (stream, connection) => {
+        const remotePeerId = connection.remotePeer.toString();
+        const shortId = remotePeerId.slice(0, 12);
+
+        console.log(`[FileTransfer] Incoming stream from ${shortId}...`);
+
+        try {
+            const iter = stream[Symbol.asyncIterator]();
+            const firstRead = await readFramedMessage(iter, new Uint8Array(0));
+
+            if (!firstRead) {
+                console.warn(`[FileTransfer] Empty or malformed first message from ${shortId}`);
+                try { await stream.close(); } catch { /* ignore */ }
+                return;
+            }
+
+            const { message, rest } = firstRead;
+
+            switch (message.type) {
+                case 'manifest-request': {
+                    const playlistId = message.playlistId ?? 'unknown';
+                    console.log(`[FileTransfer] Manifest request from ${shortId} for playlist ${playlistId}`);
+
+                    const localFiles = callbacks.getLocalFiles();
+                    const manifest = {
+                        peerId: node.peerId.toString(),
+                        playlistId,
+                        files: localFiles.map(f => ({
+                            trackId: f.trackId,
+                            type: f.type,
+                            sha256: f.sha256,
+                            sizeBytes: f.sizeBytes,
+                            mimeType: f.mimeType,
+                            filename: f.filename,
+                        })),
+                        generatedAt: new Date().toISOString(),
+                    };
+
+                    stream.send(encodeFramed({ type: 'manifest-response', manifest }));
+                    try { await stream.close(); } catch { /* ignore */ }
+                    break;
+                }
+
+                case 'file-request': {
+                    const { sha256, offsetBytes } = message;
+                    console.log(`[FileTransfer] File request from ${shortId}: ${sha256.slice(0, 8)}... offset=${offsetBytes}`);
+
+                    const fileEntry = getTestFile(sha256);
+                    if (!fileEntry) {
+                        console.warn(`[FileTransfer] File not found: ${sha256.slice(0, 8)}...`);
+                        stream.send(encodeFramed({
+                            type: 'file-error',
+                            sha256,
+                            error: `file not found: ${sha256.slice(0, 8)}`,
+                        }));
+                        try { await stream.close(); } catch { /* ignore */ }
+                        break;
+                    }
+
+                    // Serve inline — no IPC needed in test-peer
+                    await serveFile(stream, fileEntry, offsetBytes ?? 0);
+                    break;
+                }
+
+                case 'file-header':
+                case 'file-chunk':
+                case 'file-complete': {
+                    // We are receiving the response to a file-request we sent.
+                    // This path fires when the provider's first message arrives on our
+                    // outbound stream (which is also registered as an incoming stream
+                    // from libp2p's perspective). Hand off to the receive loop.
+                    if (message.type === 'file-header') {
+                        const { sha256, totalBytes } = message;
+                        startTransfer(sha256, sha256.slice(0, 8) + '.bin', totalBytes, remotePeerId);
+                        callbacks.onTransferStarted(sha256, sha256.slice(0, 8) + '.bin', totalBytes, remotePeerId);
+                        await receiveFileStream(iter, rest, remotePeerId, sha256, stream,
+                            (total) => callbacks.onProgress(sha256, getActiveTransfers().find(t => t.sha256 === sha256)?.bytesReceived ?? 0, total));
+                    }
+                    break;
+                }
+
+                case 'transfer-cancel': {
+                    console.log(`[FileTransfer] Cancel received from ${shortId} for ${message.sha256.slice(0, 8)}...`);
+                    cancelTransferRecord(message.sha256);
+                    callbacks.onCancelled(message.sha256);
+                    try { await stream.close(); } catch { /* ignore */ }
+                    break;
+                }
+
+                default:
+                    console.warn(`[FileTransfer] Unknown message type from ${shortId}: ${message.type}`);
+                    try { await stream.close(); } catch { /* ignore */ }
+                    break;
+            }
+        } catch (err) {
+            console.error(`[FileTransfer] Stream error from ${shortId}:`, err.message);
+            try { await stream.close(); } catch { /* ignore */ }
+        }
+    });
+
+    console.log(`[FileTransfer] Protocol registered: ${P2P_CONFIG.PROTOCOLS.FILE_TRANSFER}`);
+}
+
+/**
+ * Request a file manifest from a peer.
+ *
+ * @param {import('libp2p').Libp2p} node
+ * @param {string} remotePeerId
+ * @param {string} playlistId
+ * @returns {Promise<object>} FileManifest
+ */
+export async function requestManifest(node, remotePeerId, playlistId) {
+    const peerId = peerIdFromString(remotePeerId);
+    console.log(`[FileTransfer] Requesting manifest from ${remotePeerId.slice(0, 12)}... for playlist ${playlistId}`);
+
+    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.FILE_TRANSFER);
+
+    try {
+        stream.send(encodeFramed({ type: 'manifest-request', playlistId }));
+
+        const iter = stream[Symbol.asyncIterator]();
+        const result = await readFramedMessage(iter, new Uint8Array(0));
+
+        if (!result) {
+            throw new Error('No response received for manifest-request');
+        }
+
+        const { message } = result;
+        if (message.type === 'manifest-response') {
+            return message.manifest;
+        }
+        if (message.type === 'file-error') {
+            throw new Error(message.error);
+        }
+        throw new Error(`Unexpected response type: ${message.type}`);
+    } finally {
+        try { await stream.close(); } catch { /* ignore */ }
+    }
+}
+
+/**
+ * Request a file from a peer.
+ * Opens a stream, sends file-request, then reads the response in the background.
+ *
+ * @param {import('libp2p').Libp2p} node
+ * @param {string} remotePeerId
+ * @param {string} sha256
+ * @param {number} offsetBytes
+ * @param {object} callbacks - same shape as registerFileTransferProtocol callbacks
+ * @returns {Promise<void>}
+ */
+export async function requestFile(node, remotePeerId, sha256, offsetBytes, callbacks) {
+    const peerId = peerIdFromString(remotePeerId);
+    console.log(`[FileTransfer] Requesting file ${sha256.slice(0, 8)}... from ${remotePeerId.slice(0, 12)}... offset=${offsetBytes}`);
+
+    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.FILE_TRANSFER);
+    stream.send(encodeFramed({ type: 'file-request', sha256, offsetBytes }));
+
+    // Fire-and-forget receive loop
+    (async () => {
+        try {
+            const iter = stream[Symbol.asyncIterator]();
+            let carry = new Uint8Array(0);
+            let totalBytes = 0;
+
+            while (true) {
+                const result = await readFramedMessage(iter, carry);
+                if (!result) break;
+
+                const { message, rest } = result;
+                carry = rest;
+
+                switch (message.type) {
+                    case 'file-header': {
+                        totalBytes = message.totalBytes;
+                        startTransfer(sha256, sha256.slice(0, 8) + '.bin', totalBytes, remotePeerId);
+                        callbacks.onTransferStarted(sha256, sha256.slice(0, 8) + '.bin', totalBytes, remotePeerId);
+                        break;
+                    }
+
+                    case 'file-chunk': {
+                        const chunkBuf = Buffer.from(message.data, 'base64');
+                        recordChunk(sha256, message.offset, chunkBuf);
+                        const t = getActiveTransfers().find(t => t.sha256 === sha256);
+                        callbacks.onProgress(sha256, t?.bytesReceived ?? 0, totalBytes);
+                        break;
+                    }
+
+                    case 'file-complete': {
+                        const assembled = completeTransfer(sha256);
+                        if (assembled) {
+                            await callbacks.onComplete(sha256, assembled.buf, assembled.filename);
+                        }
+                        try { await stream.close(); } catch { /* ignore */ }
+                        return;
+                    }
+
+                    case 'file-error': {
+                        failTransfer(sha256, message.error);
+                        callbacks.onError(sha256, message.error);
+                        try { await stream.close(); } catch { /* ignore */ }
+                        return;
+                    }
+
+                    case 'transfer-cancel': {
+                        cancelTransferRecord(sha256);
+                        callbacks.onCancelled(sha256);
+                        try { await stream.close(); } catch { /* ignore */ }
+                        return;
+                    }
+
+                    default:
+                        console.warn(`[FileTransfer] Unexpected message in file stream: ${message.type}`);
+                        break;
+                }
+            }
+        } catch (err) {
+            failTransfer(sha256, err.message);
+            callbacks.onError(sha256, `stream-error: ${err.message}`);
+            try { await stream.close(); } catch { /* ignore */ }
+        }
+    })();
+}
+
+/**
+ * Send a transfer-cancel to a peer on a new short-lived stream.
+ *
+ * @param {import('libp2p').Libp2p} node
+ * @param {string} remotePeerId
+ * @param {string} sha256
+ * @returns {Promise<void>}
+ */
+export async function cancelFileTransfer(node, remotePeerId, sha256) {
+    const peerId = peerIdFromString(remotePeerId);
+    console.log(`[FileTransfer] Sending cancel for ${sha256.slice(0, 8)}... to ${remotePeerId.slice(0, 12)}...`);
+
+    cancelTransferRecord(sha256);
+
+    try {
+        const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.FILE_TRANSFER);
+        stream.send(encodeFramed({ type: 'transfer-cancel', sha256 }));
+        try { await stream.close(); } catch { /* ignore */ }
+    } catch (err) {
+        console.warn(`[FileTransfer] Could not send cancel: ${err.message}`);
+    }
 }
 
 // ─── Re-exports ──────────────────────────────────────────────────────────────

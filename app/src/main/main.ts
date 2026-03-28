@@ -41,6 +41,7 @@ import {
     type HandshakeCompletePayload,
     type P2PStatusPayload,
     type ReplicationPullRequestPayload,
+    FILE_TRANSFER_CAPABILITY,
 } from '../shared/core';
 import {
     getRelayAddresses,
@@ -50,6 +51,9 @@ import {
 
 let mainWindow: BrowserWindow | null = null;
 let p2pUtilityProcess: UtilityProcess | null = null;
+
+// Lazily resolved file-transfer dispatch function (avoids re-requiring on every message)
+let _fileTransferHandler: ((msg: IPCMessage) => boolean) | null = null;
 
 /**
  * Prefer a single preload path in both dev/prod.
@@ -282,6 +286,7 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
             p2pState.nodeStarted = true;
             p2pState.peerId = payload.peerId;
             p2pState.multiaddrs = payload.multiaddrs;
+            _fileTransferSetOwnPeerId?.(payload.peerId);
             mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_STARTED, payload);
             break;
         }
@@ -371,7 +376,14 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
             if (discoveredPeer) {
                 discoveredPeer.displayName = payload.displayName;
             }
-            mainWindow.webContents.send('p2p:handshake-complete', payload);
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_HANDSHAKE_COMPLETE, payload);
+
+            // Resume incomplete file transfers if peer supports it
+            if (payload.capabilities?.includes(FILE_TRANSFER_CAPABILITY)) {
+                _fileTransferResume?.(payload.peerId).catch((err) =>
+                    console.warn('[Main] Failed to resume transfers for peer:', err),
+                );
+            }
             break;
         }
 
@@ -413,8 +425,16 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
             break;
         }
 
-        default:
-            console.warn('[Main] Unknown utility message type:', message.type);
+        default: {
+            // Delegate file-transfer messages before warning
+            if (!_fileTransferHandler) {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                _fileTransferHandler = require('./file-transfer/file-transfer-ipc').handleFileTransferUtilityMessage;
+            }
+            if (!_fileTransferHandler?.(message)) {
+                console.warn('[Main] Unknown utility message type:', message.type);
+            }
+        }
     }
 }
 
@@ -614,6 +634,14 @@ app.whenReady().then(async () => {
     if (mainWindow) {
         const { registerDownloadHandlers } = await import('./downloader/downloader-ipc');
         await registerDownloadHandlers(mainWindow);
+    }
+
+    // Register file-transfer IPC handlers (P2P file serving/receiving)
+    if (mainWindow) {
+        const { registerFileTransferHandlers, setOwnPeerId, resumeIncompleteTransfers } = await import('./file-transfer/file-transfer-ipc');
+        await registerFileTransferHandlers(mainWindow, () => p2pUtilityProcess);
+        _fileTransferSetOwnPeerId = setOwnPeerId;
+        _fileTransferResume = resumeIncompleteTransfers;
     }
 
     // Register purchase link resolution handlers (background enrichment, no window needed)
@@ -915,6 +943,11 @@ ipcMain.handle('shell:open-path', async (_event, dirPath: string) => {
 // ========================================
 // P2P Connection Management
 // ========================================
+
+// Callback populated when file-transfer module is initialised.
+// Used to forward our own peer ID once the P2P node starts.
+let _fileTransferSetOwnPeerId: ((peerId: string) => void) | null = null;
+let _fileTransferResume: ((peerId: string) => Promise<void>) | null = null;
 
 // Store P2P state that the renderer can pull
 let p2pState: P2PStatusPayload = {

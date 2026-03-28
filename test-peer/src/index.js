@@ -31,6 +31,9 @@ import { FaultTolerance } from '@libp2p/interface';
 import { peerIdFromString } from '@libp2p/peer-id';
 import { multiaddr } from '@multiformats/multiaddr';
 import { randomUUID } from 'crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import chalk from 'chalk';
 import readline from 'readline';
 
@@ -42,7 +45,16 @@ import {
     pushDocuments,
     pullCollection,
     COLLECTIONS,
+    registerFileTransferProtocol,
+    requestManifest,
+    requestFile,
+    cancelFileTransfer,
 } from './protocols.js';
+import {
+    addTestFile,
+    getAllTestFiles,
+    getActiveTransfers,
+} from './file-transfer-store.js';
 import {
     applyDocuments,
     getDocuments,
@@ -66,12 +78,16 @@ import {
 const PEER_NAME = process.env.PEER_NAME || `TestPeer-${Math.random().toString(36).substr(2, 6)}`;
 const LOCAL_USER_ID = randomUUID();
 
+// Downloads directory: test-peer/downloads/
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DOWNLOADS_DIR = path.join(__dirname, '..', 'downloads');
+
 /** Populated with peerId after node.start(). */
 const LOCAL_HANDSHAKE_DATA = {
     displayName: PEER_NAME,
     userId: LOCAL_USER_ID,
     version: '0.1.0',
-    capabilities: ['replication', 'handshake'],
+    capabilities: ['replication', 'handshake', 'file-transfer/1.0.0'],
     peerId: '',
 };
 
@@ -167,6 +183,56 @@ async function startNode() {
                 rl.prompt();
             },
         );
+
+        registerFileTransferProtocol(node, {
+            getLocalFiles: () => getAllTestFiles(),
+            onTransferStarted: (sha256, filename, totalBytes, peerId) => {
+                console.log(chalk.cyan(
+                    `\n[FileTransfer] Started: ${filename} (${(totalBytes / 1024).toFixed(1)}KB) from ${peerId.slice(0, 12)}...\n`,
+                ));
+                rl.prompt();
+            },
+            onProgress: (sha256, bytesReceived, totalBytes) => {
+                if (totalBytes > 0) {
+                    const pct = Math.floor((bytesReceived / totalBytes) * 100);
+                    process.stdout.write(chalk.gray(`\r[FileTransfer] ${sha256.slice(0, 8)}... ${pct}% (${(bytesReceived / 1024).toFixed(1)}/${(totalBytes / 1024).toFixed(1)}KB)`));
+                }
+            },
+            onComplete: async (sha256, buf, filename) => {
+                process.stdout.write('\n');
+                try {
+                    // Verify hash
+                    const { createHash } = await import('node:crypto');
+                    const actualHash = createHash('sha256').update(buf).digest('hex');
+                    const hashOk = actualHash === sha256;
+
+                    // Save to downloads dir
+                    if (!fs.existsSync(DOWNLOADS_DIR)) {
+                        fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });
+                    }
+                    const outPath = path.join(DOWNLOADS_DIR, filename || `${sha256.slice(0, 8)}.bin`);
+                    fs.writeFileSync(outPath, buf);
+
+                    if (hashOk) {
+                        console.log(chalk.green(`\n[FileTransfer] Downloaded: ${outPath} (${(buf.length / 1024).toFixed(1)}KB) SHA-256 OK\n`));
+                    } else {
+                        console.log(chalk.red(`\n[FileTransfer] Downloaded: ${outPath} — SHA-256 MISMATCH (expected ${sha256.slice(0, 8)}... got ${actualHash.slice(0, 8)}...)\n`));
+                    }
+                } catch (err) {
+                    console.log(chalk.red(`\n[FileTransfer] Failed to save file: ${err.message}\n`));
+                }
+                rl.prompt();
+            },
+            onError: (sha256, error) => {
+                process.stdout.write('\n');
+                console.log(chalk.red(`\n[FileTransfer] Error for ${sha256.slice(0, 8)}...: ${error}\n`));
+                rl.prompt();
+            },
+            onCancelled: (sha256) => {
+                console.log(chalk.yellow(`\n[FileTransfer] Cancelled: ${sha256.slice(0, 8)}...\n`));
+                rl.prompt();
+            },
+        });
 
         const peerId = node.peerId.toString();
         const multiaddrs = node.getMultiaddrs().map(ma => ma.toString());
@@ -290,6 +356,14 @@ function showHelp() {
     console.log(chalk.white('  peers-info') + chalk.gray('                    Show handshake info for connected peers'));
     console.log(chalk.white('  vote [n] <trackIdx> <+1|-1>') + chalk.gray('  Send vote for a track to peer n'));
     console.log(chalk.white('  session') + chalk.gray('                       Show full session state (collections, checkpoints)'));
+    console.log('');
+    console.log(chalk.bold('  File Transfer'));
+    console.log(chalk.white('  manifest <n> [playlist-id]') + chalk.gray('    Request file manifest from peer n (alias: mf)'));
+    console.log(chalk.white('  download <n> <sha256>') + chalk.gray('         Download a file from peer n by sha256 (alias: dl)'));
+    console.log(chalk.white('  files') + chalk.gray('                         List local test files available to serve (alias: f)'));
+    console.log(chalk.white('  file-add [name] [size-kb]') + chalk.gray('     Add a random test file (alias: fa)'));
+    console.log(chalk.white('  transfers') + chalk.gray('                     Show active/completed transfers (alias: tf)'));
+    console.log(chalk.white('  transfer-cancel <sha256>') + chalk.gray('      Cancel an active transfer (alias: tc)'));
     console.log('');
     console.log(chalk.bold('  Relay'));
     console.log(chalk.white('  relay-add <multiaddr>') + chalk.gray('          Add and connect to a relay server'));
@@ -546,6 +620,232 @@ async function cmdVote(args) {
 }
 
 // ========================================
+// File transfer commands
+// ========================================
+
+/**
+ * Request a file manifest from a connected peer.
+ *
+ * @param {string[]} args - [peerIdx, playlistId?]
+ */
+async function cmdManifest(args) {
+    const peerId = resolvePeer(args[0]);
+    if (!peerId) return;
+
+    // Determine playlist-id: second arg, or first playlist from session, or fallback
+    let playlistId = args[1] ?? 'test-playlist';
+
+    console.log(chalk.cyan(`\n[FileTransfer] Requesting manifest from ${peerId.slice(0, 16)}... (playlist: ${playlistId})\n`));
+
+    try {
+        const manifest = await requestManifest(node, peerId, playlistId);
+
+        console.log(chalk.cyan(`\n[FileTransfer] Manifest received from ${manifest.peerId.slice(0, 16)}...`));
+        console.log(chalk.gray(`  Playlist: ${manifest.playlistId}`));
+        console.log(chalk.gray(`  Generated: ${manifest.generatedAt}`));
+        console.log(chalk.bold(`\n  Files (${manifest.files.length}):\n`));
+
+        if (manifest.files.length === 0) {
+            console.log(chalk.yellow('  (no files)\n'));
+        } else {
+            manifest.files.forEach((f, i) => {
+                console.log(
+                    chalk.white(`  ${i + 1}. ${f.filename}`) +
+                    chalk.gray(` [${f.type}] ${(f.sizeBytes / 1024).toFixed(1)}KB`),
+                );
+                console.log(chalk.gray(`     sha256: ${f.sha256}`));
+            });
+            console.log('');
+        }
+    } catch (err) {
+        console.log(chalk.red(`\n[FileTransfer] Manifest request failed: ${err.message}\n`));
+    }
+}
+
+/**
+ * Download a file from a connected peer by sha256.
+ *
+ * @param {string[]} args - [peerIdx, sha256]
+ */
+async function cmdDownload(args) {
+    if (args.length < 2) {
+        console.log(chalk.red('\n[FileTransfer] Usage: download <peer-idx> <sha256>\n'));
+        return;
+    }
+
+    const peerId = resolvePeer(args[0]);
+    if (!peerId) return;
+
+    const sha256 = args[1];
+    if (!sha256 || sha256.length < 8) {
+        console.log(chalk.red('\n[FileTransfer] Invalid sha256\n'));
+        return;
+    }
+
+    console.log(chalk.cyan(`\n[FileTransfer] Requesting ${sha256.slice(0, 8)}... from ${peerId.slice(0, 16)}...\n`));
+
+    try {
+        await requestFile(node, peerId, sha256, 0, {
+            onTransferStarted: (sha256, filename, totalBytes, peerId) => {
+                console.log(chalk.cyan(
+                    `[FileTransfer] Transfer started: ${filename} (${(totalBytes / 1024).toFixed(1)}KB)\n`,
+                ));
+            },
+            onProgress: (sha256, bytesReceived, totalBytes) => {
+                if (totalBytes > 0) {
+                    const pct = Math.floor((bytesReceived / totalBytes) * 100);
+                    process.stdout.write(chalk.gray(`\r  Progress: ${pct}% (${(bytesReceived / 1024).toFixed(1)}/${(totalBytes / 1024).toFixed(1)}KB)`));
+                }
+            },
+            onComplete: async (sha256, buf, filename) => {
+                process.stdout.write('\n');
+                try {
+                    const { createHash } = await import('node:crypto');
+                    const actualHash = createHash('sha256').update(buf).digest('hex');
+                    const hashOk = actualHash === sha256;
+
+                    if (!fs.existsSync(DOWNLOADS_DIR)) {
+                        fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });
+                    }
+                    const outPath = path.join(DOWNLOADS_DIR, filename || `${sha256.slice(0, 8)}.bin`);
+                    fs.writeFileSync(outPath, buf);
+
+                    if (hashOk) {
+                        console.log(chalk.green(`\n[FileTransfer] Saved: ${outPath} (${(buf.length / 1024).toFixed(1)}KB) SHA-256 OK\n`));
+                    } else {
+                        console.log(chalk.red(`\n[FileTransfer] Saved: ${outPath} — SHA-256 MISMATCH\n`));
+                    }
+                } catch (err) {
+                    console.log(chalk.red(`\n[FileTransfer] Save failed: ${err.message}\n`));
+                }
+                rl.prompt();
+            },
+            onError: (sha256, error) => {
+                process.stdout.write('\n');
+                console.log(chalk.red(`\n[FileTransfer] Error: ${error}\n`));
+                rl.prompt();
+            },
+            onCancelled: (sha256) => {
+                console.log(chalk.yellow(`\n[FileTransfer] Cancelled\n`));
+                rl.prompt();
+            },
+        });
+        console.log(chalk.gray('Download initiated — waiting for file...\n'));
+    } catch (err) {
+        console.log(chalk.red(`\n[FileTransfer] Download request failed: ${err.message}\n`));
+    }
+}
+
+/**
+ * List local test files.
+ */
+function cmdFiles() {
+    const files = getAllTestFiles();
+    if (files.length === 0) {
+        console.log(chalk.yellow('\n[FileTransfer] No test files. Use "file-add" to create one.\n'));
+        return;
+    }
+
+    console.log(chalk.cyan(`\n[FileTransfer] Local Test Files (${files.length}):\n`));
+    files.forEach((f, i) => {
+        console.log(
+            chalk.white(`  ${i + 1}. ${f.filename}`) +
+            chalk.gray(` [${f.type}] ${(f.sizeBytes / 1024).toFixed(1)}KB`),
+        );
+        console.log(chalk.gray(`     sha256: ${f.sha256}`));
+    });
+    console.log('');
+}
+
+/**
+ * Add a random test file to the local store.
+ *
+ * @param {string[]} args - [name?, sizeKb?]
+ */
+async function cmdFileAdd(args) {
+    const name = args[0] ?? `test-${Date.now()}.bin`;
+    const sizeKb = parseInt(args[1] ?? '128', 10);
+
+    if (isNaN(sizeKb) || sizeKb <= 0) {
+        console.log(chalk.red('\n[FileTransfer] Invalid size. Usage: file-add [name] [size-kb]\n'));
+        return;
+    }
+
+    const { randomBytes } = await import('node:crypto');
+    const buf = randomBytes(sizeKb * 1024);
+    const sha256 = addTestFile(name, buf);
+
+    console.log(chalk.green(`\n[FileTransfer] Added: ${name} (${sizeKb}KB)`));
+    console.log(chalk.gray(`  sha256: ${sha256}\n`));
+}
+
+/**
+ * Show all active and completed transfers.
+ */
+function cmdTransfers() {
+    const transfers = getActiveTransfers();
+    if (transfers.length === 0) {
+        console.log(chalk.yellow('\n[FileTransfer] No transfers.\n'));
+        return;
+    }
+
+    console.log(chalk.cyan(`\n[FileTransfer] Transfers (${transfers.length}):\n`));
+    for (const t of transfers) {
+        const pct = t.totalBytes > 0 ? Math.floor((t.bytesReceived / t.totalBytes) * 100) : 0;
+        const statusColor = {
+            transferring: chalk.cyan,
+            complete: chalk.green,
+            error: chalk.red,
+            cancelled: chalk.yellow,
+            pending: chalk.gray,
+            verifying: chalk.blue,
+        }[t.status] ?? chalk.white;
+
+        console.log(
+            chalk.white(`  ${t.sha256.slice(0, 8)}...`) +
+            chalk.gray(` ${t.filename}`) +
+            statusColor(` [${t.status}]`) +
+            chalk.gray(` ${pct}% (${(t.bytesReceived / 1024).toFixed(1)}/${(t.totalBytes / 1024).toFixed(1)}KB)`),
+        );
+        if (t.error) {
+            console.log(chalk.red(`    Error: ${t.error}`));
+        }
+    }
+    console.log('');
+}
+
+/**
+ * Cancel an active transfer by sha256 prefix or full hash.
+ *
+ * @param {string[]} args - [sha256]
+ */
+async function cmdTransferCancel(args) {
+    if (!args[0]) {
+        console.log(chalk.red('\n[FileTransfer] Usage: transfer-cancel <sha256>\n'));
+        return;
+    }
+
+    const sha256Prefix = args[0];
+    const transfers = getActiveTransfers();
+    const match = transfers.find(t => t.sha256.startsWith(sha256Prefix));
+
+    if (!match) {
+        console.log(chalk.red(`\n[FileTransfer] No active transfer matching: ${sha256Prefix}\n`));
+        return;
+    }
+
+    const peerId = resolvePeer(undefined);
+    if (!peerId) return;
+
+    try {
+        await cancelFileTransfer(node, peerId, match.sha256);
+        console.log(chalk.yellow(`\n[FileTransfer] Cancel sent for ${match.sha256.slice(0, 8)}...\n`));
+    } catch (err) {
+        console.log(chalk.red(`\n[FileTransfer] Cancel failed: ${err.message}\n`));
+    }
+}
+
+// ========================================
 // Relay commands
 // ========================================
 
@@ -731,6 +1031,38 @@ function startCLI() {
             case 'session':
             case 'ss':
                 console.log(formatSessionDisplay());
+                break;
+
+            // ── File Transfer commands ───────────────────────────────────────
+
+            case 'manifest':
+            case 'mf':
+                await cmdManifest(args);
+                break;
+
+            case 'download':
+            case 'dl':
+                await cmdDownload(args);
+                break;
+
+            case 'files':
+            case 'f':
+                cmdFiles();
+                break;
+
+            case 'file-add':
+            case 'fa':
+                await cmdFileAdd(args);
+                break;
+
+            case 'transfers':
+            case 'tf':
+                cmdTransfers();
+                break;
+
+            case 'transfer-cancel':
+            case 'tc':
+                await cmdTransferCancel(args);
                 break;
 
             // ── Relay commands ──────────────────────────────────────────────

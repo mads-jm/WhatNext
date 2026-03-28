@@ -38,6 +38,13 @@ export enum MainToUtilityMessageType {
 
     // Relay configuration (dynamic, loaded from settings store)
     UPDATE_RELAY_ADDRESSES = 'update_relay_addresses',
+
+    // File transfer — main → utility commands
+    FILE_TRANSFER_REQUEST_MANIFEST = 'file_transfer_request_manifest',
+    FILE_TRANSFER_REQUEST_FILE = 'file_transfer_request_file',
+    FILE_TRANSFER_CANCEL = 'file_transfer_cancel',
+    FILE_TRANSFER_SERVE_CHUNK = 'file_transfer_serve_chunk',
+    FILE_TRANSFER_MANIFEST_RESPONSE = 'file_transfer_manifest_response',
 }
 
 /**
@@ -78,6 +85,13 @@ export enum UtilityToMainMessageType {
 
     // Presence
     PEER_PRESENCE_UPDATE = 'peer_presence_update',
+
+    // File transfer — utility → main events
+    FILE_TRANSFER_MANIFEST_RECEIVED = 'file_transfer_manifest_received',
+    FILE_TRANSFER_INCOMING_REQUEST = 'file_transfer_incoming_request',
+    FILE_TRANSFER_CHUNK_RECEIVED = 'file_transfer_chunk_received',
+    FILE_TRANSFER_COMPLETE = 'file_transfer_complete',
+    FILE_TRANSFER_ERROR = 'file_transfer_error',
 }
 
 /**
@@ -188,6 +202,7 @@ export const IPC_CHANNELS = {
     P2P_CONNECTION_CLOSED: 'p2p:connection-closed',
     P2P_PEER_DISCOVERED: 'p2p:peer-discovered',
     P2P_PEER_LOST: 'p2p:peer-lost',
+    P2P_HANDSHAKE_COMPLETE: 'p2p:handshake-complete',
 
     // Node status (main → renderer)
     P2P_NODE_STARTED: 'p2p:node-started',
@@ -267,6 +282,22 @@ export const IPC_CHANNELS = {
     // Purchase link resolution (renderer ↔ main)
     PURCHASE_RESOLVE: 'purchase:resolve',
     PURCHASE_RESOLVE_BATCH: 'purchase:resolve-batch',
+
+    // File transfer — invoke channels (renderer → main)
+    FILE_TRANSFER_REQUEST_MANIFEST: 'file-transfer:request-manifest',
+    FILE_TRANSFER_REQUEST_FILES: 'file-transfer:request-files',
+    FILE_TRANSFER_CANCEL: 'file-transfer:cancel',
+    FILE_TRANSFER_GET_TRANSFERS: 'file-transfer:get-transfers',
+    FILE_TRANSFER_SET_SHARING: 'file-transfer:set-sharing',
+
+    // File transfer — event channels (main → renderer)
+    FILE_TRANSFER_MANIFEST: 'file-transfer:manifest',
+    FILE_TRANSFER_PROGRESS: 'file-transfer:progress',
+    FILE_TRANSFER_COMPLETE: 'file-transfer:complete',
+    FILE_TRANSFER_ERROR: 'file-transfer:error',
+
+    // File transfer — side-map registration (renderer → main)
+    FILE_TRANSFER_REGISTER_TRACKS: 'file-transfer:register-tracks',
 } as const;
 
 // ========================================

@@ -22,6 +22,7 @@ import {
     type GetInviteUrlResult,
     type ReplicationPullRequestPayload,
     type ReplicationPullResponsePayload,
+    type HandshakeCompletePayload,
 } from '../shared/core';
 import type { SpotifyPlaylistItem } from './types';
 import type { MappedTrack } from './spotify/spotify-mapper';
@@ -45,6 +46,14 @@ import type {
 // Download service types (service module — pure Node, no Electron)
 // Import only the types we need for the preload bridge signature.
 import type { ResolvedTrack, DownloadStartRequest, DownloadEvent } from '../../../service/downloader/types';
+import type {
+    FileEntry,
+    FileManifest,
+    ActiveTransfer,
+    TransferProgress,
+    TransferComplete,
+    TransferError,
+} from '../shared/core/file-transfer-types';
 
 const electronHandler = {
     // ========================================
@@ -214,6 +223,12 @@ const electronHandler = {
             const listener = (_event: IpcRendererEvent, data: ConnectionClosedPayload) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_CONNECTION_CLOSED, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_CONNECTION_CLOSED, listener);
+        },
+
+        onHandshakeComplete: (callback: (data: HandshakeCompletePayload) => void) => {
+            const listener = (_event: IpcRendererEvent, data: HandshakeCompletePayload) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.P2P_HANDSHAKE_COMPLETE, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_HANDSHAKE_COMPLETE, listener);
         },
 
         onNodeError: (callback: (data: NodeErrorPayload) => void) => {
@@ -451,6 +466,61 @@ const electronHandler = {
             const listener = (_e: IpcRendererEvent, ev: DownloadEvent) => cb(ev);
             ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_ERROR, listener);
             return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_ERROR, listener);
+        },
+    },
+
+    // ========================================
+    // File Transfer
+    // ========================================
+    fileTransfer: {
+        requestManifest: (peerId: string, playlistId: string): Promise<unknown> =>
+            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_REQUEST_MANIFEST, { peerId, playlistId }),
+
+        requestFiles: (peerId: string, files: FileEntry[]): Promise<unknown> =>
+            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_REQUEST_FILES, { peerId, files }),
+
+        cancel: (sha256: string): Promise<unknown> =>
+            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_CANCEL, { sha256 }),
+
+        getTransfers: (): Promise<ActiveTransfer[]> =>
+            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_GET_TRANSFERS),
+
+        setSharing: (playlistId: string, enabled: boolean): Promise<unknown> =>
+            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_SET_SHARING, { playlistId, enabled }),
+
+        registerTracks: (
+            playlistId: string,
+            coverArtPath: string | undefined,
+            tracks: Array<{ trackId: string; audioPath?: string; artworkPath?: string }>,
+        ): Promise<unknown> =>
+            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_REGISTER_TRACKS, {
+                playlistId,
+                coverArtPath,
+                tracks,
+            }),
+
+        onManifest: (callback: (manifest: FileManifest) => void) => {
+            const listener = (_event: IpcRendererEvent, data: FileManifest) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.FILE_TRANSFER_MANIFEST, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.FILE_TRANSFER_MANIFEST, listener);
+        },
+
+        onProgress: (callback: (progress: TransferProgress) => void) => {
+            const listener = (_event: IpcRendererEvent, data: TransferProgress) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.FILE_TRANSFER_PROGRESS, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.FILE_TRANSFER_PROGRESS, listener);
+        },
+
+        onComplete: (callback: (result: TransferComplete) => void) => {
+            const listener = (_event: IpcRendererEvent, data: TransferComplete) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.FILE_TRANSFER_COMPLETE, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.FILE_TRANSFER_COMPLETE, listener);
+        },
+
+        onError: (callback: (error: TransferError) => void) => {
+            const listener = (_event: IpcRendererEvent, data: TransferError) => callback(data);
+            ipcRenderer.on(IPC_CHANNELS.FILE_TRANSFER_ERROR, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.FILE_TRANSFER_ERROR, listener);
         },
     },
 

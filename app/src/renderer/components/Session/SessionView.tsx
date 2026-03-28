@@ -27,6 +27,12 @@ import { ParticipantRoster } from './ParticipantRoster';
 import { SessionTrackList } from './SessionTrackList';
 import { TrackEndingWarning } from './TrackEndingWarning';
 import { SessionFeed } from './SessionFeed';
+import { SharingToggle } from '../FileTransfer/SharingToggle';
+import { TransferProgressAggregate } from '../FileTransfer/TransferProgressBar';
+import { FileManifestPanel } from '../FileTransfer/FileManifestPanel';
+import { useFileTransfer } from '../../hooks/useFileTransfer';
+import { useFileTransferStore } from '../../stores/file-transfer-store';
+import { FILE_TRANSFER_CAPABILITY } from '../../../shared/core/file-transfer-types';
 
 interface SessionViewProps {
     playlistId?: string;
@@ -176,6 +182,30 @@ export function SessionView({ playlistId }: SessionViewProps) {
     // Replicate session collections to/from connected peers when session is active
     useSessionReplication(isActiveSession);
 
+    // File transfer — mount IPC listeners and expose actions
+    const { requestManifest, requestFiles, cancelTransfer, registerTracks, setSharing } = useFileTransfer();
+    const manifests = useFileTransferStore((s) => s.manifests);
+    const peerCapabilities = useFileTransferStore((s) => s.peerCapabilities);
+
+    // Peers with file-transfer capability that have not yet sent a manifest for this playlist.
+    // The manifests map is keyed by playlistId — one manifest per playlist (last received).
+    // "No manifest yet" means either the map has no entry for this playlist, or the stored
+    // manifest came from a different peer.
+    const existingManifestPeerId = activeId ? manifests.get(activeId)?.peerId : undefined;
+    const capablePeersWithoutManifest = activeId
+        ? [...peerCapabilities.entries()]
+              .filter(
+                  ([peerId, caps]) =>
+                      caps.includes(FILE_TRANSFER_CAPABILITY) && peerId !== existingManifestPeerId,
+              )
+              .map(([peerId]) => peerId)
+        : [];
+
+    // Manifests scoped to the active playlist — store is keyed by playlistId
+    const activeManifest = activeId ? manifests.get(activeId) ?? null : null;
+
+    const isHost = sessionState?.hostId === userId;
+
     const { error: trackSourceError, syncNow, syncing: trackSourceSyncing } = useTrackSource({
         config: sessionState?.trackSource ?? { type: 'manual' },
         playlistId: activeId ?? '',
@@ -294,7 +324,62 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     <>
                         <ShareSessionPanel sessionId={activeId} />
                         <CompanionSharePanel sessionActive={isActiveSession} />
+                        {isHost && (
+                            <div className="card card-body">
+                                <SharingToggle
+                                    playlistId={activeId}
+                                    onSharingChanged={async (enabled) => {
+                                        await setSharing(activeId, enabled)
+                                        if (enabled && playlist && tracks.length > 0) {
+                                            await registerTracks(
+                                                activeId,
+                                                playlist.coverArtLocalPath ?? undefined,
+                                                tracks.map((t) => ({
+                                                    trackId: t.id,
+                                                    audioPath: t.localFilePath ?? undefined,
+                                                    artworkPath: t.albumArtLocalPath ?? undefined,
+                                                })),
+                                            )
+                                        }
+                                    }}
+                                />
+                            </div>
+                        )}
                     </>
+                )}
+
+                {/* Aggregate transfer progress — visible while downloads are active */}
+                <TransferProgressAggregate
+                    playlistId={activeId}
+                    onCancel={cancelTransfer}
+                />
+
+                {/* Request manifest from capable peers that haven't sent one yet */}
+                {capablePeersWithoutManifest.length > 0 && (
+                    <div className="card card-body flex items-center justify-between gap-3">
+                        <span className="text-xs text-on-surface-variant">
+                            {capablePeersWithoutManifest.length} peer
+                            {capablePeersWithoutManifest.length > 1 ? 's have' : ' has'} files available
+                        </span>
+                        <button
+                            onClick={() => {
+                                capablePeersWithoutManifest.forEach((peerId) =>
+                                    requestManifest(peerId, activeId),
+                                );
+                            }}
+                            className="px-3 py-1.5 bg-surface-high hover:bg-primary hover:text-on-surface text-on-surface-variant text-xs rounded-lg transition-colors whitespace-nowrap"
+                        >
+                            Get peer files
+                        </button>
+                    </div>
+                )}
+
+                {/* Manifest panel — shown when a peer has shared their file list */}
+                {activeManifest && (
+                    <FileManifestPanel
+                        manifest={activeManifest}
+                        onRequestFiles={(files) => requestFiles(activeManifest.peerId, files)}
+                    />
                 )}
 
                 <ParticipantRoster

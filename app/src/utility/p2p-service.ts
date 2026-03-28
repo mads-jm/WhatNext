@@ -37,9 +37,20 @@ import {
     type ReplicationPullResponsePayload,
 } from '../shared/core';
 import { P2P_CONFIG } from '../shared/p2p-config';
+import { FILE_TRANSFER_CAPABILITY } from '../shared/core/file-transfer-types';
 import { registerHandshakeProtocol, initiateHandshake, type HandshakeData } from './protocols/handshake';
 import { registerReplicationProtocol, pushToRemotePeer, pullFromRemotePeer, type ReplicationDocument } from './protocols/replication';
 import { registerPingProtocol, startPresenceTracking } from './protocols/ping';
+import {
+    registerFileTransferProtocol,
+    requestManifest,
+    requestFile,
+    sendFileChunk,
+    cancelTransfer,
+    cleanupPeerStreams,
+    type FileTransferCallbacks,
+} from './protocols/file-transfer';
+import type { FileTransferMessage } from '../shared/core/file-transfer-types';
 import { RelayManager } from './relay-manager';
 import type {
     PeerDiscoveryEvent,
@@ -74,8 +85,14 @@ class P2PService {
     // Pending pull request promises: requestId -> { resolve, reject }
     private pendingPullRequests: Map<string, { resolve: (val: ReplicationDocument[]) => void; reject: (err: Error) => void }> = new Map();
 
+    // Pending file-transfer request promises (manifest requests): requestId -> { resolve, reject }
+    private pendingFileTransferRequests: Map<string, { resolve: (val: unknown) => void; reject: (err: Error) => void }> = new Map();
+
     // Relay addresses loaded from settings (passed via START_NODE or UPDATE_RELAY_ADDRESSES)
     private relayAddresses: string[] = [];
+
+    // File transfer callbacks — stored here so requestFile can use the same dispatch logic
+    private fileTransferCallbacks: FileTransferCallbacks | null = null;
 
     constructor() {
         this.setupMessageListener();
@@ -223,6 +240,110 @@ class P2PService {
                         pending.resolve(resp.documents as ReplicationDocument[]);
                     }
                     break;
+                }
+
+                case MainToUtilityMessageType.FILE_TRANSFER_REQUEST_MANIFEST: {
+                    if (!this.libp2pNode) break
+                    const { peerId: targetPeerId, playlistId, requestId: manifestReqId } = message.payload as {
+                        peerId: string
+                        playlistId: string
+                        requestId: string
+                    }
+                    try {
+                        const manifest = await requestManifest(
+                            this.libp2pNode,
+                            peerIdFromString(targetPeerId),
+                            playlistId
+                        )
+                        this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_MANIFEST_RECEIVED, {
+                            requestId: manifestReqId,
+                            peerId: targetPeerId,
+                            manifest,
+                        })
+                    } catch (err) {
+                        this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_ERROR, {
+                            requestId: manifestReqId,
+                            peerId: targetPeerId,
+                            sha256: '',
+                            error: err instanceof Error ? err.message : String(err),
+                        })
+                    }
+                    break
+                }
+
+                case MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE: {
+                    if (!this.libp2pNode || !this.fileTransferCallbacks) break
+                    const { peerId: filePeerId, sha256: fileHash, offsetBytes } = message.payload as {
+                        peerId: string
+                        sha256: string
+                        offsetBytes: number
+                    }
+                    try {
+                        await requestFile(
+                            this.libp2pNode,
+                            peerIdFromString(filePeerId),
+                            fileHash,
+                            offsetBytes,
+                            this.fileTransferCallbacks
+                        )
+                    } catch (err) {
+                        this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_ERROR, {
+                            peerId: filePeerId,
+                            sha256: fileHash,
+                            error: err instanceof Error ? err.message : String(err),
+                        })
+                    }
+                    break
+                }
+
+                case MainToUtilityMessageType.FILE_TRANSFER_CANCEL: {
+                    if (!this.libp2pNode) break
+                    const { peerId: cancelPeerId, sha256: cancelHash } = message.payload as {
+                        peerId: string
+                        sha256: string
+                    }
+                    try {
+                        await cancelTransfer(
+                            this.libp2pNode,
+                            peerIdFromString(cancelPeerId),
+                            cancelHash
+                        )
+                    } catch (err) {
+                        this.log('warn', `cancelTransfer failed: ${err}`)
+                    }
+                    break
+                }
+
+                case MainToUtilityMessageType.FILE_TRANSFER_SERVE_CHUNK: {
+                    if (!this.libp2pNode) break
+                    const { peerId: chunkPeerId, message: chunkMsg } = message.payload as {
+                        peerId: string
+                        message: FileTransferMessage
+                    }
+                    try {
+                        await sendFileChunk(
+                            this.libp2pNode,
+                            peerIdFromString(chunkPeerId),
+                            chunkMsg
+                        )
+                    } catch (err) {
+                        this.log('error', `sendFileChunk failed: ${err}`)
+                    }
+                    break
+                }
+
+                // File-transfer manifest response from main process (resolves pending promise)
+                case MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE: {
+                    const { requestId: ftReqId, manifest: ftManifest } = message.payload as {
+                        requestId: string
+                        manifest: unknown
+                    }
+                    const pending = this.pendingFileTransferRequests.get(ftReqId)
+                    if (pending) {
+                        this.pendingFileTransferRequests.delete(ftReqId)
+                        pending.resolve(ftManifest)
+                    }
+                    break
                 }
 
                 default:
@@ -395,7 +516,7 @@ class P2PService {
             avatarUrl: this.userAvatarUrl,
             userId: this.userIdentityId || this.libp2pNode.peerId.toString(),
             version: P2P_CONFIG.APP_INFO.protocolVersion,
-            capabilities: ['playlist-sync', 'rxdb-replication'],
+            capabilities: ['playlist-sync', 'rxdb-replication', FILE_TRANSFER_CAPABILITY],
             peerId: this.libp2pNode.peerId.toString(),
         };
 
@@ -476,7 +597,71 @@ class P2PService {
             }
         );
 
-        this.log('info', 'Protocols registered: handshake, replication, ping');
+        // Register file-transfer protocol
+        this.fileTransferCallbacks = {
+            onManifestRequest: async (peerId, playlistId) => {
+                // This is a synchronous bridge: we need the manifest from the main process.
+                // Use the same pending-promise pattern as replication pull requests.
+                const requestId = `ft-manifest-${Date.now()}-${Math.random().toString(36).slice(2)}`
+                return new Promise((resolve, reject) => {
+                    const timer = setTimeout(() => {
+                        this.pendingFileTransferRequests.delete(requestId)
+                        reject(new Error('Manifest request timed out'))
+                    }, 10_000)
+
+                    this.pendingFileTransferRequests.set(requestId, {
+                        resolve: (val: unknown) => { clearTimeout(timer); resolve(val as import('../shared/core/file-transfer-types').FileManifest) },
+                        reject: (err: Error) => { clearTimeout(timer); reject(err) },
+                    })
+
+                    this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST, {
+                        requestId,
+                        subtype: 'manifest-request',
+                        peerId,
+                        playlistId,
+                    })
+                })
+            },
+            onFileRequest: (peerId, sha256, offsetBytes) => {
+                this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST, {
+                    subtype: 'file-request',
+                    peerId,
+                    sha256,
+                    offsetBytes,
+                })
+            },
+            onFileChunkReceived: (peerId, sha256, offset, data) => {
+                this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_CHUNK_RECEIVED, {
+                    peerId,
+                    sha256,
+                    offset,
+                    data,
+                })
+            },
+            onFileComplete: (peerId, sha256) => {
+                this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_COMPLETE, {
+                    peerId,
+                    sha256,
+                })
+            },
+            onFileError: (peerId, sha256, error) => {
+                this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_ERROR, {
+                    peerId,
+                    sha256,
+                    error,
+                })
+            },
+            onTransferCancel: (peerId, sha256) => {
+                this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_ERROR, {
+                    peerId,
+                    sha256,
+                    error: 'transfer-cancel',
+                })
+            },
+        }
+        registerFileTransferProtocol(this.libp2pNode, this.fileTransferCallbacks)
+
+        this.log('info', 'Protocols registered: handshake, replication, ping, file-transfer');
     }
 
     /**
@@ -563,6 +748,10 @@ class P2PService {
             const peerId = evt.detail.toString();
             this.log('info', `Disconnected from peer: ${peerId}`);
 
+            cleanupPeerStreams(peerId).catch((err) => {
+                this.log('warn', `Error cleaning up streams for ${peerId}: ${err}`);
+            });
+
             this.sendToMain(UtilityToMainMessageType.CONNECTION_CLOSED, {
                 peerId,
             });
@@ -641,7 +830,7 @@ class P2PService {
                     avatarUrl: this.userAvatarUrl,
                     userId: this.userIdentityId || this.libp2pNode.peerId.toString(),
                     version: P2P_CONFIG.APP_INFO.protocolVersion,
-                    capabilities: ['playlist-sync', 'rxdb-replication'],
+                    capabilities: ['playlist-sync', 'rxdb-replication', FILE_TRANSFER_CAPABILITY],
                     peerId: this.libp2pNode.peerId.toString(),
                 };
                 await initiateHandshake(this.libp2pNode, payload.peerId, localData);
