@@ -37,6 +37,31 @@ export interface ReplicationDocument {
 }
 
 /**
+ * Compute the checkpoint to report after returning `documents` for a pull.
+ *
+ * Returns the newest parseable `updatedAt` among the documents. If no document
+ * carries a usable timestamp, the incoming `checkpoint` is preserved (so the
+ * checkpoint never moves backward and never jumps to wall-clock "now", which
+ * would skip docs written between the newest returned doc and now). Exported for
+ * unit testing (#32).
+ */
+export function newestCheckpoint(
+    documents: ReplicationDocument[],
+    incoming: string | null
+): string {
+    let newestMs = -1;
+    let newest = incoming;
+    for (const doc of documents) {
+        const ms = Date.parse(doc.updatedAt);
+        if (!Number.isNaN(ms) && ms > newestMs) {
+            newestMs = ms;
+            newest = doc.updatedAt;
+        }
+    }
+    return newest ?? new Date(0).toISOString();
+}
+
+/**
  * Encode a message with a 4-byte big-endian length prefix.
  */
 function encodeFramed(data: unknown): Uint8Array {
@@ -124,12 +149,27 @@ export type OnPushReceived = (
 ) => Promise<void>;
 
 /**
+ * Called on the REQUESTER side when a `pull-response` arrives. Previously the
+ * pull-response was dropped (logged only), so pulled documents never reached the
+ * renderer and the checkpoint never advanced — meaning every pull silently
+ * achieved nothing and the next launch full-resynced again (#40/#41). The handler
+ * forwards the documents to the renderer and persists the returned checkpoint.
+ */
+export type OnPullResponse = (
+    remotePeerId: string,
+    collection: string,
+    documents: ReplicationDocument[],
+    checkpoint: string | null
+) => void;
+
+/**
  * Register replication protocol handler
  */
 export function registerReplicationProtocol(
     node: Libp2p,
     onPullRequest: OnPullRequest,
     onPushReceived: OnPushReceived,
+    onPullResponse?: OnPullResponse,
 ): void {
     node.handle(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION, async (stream: Stream, connection: Connection) => {
         try {
@@ -170,8 +210,15 @@ export function registerReplicationProtocol(
                 }
 
                 case 'pull-response': {
-                    // This is handled by the initiator - forward to main process
+                    // Requester side: forward pulled docs to the renderer and
+                    // advance the persisted checkpoint. Without this, pulls are no-ops.
                     console.log(`[Replication] Got pull-response with ${message.documents?.length ?? 0} docs`);
+                    onPullResponse?.(
+                        connection.remotePeer.toString(),
+                        message.collection,
+                        message.documents ?? [],
+                        message.checkpoint ?? null
+                    );
                     break;
                 }
 

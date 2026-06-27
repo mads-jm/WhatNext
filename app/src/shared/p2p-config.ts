@@ -124,10 +124,47 @@ export const P2P_CONFIG = {
     RELAY: {
         /** Auto-connect to configured relays on startup */
         AUTO_CONNECT: true,
-        /** Milliseconds between retry attempts after relay connection failure */
+        /**
+         * @deprecated Superseded by exponential backoff (RETRY_BASE_DELAY /
+         * RETRY_MAX_DELAY / BACKOFF_FACTOR). Retained only for backward compat
+         * with any external consumer of P2P_CONFIG; RelayManager no longer reads it.
+         */
         RETRY_INTERVAL: 10000,
-        /** Maximum number of connection attempts per relay address */
+        /** Maximum number of connection attempts per relay address before falling back */
         MAX_RETRIES: 5,
+        /** Base delay (ms) for exponential reconnect backoff: delay = BASE * FACTOR^attempt */
+        RETRY_BASE_DELAY: 1000,
+        /** Ceiling (ms) for a single backoff delay, regardless of attempt count */
+        RETRY_MAX_DELAY: 30000,
+        /** Multiplier applied per attempt for exponential backoff */
+        BACKOFF_FACTOR: 2,
+        /**
+         * Jitter fraction in [0, 1]. "Equal jitter": the delay is randomized in
+         * [d/2, d] where d is the computed backoff. Spreads reconnect storms so
+         * many peers don't hammer a recovering relay in lockstep.
+         */
+        BACKOFF_JITTER: 0.5,
+        /**
+         * Heartbeat interval (ms) for proactive relay-liveness checks. Detects
+         * half-open links that never emit a 'close' event by verifying the active
+         * relay is still among the node's live connections; if not, reconnect.
+         */
+        HEARTBEAT_INTERVAL: 15000,
+    },
+
+    /**
+     * RxDB Replication Settings
+     */
+    REPLICATION: {
+        /**
+         * How long (ms) a pull responder waits for the renderer to supply its
+         * documents before giving up. On timeout the responder does NOT advance
+         * the requester's checkpoint (it echoes the incoming checkpoint back) so
+         * the missed changes are re-pulled on the next attempt — this replaces
+         * the old hardcoded 5s "resolve empty + fresh checkpoint" that silently
+         * dropped changes (#41). Longer than 5s to tolerate slow/large collections.
+         */
+        PULL_TIMEOUT: 15000,
     },
 } as const;
 
