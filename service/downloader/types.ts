@@ -32,11 +32,15 @@ export interface DownloadStartRequest {
         preferredFormat: string;  // 'best_audio' | 'opus' | 'mp3' | 'flac'
     }>;
     outputDir?: string;
+    /** Optional caller-supplied correlation ID. Auto-generated (UUID) if omitted. */
+    downloadId?: string;
 }
 
 export interface DownloadEvent {
     type: 'progress' | 'complete' | 'error';
     sourceUrl: string;
+    /** Correlation ID added at the IPC layer when forwarding events to the renderer. */
+    downloadId?: string;
     percent?: number;
     speed?: string;
     eta?: string;

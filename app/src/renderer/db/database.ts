@@ -129,6 +129,13 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                             userPurchased: undefined,
                         };
                     },
+                    // v2 → v3: Added updatedAt for P2P replication (LWW checkpoint sync)
+                    3(oldDoc: any) {
+                        return {
+                            ...oldDoc,
+                            updatedAt: oldDoc.addedAt ?? new Date().toISOString(),
+                        };
+                    },
                 },
             },
             trackInteractions: {

@@ -10,6 +10,8 @@ export interface BackendStatus {
 export interface DownloadOptions {
     outputDir: string;
     preferredFormat: string;
+    /** Inactivity timeout in milliseconds. Defaults to 300 000 (5 min). */
+    timeoutMs?: number;
 }
 
 export interface DownloadBackend {

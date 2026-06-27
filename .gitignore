@@ -24,3 +24,6 @@ Thumbs.db
 # local
 TODO.md
 QUESTIONS.md
+
+# relay private key — never commit; generate fresh per deployment (see relay/README.md)
+relay/relay-key.json

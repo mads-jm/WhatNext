@@ -542,6 +542,8 @@ export interface ScanDirectoryTrack {
     localFileSize: number;
     source: 'local';
     addedAt: string;
+    audioFormat?: string;
+    audioBitrate?: number;
 }
 
 export interface ScanDirectoryResult {

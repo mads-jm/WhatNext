@@ -1,7 +1,7 @@
-import { ChildProcess } from 'child_process';
 import type { DownloadBackend, BackendStatus, DownloadOptions } from '../backend';
 import type { DownloadInput, ResolvedTrack, DownloadEvent } from '../types';
 import { runCommand, spawnLines, killProcess, parseYtdlpProgress } from '../subprocess';
+import type { ChildProcess } from 'child_process';
 import { mapYtdlpEntries } from '../mapper';
 
 export class YtdlpBackend implements DownloadBackend {
@@ -87,39 +87,10 @@ export class YtdlpBackend implements DownloadBackend {
                     track.sourceUrl,
                 ];
 
-                // We need the ChildProcess reference for cancel(), but spawnLines abstracts it.
-                // Workaround: spawn manually and wire up the same logic.
-                const { spawn } = await import('child_process');
-                const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
-                this.activeProcess = proc;
+                const result = spawnLines('yt-dlp', args, opts.timeoutMs);
+                this.activeProcess = result.proc;
 
-                // Collect stderr for error reporting; flag hard errors immediately
-                proc.stderr?.on('data', (chunk: Buffer) => {
-                    const text = chunk.toString('utf8');
-                    lastStderr += text;
-                    if (text.includes('ERROR:')) {
-                        hadError = true;
-                    }
-                });
-
-                let stdoutBuf = '';
-
-                const linesGenerator = (async function* () {
-                    for await (const chunk of proc.stdout) {
-                        stdoutBuf += (chunk as Buffer).toString('utf8');
-                        const parts = stdoutBuf.split('\n');
-                        stdoutBuf = parts.pop() ?? '';
-                        for (const line of parts) {
-                            yield line;
-                        }
-                    }
-                    // Flush remaining
-                    if (stdoutBuf.length > 0) {
-                        yield stdoutBuf;
-                    }
-                })();
-
-                for await (const line of linesGenerator) {
+                for await (const line of result.lines) {
                     // --print after_move:filepath outputs the final path as a bare line
                     // before the [download] lines, so we check for it first.
                     if (
@@ -151,11 +122,9 @@ export class YtdlpBackend implements DownloadBackend {
                     }
                 }
 
-                // Wait for process to exit; non-zero code = error
-                const exitCode = await new Promise<number | null>((resolve) => {
-                    proc.on('close', resolve);
-                });
-                if (exitCode !== 0) {
+                const exitCode = await result.exitCode;
+                lastStderr = result.stderr();
+                if (exitCode !== 0 || lastStderr.includes('ERROR:')) {
                     hadError = true;
                 }
 

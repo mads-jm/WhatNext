@@ -6,6 +6,8 @@
 
 A lightweight web page served by the coordinator's Electron main process over local WiFi (and eventually via relay). Participants open it on their phone browser to view and interact with an active session without installing anything.
 
+> ⚠️ **Reliability status (2026-06-27)** — the **server + snapshot/playback viewing path is live**, but the **phone→server control path below is stubbed** (see [[report-260627-mvp-state-of-the-union]] §3, issue N4). Specifically: `reaction` and `time-request` messages are defined in the protocol but not wired into app logic, and the renderer bridge `useCompanionBridge.ts` is currently **orphaned/never imported** ([[dead-code-audit-260322]]). Treat the "Phone → Server" rows and the "renderer pushes" pattern below as **designed-but-not-yet-functional.**
+
 ## Why We Use It
 
 Running libp2p in a mobile browser is fragile — WebRTC connections die when the phone app-switches between browser and Spotify. A simple HTTP + WebSocket server in the Electron main process gives us:

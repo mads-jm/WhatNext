@@ -20,9 +20,10 @@ date modified: Monday, March 9th 2026, 12:20:36 am
 | `04 architecture/` | [[ARCHITECTURE]] | SRS, architecture design document |
 | `04 architecture/adr/` | [[ADR]] | Architecture Decision Records |
 | `05 notes/` | [[NOTES]] | Active development notes |
+| `06 reports/` | [[REPORTS]] | State-of-project vettings and audits |
 | `07 stories/` | [[STORIES]] | Vision documents and narratives |
 | `08 specs/` | [[SPECS]] | Feature and component specs (linked from Issues) |
-| `09 PRs/` | [[PRS]] | PR history (auto-generated on merge) |
+| `10 PRs/` | [[PRS]] | PR history (auto-generated on merge) |
 
 ---
 
@@ -68,21 +69,25 @@ cd app && npm run build                 # Production build
 
 ---
 
-## Active Development Status (2026-03-15)
+## Active Development Status (2026-06-27)
 
-- ✅ P2P networking foundation (libp2p integration)
-- ✅ RxDB replication over libp2p
-- ✅ Spotify adapter (import + playback)
-- ✅ Sessions v1 (provider-abstracted — [[adr-260307-session-architecture-provider-abstraction]])
-- ✅ Social features (reactions, comments, turn-taking)
-- ✅ Remote sessions via circuit relay + DCUtR ([[adr-260315-p2p-session-pairing]])
-- ✅ RxDB replication wired to sessions (useSessionReplication hook)
-- ✅ Co-host model + playback mutex (coHostIds, playbackOwnerId)
-- ✅ Companion client — phone browser session viewer ([[Companion-Client]], [[companion-client-spec]])
+> **Reality-checked** against code in [[report-260627-mvp-state-of-the-union]]. Legend: ✅ solid · 🟡 works but fragile/untested · 🟠 stubbed/partial · 🔜 planned. Most features exist; the gap is **reliability and tests**, not features.
+
+- ✅ P2P networking foundation (libp2p: mDNS + circuit relay + DCUtR)
+- ✅ Spotify adapter — import + Connect playback (uses only post-lockdown-allowed endpoints)
+- 🟡 RxDB replication over libp2p — works, but in-memory checkpoints (resync each launch), 5s silent-timeout drops, string-LWW
+- 🟡 Sessions v1 (provider-abstracted — [[adr-260307-session-architecture-provider-abstraction]])
+- 🟡 Social features — reactions/comments solid; turn-taking has a concurrent-add race
+- 🟡 Remote sessions via circuit relay + DCUtR ([[adr-260315-p2p-session-pairing]]) — no reconnection/fallback
+- 🟡 Audio sourcing — local import + yt-dlp + spotDL with infra tests; Spytify Windows-only PoC; P2P fileshare v0 untested ([[audio-acquisition-service]])
+- 🟠 Co-host model + playback mutex — `coHostIds`/`playbackOwnerId` are schema fields only; **mutex unimplemented**
+- 🟠 Companion client — snapshot viewer works; **bidirectional control stubbed** ([[Companion-Client]], [[companion-client-spec]])
+- 🟠 Non-Spotify track sources — Manual & P2P `TrackSource` paths are **no-op stubs** (`useTrackSource.ts:322`)
+- ⚠️ **Test coverage near-zero for P2P/replication/playback**; no React error boundaries ([[mvp-reality-react-quality]])
 - 🔜 Open metadata enrichment (MusicBrainz/ListenBrainz)
-- 🔜 Non-Spotify track sources (ManualTrackSource, P2PTrackSource)
 - 📋 Local file import adapter spec'd ([[local-file-import-adapter]], [[tapec-integration-analysis]])
-- 📋 Audio acquisition service spec'd ([[audio-acquisition-service]]) — merged local import + cloud download with pluggable backends (yt-dlp, spotDL, Spytify) and artist purchase link attribution
+
+**Next focus**: finish stubbed features (mutex, Manual/P2P sources, companion control), then harden replication + Spotify errors, then tests. Backlog reconciliation: [[report-260627-issue-reconciliation]].
 
 ---
 
@@ -94,7 +99,7 @@ cd app && npm run build                 # Production build
 
 ---
 
-__Last Updated__: 2026-03-22
-__Documentation Version__: v0.4.2
+__Last Updated__: 2026-06-27
+__Documentation Version__: v0.5.0 (post-stale-period reality check)
 
 

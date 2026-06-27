@@ -202,7 +202,7 @@ export class PurchaseResolver {
 
     private async _mbThrottle(): Promise<void> {
         const elapsed = Date.now() - this.mbLastRequest;
-        if (elapsed < 1000) await sleep(1000 - elapsed);
+        if (elapsed < 1100) await sleep(1100 - elapsed);
         this.mbLastRequest = Date.now();
     }
 

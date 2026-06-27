@@ -15,6 +15,13 @@ A WhatNext session is a live, collaborative playlist-building experience hosted 
 
 Sessions v1 shipped with the __provider abstraction__: the session layer is platform-agnostic and never imports Spotify directly. All external platform interaction is behind two interfaces — `TrackSource` and `PlaybackProvider`.
 
+> ⚠️ **Reliability status (2026-06-27)** — v1 is feature-present but *Spotify-only-robust*; the collaborative path is fragile. Known gaps (see [[report-260627-mvp-state-of-the-union]] §3):
+> - **Manual & P2P `TrackSource` are no-op stubs** (`useTrackSource.ts:322`).
+> - **Playback mutex unimplemented** — `coHostIds`/`playbackOwnerId` are schema fields only; no enforcement or handoff.
+> - **Companion is snapshot-only** — bidirectional control (react / request-time) is stubbed.
+> - **Turn-advance race** on concurrent adds (see Pitfall 5 — the per-track loop is *not* coordinated across peers).
+> - **Zero tests** on session/replication/turn logic.
+
 ## Why We Use It
 
 The session concept decouples *where tracks come from* and *how they play* from the collaboration mechanics. This means:
@@ -187,9 +194,9 @@ The snapshot ID check short-circuits the track-processing loop but still makes t
 | Role | Platform | Capabilities |
 |------|----------|-------------|
 | **Host** (coordinator) | Electron desktop | Full control: playback, queue, import, session lifecycle |
-| **Co-host** | Electron desktop (P2P) | Playback transfer, queue edits |
+| **Co-host** | Electron desktop (P2P) | _Planned_ — playback transfer/queue edits depend on the unimplemented mutex |
 | **Desktop participant** | Electron desktop (P2P) | Add tracks, react, comment (via RxDB replication) |
-| **Companion participant** | Phone browser | View-only: see queue/playback, react, request more time |
+| **Companion participant** | Phone browser | View-only today; react / request-more-time are _stubbed_ (snapshot-only) |
 
 Companion participants connect via the [[Companion-Client]] — a lightweight web page served by the coordinator's Electron app over local WiFi. They don't need WhatNext installed or a Spotify account.
 
@@ -219,6 +226,6 @@ Companion participants connect via the [[Companion-Client]] — a lightweight we
 
 ---
 
-__Status__: v1 shipped 2026-03-07 (Spotify collab + playback). ManualTrackSource and P2PTrackSource are stubs.
-__Last Updated__: 2026-03-07
+__Status__: v1 shipped 2026-03-07 (Spotify collab + playback). ManualTrackSource and P2PTrackSource are stubs; playback mutex and companion control unimplemented — see reliability callout above and [[report-260627-mvp-state-of-the-union]].
+__Last Updated__: 2026-06-27 (reality-checked)
 

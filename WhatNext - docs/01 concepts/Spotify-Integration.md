@@ -15,6 +15,8 @@ WhatNext's Spotify integration is a __read-and-control adapter__ — it reads pl
 
 All Spotify interaction is in the __main process__ behind IPC. The renderer never calls the Spotify API directly.
 
+> ⚠️ **Reliability status (2026-06-27)** — OAuth PKCE, token refresh, import, and playback control are **implemented and work for a Premium account**, but error handling is **naive** (see [[report-260627-mvp-state-of-the-union]] §2, issue N9). The Premium/204 guidance in *Common Pitfalls* below describes what the code *should* do — currently every non-200 throws a generic `Spotify API error {status}` (`spotify-client.ts:76–77`): **no 403/Premium detection, no 429/rate-limit backoff, no retry, no request timeout.** Token can also expire mid-flow (`main.ts:498` TODO). OAuth + playback paths are **untested.**
+
 ## Why We Use It
 
 Spotify is the coordinator's source platform for MVP: they import a collaborative playlist, WhatNext polls it for new tracks added by participants on their own Spotify apps, and plays it back. The February 2026 API restrictions (Premium required, 5-user cap, 16 endpoints removed) validated keeping Spotify as a peripheral adapter rather than a core dependency — see [[the-walled-garden-cracks]].
@@ -232,6 +234,6 @@ Tokens are stored in Electron's `userData` directory. On first launch (or after 
 
 ---
 
-__Status__: Read-only import + playback control operational. Write-back (True Collaborate, Proxy Owner) planned for Phase 2.
-__Last Updated__: 2026-03-07
+__Status__: Read-only import + playback control operational (Premium); error handling naive and untested — see reliability callout. Write-back (True Collaborate, Proxy Owner) planned for Phase 2.
+__Last Updated__: 2026-06-27 (reality-checked)
 

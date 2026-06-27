@@ -115,6 +115,8 @@ export function useLocalMediaImport() {
                         localFilePath: t.localFilePath,
                         localFileSize: t.localFileSize,
                         source: t.source,
+                        audioFormat: t.audioFormat,
+                        audioBitrate: t.audioBitrate,
                         addedBy: userId,
                         addedAt: t.addedAt,
                     })),

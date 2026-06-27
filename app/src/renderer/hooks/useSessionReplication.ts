@@ -6,19 +6,24 @@
  * Responsibilities:
  *  - Subscribe to RxDB change streams for session-relevant collections.
  *  - On local change: push updated documents to peers via IPC.
- *  - On REPLICATION_CHANGES event from main: upsert incoming docs into RxDB.
  *  - Respond to REPLICATION_PULL_REQUEST events with matching RxDB data.
  *  - Track last-seen checkpoint per collection (ephemeral — reset on page refresh).
  *
- * Design constraint: this hook does NOT touch replication-handler.ts (off-limits).
- * It talks to RxDB directly via the database() promise and to the P2P layer via
- * window.electron IPC.
+ * BOUNDARY CONTRACT — what this hook does NOT do:
+ *  - It does NOT listen on REPLICATION_CHANGES. Incoming peer changes are applied
+ *    exclusively by replication-handler.ts (setupReplicationListeners), which runs
+ *    for the full renderer lifetime and uses LWW conflict resolution. Registering a
+ *    second REPLICATION_CHANGES listener here would cause double-writes and silently
+ *    break LWW (blind upsert overriding the timestamp-guarded update). See
+ *    replication-handler.ts for the full boundary contract.
+ *
+ * This hook talks to RxDB directly via the database() promise and to the P2P
+ * layer via window.electron IPC.
  */
 
 import { useEffect, useRef } from 'react';
 import { getDatabase } from '../db/database';
 import type {
-    ReplicationChangesPayload,
     ReplicationPullRequestPayload,
 } from '../../shared/core/ipc-protocol';
 
@@ -83,10 +88,19 @@ export function useSessionReplication(enabled: boolean) {
                                     // Document was deleted
                                     return { id, data: {}, updatedAt: new Date().toISOString(), deleted: true };
                                 }
-                                const data = doc.toJSON();
+                                const data = { ...doc.toJSON() } as Record<string, unknown>;
+                                // Strip device-local fields before sending to peers
+                                if (col === 'tracks') {
+                                    delete data.localFilePath;
+                                    delete data.localFileSize;
+                                    delete data.albumArtLocalPath;
+                                }
+                                if (col === 'playlists') {
+                                    delete data.coverArtLocalPath;
+                                }
                                 return {
                                     id,
-                                    data: data as Record<string, unknown>,
+                                    data,
                                     updatedAt: (data as { updatedAt?: string }).updatedAt ?? new Date().toISOString(),
                                 };
                             });
@@ -101,37 +115,14 @@ export function useSessionReplication(enabled: boolean) {
                 cleanups.push(() => sub.unsubscribe());
             }
 
-            // ------------------------------------------------------------------
-            // 2. Listen for incoming changes from peers → upsert into RxDB
-            // ------------------------------------------------------------------
-            const removeChangesListener = window.electron?.replication.onReplicationChanges(
-                async (payload: ReplicationChangesPayload) => {
-                    if (!alive) return;
-                    const { collection: col, documents } = payload;
-
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const collection = (db as any)[col];
-                    if (!collection) return;
-
-                    try {
-                        for (const doc of documents) {
-                            if (doc.deleted) {
-                                await collection.findOne(doc.id).exec().then((d: { remove: () => Promise<void> } | null) => d?.remove());
-                            } else {
-                                await collection.upsert(doc.data);
-                            }
-                        }
-                    } catch (err) {
-                        console.warn('[useSessionReplication] upsert error for', col, err);
-                    }
-                }
-            );
-
-            if (removeChangesListener) cleanups.push(removeChangesListener);
+            // NOTE: Incoming REPLICATION_CHANGES events are intentionally NOT
+            // handled here. replication-handler.ts owns that channel exclusively
+            // and applies changes with LWW conflict resolution for the full
+            // renderer lifetime. See the boundary contract in this file's header.
 
             // ------------------------------------------------------------------
-            // 3. Respond to pull requests from peers (via utility → main → renderer)
-            //    The utility process needs our local data to send to a remote peer.
+            // 2. Respond to pull requests from peers (via utility → main → renderer).
+            //    The utility process needs our local data to fulfill a remote peer pull.
             // ------------------------------------------------------------------
             const removePullRequestListener = window.electron?.replication.onPullRequest(
                 async (payload: ReplicationPullRequestPayload) => {
@@ -161,10 +152,19 @@ export function useSessionReplication(enabled: boolean) {
                             .exec();
 
                         const documents = docs.map((d: { toJSON: () => Record<string, unknown> }) => {
-                            const data = d.toJSON();
+                            const data = { ...d.toJSON() } as Record<string, unknown>;
+                            // Strip device-local fields before sending to peers
+                            if (col === 'tracks') {
+                                delete data.localFilePath;
+                                delete data.localFileSize;
+                                delete data.albumArtLocalPath;
+                            }
+                            if (col === 'playlists') {
+                                delete data.coverArtLocalPath;
+                            }
                             return {
                                 id: (data as { id: string }).id,
-                                data: data as Record<string, unknown>,
+                                data,
                                 updatedAt: (data as { updatedAt?: string }).updatedAt ?? new Date().toISOString(),
                             };
                         });

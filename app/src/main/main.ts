@@ -48,6 +48,7 @@ import {
     addRelayAddress,
     removeRelayAddress,
 } from './relay-config-store';
+import { killAll as killDownloadProcesses } from '../../../service/downloader/subprocess';
 
 let mainWindow: BrowserWindow | null = null;
 let p2pUtilityProcess: UtilityProcess | null = null;
@@ -683,6 +684,9 @@ app.on('will-quit', () => {
         p2pUtilityProcess.kill();
         p2pUtilityProcess = null;
     }
+
+    // Kill any active download child processes (yt-dlp, spotdl, etc.)
+    killDownloadProcesses();
 });
 
 // Harden: block window creation from renderer unless explicitly allowed
@@ -1544,7 +1548,7 @@ ipcMain.handle(
             const { mapLocalFiles } = await import('./media/local-media-mapper');
 
             const scanResult = await scanDirectory(dirPath);
-            const tracks = mapLocalFiles(scanResult.files);
+            const tracks = await mapLocalFiles(scanResult.files);
 
             return {
                 success: true,

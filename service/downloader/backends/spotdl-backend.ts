@@ -1,7 +1,7 @@
-import { ChildProcess } from 'child_process';
 import type { DownloadBackend, BackendStatus, DownloadOptions } from '../backend';
 import type { DownloadInput, ResolvedTrack, DownloadEvent } from '../types';
-import { runCommand, killProcess, parseYtdlpProgress } from '../subprocess';
+import { runCommand, spawnLines, killProcess, parseYtdlpProgress } from '../subprocess';
+import type { ChildProcess } from 'child_process';
 
 /**
  * spotDL backend.
@@ -98,30 +98,10 @@ export class SpotdlBackend implements DownloadBackend {
                     '--print-errors',
                 ];
 
-                const { spawn } = await import('child_process');
-                const proc = spawn('spotdl', args, { stdio: ['ignore', 'pipe', 'pipe'] });
-                this.activeProcess = proc;
+                const result = spawnLines('spotdl', args, opts.timeoutMs);
+                this.activeProcess = result.proc;
 
-                proc.stderr?.on('data', (chunk: Buffer) => {
-                    const text = chunk.toString('utf8');
-                    lastStderr += text;
-                    if (text.toLowerCase().includes('error')) {
-                        hadError = true;
-                    }
-                });
-
-                let stdoutBuf = '';
-                const linesGen = (async function* () {
-                    for await (const chunk of proc.stdout) {
-                        stdoutBuf += (chunk as Buffer).toString('utf8');
-                        const parts = stdoutBuf.split('\n');
-                        stdoutBuf = parts.pop() ?? '';
-                        for (const line of parts) yield line;
-                    }
-                    if (stdoutBuf.length > 0) yield stdoutBuf;
-                })();
-
-                for await (const line of linesGen) {
+                for await (const line of result.lines) {
                     // spotdl uses similar [download] progress format as yt-dlp internally
                     const progress = parseYtdlpProgress(line);
                     if (progress) {
@@ -147,9 +127,10 @@ export class SpotdlBackend implements DownloadBackend {
                     }
                 }
 
-                const exitCode = await new Promise<number | null>((resolve) => {
-                    proc.on('close', resolve);
-                });
+                const exitCode = await result.exitCode;
+                lastStderr = result.stderr();
+                // Do NOT check stderr for "error" — spotDL writes benign warnings
+                // containing "error" (e.g. "LookupError handled"). Rely on exit code.
                 if (exitCode !== 0) hadError = true;
 
                 this.activeProcess = null;

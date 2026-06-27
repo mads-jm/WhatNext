@@ -133,6 +133,7 @@ export interface TrackDocType {
     albumArtLocalPath?: string; // Absolute path to locally cached album art file
     addedAt: string; // ISO timestamp
     addedBy: string; // User ID of who added this track
+    updatedAt: string; // ISO timestamp (for LWW replication)
     notes?: string; // User notes (local user only)
     // Audio Acquisition Service fields (v2)
     localFilePath?: string; // Absolute path to audio file on disk
@@ -149,7 +150,7 @@ export type TrackDocument = RxDocument<TrackDocType>;
 export type TrackCollection = RxCollection<TrackDocType>;
 
 export const trackSchema: RxJsonSchema<TrackDocType> = {
-    version: 2,
+    version: 3,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -191,6 +192,11 @@ export const trackSchema: RxJsonSchema<TrackDocType> = {
         addedBy: {
             type: 'string',
             maxLength: 100, // User ID reference
+        },
+        updatedAt: {
+            type: 'string',
+            format: 'date-time',
+            maxLength: 30,
         },
         notes: {
             type: 'string',
@@ -235,8 +241,8 @@ export const trackSchema: RxJsonSchema<TrackDocType> = {
             type: 'boolean',
         },
     },
-    required: ['id', 'title', 'artists', 'album', 'durationMs', 'addedAt', 'addedBy'],
-    indexes: ['addedAt', 'addedBy'], // Removed 'spotifyId' - optional fields can't be indexed with Dexie
+    required: ['id', 'title', 'artists', 'album', 'durationMs', 'addedAt', 'addedBy', 'updatedAt'],
+    indexes: ['addedAt', 'addedBy', 'updatedAt'],
 };
 
 // ========================================

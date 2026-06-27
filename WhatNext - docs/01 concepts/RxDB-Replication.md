@@ -12,6 +12,12 @@ date modified: Monday, March 9th 2026, 12:20:45 am
 
 A custom P2P replication protocol (`/whatnext/rxdb-replication/1.0.0`) that synchronizes RxDB documents between WhatNext peers over libp2p streams. It uses checkpoint-based sync with Last-Write-Wins (LWW) conflict resolution.
 
+> ⚠️ **Reliability status (2026-06-27)** — the protocol works on the happy path but has un-hardened failure modes (see [[report-260627-mvp-state-of-the-union]] §3, tracked as issues N5–N7):
+> - **Checkpoints are in-memory only** (`p2p-service.ts:71`) → **full resync of every collection on each app launch.**
+> - **5s pull timeout resolves empty silently** (`p2p-service.ts:553–556`) → slow/loaded peers **silently drop remote changes.**
+> - **LWW uses string comparison, not timestamp parsing** (`replication-handler.ts:60`) → works for ISO-8601 by coincidence; brittle to format drift or clock skew.
+> - **Thin reconnection**: retries the same relay only (`relay-manager.ts:103`, 10s fixed, max 5) — no backoff, alternate-relay fallback, or heartbeat. **Zero tests.**
+
 ## Why We Use It
 
 WhatNext's collaborative playlist feature requires peers to share and synchronize playlist data in real-time. Rather than relying on a central server, we replicate RxDB collections directly between peers using libp2p streams.

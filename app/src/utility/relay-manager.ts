@@ -45,8 +45,12 @@ export class RelayManager {
 
     /** Update the list of relay addresses and reconnect. */
     async updateAddresses(newAddresses: string[]): Promise<void> {
-        // Cancel pending retries for addresses that have been removed
+        // Compute diff BEFORE overwriting this.addresses —
+        // otherwise added would always be empty (comparing newAddresses to itself).
         const removed = this.addresses.filter((a) => !newAddresses.includes(a));
+        const added = newAddresses.filter((a) => !this.addresses.includes(a));
+
+        // Cancel pending retries for addresses that have been removed
         for (const addr of removed) {
             this.clearRetry(addr);
         }
@@ -54,7 +58,6 @@ export class RelayManager {
         this.addresses = newAddresses;
 
         // Connect to newly added addresses
-        const added = newAddresses.filter((a) => !this.addresses.includes(a));
         for (const addr of added) {
             await this.connectWithRetry(addr, 0);
         }

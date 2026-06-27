@@ -1,9 +1,35 @@
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, execSync, ChildProcess } from 'child_process';
 
 export interface SpawnResult {
     code: number | null;
     stdout: string;
     stderr: string;
+}
+
+// ---------------------------------------------------------------------------
+// Active process registry
+// ---------------------------------------------------------------------------
+// All spawned child processes are registered here so they can be killed when
+// the app exits. Processes are automatically removed when they close naturally.
+
+const _activeProcesses = new Set<ChildProcess>();
+
+function trackProcess(proc: ChildProcess): void {
+    _activeProcesses.add(proc);
+    proc.on('close', () => {
+        _activeProcesses.delete(proc);
+    });
+}
+
+/**
+ * Kill all tracked child processes.
+ * Call this on app quit to prevent orphaned yt-dlp / spotdl processes.
+ */
+export function killAll(): void {
+    for (const proc of _activeProcesses) {
+        killProcess(proc);
+    }
+    _activeProcesses.clear();
 }
 
 /**
@@ -13,6 +39,7 @@ export interface SpawnResult {
 export async function runCommand(cmd: string, args: string[]): Promise<SpawnResult> {
     return new Promise((resolve, reject) => {
         const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+        trackProcess(proc);
 
         let stdout = '';
         let stderr = '';
@@ -35,22 +62,84 @@ export async function runCommand(cmd: string, args: string[]): Promise<SpawnResu
     });
 }
 
+export interface SpawnLinesResult {
+    /** Async generator that yields stdout lines as they arrive. */
+    lines: AsyncGenerator<string>;
+    /** The underlying ChildProcess — use for cancel(). */
+    proc: ChildProcess;
+    /** Returns all stderr collected so far. */
+    stderr: () => string;
+    /** Resolves with the exit code when the process closes. */
+    exitCode: Promise<number | null>;
+}
+
+/**
+ * Thrown (via the async generator) when the inactivity timeout fires.
+ * Backends catch this and yield a typed error event.
+ */
+export class DownloadTimeoutError extends Error {
+    constructor(timeoutMs: number) {
+        super(`Download stalled: no output for ${timeoutMs / 1000}s`);
+        this.name = 'DownloadTimeoutError';
+    }
+}
+
+/** Default inactivity timeout: 5 minutes. */
+const DEFAULT_TIMEOUT_MS = 300_000;
+
 /**
  * Spawn a long-running process and yield stdout lines as they arrive.
  * Buffers partial lines across chunk boundaries.
+ *
+ * The `timeout` parameter (default 300 000 ms) is an *inactivity* timeout —
+ * it resets on every stdout/stderr chunk. If no output arrives within the
+ * window, the child process is killed and the generator throws
+ * `DownloadTimeoutError`.
+ *
+ * Returns the async line generator alongside the ChildProcess and stderr
+ * accessor so callers can cancel and read error output.
  */
-export async function* spawnLines(cmd: string, args: string[]): AsyncGenerator<string> {
+export function spawnLines(cmd: string, args: string[], timeout = DEFAULT_TIMEOUT_MS): SpawnLinesResult {
     const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    trackProcess(proc);
 
-    // Collect stderr separately (don't yield it — callers can check proc.stderr if needed)
+    // Collect stderr separately (don't yield it)
     let stderrBuf = '';
     proc.stderr?.on('data', (chunk: Buffer) => {
         stderrBuf += chunk.toString('utf8');
+        resetTimer();
     });
 
+    // ---------------------------------------------------------------------------
+    // Inactivity timer — reset on every stdout/stderr chunk
+    // ---------------------------------------------------------------------------
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+    const fireTimeout = () => {
+        procError = new DownloadTimeoutError(timeout);
+        done = true;
+        killProcess(proc);
+        if (resolveNext) {
+            const res = resolveNext;
+            resolveNext = null;
+            res({ value: undefined as unknown as string, done: true });
+        }
+    };
+
+    const resetTimer = () => {
+        if (timeout <= 0) return;
+        if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+        timeoutHandle = setTimeout(fireTimeout, timeout);
+    };
+
+    // Start the timer immediately; it will be reset as output arrives.
+    resetTimer();
+
+    // ---------------------------------------------------------------------------
     // Yield stdout lines from a readline-style buffer
+    // ---------------------------------------------------------------------------
     let buf = '';
-    const lines: string[] = [];
+    const pendingLines: string[] = [];
     let resolveNext: ((val: IteratorResult<string>) => void) | null = null;
     let done = false;
     let procError: Error | null = null;
@@ -61,11 +150,12 @@ export async function* spawnLines(cmd: string, args: string[]): AsyncGenerator<s
             resolveNext = null;
             res({ value: line, done: false });
         } else {
-            lines.push(line);
+            pendingLines.push(line);
         }
     };
 
     proc.stdout.on('data', (chunk: Buffer) => {
+        resetTimer();
         buf += chunk.toString('utf8');
         const parts = buf.split('\n');
         buf = parts.pop() ?? '';
@@ -75,6 +165,7 @@ export async function* spawnLines(cmd: string, args: string[]): AsyncGenerator<s
     });
 
     proc.on('error', (err) => {
+        if (timeoutHandle !== null) clearTimeout(timeoutHandle);
         procError = err;
         done = true;
         if (resolveNext) {
@@ -85,6 +176,7 @@ export async function* spawnLines(cmd: string, args: string[]): AsyncGenerator<s
     });
 
     proc.on('close', () => {
+        if (timeoutHandle !== null) clearTimeout(timeoutHandle);
         // Flush any remaining partial line
         if (buf.length > 0) {
             pushLine(buf);
@@ -98,45 +190,65 @@ export async function* spawnLines(cmd: string, args: string[]): AsyncGenerator<s
         }
     });
 
-    while (true) {
-        if (lines.length > 0) {
-            yield lines.shift()!;
-        } else if (done) {
-            if (procError) throw procError;
-            return;
-        } else {
-            // Wait for the next line or close event
-            const result = await new Promise<IteratorResult<string>>((res) => {
-                if (lines.length > 0) {
-                    res({ value: lines.shift()!, done: false });
-                } else if (done) {
-                    res({ value: undefined as unknown as string, done: true });
-                } else {
-                    resolveNext = res;
-                }
-            });
-            if (result.done) {
+    const exitCode = new Promise<number | null>((resolve) => {
+        proc.on('close', resolve);
+    });
+
+    async function* generate(): AsyncGenerator<string> {
+        while (true) {
+            if (pendingLines.length > 0) {
+                yield pendingLines.shift()!;
+            } else if (done) {
                 if (procError) throw procError;
                 return;
+            } else {
+                const result = await new Promise<IteratorResult<string>>((res) => {
+                    if (pendingLines.length > 0) {
+                        res({ value: pendingLines.shift()!, done: false });
+                    } else if (done) {
+                        res({ value: undefined as unknown as string, done: true });
+                    } else {
+                        resolveNext = res;
+                    }
+                });
+                if (result.done) {
+                    if (procError) throw procError;
+                    return;
+                }
+                yield result.value;
             }
-            yield result.value;
         }
     }
+
+    return {
+        lines: generate(),
+        proc,
+        stderr: () => stderrBuf,
+        exitCode,
+    };
 }
 
 /**
- * Kill a running process (SIGTERM first, then SIGKILL after a short delay).
+ * Kill a running process.
+ * On Windows, uses `taskkill /T /F` to kill the entire process tree (yt-dlp
+ * spawns ffmpeg/aria2c children that survive a bare SIGTERM/SIGKILL).
+ * On POSIX, sends SIGTERM and falls back to SIGKILL after 2 seconds.
  */
 export function killProcess(proc: ChildProcess): void {
+    if (!proc.pid) return;
     try {
-        proc.kill('SIGTERM');
-        setTimeout(() => {
-            try {
-                proc.kill('SIGKILL');
-            } catch {
-                // Already dead
-            }
-        }, 2000);
+        if (process.platform === 'win32') {
+            execSync(`taskkill /T /F /PID ${proc.pid}`, { stdio: 'ignore' });
+        } else {
+            proc.kill('SIGTERM');
+            setTimeout(() => {
+                try {
+                    proc.kill('SIGKILL');
+                } catch {
+                    // Already dead
+                }
+            }, 2000);
+        }
     } catch {
         // Process may already be dead
     }

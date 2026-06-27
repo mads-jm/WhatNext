@@ -5,10 +5,19 @@
  * Syncs RxDB documents between peers using JSON-over-stream.
  * Uses checkpoint-based sync with LWW (Last-Write-Wins) conflict resolution.
  * Updated to libp2p v2+ Stream API (send/closeWrite instead of sink).
+ *
+ * Message framing: each message is prefixed with a 4-byte big-endian uint32
+ * containing the byte length of the JSON payload. Matches the framing used by
+ * the file-transfer protocol. Rejects messages exceeding MAX_MESSAGE_SIZE to
+ * prevent a malicious peer from causing an unbounded allocation (OOM).
  */
 
 import type { Libp2p, Connection, Stream } from '@libp2p/interface';
 import { P2P_CONFIG } from '../../shared/p2p-config';
+
+// Replication payloads are JSON objects (metadata only, never raw audio).
+// 5MB accommodates a large full-sync response without being exploitable.
+const MAX_MESSAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export type ReplicationMessageType = 'pull-request' | 'pull-response' | 'push' | 'push-ack';
 
@@ -28,29 +37,78 @@ export interface ReplicationDocument {
 }
 
 /**
- * Read a JSON message from a stream (consumes all chunks until EOF)
+ * Encode a message with a 4-byte big-endian length prefix.
  */
-async function readStreamMessage<T>(stream: Stream): Promise<T> {
-    const chunks: Uint8Array[] = [];
-    // Stream is AsyncIterable<Uint8Array | Uint8ArrayList> in libp2p v2+
-    for await (const chunk of stream) {
-        chunks.push(chunk.subarray());
-    }
-    const combined = new Uint8Array(chunks.reduce((acc, c) => acc + c.length, 0));
-    let offset = 0;
-    for (const chunk of chunks) {
-        combined.set(chunk, offset);
-        offset += chunk.length;
-    }
-    return JSON.parse(new TextDecoder().decode(combined));
+function encodeFramed(data: unknown): Uint8Array {
+    const json = new TextEncoder().encode(JSON.stringify(data));
+    const frame = new Uint8Array(4 + json.length);
+    const view = new DataView(frame.buffer);
+    view.setUint32(0, json.length, false); // big-endian
+    frame.set(json, 4);
+    return frame;
 }
 
 /**
- * Write a JSON message to a stream and half-close the write side
+ * Accumulate raw bytes from a stream until at least `needed` bytes are available.
+ * Returns `null` if the stream ends before enough bytes arrive.
+ */
+async function accumulateBytes(
+    iter: AsyncIterator<Uint8Array | { subarray(): Uint8Array }>,
+    needed: number,
+    carry: Uint8Array
+): Promise<{ buf: Uint8Array; rest: Uint8Array } | null> {
+    let buf = carry;
+    while (buf.length < needed) {
+        const { value, done } = await iter.next();
+        if (done || value === undefined) return null;
+        const chunk = value instanceof Uint8Array ? value : value.subarray();
+        const merged = new Uint8Array(buf.length + chunk.length);
+        merged.set(buf, 0);
+        merged.set(chunk, buf.length);
+        buf = merged;
+    }
+    return { buf: buf.slice(0, needed), rest: buf.slice(needed) };
+}
+
+/**
+ * Read a length-prefixed JSON message from a stream.
+ * Throws if the declared message length exceeds MAX_MESSAGE_SIZE.
+ */
+async function readStreamMessage<T>(stream: Stream): Promise<T> {
+    const iter = (stream as unknown as AsyncIterable<Uint8Array | { subarray(): Uint8Array }>)[Symbol.asyncIterator]();
+
+    // Read 4-byte length prefix
+    const headerResult = await accumulateBytes(iter, 4, new Uint8Array(0));
+    if (!headerResult) {
+        throw new Error('[Replication] Stream ended before length prefix was received');
+    }
+
+    const view = new DataView(headerResult.buf.buffer, headerResult.buf.byteOffset);
+    const length = view.getUint32(0, false); // big-endian
+
+    if (length === 0) {
+        throw new Error('[Replication] Rejected zero-length message');
+    }
+    if (length > MAX_MESSAGE_SIZE) {
+        throw new Error(
+            `[Replication] Rejected oversized message (length=${length}, max=${MAX_MESSAGE_SIZE})`
+        );
+    }
+
+    // Read the JSON body
+    const bodyResult = await accumulateBytes(iter, length, headerResult.rest);
+    if (!bodyResult) {
+        throw new Error('[Replication] Stream ended before message body was complete');
+    }
+
+    return JSON.parse(new TextDecoder().decode(bodyResult.buf)) as T;
+}
+
+/**
+ * Write a length-prefixed JSON message to a stream and half-close the write side.
  */
 async function writeStreamMessage(stream: Stream, data: unknown): Promise<void> {
-    const encoded = new TextEncoder().encode(JSON.stringify(data));
-    stream.send(encoded);
+    stream.send(encodeFramed(data));
     await stream.close();
 }
 

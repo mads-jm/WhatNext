@@ -1,6 +1,6 @@
 ---
 date created: Thursday, November 13th 2025, 4:59:13 am
-date modified: Monday, March 9th 2026, 12:20:32 am
+date modified: Tuesday, April 7th 2026, 3:19:42 am
 ---
 
 # README.md
@@ -25,6 +25,7 @@ __07 stories__ - User stories / Dev notes on intent
 __99 meta__ -
 - 00 templates - obsidian templates
 - 01 agents - md files persisting agents to be used specific to the codebase / vault
+
 
 
 

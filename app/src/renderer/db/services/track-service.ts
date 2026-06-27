@@ -21,11 +21,13 @@ export async function createTrack(
 ): Promise<TrackDocument> {
     const db = await getDatabase();
 
+    const now = new Date().toISOString();
     const track: TrackDocType = {
         id: uuidv4(),
         ...input,
         addedBy: input.addedBy!,
-        addedAt: input.addedAt ?? new Date().toISOString(),
+        addedAt: input.addedAt ?? now,
+        updatedAt: input.updatedAt ?? now,
     };
 
     return db.tracks.insert(track);
@@ -49,11 +51,20 @@ export async function getAllTracks() {
 }
 
 /**
+ * Escapes all regex special characters in a string so it can be safely
+ * interpolated into a $regex query without unintended pattern matching or ReDoS.
+ */
+function escapeRegex(str: string): string {
+    return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+}
+
+/**
  * Search tracks by title or artist
  */
 export async function searchTracks(query: string) {
     const db = await getDatabase();
 
+    const safeQuery = escapeRegex(query);
     // Note: For production, consider adding full-text search index
     // Using $regex with string pattern for RxDB compatibility
     return db.tracks.find({
@@ -61,7 +72,7 @@ export async function searchTracks(query: string) {
             $or: [
                 {
                     title: {
-                        $regex: `.*${query}.*`,
+                        $regex: `.*${safeQuery}.*`,
                     },
                 },
             ],
@@ -84,7 +95,7 @@ export async function updateTrack(
     }
 
     await track.update({
-        $set: updates,
+        $set: { ...updates, updatedAt: new Date().toISOString() },
     });
 
     return track;
@@ -124,12 +135,16 @@ export async function bulkImportTracks(
 ): Promise<string[]> {
     const db = await getDatabase();
 
-    const trackDocs: TrackDocType[] = tracks.map((track) => ({
-        id: uuidv4(),
-        ...track,
-        addedBy: track.addedBy!,
-        addedAt: track.addedAt ?? new Date().toISOString(),
-    }));
+    const now = new Date().toISOString();
+    const trackDocs: TrackDocType[] = tracks.map((track) => {
+        return {
+            id: uuidv4(),
+            ...track,
+            addedBy: track.addedBy!,
+            addedAt: track.addedAt ?? now,
+            updatedAt: track.updatedAt ?? now,
+        };
+    });
 
     await db.tracks.bulkInsert(trackDocs);
     return trackDocs.map((t) => t.id);

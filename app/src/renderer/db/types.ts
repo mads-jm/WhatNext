@@ -101,6 +101,7 @@ export interface CreateTrackInput {
     notes?: string;
     addedBy?: string;
     addedAt?: string;
+    updatedAt?: string;
     // Audio Acquisition Service fields (v2)
     localFilePath?: string;
     localFileSize?: number;
@@ -124,6 +125,7 @@ export interface UpdateTrackInput {
     albumArtUrl?: string;
     albumArtLocalPath?: string;
     notes?: string;
+    updatedAt?: string;
     // Audio Acquisition Service fields (v2)
     localFilePath?: string;
     localFileSize?: number;
