@@ -1,9 +1,11 @@
 /**
  * BackendGate — shown when no download backend is installed.
- * Provides install instructions for yt-dlp, spotDL, and Spytify.
+ * Provides install instructions for yt-dlp, spotDL, and Spytify, and points
+ * users who already have a binary (just not on PATH) at the custom-path setting.
  */
 
 import type { BackendStatusResult } from '../../../shared/core/ipc-protocol';
+import { describeBackendStatus } from './backend-status';
 
 interface BackendGateProps {
     backends: BackendStatusResult[];
@@ -48,6 +50,8 @@ export function BackendGate({ backends }: BackendGateProps) {
                 {missing.map((b) => {
                     const info = INSTALL_INSTRUCTIONS[b.id];
                     if (!info) return null;
+                    const view = describeBackendStatus(b);
+                    const misconfigured = view.state === 'misconfigured';
                     return (
                         <div
                             key={b.id}
@@ -66,10 +70,17 @@ export function BackendGate({ backends }: BackendGateProps) {
                                     Docs →
                                 </button>
                             </div>
-                            <code className="block text-xs bg-surface-high text-on-surface-variant rounded-lg px-3 py-2 font-mono">
-                                {info.instructions}
-                            </code>
-                            {b.error && (
+                            {misconfigured ? (
+                                <p className="text-xs text-amber-500">
+                                    Configured path not found:{' '}
+                                    <span className="font-mono break-all">{view.path}</span>
+                                </p>
+                            ) : (
+                                <code className="block text-xs bg-surface-high text-on-surface-variant rounded-lg px-3 py-2 font-mono">
+                                    {info.instructions}
+                                </code>
+                            )}
+                            {b.error && !misconfigured && (
                                 <p className="text-xs text-error">{b.error}</p>
                             )}
                         </div>
@@ -78,7 +89,9 @@ export function BackendGate({ backends }: BackendGateProps) {
             </div>
 
             <p className="text-xs text-on-surface-variant text-center">
-                After installing, restart WhatNext and return here.
+                Already installed, just not on your PATH? Set a custom path under{' '}
+                <span className="text-on-surface">Settings → Download → Backend Tools</span>, then
+                re-check. Otherwise, install one above, restart WhatNext, and return here.
             </p>
         </div>
     );

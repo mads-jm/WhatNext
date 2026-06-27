@@ -6,7 +6,14 @@ import { IPC_CHANNELS } from '../../shared/core/ipc-protocol';
 import type {
     BackendStatusResult,
     DownloadResolveRequest,
+    BackendPathMap,
+    SetBackendPathPayload,
 } from '../../shared/core/ipc-protocol';
+import {
+    getBackendPath,
+    getBackendPaths,
+    setBackendPath,
+} from './downloader-config-store';
 import { killAll as killDownloadProcesses } from '../../../../service/downloader/subprocess';
 
 export { killDownloadProcesses };
@@ -60,15 +67,15 @@ async function getBackend(
 ): Promise<import('../../../../service/downloader/backend').DownloadBackend> {
     const mod = await getDownloaderModules();
     if (id === 'ytdlp') {
-        if (!backends.ytdlp) backends.ytdlp = new mod.YtdlpBackend();
+        if (!backends.ytdlp) backends.ytdlp = new mod.YtdlpBackend(getBackendPath('ytdlp'));
         return backends.ytdlp!;
     }
     if (id === 'spotdl') {
-        if (!backends.spotdl) backends.spotdl = new mod.SpotdlBackend();
+        if (!backends.spotdl) backends.spotdl = new mod.SpotdlBackend(getBackendPath('spotdl'));
         return backends.spotdl!;
     }
     if (id === 'spytify') {
-        if (!backends.spytify) backends.spytify = new mod.SpytifyBackend();
+        if (!backends.spytify) backends.spytify = new mod.SpytifyBackend(getBackendPath('spytify'));
         return backends.spytify!;
     }
     throw new Error(`Unknown download backend: "${id}"`);
@@ -107,6 +114,25 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
         const mod = await getDownloaderModules();
         return mod.suggestBackend(url);
     });
+
+    // -----------------------------------------------------------------------
+    // download:get-backend-paths / download:set-backend-path
+    // Per-backend custom executable paths (persisted in userData).
+    // -----------------------------------------------------------------------
+    ipcMain.handle(
+        IPC_CHANNELS.DOWNLOAD_GET_BACKEND_PATHS,
+        async (): Promise<BackendPathMap> => getBackendPaths(),
+    );
+
+    ipcMain.handle(
+        IPC_CHANNELS.DOWNLOAD_SET_BACKEND_PATH,
+        async (_e, payload: SetBackendPathPayload): Promise<BackendPathMap> => {
+            const updated = setBackendPath(payload.id, payload.path);
+            // Invalidate the cached instance so the next call rebuilds with the new path.
+            backends[payload.id] = null;
+            return updated;
+        },
+    );
 
     // -----------------------------------------------------------------------
     // download:resolve
