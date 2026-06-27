@@ -1,4 +1,8 @@
-export type InputType = 'url' | 'spotify-id' | 'spotify-playback';
+// NOTE: `spotify-ids` (plural) deliberately matches `DownloadInput.type` in
+// `./types`. A previous revision declared `spotify-id` (singular) here while the
+// runtime input union used the plural form, so `SpotdlBackend`'s declared
+// spotify-ids capability could never be selected by a real `DownloadInput`.
+export type InputType = 'url' | 'spotify-ids' | 'spotify-playback';
 
 export interface BackendStatus {
     installed: boolean;

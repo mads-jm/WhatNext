@@ -1,0 +1,5 @@
+Processing query: https://open.spotify.com/track/1IHWl5LamUGEuP4ozKQSXZ
+Found 1 song
+[download]  37.0% of 9.60MiB at 1.10MiB/s ETA 00:05
+[download] 100% of 9.60MiB in 00:08
+Downloaded "deadmau5 - Strobe": /home/u/WhatNext/audio/deadmau5 - Strobe.mp3

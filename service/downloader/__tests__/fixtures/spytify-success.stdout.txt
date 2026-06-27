@@ -1,0 +1,6 @@
+Spytify 1.10 starting
+Saving to: C:\Users\u\WhatNext\audio\Daft Punk - Around the World.mp3
+Recording... 0%
+Recording... 50%
+Recording... 100%
+Done
