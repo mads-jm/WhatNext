@@ -11,8 +11,9 @@ export interface IncomingTrack {
     album: string;
     durationMs: number;
     externalId?: string;          // e.g. Spotify track ID, MusicBrainz ID
-    externalSource?: string;      // 'spotify' | 'musicbrainz' | 'manual'
+    externalSource?: string;      // 'spotify' | 'musicbrainz' | 'manual' | 'local'
     albumArtUrl?: string;
+    localFilePath?: string;       // Absolute path when backed by a scanned local file
     addedAt: string;              // ISO timestamp
     addedByExternalId?: string;   // external user ID for attribution mapping
 }
