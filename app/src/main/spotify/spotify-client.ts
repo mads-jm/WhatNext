@@ -6,6 +6,9 @@
 import { SPOTIFY_CONFIG } from '../../shared/spotify-config';
 import { refreshSpotifyToken } from './spotify-auth';
 import { saveTokens, loadTokens } from './token-store';
+import { resilientFetch } from './spotify-resilience';
+import { SpotifyApiError } from './spotify-errors';
+import { emitSpotifyEvent } from './spotify-events';
 import type { SpotifyTokens, SpotifyPlaylistItem, SpotifyTrackItem } from '../types';
 import type {
     SpotifyPlaybackStateResult,
@@ -36,48 +39,123 @@ export function loadStoredTokens(): boolean {
 }
 
 /**
- * Get valid access token, refreshing if needed
+ * Force a token refresh regardless of the expiry buffer.
+ *
+ * Used both for the proactive pre-expiry refresh and the reactive 401-mid-flow
+ * refresh. On failure it emits an `auth-error` runtime event (so the renderer
+ * can prompt a reconnect) and throws a typed `unauthorized` error rather than a
+ * raw string — resolving the token-expiry UX gap.
+ */
+async function forceRefreshToken(): Promise<string> {
+    if (!currentTokens) {
+        emitSpotifyEvent({
+            type: 'auth-error',
+            error: 'Not authenticated with Spotify',
+        });
+        throw new SpotifyApiError(
+            'unauthorized',
+            401,
+            'Not authenticated with Spotify',
+        );
+    }
+
+    const result = await refreshSpotifyToken(currentTokens.refreshToken);
+    if (!result.success || !result.tokens) {
+        const reason = result.error ?? 'unknown error';
+        emitSpotifyEvent({
+            type: 'auth-error',
+            error: `Token refresh failed: ${reason}`,
+        });
+        throw new SpotifyApiError(
+            'unauthorized',
+            401,
+            `Token refresh failed: ${reason}`,
+        );
+    }
+
+    currentTokens = result.tokens;
+    saveTokens(currentTokens);
+    return currentTokens.accessToken;
+}
+
+/**
+ * Get a valid access token, proactively refreshing within the expiry buffer.
  */
 async function getValidToken(): Promise<string> {
     if (!currentTokens) {
-        throw new Error('Not authenticated with Spotify');
+        throw new SpotifyApiError(
+            'unauthorized',
+            401,
+            'Not authenticated with Spotify',
+        );
     }
 
-    // Check if token needs refresh
     if (Date.now() >= currentTokens.expiresAt - SPOTIFY_CONFIG.REFRESH_BUFFER_MS) {
-        console.log('[Spotify] Token expired, refreshing...');
-        const result = await refreshSpotifyToken(currentTokens.refreshToken);
-        if (!result.success || !result.tokens) {
-            throw new Error(`Token refresh failed: ${result.error}`);
-        }
-        currentTokens = result.tokens;
-        saveTokens(currentTokens);
+        console.log('[Spotify] Token within refresh buffer, refreshing...');
+        return forceRefreshToken();
     }
 
     return currentTokens.accessToken;
 }
 
-/**
- * Make authenticated API request
- */
-async function spotifyFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const token = await getValidToken();
-
-    const response = await fetch(`${SPOTIFY_CONFIG.API.BASE}${endpoint}`, {
+/** Build request init with the bearer token + JSON headers. */
+function withAuth(token: string, options: RequestInit): RequestInit {
+    return {
         ...options,
         headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
             ...options.headers,
         },
-    });
+    };
+}
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Spotify API error ${response.status}: ${errorText}`);
+/**
+ * Authenticated, resilient request returning the raw `Response` (2xx incl. 204).
+ *
+ * Wraps `resilientFetch` (timeout + retry/backoff + Retry-After) and layers on
+ * the two auth-aware behaviors the transport layer cannot own:
+ *  - a single 401 → force-refresh → retry (never a blind loop)
+ *  - a 403 on `/me/player/*` emits a `playback-degraded` event so the session
+ *    can fall back to metadata-only mode while the error still propagates.
+ */
+async function authedFetch(
+    endpoint: string,
+    options: RequestInit = {},
+): Promise<Response> {
+    const url = `${SPOTIFY_CONFIG.API.BASE}${endpoint}`;
+    const token = await getValidToken();
+
+    try {
+        return await resilientFetch(url, withAuth(token, options));
+    } catch (error) {
+        if (error instanceof SpotifyApiError) {
+            if (error.kind === 'unauthorized') {
+                // Token rejected mid-flow: refresh once and retry exactly once.
+                const refreshed = await forceRefreshToken();
+                return resilientFetch(url, withAuth(refreshed, options));
+            }
+            if (
+                error.kind === 'forbidden' &&
+                endpoint.startsWith('/me/player')
+            ) {
+                emitSpotifyEvent({
+                    type: 'playback-degraded',
+                    reason: 'premium-required',
+                    status: error.status,
+                });
+            }
+        }
+        throw error;
     }
+}
 
-    return response.json();
+/**
+ * Make authenticated API request, parsing the JSON body.
+ */
+async function spotifyFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const response = await authedFetch(endpoint, options);
+    return response.json() as Promise<T>;
 }
 
 // SpotifyPlaylistItem and SpotifyTrackItem are now imported from '../types'
@@ -162,22 +240,9 @@ export function isAuthenticated(): boolean {
  * Use this when you need to inspect the status code before parsing (e.g. 204 No Content).
  */
 async function spotifyFetchRaw(endpoint: string, options: RequestInit = {}): Promise<Response> {
-    const token = await getValidToken();
-    const response = await fetch(`${SPOTIFY_CONFIG.API.BASE}${endpoint}`, {
-        ...options,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
-    });
-
-    if (!response.ok && response.status !== 204) {
-        const errorText = await response.text().catch(() => '(no body)');
-        throw new Error(`Spotify API error ${response.status}: ${errorText}`);
-    }
-
-    return response;
+    // `resilientFetch` resolves on any 2xx including 204, so the No-Content
+    // playback path is preserved without a special-case status guard here.
+    return authedFetch(endpoint, options);
 }
 
 // ========================================
