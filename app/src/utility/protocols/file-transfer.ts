@@ -44,6 +44,50 @@ function encodeFramed(data: unknown): Uint8Array {
 }
 
 /**
+ * Backpressure-aware send (#47).
+ *
+ * libp2p v2 `stream.send()` returns `false` when the underlying write buffer is
+ * full; continuing to push data anyway grows an internal buffer that, once it
+ * exceeds `maxWriteBufferLength`, RESETS the stream — the exact failure mode that
+ * made >10MB transfers flaky. Here we respect that signal: if the stream needs
+ * to drain we await `onDrain()` before returning, so the caller naturally paces
+ * itself to the speed of a slow reader instead of overflowing the buffer.
+ */
+export async function sendWithBackpressure(stream: Stream, data: Uint8Array): Promise<void> {
+    const accepted = stream.send(data);
+    if (accepted === false || stream.writableNeedsDrain) {
+        // Wait until the stream signals it can accept more data (or rejects if
+        // it closes/resets first — propagated to the caller).
+        await stream.onDrain();
+    }
+}
+
+/**
+ * Per-stream send serialization (#47).
+ *
+ * Multiple FILE_TRANSFER_SERVE_CHUNK messages can arrive concurrently from main;
+ * without ordering, their async backpressure awaits could interleave and corrupt
+ * the framed byte order on the wire. Each serve key gets a promise chain so sends
+ * are strictly ordered AND backpressure-paced.
+ */
+const serveSendChains: Map<string, Promise<void>> = new Map()
+
+function enqueueSend(key: string, stream: Stream, data: Uint8Array): Promise<void> {
+    const prior = serveSendChains.get(key) ?? Promise.resolve()
+    const next = prior
+        .catch(() => { /* a prior send failure must not block subsequent sends */ })
+        .then(() => sendWithBackpressure(stream, data))
+    serveSendChains.set(key, next)
+    // Once this is the tail of the chain, drop it to avoid unbounded map growth.
+    void next.finally(() => {
+        if (serveSendChains.get(key) === next) {
+            serveSendChains.delete(key)
+        }
+    })
+    return next
+}
+
+/**
  * Accumulate raw bytes from a stream until at least `needed` bytes are available.
  * Returns `null` if the stream ends before enough bytes arrive.
  */
@@ -460,10 +504,9 @@ export async function requestFile(
  *
  * If the transfer is a file-complete or file-error, the stream is closed after sending.
  *
- * TODO: stream.send() backpressure is not handled. Large files (>10MB) may
- * overflow the stream write buffer, causing stream resets. Needs flow control
- * between main process chunk dispatch and utility process stream writes.
- * See: https://github.com/libp2p/js-libp2p/blob/main/doc/migrations/v1.0.0-v2.0.0.md#streams
+ * Backpressure (#47): writes go through a per-stream serialized queue that awaits
+ * the stream's drain signal, so a slow reader paces the sender instead of
+ * overflowing the write buffer (which would reset the stream on files >10MB).
  */
 export async function sendFileChunk(
     libp2p: Libp2p,
@@ -480,15 +523,19 @@ export async function sendFileChunk(
     }
 
     try {
-        stream.send(encodeFramed(message))
+        // Serialized + backpressure-aware: ordering is preserved across concurrent
+        // calls and we wait for the stream to drain before overrunning its buffer.
+        await enqueueSend(key, stream, encodeFramed(message))
 
         if (message.type === 'file-complete' || message.type === 'file-error') {
             activeServeStreams.delete(key)
+            serveSendChains.delete(key)
             try { await stream.close() } catch { /* ignore */ }
         }
     } catch (err) {
         console.error(`[FileTransfer] Error writing to serve stream: ${err}`)
         activeServeStreams.delete(key)
+        serveSendChains.delete(key)
         try { await stream.close() } catch { /* ignore */ }
         throw err
     }
