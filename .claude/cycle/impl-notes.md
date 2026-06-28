@@ -167,3 +167,22 @@ to this one before merge.
   ViewRouter/nav (out of lane). Reviewer may want a real button later.
 - Fixtures are version-pinned (yt-dlp 2024.08.06, spotDL 4.2.x, Spytify 1.10);
   capture procedure documented in `fixtures/README.md`. Drift risk per the epic.
+
+## Fix-pass (2026-06-27) — inspector ITERATE blocker resolution
+
+Verdict `audio-verdict.md` returned ITERATE for a single stated-AC miss (#45 AC
+line 6: `checkInstalled()` must cover installed / spawn-error / non-zero-exit for
+ALL three backends). I resolved exactly that, nothing else.
+
+- **Verified the premise first:** yt-dlp (`ytdlp-backend.test.ts:130–149`) and
+  spotDL (`spotdl-backend.test.ts:150–166`) already cover all three states. Only
+  Spytify was short — it had the `installed` case only.
+- **Added two Spytify tests** inside `describe('SpytifyBackend on Windows (platform stubbed)')`,
+  mirroring the yt-dlp/spotDL reference patterns exactly:
+  - spawn-error: `setPlatform('win32')` + `runCommand.mockRejectedValue(new Error('spawn spytify ENOENT'))`
+    → asserts `installed === false` and `error` contains `ENOENT` (hits the `catch` branch, spytify-backend.ts:63–69).
+  - non-zero-exit: `setPlatform('win32')` + `runCommand.mockResolvedValue(makeRunResult({ code: 1, stderr: 'bad' }))`
+    → asserts `installed === false` and `error` contains `code 1` (hits the `result.code !== 0` branch, spytify-backend.ts:58–62).
+- **No production change.** Both branches already existed and behaved correctly; the gap was purely test coverage.
+- **Test results:** Spytify suite 6→8 tests, all green. Full suite **241 passed / 0 failed** (15 files; was 239). Typecheck: zero errors in any `src/`/`service/` path (only the pre-existing node_modules + vite.config baseline remains, unchanged). Scoped vitest on the three backend suites: 32/32 green.
+- **Out of scope (left as-is per fix-pass mandate):** the verdict's Minors (Spytify `cancel()` test, `backends[payload.id]` guard) and the Nit (`createBackend` JSDoc) — not blockers.

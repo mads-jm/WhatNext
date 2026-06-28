@@ -106,6 +106,22 @@ describe('SpytifyBackend on Windows (platform stubbed)', () => {
         expect(status).toMatchObject({ installed: true, version: '1.10.0' });
     });
 
+    it('checkInstalled reports not installed when spawn errors (binary absent)', async () => {
+        setPlatform('win32');
+        vi.mocked(runCommand).mockRejectedValue(new Error('spawn spytify ENOENT'));
+        const status = await new SpytifyBackend().checkInstalled();
+        expect(status.installed).toBe(false);
+        expect(status.error).toContain('ENOENT');
+    });
+
+    it('checkInstalled reports not installed on a non-zero exit', async () => {
+        setPlatform('win32');
+        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 1, stderr: 'bad' }));
+        const status = await new SpytifyBackend().checkInstalled();
+        expect(status.installed).toBe(false);
+        expect(status.error).toContain('code 1');
+    });
+
     it('uses a configured custom path for the recorder', async () => {
         setPlatform('win32');
         vi.mocked(spawn).mockReturnValue(
