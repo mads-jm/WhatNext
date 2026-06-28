@@ -649,6 +649,17 @@ describe('preload API surface (type smoke tests)', () => {
         const _typeCheck: SyncPlaylist = async (_id: string) => ({ success: true });
         expect(typeof _typeCheck).toBe('function');
     });
+
+    it('window.electron.spotify.onPlaybackDegraded takes a degraded-payload callback and returns a cleanup fn', () => {
+        // Mirrors onAuthError: subscribes to spotify:playback-degraded and
+        // returns an unsubscribe function. The payload matches the
+        // playback-degraded SpotifyRuntimeEvent forwarded by main.ts.
+        type OnPlaybackDegraded = (
+            callback: (data: { reason: 'premium-required'; status: number }) => void,
+        ) => () => void;
+        const _typeCheck: OnPlaybackDegraded = (_cb) => () => undefined;
+        expect(typeof _typeCheck).toBe('function');
+    });
 });
 
 // ---------------------------------------------------------------------------

@@ -1059,6 +1059,14 @@ function forwardSpotifyEvent(event: SpotifyRuntimeEvent): void {
             error: event.error,
         });
     } else if (event.type === 'playback-degraded') {
+        // The preload exposes `spotify.onPlaybackDegraded` so the renderer can
+        // subscribe to this channel. The renderer-side state transition itself —
+        // setting `playbackProvider: 'none'` on the session and surfacing the
+        // "Premium required" UI banner — is OUT OF THIS LANE. It belongs to the
+        // renderer-cluster lane that owns the session schema / playback model.
+        // Tracking: epic-spotify-resilience #44 open question "Degraded-mode
+        // contract: where does `playbackProvider: 'none'` live and who owns the
+        // transition?" (see WhatNext - docs/08 specs/epic-spotify-resilience.md).
         mainWindow.webContents.send('spotify:playback-degraded', {
             reason: event.reason,
             status: event.status,
