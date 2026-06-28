@@ -16,6 +16,8 @@
  * path is CRDTs (Phase 2). See [[RxDB-Replication]] "Conflict Resolution".
  */
 
+import { DEVICE_LOCAL_FIELDS } from './schemas';
+
 /**
  * Parse a timestamp value into epoch milliseconds.
  *
@@ -110,14 +112,26 @@ export function incomingWins(incoming: LwwCandidate, existing: LwwCandidate): bo
  *    `updatedAt` is equal by definition and `addedAt` is the doc's creation time
  *    (equal across versions of the same id) — neither discriminates;
  *  - any `_`-prefixed field — RxDB internals (`_rev`, `_meta`, `_attachments`,
- *    `_deleted`) that never cross the wire.
+ *    `_deleted`) that never cross the wire;
+ *  - any {@link DEVICE_LOCAL_FIELDS} (`localFilePath`, `localFileSize`,
+ *    `albumArtLocalPath`, `coverArtLocalPath`) — the SENDER strips these from the
+ *    transmitted `data`, but they SURVIVE on the receiver's `existing.toJSON()`.
+ *    Excluding them here keeps the receiver's existing-side key over the SAME
+ *    field set the incoming side already lacks; otherwise the existing-side key
+ *    would carry e.g. `localFilePath` (sorting before `name`) and the two peers
+ *    would elect opposite winners on a tie — an oscillating divergence.
  * Every dropped key is non-discriminating at a tie and removed identically from
  * both sides, so `contentKey(incoming.data)` and `contentKey(existing.toJSON())`
  * reduce to the same string for the same user content — symmetric and
  * convergent. (Residual assumption: the transmitted `data` carries the same user
  * fields the stored doc does, which must hold for replication to work at all.)
  */
-const NON_CONTENT_KEYS = new Set(['id', 'updatedAt', 'addedAt']);
+const NON_CONTENT_KEYS = new Set<string>([
+    'id',
+    'updatedAt',
+    'addedAt',
+    ...DEVICE_LOCAL_FIELDS,
+]);
 
 export function contentKey(value: unknown): string {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {

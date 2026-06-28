@@ -13,6 +13,26 @@ import type {
 import type { PurchaseLink } from '../../shared/core/download-types';
 
 // ========================================
+// Device-local field contract
+// ========================================
+
+/**
+ * Fields that describe a document's state on THIS device only (cached file
+ * locations/sizes) and are meaningless to other peers. They are stripped before
+ * a document is transmitted (see useSessionReplication push) and MUST also be
+ * excluded from the LWW equal-timestamp content tie-break key (see lww.contentKey)
+ * so both peers compute the key over the identical field set and converge on the
+ * same winner. This is the single source of truth so the sender-strip and the
+ * tiebreak-strip cannot drift apart.
+ */
+export const DEVICE_LOCAL_FIELDS = [
+    'localFilePath',
+    'localFileSize',
+    'albumArtLocalPath',
+    'coverArtLocalPath',
+] as const;
+
+// ========================================
 // User/Peer Schema
 // ========================================
 

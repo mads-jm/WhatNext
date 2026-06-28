@@ -155,6 +155,66 @@ describe('contentKey (cross-peer tie-break symmetry)', () => {
         // qWinsOnP === false ⟺  pWinsOnQ === true  (they agree vP wins).
         expect(qWinsOnP).toBe(!pWinsOnQ);
     });
+
+    it('excludes device-local fields so the existing-side key matches the stripped incoming key', () => {
+        // The sender strips device-local fields (localFilePath etc.) from the
+        // transmitted payload; the receiver's stored doc retains them. Both keys
+        // must still match for the same user content.
+        const transmitted = { name: 'Song', artist: 'Band' };
+        const stored = {
+            id: 'tr-1',
+            name: 'Song',
+            artist: 'Band',
+            updatedAt: '2026-06-27T12:00:00.000Z',
+            localFilePath: '/home/peer/music/song.flac',
+            localFileSize: 4096,
+            albumArtLocalPath: '/home/peer/art/song.jpg',
+            coverArtLocalPath: '/home/peer/art/cover.jpg',
+            _rev: '3-xyz',
+        };
+        expect(contentKey(transmitted)).toBe(contentKey(stored));
+    });
+
+    it('converges on a tie even when only one peer has device-local fields set', () => {
+        // Regression for the non-convergent tie-break: peer P has downloaded the
+        // file (localFilePath set on its STORED doc) while peer Q has not. Each
+        // peer receives the other's stripped payload at the exact same timestamp.
+        // Both must elect the SAME winner. Before the fix, the existing-side key
+        // carried localFilePath (sorting before `name`), so the incoming side
+        // always won on BOTH peers — they swapped content and oscillated forever.
+        const ts = '2026-06-27T12:00:00.000Z';
+        const vP_data = { name: 'P-edit', artist: 'Band' };
+        const vQ_data = { name: 'Q-edit', artist: 'Band' };
+        // P has the local file downloaded; Q does not.
+        const storedP = {
+            id: 'tr-1',
+            ...vP_data,
+            updatedAt: ts,
+            localFilePath: '/home/p/song.flac',
+            localFileSize: 4096,
+            _rev: '7-aaa',
+        };
+        const storedQ = {
+            id: 'tr-1',
+            ...vQ_data,
+            updatedAt: ts,
+            _rev: '7-bbb',
+        };
+
+        // On P: incoming = vQ stripped payload, existing = stored vP (with localFilePath).
+        const qWinsOnP = incomingWins(
+            { updatedAt: ts, tiebreak: contentKey(vQ_data) },
+            { updatedAt: ts, tiebreak: contentKey(storedP) }
+        );
+        // On Q: incoming = vP stripped payload, existing = stored vQ (no localFilePath).
+        const pWinsOnQ = incomingWins(
+            { updatedAt: ts, tiebreak: contentKey(vP_data) },
+            { updatedAt: ts, tiebreak: contentKey(storedQ) }
+        );
+
+        // Convergence: the peers must agree on a single winner.
+        expect(qWinsOnP).toBe(!pWinsOnQ);
+    });
 });
 
 describe('stableStringify', () => {
