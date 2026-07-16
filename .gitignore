@@ -21,6 +21,12 @@ Thumbs.db
 *.cursorrules
 *.cursorignore
 
+# agent-cycle scratch — working artifacts, not project source.
+# .claude/settings.json and .claude/cycle/brief.md stay tracked on purpose.
+.claude/worktrees/
+.claude/cycle/impl-notes.md
+.claude/cycle/verdicts/
+
 # local
 TODO.md
 QUESTIONS.md
