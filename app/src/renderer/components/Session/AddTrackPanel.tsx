@@ -3,17 +3,23 @@
  * Session-level "Add track" affordance for the Manual TrackSource (#37).
  *
  * Two inputs, one sink: a hand-typed entry (title/artists/album/duration) or a
- * pick from the local library (`searchTracks`). Both are normalized to an
- * `IncomingTrack` and handed to `onAdd`, which routes through the shared
- * `useTrackSource` add path → `addIncomingTrack`. The panel is rendered only
- * for manual sessions (SessionView gates on a non-null `addTrack`), so the
+ * pick from the local library. Library picks load once and are fuzzy-ranked
+ * in memory (title/artist/album) as you type — the old title-only substring
+ * search missed on typos, reordering, and artist/album matches. Both inputs
+ * normalize to an `IncomingTrack` handed to `onAdd`, which routes through the
+ * shared `useTrackSource` add path → `addIncomingTrack`. The panel is rendered
+ * only for manual sessions (SessionView gates on a non-null `addTrack`), so the
  * session/feed/turn layers stay source-agnostic.
  */
 
-import { useState } from 'react';
-import { searchTracks } from '../../db/services/track-service';
+import { useEffect, useMemo, useState } from 'react';
+import { getAllTracks } from '../../db/services/track-service';
+import { fuzzyRank } from '../../utils/fuzzy';
 import type { TrackDocument } from '../../db/schemas';
 import type { IncomingTrack } from '../../../shared/session-interfaces';
+
+/** Cap the rendered result list; the fuzzy rank surfaces the best matches first. */
+const MAX_RESULTS = 25;
 
 interface AddTrackPanelProps {
     /** Routes an IncomingTrack through the shared sink. Returns once persisted. */
@@ -52,10 +58,50 @@ export function AddTrackPanel({ onAdd, error }: AddTrackPanelProps) {
     const [album, setAlbum] = useState('');
     const [duration, setDuration] = useState('');
 
-    // Library-search state
+    // Library state: load the whole library once, fuzzy-filter in memory.
     const [query, setQuery] = useState('');
-    const [results, setResults] = useState<TrackDocument[]>([]);
-    const [searching, setSearching] = useState(false);
+    const [library, setLibrary] = useState<TrackDocument[]>([]);
+    const [libraryLoaded, setLibraryLoaded] = useState(false);
+    const [loadingLibrary, setLoadingLibrary] = useState(false);
+    const [libraryError, setLibraryError] = useState<string | null>(null);
+
+    // Load the library the first time the Library tab is opened.
+    useEffect(() => {
+        if (!open || mode !== 'library' || libraryLoaded || loadingLibrary) return;
+        let cancelled = false;
+        setLoadingLibrary(true);
+        setLibraryError(null);
+        (async () => {
+            try {
+                const docs = await (await getAllTracks()).exec();
+                if (!cancelled) {
+                    setLibrary(docs);
+                    setLibraryLoaded(true);
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    setLibraryError(
+                        err instanceof Error ? err.message : 'Failed to load your library.'
+                    );
+                }
+            } finally {
+                if (!cancelled) setLoadingLibrary(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [open, mode, libraryLoaded, loadingLibrary]);
+
+    const results = useMemo(
+        () =>
+            fuzzyRank(query, library, (t) => [
+                t.title,
+                t.artists.join(' '),
+                t.album,
+            ]).slice(0, MAX_RESULTS),
+        [query, library]
+    );
 
     const resetForm = () => {
         setTitle('');
@@ -85,22 +131,6 @@ export function AddTrackPanel({ onAdd, error }: AddTrackPanelProps) {
             // Error surfaced via the `error` prop from the source hook.
         } finally {
             setSubmitting(false);
-        }
-    };
-
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const q = query.trim();
-        if (!q) {
-            setResults([]);
-            return;
-        }
-        setSearching(true);
-        try {
-            const docs = await (await searchTracks(q)).exec();
-            setResults(docs);
-        } finally {
-            setSearching(false);
         }
     };
 
@@ -212,39 +242,53 @@ export function AddTrackPanel({ onAdd, error }: AddTrackPanelProps) {
                 </form>
             ) : (
                 <div className="space-y-2">
-                    <form onSubmit={handleSearch} className="flex gap-2">
-                        <input
-                            className="input text-sm w-full"
-                            placeholder="Search local library…"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            aria-label="Search library"
-                        />
-                        <button type="submit" className="btn-ghost text-sm" disabled={searching}>
-                            {searching ? '…' : 'Search'}
-                        </button>
-                    </form>
-                    <ul className="space-y-1 max-h-48 overflow-y-auto">
-                        {results.map((track) => (
-                            <li key={track.id}>
-                                <button
-                                    className="btn-ghost text-sm w-full text-left"
-                                    onClick={() => handleAddFromLibrary(track)}
-                                    disabled={submitting}
-                                >
-                                    {track.title}
-                                    {track.artists.length > 0
-                                        ? ` — ${track.artists.join(', ')}`
-                                        : ''}
-                                </button>
-                            </li>
-                        ))}
-                        {!searching && query.trim() && results.length === 0 && (
-                            <li className="text-xs text-on-surface-variant px-1">
-                                No matching tracks in your library.
-                            </li>
-                        )}
-                    </ul>
+                    <input
+                        className="input text-sm w-full"
+                        placeholder="Search local library…"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        aria-label="Search library"
+                        autoFocus
+                    />
+                    {libraryError ? (
+                        <p className="text-xs text-error px-1" role="alert">
+                            {libraryError}
+                        </p>
+                    ) : loadingLibrary ? (
+                        <p className="text-xs text-on-surface-variant px-1">
+                            Loading library…
+                        </p>
+                    ) : (
+                        <ul className="space-y-1 max-h-48 overflow-y-auto">
+                            {results.map((track) => (
+                                <li key={track.id}>
+                                    <button
+                                        className="btn-ghost text-sm w-full text-left"
+                                        onClick={() => handleAddFromLibrary(track)}
+                                        disabled={submitting}
+                                    >
+                                        {track.title}
+                                        {track.artists.length > 0
+                                            ? ` — ${track.artists.join(', ')}`
+                                            : ''}
+                                    </button>
+                                </li>
+                            ))}
+                            {libraryLoaded && library.length === 0 && (
+                                <li className="text-xs text-on-surface-variant px-1">
+                                    Your library is empty.
+                                </li>
+                            )}
+                            {libraryLoaded &&
+                                library.length > 0 &&
+                                query.trim() &&
+                                results.length === 0 && (
+                                    <li className="text-xs text-on-surface-variant px-1">
+                                        No matching tracks in your library.
+                                    </li>
+                                )}
+                        </ul>
+                    )}
                 </div>
             )}
 
