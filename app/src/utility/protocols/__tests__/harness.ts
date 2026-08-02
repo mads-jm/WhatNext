@@ -40,9 +40,18 @@ export class MockStream {
     writableNeedsDrain = false;
     /** Number of `send` calls to return `false` for (simulating a full buffer). */
     failSends = 0;
+    /**
+     * When true the iterator stalls after the inbound frames instead of ending:
+     * models a peer that accepted the stream and never replies (a pre-#58 peer,
+     * or one whose handler threw). `abort()` releases it.
+     */
+    hang = false;
+    /** The error passed to `abort`, if any. */
+    abortReason: Error | null = null;
 
     private inbound: Uint8Array[];
     private drainResolvers: Array<() => void> = [];
+    private hangResolvers: Array<() => void> = [];
 
     constructor(inbound: Uint8Array[] = []) {
         this.inbound = inbound;
@@ -51,6 +60,11 @@ export class MockStream {
     async *[Symbol.asyncIterator](): AsyncIterator<Uint8Array> {
         for (const chunk of this.inbound) {
             yield chunk;
+        }
+        if (this.hang) {
+            await new Promise<void>((resolve) => {
+                this.hangResolvers.push(resolve);
+            });
         }
     }
 
@@ -85,8 +99,12 @@ export class MockStream {
         this.closed = true;
     }
 
-    abort(): void {
+    abort(err?: Error): void {
         this.aborted = true;
+        this.abortReason = err ?? null;
+        const resolvers = this.hangResolvers;
+        this.hangResolvers = [];
+        for (const r of resolvers) r();
     }
 
     /** Decode all frames written to this stream. */
@@ -119,6 +137,12 @@ export class MockConnection {
 export class MockLibp2p {
     handlers: Map<string, (stream: MockStream, connection: MockConnection) => unknown> = new Map();
     connections: Array<{ remotePeer: { toString(): string } }> = [];
+    /** Every `dialProtocol` call, in order — lets a test assert "dialed exactly once". */
+    dials: Array<{ peerId: string; protocol: string }> = [];
+    /** Streams handed back by `dialProtocol`, in call order. */
+    dialedStreams: MockStream[] = [];
+
+    private dialQueue: MockStream[] = [];
 
     handle(protocol: string, handler: (stream: MockStream, connection: MockConnection) => unknown): void {
         this.handlers.set(protocol, handler);
@@ -130,6 +154,23 @@ export class MockLibp2p {
 
     setConnectedPeers(peerIds: string[]): void {
         this.connections = peerIds.map((id) => ({ remotePeer: { toString: () => id } }));
+    }
+
+    /**
+     * Queue the stream the next `dialProtocol` call returns. Preload it with the
+     * frames the remote is expected to reply with; the mock ignores send/read
+     * ordering, so a request/response exchange on one stream can be set up ahead
+     * of time.
+     */
+    queueDialStream(stream: MockStream): void {
+        this.dialQueue.push(stream);
+    }
+
+    async dialProtocol(peerId: { toString(): string }, protocol: string): Promise<MockStream> {
+        this.dials.push({ peerId: peerId.toString(), protocol });
+        const stream = this.dialQueue.shift() ?? new MockStream();
+        this.dialedStreams.push(stream);
+        return stream;
     }
 }
 

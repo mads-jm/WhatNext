@@ -53,6 +53,7 @@ import {
 import type { FileTransferMessage } from '../shared/core/file-transfer-types';
 import { RelayManager } from './relay-manager';
 import { CheckpointStore, resolveCheckpointPath } from './checkpoint-store';
+import { BootstrapTracker } from './bootstrap-tracker';
 import type {
     PeerDiscoveryEvent,
     PeerConnectionEvent,
@@ -72,6 +73,8 @@ class P2PService {
     // Durable per-peer/per-collection checkpoints ("peerId:collection" -> checkpoint).
     // Persisted to disk so a relaunch resumes incrementally instead of full-resyncing (#40).
     private checkpointStore: CheckpointStore = new CheckpointStore(resolveCheckpointPath());
+    // One replication bootstrap per (peer, connection); released on peer:disconnect (#58).
+    private bootstrapTracker: BootstrapTracker = new BootstrapTracker();
 
     // User identity (set via IPC from main process, used in handshake)
     private userDisplayName: string | null = null;
@@ -510,6 +513,9 @@ class P2PService {
             this.isStarted = false;
             this.libp2pNode = null;
 
+            // Every connection is gone; a restart must bootstrap replication afresh.
+            this.bootstrapTracker.clear();
+
             this.sendToMain(UtilityToMainMessageType.NODE_STOPPED, {});
             this.log('info', 'libp2p node stopped');
         } catch (error) {
@@ -533,24 +539,12 @@ class P2PService {
             peerId: this.libp2pNode.peerId.toString(),
         };
 
-        // Register handshake handler
+        // Register handshake handler (responder side). The dialer side runs the
+        // same completion path off initiateHandshake's return value.
         registerHandshakeProtocol(
             this.libp2pNode,
             localHandshakeData,
-            (remotePeerId, data) => {
-                this.connectedPeerNames.set(remotePeerId, data.displayName);
-                this.sendToMain(UtilityToMainMessageType.HANDSHAKE_COMPLETE, {
-                    peerId: remotePeerId,
-                    displayName: data.displayName,
-                    avatarUrl: data.avatarUrl,
-                    userId: data.userId,
-                    version: data.version,
-                    capabilities: data.capabilities,
-                });
-
-                // Trigger initial replication pull from the newly joined peer
-                this.triggerInitialReplication(remotePeerId);
-            }
+            (remotePeerId, data) => this.onHandshakeComplete(remotePeerId, data)
         );
 
         // Register replication handler
@@ -792,6 +786,11 @@ class P2PService {
                 this.log('warn', `Error cleaning up streams for ${peerId}: ${err}`);
             });
 
+            // Re-arm the replication bootstrap so a reconnect pulls again. Keeping
+            // the claim past the connection would make the peer look
+            // already-handshaked forever — silent no-sync (#58).
+            this.bootstrapTracker.release(peerId);
+
             this.sendToMain(UtilityToMainMessageType.CONNECTION_CLOSED, {
                 peerId,
             });
@@ -873,7 +872,11 @@ class P2PService {
                     capabilities: ['playlist-sync', 'rxdb-replication', FILE_TRANSFER_CAPABILITY],
                     peerId: this.libp2pNode.peerId.toString(),
                 };
-                await initiateHandshake(this.libp2pNode, payload.peerId, localData);
+                // Dialer completion path: initiateHandshake now resolves with the
+                // REMOTE's data (it used to return a placeholder and rely on the
+                // handshake loop re-entering our responder — see handshake.ts).
+                const remoteData = await initiateHandshake(this.libp2pNode, payload.peerId, localData);
+                this.onHandshakeComplete(payload.peerId, remoteData);
             } catch (err) {
                 this.log('warn', `Handshake failed (non-fatal): ${err}`);
             }
@@ -888,6 +891,38 @@ class P2PService {
                 error: error instanceof Error ? error.message : String(error),
             });
         }
+    }
+
+    /**
+     * Shared handshake-completion path for BOTH sides of a connection.
+     *
+     * The responder reaches it from the protocol handler's callback; the dialer
+     * reaches it from `initiateHandshake`'s resolved value. Before #58 only the
+     * responder path existed and the dialer learned its peer only because the
+     * responder's reply-on-a-new-stream re-entered our own handler — so this
+     * method is what keeps breaking the loop from becoming a silent no-sync.
+     *
+     * Replication bootstrap is claimed once per (peer, connection): a connection
+     * can complete the handshake twice locally when both ends dial each other.
+     */
+    private onHandshakeComplete(remotePeerId: string, data: HandshakeData): void {
+        this.connectedPeerNames.set(remotePeerId, data.displayName);
+        this.sendToMain(UtilityToMainMessageType.HANDSHAKE_COMPLETE, {
+            peerId: remotePeerId,
+            displayName: data.displayName,
+            avatarUrl: data.avatarUrl,
+            userId: data.userId,
+            version: data.version,
+            capabilities: data.capabilities,
+        });
+
+        if (!this.bootstrapTracker.claim(remotePeerId)) {
+            this.log('info', `Replication already bootstrapped for ${remotePeerId}, skipping`);
+            return;
+        }
+
+        // Trigger initial replication pull from the newly joined peer
+        this.triggerInitialReplication(remotePeerId);
     }
 
     /**

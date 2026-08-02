@@ -28,6 +28,21 @@ export interface HandshakeData {
 const MAX_MESSAGE_SIZE = 1 * 1024 * 1024; // 1MB
 
 /**
+ * How long the dialer waits for the responder's handshake before giving up.
+ *
+ * Required, not defensive polish. The responder now replies on the SAME stream
+ * (#58), so a peer that opens the stream and never writes back — a peer still
+ * running the pre-#58 reply-on-a-new-stream shape, or one whose handler threw —
+ * leaves `readMessage` awaiting for the life of the connection, holding the
+ * stream open and the promise pending. That is the "must be inert" requirement
+ * failing in the other direction: not a storm, but a leak. Deliberately a
+ * module-local constant rather than a P2P_CONFIG field: P2P_CONFIG is
+ * hand-duplicated in test-peer/src/p2p-config.js and adding a field there is
+ * out of scope for this cycle.
+ */
+const HANDSHAKE_RESPONSE_TIMEOUT = 10_000; // 10s
+
+/**
  * Encode a message with a 4-byte big-endian length prefix.
  */
 function encodeFramed(data: unknown): Uint8Array {
@@ -96,15 +111,54 @@ async function readMessage<T>(stream: Stream): Promise<T> {
 }
 
 /**
+ * Read one message, but give up after `timeoutMs`. Aborts the stream on expiry
+ * so the pending read rejects rather than dangling for the connection's life.
+ */
+async function readMessageWithTimeout<T>(stream: Stream, timeoutMs: number): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+        return await Promise.race([
+            readMessage<T>(stream),
+            new Promise<never>((_resolve, reject) => {
+                timer = setTimeout(() => {
+                    const err = new Error(`[Handshake] No response within ${timeoutMs}ms`);
+                    try { stream.abort(err); } catch { /* already gone */ }
+                    reject(err);
+                }, timeoutMs);
+            }),
+        ]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
  * Send a length-prefixed JSON message to a stream and half-close for writing.
+ *
+ * `close()` only closes the WRITABLE end (libp2p streams are half-closable), so
+ * the peer can still read what we queued and we can still read their reply. The
+ * close is tolerant: the reader knows the exact frame length from the header and
+ * may close first, and losing a handshake we already read+wrote over a benign
+ * teardown race would be a silent no-sync.
  */
 async function writeMessage(stream: Stream, data: unknown): Promise<void> {
     stream.send(encodeFramed(data));
-    await stream.close();
+    try {
+        await stream.close();
+    } catch {
+        /* stream already closed by the peer — the bytes are queued, benign */
+    }
 }
 
 /**
  * Register handshake protocol handler (responder side)
+ *
+ * REQUEST/RESPONSE ON ONE STREAM (#58). The responder reads the dialer's
+ * HandshakeData off the inbound stream and writes its own back on that SAME
+ * stream. It must never open a new stream to reply: a reply on a fresh stream is
+ * indistinguishable from a fresh request at the far end, so the far end's own
+ * responder answered it — and so on, forever. That ping-pong also re-fired
+ * `onHandshake` on every lap, re-triggering replication bootstrap (a pull storm).
  */
 export function registerHandshakeProtocol(
     node: Libp2p,
@@ -118,9 +172,8 @@ export function registerHandshakeProtocol(
             // Read remote peer's handshake
             const remoteData = await readMessage<HandshakeData>(stream);
 
-            // Send our handshake back on a new stream
-            const responseStream = await connection.newStream(P2P_CONFIG.PROTOCOLS.HANDSHAKE);
-            await writeMessage(responseStream, localData);
+            // Reply on the same stream — see the loop warning above.
+            await writeMessage(stream, localData);
 
             console.log(`[Handshake] Complete with ${remoteData.displayName}`);
             onHandshake(connection.remotePeer.toString(), remoteData);
@@ -131,23 +184,36 @@ export function registerHandshakeProtocol(
 }
 
 /**
- * Initiate handshake with a connected peer (initiator side)
+ * Initiate handshake with a connected peer (initiator side).
+ *
+ * Resolves with the REMOTE peer's HandshakeData, read off the same stream we
+ * wrote to. Previously this returned `localData` as a placeholder and the dialer
+ * only ever learned about its peer because the responder's reply-on-a-new-stream
+ * re-entered our own handler — i.e. the bug was load-bearing. With the loop gone,
+ * this return value is the dialer's only completion path: callers MUST run their
+ * handshake-complete work (peer metadata, replication bootstrap) on it, exactly
+ * as the responder callback does. Follows the same open→send→read→close shape as
+ * `requestManifest` in file-transfer.ts.
  */
 export async function initiateHandshake(
     node: Libp2p,
     remotePeerId: string,
     localData: HandshakeData,
+    // Overridable only so tests can exercise the timeout without a 10s wait.
+    timeoutMs: number = HANDSHAKE_RESPONSE_TIMEOUT,
 ): Promise<HandshakeData> {
     const { peerIdFromString } = await import('@libp2p/peer-id');
     const peerId = peerIdFromString(remotePeerId);
 
     console.log(`[Handshake] Initiating handshake with ${remotePeerId.slice(0, 12)}...`);
 
-    // Send our handshake data
     const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.HANDSHAKE);
-    await writeMessage(stream, localData);
 
-    // The response will come via our protocol handler
-    // For now, return a basic ack - the handler will fire onHandshake
-    return localData; // placeholder
+    try {
+        // Send our handshake data, then read theirs off the same stream.
+        stream.send(encodeFramed(localData));
+        return await readMessageWithTimeout<HandshakeData>(stream, timeoutMs);
+    } finally {
+        try { await stream.close(); } catch { /* ignore */ }
+    }
 }
