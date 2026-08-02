@@ -18,6 +18,10 @@ export function DownloadComplete({ tracks, progress, onReset }: DownloadComplete
     const failed = tracks.filter(
         (t) => progress.get(t.sourceUrl)?.status === 'error',
     );
+    // Downloaded, but no file path came back — deliberately not imported (#57).
+    const unimported = tracks.filter(
+        (t) => progress.get(t.sourceUrl)?.status === 'unimported',
+    );
 
     return (
         <div className="flex flex-col items-center justify-center py-16 gap-5">
@@ -34,6 +38,12 @@ export function DownloadComplete({ tracks, progress, onReset }: DownloadComplete
                         {failed.length} track{failed.length !== 1 ? 's' : ''} failed
                     </p>
                 )}
+                {unimported.length > 0 && (
+                    <p className="text-sm text-tertiary mt-1">
+                        {unimported.length} track{unimported.length !== 1 ? 's' : ''}{' '}
+                        downloaded but not imported
+                    </p>
+                )}
                 <p className="text-sm text-on-surface-variant mt-1">
                     Added to your library with source badges.
                 </p>
@@ -42,6 +52,25 @@ export function DownloadComplete({ tracks, progress, onReset }: DownloadComplete
                     Purchase links resolving in background — will appear on track rows shortly.
                 </p>
             </div>
+
+            {unimported.length > 0 && (
+                <div className="w-full max-w-sm space-y-1">
+                    <p className="text-xs text-on-surface-variant uppercase tracking-widest mb-2">
+                        Downloaded, not imported
+                    </p>
+                    {unimported.map((t) => (
+                        <div key={t.sourceId} className="flex items-center gap-2 text-sm">
+                            <i className="fa-solid fa-triangle-exclamation text-tertiary text-xs w-3" />
+                            <span className="text-on-surface-variant truncate">{t.title}</span>
+                        </div>
+                    ))}
+                    <p className="text-xs text-on-surface-variant/70 pt-1">
+                        The downloader did not report a file location for these, so
+                        they were not added to your library. Try downloading them
+                        again.
+                    </p>
+                </div>
+            )}
 
             {failed.length > 0 && (
                 <div className="w-full max-w-sm space-y-1">

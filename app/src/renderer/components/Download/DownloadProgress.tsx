@@ -66,9 +66,14 @@ function TrackProgressRow({ track, progress }: TrackProgressRowProps) {
             ? 'fa-check text-primary'
             : status === 'error'
               ? 'fa-xmark text-error'
-              : status === 'downloading'
-                ? 'fa-spinner fa-spin text-secondary'
-                : 'fa-clock text-on-surface-variant';
+              : status === 'unimported'
+                ? 'fa-triangle-exclamation text-tertiary'
+                : status === 'downloading'
+                  ? 'fa-spinner fa-spin text-secondary'
+                  : 'fa-clock text-on-surface-variant';
+
+    // Terminal states have no meaningful bar left to fill.
+    const isTerminal = status === 'complete' || status === 'error' || status === 'unimported';
 
     return (
         <div className="flex flex-col gap-1.5">
@@ -86,18 +91,28 @@ function TrackProgressRow({ track, progress }: TrackProgressRowProps) {
                 {status === 'complete' && (
                     <span className="text-xs text-primary shrink-0">Done</span>
                 )}
+                {status === 'unimported' && (
+                    <span className="text-xs text-tertiary shrink-0">Not imported</span>
+                )}
                 {status === 'error' && (
                     <span className="text-xs text-error shrink-0">Failed</span>
                 )}
             </div>
 
-            {status !== 'complete' && status !== 'error' && (
+            {!isTerminal && (
                 <div className="h-1 bg-surface-high rounded-full overflow-hidden ml-5">
                     <div
                         className="h-full bg-gradient-to-r from-primary to-primary-dim rounded-full transition-all duration-300"
                         style={{ width: `${percent}%` }}
                     />
                 </div>
+            )}
+
+            {status === 'unimported' && (
+                <p className="text-xs text-tertiary ml-5">
+                    Downloaded, but the downloader did not report where the file was
+                    saved — not added to your library.
+                </p>
             )}
 
             {status === 'error' && error && (

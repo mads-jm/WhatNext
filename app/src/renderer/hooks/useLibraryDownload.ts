@@ -150,6 +150,9 @@ export function useLibraryDownload() {
         });
 
         const unsubComplete = window.electron?.download.onTrackComplete((event: DownloadEvent) => {
+            // Without a path there is nothing to patch onto the track document,
+            // so `patchTrackDocs` skips it — say so instead of claiming success (#57).
+            const willPatch = Boolean(event.localFilePath);
             if (event.localFilePath) {
                 completedPaths.set(event.sourceUrl, event.localFilePath);
             }
@@ -160,7 +163,7 @@ export function useLibraryDownload() {
                     next.set(event.sourceUrl, {
                         ...entry,
                         percent: 100,
-                        status: 'complete',
+                        status: willPatch ? 'complete' : 'unimported',
                         localFilePath: event.localFilePath,
                     });
                 }

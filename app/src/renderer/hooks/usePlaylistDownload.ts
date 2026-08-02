@@ -30,12 +30,20 @@ export type DownloadState =
     | 'done'
     | 'error';
 
+/**
+ * Per-track row state.
+ *
+ * `unimported` is a terminal state distinct from `complete`: the backend
+ * reported the download finished but gave us no `localFilePath`, so the track
+ * is deliberately NOT written to the library. Import keys on the file path, so
+ * calling this "complete" claimed an import that never happened (#57).
+ */
 export interface TrackProgress {
     sourceUrl: string;
     percent: number;
     speed?: string;
     eta?: string;
-    status: 'pending' | 'downloading' | 'complete' | 'error';
+    status: 'pending' | 'downloading' | 'complete' | 'unimported' | 'error';
     localFilePath?: string;
     error?: string;
 }
@@ -158,6 +166,9 @@ export function usePlaylistDownload() {
         });
 
         const unsubComplete = window.electron?.download.onTrackComplete((event: DownloadEvent) => {
+            // No path → nothing to import. Mark it honestly instead of showing
+            // "complete" for a track that importCompleted will skip (#57).
+            const willImport = Boolean(event.localFilePath);
             if (event.localFilePath) {
                 completedPaths.set(event.sourceUrl, event.localFilePath);
             }
@@ -168,7 +179,7 @@ export function usePlaylistDownload() {
                     next.set(event.sourceUrl, {
                         ...entry,
                         percent: 100,
-                        status: 'complete',
+                        status: willImport ? 'complete' : 'unimported',
                         localFilePath: event.localFilePath,
                     });
                 }
@@ -262,6 +273,9 @@ async function importCompleted(
     completedPaths: Map<string, string>,
     userId: string,
 ): Promise<void> {
+    // Only tracks with a known file path are importable. Those without one are
+    // not silently dropped — they carry the `unimported` progress status, which
+    // the progress rows and the completion summary both surface (#57).
     const completed = tracks.filter((t) => completedPaths.has(t.sourceUrl));
     if (completed.length === 0) return;
 

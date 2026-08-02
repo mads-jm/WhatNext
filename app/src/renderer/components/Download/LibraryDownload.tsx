@@ -127,7 +127,12 @@ export function LibraryDownload() {
         const successCount = Array.from(lib.progress.values()).filter(
             (p) => p.status === 'complete',
         ).length;
-        const failedCount = total - successCount;
+        // Downloaded but with no reported file path — nothing was patched onto
+        // the track document, so these are neither saved nor outright failures (#57).
+        const unimportedCount = Array.from(lib.progress.values()).filter(
+            (p) => p.status === 'unimported',
+        ).length;
+        const failedCount = total - successCount - unimportedCount;
 
         return (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -136,6 +141,11 @@ export function LibraryDownload() {
                     <p className="font-semibold text-on-surface">Downloads complete</p>
                     <p className="text-sm text-on-surface-variant mt-1">
                         {successCount} track{successCount !== 1 ? 's' : ''} saved locally
+                        {unimportedCount > 0 && (
+                            <span className="text-tertiary">
+                                {' '}· {unimportedCount} downloaded but not linked
+                            </span>
+                        )}
                         {failedCount > 0 && (
                             <span className="text-error">
                                 {' '}· {failedCount} failed
@@ -284,9 +294,13 @@ function LibraryTrackProgressRow({
             ? 'fa-check text-primary'
             : status === 'error'
               ? 'fa-xmark text-error'
-              : status === 'downloading'
-                ? 'fa-spinner fa-spin text-secondary'
-                : 'fa-clock text-on-surface-variant';
+              : status === 'unimported'
+                ? 'fa-triangle-exclamation text-tertiary'
+                : status === 'downloading'
+                  ? 'fa-spinner fa-spin text-secondary'
+                  : 'fa-clock text-on-surface-variant';
+
+    const isTerminal = status === 'complete' || status === 'error' || status === 'unimported';
 
     return (
         <div className="flex flex-col gap-1.5">
@@ -302,12 +316,15 @@ function LibraryTrackProgressRow({
                 {status === 'complete' && (
                     <span className="text-xs text-primary shrink-0">Done</span>
                 )}
+                {status === 'unimported' && (
+                    <span className="text-xs text-tertiary shrink-0">Not linked</span>
+                )}
                 {status === 'error' && (
                     <span className="text-xs text-error shrink-0">Failed</span>
                 )}
             </div>
 
-            {status !== 'complete' && status !== 'error' && (
+            {!isTerminal && (
                 <div className="h-1 bg-surface-high rounded-full overflow-hidden ml-5">
                     <div
                         className="h-full bg-gradient-to-r from-primary to-primary-dim rounded-full transition-all duration-300"
