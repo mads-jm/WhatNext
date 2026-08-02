@@ -6,6 +6,32 @@ import type { ChildProcess } from 'child_process';
 /** Bare command name resolved via PATH when no custom path is configured. */
 const DEFAULT_EXE = 'spotdl';
 
+/** How much of the offending output is quoted in the error message. */
+const RAW_EXCERPT_CHARS = 200;
+
+/**
+ * Thrown when `spotdl save` exits 0 but its stdout cannot be read as a track
+ * list. Previously this case produced a stub `ResolvedTrack` whose title was
+ * the URL — a junk library entry that looked like a successful import (#56).
+ *
+ * The full stdout is retained on `rawOutput` for main-process logging, and an
+ * excerpt is inlined in the message because only the message survives the
+ * `ipcMain.handle` rejection boundary on its way to the renderer.
+ */
+export class SpotdlResolveError extends Error {
+    readonly rawOutput: string;
+
+    constructor(url: string, rawOutput: string) {
+        const trimmed = rawOutput.trim();
+        const excerpt = trimmed
+            ? `${trimmed.slice(0, RAW_EXCERPT_CHARS)}${trimmed.length > RAW_EXCERPT_CHARS ? '…' : ''}`
+            : '(no output)';
+        super(`spotdl returned unreadable metadata for ${url}: ${excerpt}`);
+        this.name = 'SpotdlResolveError';
+        this.rawOutput = rawOutput;
+    }
+}
+
 /**
  * spotDL backend.
  *
@@ -75,26 +101,21 @@ export class SpotdlBackend implements DownloadBackend {
                 continue;
             }
 
+            // A save-file payload we cannot read is a resolve *failure*, not a
+            // track. Writing a stub here (title = URL) is what made #56 lie to
+            // the user; surface it instead so the UI can show the real reason.
+            let parsed: unknown;
             try {
-                const parsed = JSON.parse(result.stdout) as Array<Record<string, unknown>>;
-                for (const entry of parsed) {
-                    tracks.push(this._mapEntry(entry, url));
-                }
+                parsed = JSON.parse(result.stdout);
             } catch {
-                // spotdl may not output parseable JSON for single tracks in all versions;
-                // fall back to a minimal stub so the user can still select & download
-                const spotifyId = this._extractSpotifyId(url);
-                tracks.push({
-                    sourceId: spotifyId ?? url,
-                    sourceUrl: url,
-                    sourceProvider: 'spotify',
-                    title: url,
-                    artists: [],
-                    album: '',
-                    durationMs: 0,
-                    availableFormats: [],
-                    spotifyId: spotifyId ?? undefined,
-                });
+                throw new SpotdlResolveError(url, result.stdout);
+            }
+            if (!Array.isArray(parsed)) {
+                throw new SpotdlResolveError(url, result.stdout);
+            }
+
+            for (const entry of parsed as Array<Record<string, unknown>>) {
+                tracks.push(this._mapEntry(entry, url));
             }
         }
 

@@ -11,7 +11,7 @@ vi.mock('../subprocess', async (orig) => {
 });
 
 import { runCommand, spawnLines, killProcess } from '../subprocess';
-import { SpotdlBackend } from '../backends/spotdl-backend';
+import { SpotdlBackend, SpotdlResolveError } from '../backends/spotdl-backend';
 import type { DownloadEvent, ResolvedTrack } from '../types';
 import { makeRunResult, makeSpawnLines, makeBlockingSpawnLines } from './helpers/fixture-process';
 import { loadFixtureLines, loadFixtureText } from './helpers/load-fixture';
@@ -81,17 +81,39 @@ describe('SpotdlBackend.resolve', () => {
         });
     });
 
-    it('falls back to a minimal stub when stdout is not parseable JSON', async () => {
+    // #56 regression: unreadable save output used to become a stub track whose
+    // title was the URL — a junk library entry that looked like a real import.
+    it('fails the resolve when stdout is not parseable JSON (captured bad output)', async () => {
+        const raw = loadFixtureText('spotdl-save-unreadable.stdout.txt');
+        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 0, stdout: raw }));
+
+        const resolving = new SpotdlBackend().resolve({ type: 'url', url: SPOTIFY_URL });
+
+        await expect(resolving).rejects.toBeInstanceOf(SpotdlResolveError);
+        // The instanceof assertion above proves the cast; `.catch` alone would
+        // type `err` as `ResolvedTrack[] | SpotdlResolveError`.
+        const err = (await resolving.catch((e: unknown) => e)) as SpotdlResolveError;
+        // Raw output is retained for debugging, and excerpted into the message
+        // (the only part that survives the IPC rejection boundary).
+        expect(err.rawOutput).toBe(raw);
+        expect(err.message).toContain(SPOTIFY_URL);
+        expect(err.message).toContain('LookupError');
+    });
+
+    it('fails the resolve when stdout parses to something that is not a track list', async () => {
         vi.mocked(runCommand).mockResolvedValue(
-            makeRunResult({ code: 0, stdout: 'not json at all' }),
+            makeRunResult({ code: 0, stdout: '{"error":"unauthorized"}' }),
         );
-        const [t] = await new SpotdlBackend().resolve({ type: 'url', url: SPOTIFY_URL });
-        expect(t).toMatchObject({
-            sourceUrl: SPOTIFY_URL,
-            sourceProvider: 'spotify',
-            title: SPOTIFY_URL,
-            spotifyId: '1IHWl5LamUGEuP4ozKQSXZ',
-        });
+        await expect(
+            new SpotdlBackend().resolve({ type: 'url', url: SPOTIFY_URL }),
+        ).rejects.toBeInstanceOf(SpotdlResolveError);
+    });
+
+    it('reports empty output rather than an empty excerpt', async () => {
+        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 0, stdout: '   ' }));
+        await expect(
+            new SpotdlBackend().resolve({ type: 'url', url: SPOTIFY_URL }),
+        ).rejects.toThrow('(no output)');
     });
 });
 

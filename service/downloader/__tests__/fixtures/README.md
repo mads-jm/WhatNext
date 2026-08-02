@@ -11,6 +11,8 @@ Capture procedure (documented for refresh):
   that marker), so an informational line can never be mistaken for the output path.
 - spotDL: `spotdl download <url> --output <dir> --format mp3 --print-errors`
   and `spotdl save <url> --save-file -`, captured from spotDL 4.2.x.
+  `spotdl-save-unreadable.stdout.txt` is the #56 failure mode: `save` exits 0
+  but writes log lines instead of JSON, so there is no metadata to map.
 - Spytify: `spytify --path <dir> --format mp3`, transcribed from a Spytify 1.10
   recording session (Windows-only PoC; format unverified across versions).
 
