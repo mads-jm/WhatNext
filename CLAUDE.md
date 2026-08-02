@@ -223,9 +223,16 @@ WhatNext uses **Conventional Commits**:
 [Optional body: the "why", not the "what".]
 ```
 
-Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `style`, `perf`
+Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `style`, `perf`, `build`, `ci`
 
-Scopes: `sessions`, `p2p`, `spotify`, `db`, `ipc`, `ui`, `auth`, `relay`
+Scopes (living domain list): `sessions`, `p2p`, `spotify`, `db`, `ipc`, `ui`, `auth`, `relay`, `downloader`, `deps`, `dev-env`
+
+Key rules (full guidelines: `WhatNext - docs/03 guides/coding-standards.md` §13):
+- **Bisectable atomicity**: every commit compiles and passes tests standalone; tests ride with the code they cover.
+- Subjects imperative and lowercase after the colon; body required unless trivial, why-focused prose.
+- Issue refs as `Refs #N` / `Part of #N`; closing keywords (`Fixes #N`) only in PR descriptions.
+- `BREAKING CHANGE:` footer for wire-format/schema/IPC contract breaks; protocol-touching commits that preserve compatibility say so ("wire format unchanged").
+- Clean branches before PR (squash WIP); PRs merge as merge commits; `mvp`/`main` append-only.
 
 **Do not include `Co-Authored-By` lines in commits.** If Claude Code contributed, note it in the PR description instead. All commits are human-owned.
 

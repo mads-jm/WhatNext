@@ -566,11 +566,111 @@ Enforced by tooling — not subject to review debate.
 - **TypeScript:** Strict mode. No `any` where avoidable. Explicit return types on exported functions.
 - **ESLint:** React hooks + refresh plugins. No custom overrides without team discussion.
 - **Comments:** Self-documenting code with good naming. Only comment the *why*, never the *what*. No JSDoc unless intent is genuinely non-obvious.
-- **Commits:** Conventional Commits — `type(scope): summary` (see CLAUDE.md for details)
+- **Commits:** Conventional Commits — see Section 13.
 
 ---
 
-## 13. Post-MVP Considerations
+## 13. Commit Style
+
+#guides/standards/commits
+
+Conventional Commits, human-owned. Established 2026-08-01; the handshake-stabilization
+sequence (`b14e13f..8fc4ccc` on `mvp`) is the worked example of this style.
+
+```
+<type>(<scope>): <imperative summary, lowercase, ≤72 chars, no period>
+
+[Body: why-focused prose, wrapped at 72.]
+
+[Footers: Refs #N · BREAKING CHANGE: …]
+```
+
+### Atomicity: Bisectable Units
+
+The unit of a commit is one logical change that stands alone:
+
+- **Every commit compiles and passes tests.** `git bisect` must never land on a
+  broken tree. If a split would leave an intermediate commit red, don't split there.
+- **Tests ride with the code they cover** — never trailing in a follow-up commit.
+- **Split by logical change, not by file type.** Docs *may* split into their own
+  commit; a mechanical rename and a behavior change *must* split.
+- **Cross-package lockstep changes** (app + test-peer protocol changes) may split
+  only if each side stands alone at its commit. When the intermediate state would
+  be broken (e.g. a changed handshake shape), keep them together or order so the
+  tolerant side lands first.
+
+**Why:** bisect is the debugging tool of last resort for P2P regressions that
+only surface live; every commit is a checkpoint it can trust.
+
+### Types
+
+`feat` `fix` `refactor` `docs` `chore` `test` `style` `perf` `build` `ci`
+
+- **build** — dependencies, bundler config, electron-builder. `build(deps): bump ws to 8.20.1`
+- **ci** — GitHub workflow changes.
+- `chore` is for what genuinely fits nowhere else — not a default.
+- **Reverts** use `git revert`'s native format (`revert: <original subject>`, reverted
+  SHA in the body). Don't hand-craft `revert(scope):` commits.
+
+### Scopes: Living Domain List
+
+Scopes name **domains, not paths**. A lockstep app + test-peer handshake change is
+`(p2p)`, not two location-scoped commits.
+
+Current vocabulary: `sessions` `p2p` `spotify` `db` `ipc` `ui` `auth` `relay`
+`downloader` `deps` `dev-env`
+
+Extending the list is a normal PR-review conversation, not a ceremony — add the
+scope, update this list in the same PR. Scope may be omitted when no domain fits
+(e.g. repo-wide docs).
+
+### Subjects
+
+- **Imperative mood, lowercase after the colon**, no trailing period, ≤72 chars:
+  `fix(p2p): break handshake response loop` — reads as completing "this commit
+  will…". Noun phrases get rewritten in review.
+
+### Bodies
+
+- **Required unless the change is trivial** (typo, pure rename — subject-only is fine).
+- **Why, never what**: the problem, the constraint, the rejected alternative. The
+  diff already shows what changed.
+- Short prose paragraphs wrapped at 72 — not bullet lists, which drift into
+  narrating the diff.
+
+### Issue References
+
+- Reference issues in the body/footer: `Part of #58` or `Refs #58`.
+- **Closing keywords (`Closes`/`Fixes #N`) are reserved for PR descriptions** —
+  issues close when the PR merges, never when a commit lands on a branch. This
+  keeps branch-level gates (live QA, human review) between "code exists" and
+  "issue closed".
+
+### Contract Markers
+
+This repo has three byte-stability contracts: P2P wire format, RxDB schema
+versions, IPC message shapes.
+
+- Breaking any of them requires a standard `BREAKING CHANGE:` footer describing
+  the migration.
+- Commits that **touch** protocol code while preserving compatibility state so in
+  the body ("wire format unchanged") — silence is ambiguous; affirming the
+  invariant shows it was checked, exactly where `git log` and `git bisect` look.
+
+### History Hygiene
+
+- **Clean the branch before opening the PR**: squash WIP/fixup commits via
+  interactive rebase into the atomic sequence reviewers should see.
+- Force-push to your **own unreviewed** branch is fine; once review starts, the
+  branch is append-only (reviewers' line comments must not be orphaned).
+- **PRs land as merge commits** — preserving the atomic sequence (squash-merge
+  would erase it). `mvp` and `main` are append-only; no force-push, ever.
+- **No `Co-Authored-By` lines.** All commits are human-owned; AI assistance is
+  noted in the PR description instead (see CLAUDE.md).
+
+---
+
+## 14. Post-MVP Considerations
 
 These are not current standards but architectural directions the codebase should not conflict with.
 
