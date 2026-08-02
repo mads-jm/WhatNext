@@ -25,39 +25,49 @@ import {
 // ─── Stream helpers ──────────────────────────────────────────────────────────
 
 /**
- * Read all chunks from a libp2p stream source, concatenate, and JSON.parse.
+ * Read a single length-prefixed JSON message from a libp2p stream.
+ *
+ * The app (handshake.ts, replication.ts, file-transfer.ts) frames every message
+ * as a 4-byte big-endian length prefix + JSON body. This peer previously read
+ * handshake/replication as "concatenate-to-EOF then JSON.parse", which is NOT
+ * the app's framing — the app read our un-prefixed JSON's first 4 bytes as a
+ * ~2GB length and rejected it. Reuse the framed reader so all three protocols
+ * speak the app's wire format. (File-transfer already used framing.)
  *
  * @template T
  * @param {import('@libp2p/interface').Stream} stream
  * @returns {Promise<T>}
  */
 async function readStreamMessage(stream) {
-    const chunks = [];
-    // Stream is AsyncIterable directly in libp2p v2+ (no .source property)
-    for await (const chunk of stream) {
-        chunks.push(chunk.subarray());
+    const iter = stream[Symbol.asyncIterator]();
+    const result = await readFramedMessage(iter, new Uint8Array(0));
+    if (!result) {
+        throw new Error(
+            'readStreamMessage: stream ended before a complete length-prefixed message',
+        );
     }
-    const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
-    const combined = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-        combined.set(chunk, offset);
-        offset += chunk.length;
-    }
-    return JSON.parse(new TextDecoder().decode(combined));
+    return result.message;
 }
 
 /**
- * JSON-stringify data and write to a stream.
+ * Write a single length-prefixed JSON message to a stream and half-close.
+ * Uses the same 4-byte big-endian framing as the app (encodeFramed), so the
+ * app's readers accept it instead of rejecting an unframed payload.
  *
  * @param {import('@libp2p/interface').Stream} stream
  * @param {unknown} data
  * @returns {Promise<void>}
  */
 async function writeStreamMessage(stream, data) {
-    const encoded = new TextEncoder().encode(JSON.stringify(data));
-    stream.send(encoded);
-    await stream.close();
+    stream.send(encodeFramed(data));
+    // The reader knows the exact byte length from the frame header, so it may
+    // close the stream before our close() lands. Tolerate that race, matching
+    // the file-transfer sender in this file.
+    try {
+        await stream.close();
+    } catch {
+        /* stream already closed by the peer — benign */
+    }
 }
 
 // ─── Handshake Protocol ──────────────────────────────────────────────────────
