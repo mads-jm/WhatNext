@@ -27,6 +27,7 @@ import { ParticipantRoster } from './ParticipantRoster';
 import { SessionTrackList } from './SessionTrackList';
 import { TrackEndingWarning } from './TrackEndingWarning';
 import { SessionFeed } from './SessionFeed';
+import { AddTrackPanel } from './AddTrackPanel';
 import { SharingToggle } from '../FileTransfer/SharingToggle';
 import { TransferProgressAggregate } from '../FileTransfer/TransferProgressBar';
 import { FileManifestPanel } from '../FileTransfer/FileManifestPanel';
@@ -206,7 +207,12 @@ export function SessionView({ playlistId }: SessionViewProps) {
 
     const isHost = sessionState?.hostId === userId;
 
-    const { error: trackSourceError, syncNow, syncing: trackSourceSyncing } = useTrackSource({
+    const {
+        error: trackSourceError,
+        syncNow,
+        syncing: trackSourceSyncing,
+        addTrack,
+    } = useTrackSource({
         config: sessionState?.trackSource ?? { type: 'manual' },
         playlistId: activeId ?? '',
         enabled: isActiveSession,
@@ -389,6 +395,18 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     currentTurnUserId={turnState?.effectiveTurnUserId ?? playlist?.currentTurnUserId}
                     turnOrder={playlist?.turnOrder}
                 />
+
+                {/* Manual TrackSource (#37): local add affordance. Rendered
+                    only when the source hook exposes a functional add path
+                    (manual sessions) and we know who is adding. */}
+                {addTrack && userId && (
+                    <AddTrackPanel
+                        onAdd={async (incoming) => {
+                            await addTrack(incoming, userId);
+                        }}
+                        error={trackSourceError}
+                    />
+                )}
 
                 <SessionTrackList
                     tracks={tracks}

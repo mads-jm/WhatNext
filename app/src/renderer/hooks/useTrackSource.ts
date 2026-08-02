@@ -18,6 +18,10 @@ import { bulkImportTracks } from '../db/services/track-service';
 import {
     createSessionParticipant,
 } from '../db/services/user-service';
+import {
+    addIncomingTrack,
+    type AddIncomingTrackResult,
+} from '../db/services/track-sink';
 import type {
     TrackSourceConfig,
     IncomingTrack,
@@ -33,11 +37,22 @@ export interface UseTrackSourceOptions {
     onNewTracks?: (tracks: IncomingTrack[]) => void;
 }
 
+/**
+ * Imperative add used by local-initiated sources (the Manual arm). Normalizes
+ * `incoming`, writes it attributed to `addedBy`, and surfaces it in the feed.
+ */
+export type AddTrackFn = (
+    incoming: IncomingTrack,
+    addedBy: string
+) => Promise<AddIncomingTrackResult>;
+
 export interface UseTrackSourceResult {
     syncing: boolean;
     lastSyncAt: string | null;
     error: string | null;
     syncNow: (() => void) | null;
+    /** Functional for `type: 'manual'`; null for poll/replication-driven arms. */
+    addTrack: AddTrackFn | null;
 }
 
 /**
@@ -163,6 +178,10 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
     const [syncing, setSyncing] = useState(false);
     const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Manual-arm state: there is no poll loop, only local-initiated adds.
+    const [manualLastAddAt, setManualLastAddAt] = useState<string | null>(null);
+    const [manualError, setManualError] = useState<string | null>(null);
 
     const lastSnapshotIdRef = useRef<string | null>(null);
     const lastTotalRef = useRef<number>(0);
@@ -319,9 +338,53 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
         pollRef.current?.();
     }, []);
 
-    if (config.type === 'manual' || config.type === 'p2p') {
-        return { syncing: false, lastSyncAt: null, error: null, syncNow: null };
+    // Manual arm: local-initiated writes through the shared sink. There is no
+    // poll loop — the feed updates from the reactive playlist query once the
+    // track lands, and `onNewTracks` mirrors the Spotify arm's emission so feed
+    // and turn listeners react identically regardless of source.
+    const addTrack = useCallback<AddTrackFn>(
+        async (incoming, addedBy) => {
+            try {
+                const result = await addIncomingTrack(
+                    incoming,
+                    playlistId,
+                    addedBy
+                );
+                setManualError(null);
+                setManualLastAddAt(new Date().toISOString());
+                onNewTracks?.([incoming]);
+                return result;
+            } catch (err) {
+                setManualError(
+                    err instanceof Error ? err.message : String(err)
+                );
+                throw err;
+            }
+        },
+        [playlistId, onNewTracks]
+    );
+
+    if (config.type === 'manual') {
+        return {
+            syncing: false,
+            lastSyncAt: manualLastAddAt,
+            error: manualError,
+            syncNow: null,
+            addTrack,
+        };
     }
 
-    return { syncing, lastSyncAt, error, syncNow };
+    // P2P arm (#38) is a separate, P2P-gated lane (depends on replication
+    // fan-in) — still a no-op here; out of this lane's scope.
+    if (config.type === 'p2p') {
+        return {
+            syncing: false,
+            lastSyncAt: null,
+            error: null,
+            syncNow: null,
+            addTrack: null,
+        };
+    }
+
+    return { syncing, lastSyncAt, error, syncNow, addTrack: null };
 }
