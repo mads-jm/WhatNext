@@ -16,6 +16,7 @@ date modified: Monday, March 9th 2026, 12:20:36 am
 | Directory | Index | Contents |
 |-----------|-------|----------|
 | `01 concepts/` | [[CONCEPTS]] | Technology & pattern concept pages |
+| `02 references/` | [[REFERENCES]] | External resource summaries |
 | `03 guides/` | [[GUIDES]] | How-to docs and workflow guides |
 | `04 architecture/` | [[ARCHITECTURE]] | SRS, architecture design document |
 | `04 architecture/adr/` | [[ADR]] | Architecture Decision Records |
@@ -74,6 +75,8 @@ cd app && npm run build                 # Production build
 
 ## Active Development Status (2026-06-27)
 
+> **Update 2026-08-01**: the pre-merge review [[report-260801-mvp-premerge-review]] re-checked this list against the integrated `mvp` + wave-1 tree — several 🟡/🟠 items below have since landed fixes (durable replication checkpoints, Manual TrackSource un-stubbed, 340 passing tests), while new merge-blocking security findings gate the merge to `main`. Read that report for current state.
+
 > **Reality-checked** against code in [[report-260627-mvp-state-of-the-union]]. Legend: ✅ solid · 🟡 works but fragile/untested · 🟠 stubbed/partial · 🔜 planned. Most features exist; the gap is **reliability and tests**, not features.
 
 - ✅ P2P networking foundation (libp2p: mDNS + circuit relay + DCUtR)
@@ -102,7 +105,7 @@ cd app && npm run build                 # Production build
 
 ---
 
-__Last Updated__: 2026-06-27
-__Documentation Version__: v0.5.0 (post-stale-period reality check)
+__Last Updated__: 2026-08-01
+__Documentation Version__: v0.6.0 (vault-wide link/tag pass; pre-merge review indexed)
 
 

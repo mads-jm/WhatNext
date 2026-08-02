@@ -243,7 +243,7 @@ Protocol parsing already existed in:
 
 ## Related Concepts
 
-[[libp2p]] [[Electron-IPC]] [[Handshake-Protocol]]
+[[libp2p]] [[Electron-IPC]] [[Handshake-Protocol]] [[P2P-Discovery]]
 
 ---
 

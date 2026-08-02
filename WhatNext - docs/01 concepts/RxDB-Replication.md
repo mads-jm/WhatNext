@@ -17,7 +17,7 @@ A custom P2P replication protocol (`/whatnext/rxdb-replication/1.0.0`) that sync
 > - **No silent empty-resolve on pull timeout** — a timed-out pull now rejects and does **not** advance the checkpoint, so missed changes are re-pulled (§ Pull Timeout Policy).
 > - **Skew-aware LWW** — timestamps are parsed to epoch-ms with a deterministic tie-break, not string-compared (§ Conflict Resolution).
 > - **Relay reconnect** — exponential backoff + jitter, single alternate-relay fallback, and a liveness heartbeat for half-open links (§ Relay Reconnection).
-> - **Fileshare backpressure** — chunk sends respect stream drain so >10MB transfers don't reset (`app/src/utility/protocols/file-transfer.ts`).
+> - **Fileshare backpressure** — chunk sends respect stream drain so >10MB transfers don't reset (`app/src/utility/protocols/file-transfer.ts`; further hardening tracked in [[epic-file-transfer-guards]]).
 > - **Test coverage** — a Vitest P2P harness now covers handshake, replication, LWW, checkpoints, backoff/fallback/heartbeat, and large-file integrity.
 
 ## Why We Use It
@@ -147,6 +147,7 @@ window.electron.replication.onReplicationChanges((data) => {
 - [[Electron-IPC]]
 - [[Handshake-Protocol]]
 - [[Circuit-Relay]]
+- [[adr-260315-p2p-session-pairing]] — pull-request bridge (utility → main → renderer) decision
 
 ## References
 

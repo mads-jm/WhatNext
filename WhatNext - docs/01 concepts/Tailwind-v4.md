@@ -258,6 +258,9 @@ export default {
 ## Related Concepts
 
 - [[React-Patterns]] - Using Tailwind utilities in React components
+- [[Tailwind]] - Quick-reference companion page
+- [[Theme-System]] - Theming guide layered on Tailwind
+- [[note-251109-tailwind-v4-migration]] - Historical note: the v3→v4 migration
 - [[Electron-IPC]] - No impact on IPC, purely renderer concern
 - Vite documentation - Build tool integration
 

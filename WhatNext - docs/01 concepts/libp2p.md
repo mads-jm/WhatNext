@@ -22,7 +22,7 @@ Chosen over simple-peer after comprehensive analysis (see [[adr-251110-libp2p-vs
 - __Built-in security__: Automatic encryption via Noise protocol, cryptographic peer identity
 - __Local discovery__: mDNS enables offline/local-network collaboration without signaling servers
 - __Stream multiplexing__: Multiple logical streams over one connection (RxDB + presence + metadata)
-- __NAT traversal__: Circuit relay and DCUtR for connections behind firewalls
+- __NAT traversal__: [[Circuit-Relay|Circuit relay]] and DCUtR for connections behind firewalls
 - __Production-ready__: Battle-tested in IPFS Desktop, OrbitDB, Textile
 
 __Trade-off accepted__: Higher complexity and larger bundle size (~500KB) vs simple-peer (~30KB). Bundle size is negligible for desktop Electron apps.
@@ -82,7 +82,7 @@ streamMuxers: [yamux()]
 ```
 
 Multiple logical streams over a single connection. WhatNext will use:
-- Stream 1: RxDB replication protocol
+- Stream 1: [[RxDB-Replication|RxDB replication protocol]]
 - Stream 2: Presence/heartbeat
 - Stream 3: Real-time queue updates
 
@@ -92,7 +92,7 @@ Multiple logical streams over a single connection. WhatNext will use:
 peerDiscovery: [mdns()]
 ```
 
-__mDNS (Multicast DNS)__: Automatic peer discovery on local networks. No internet or signaling server required.
+__mDNS (Multicast DNS)__: Automatic peer discovery on local networks. No internet or signaling server required. See [[P2P-Discovery]] for the full discovery picture.
 
 __Future__: Add DHT for global peer discovery.
 
@@ -227,7 +227,7 @@ node.addEventListener('peer:disconnect', (evt) => {
 
 ### The Problem mDNS Cannot Solve
 
-mDNS peer discovery is limited to the local network. Friends on different LANs cannot connect without a publicly-reachable relay. This was the blocking issue for Milestone 1 (Remote Session Pairing).
+[[P2P-Discovery|mDNS peer discovery]] is limited to the local network. Friends on different LANs cannot connect without a publicly-reachable relay. This was the blocking issue for Milestone 1 (Remote Session Pairing) â€” see [[adr-260315-p2p-session-pairing]].
 
 ### Architecture: Relay as User Infrastructure
 
@@ -458,7 +458,10 @@ __Trade-off__: Localhost-only TCP means LAN peers can't connect via direct TCP â
 - [[P2P-Discovery]] - mDNS, DHT, and peer discovery mechanisms
 - [[Electron-IPC]] - Communication between main and utility process
 - [[RxDB]] - Database replication over libp2p streams
+- [[RxDB-Replication]] - The custom replication protocol running over libp2p streams
+- [[Handshake-Protocol]] - Application-level peer metadata exchange after connection
 - [[Circuit-Relay]] - Circuit relay v2 overview and deployment guide
+- [[P2P-Testing]] - Testing P2P connections with the barebones test peer
 - [[adr-251110-libp2p-vs-simple-peer]] - Why we chose libp2p
 - [[adr-260315-p2p-session-pairing]] - Remote session pairing architecture decisions
 

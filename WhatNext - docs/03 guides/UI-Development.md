@@ -1,7 +1,6 @@
 ---
 tags:
   - guides/ui
-  - ux
   - ux/styling/tailwind
   - ux/react
 date created: Thursday, November 13th 2025, 4:59:13 am
@@ -12,7 +11,7 @@ date modified: Monday, March 9th 2026, 12:20:54 am
 
 ## Overview
 
-Guide for developing UI components in WhatNext following established patterns, design philosophy, and common pitfalls. The UI is built with React 19, Tailwind CSS v4, and follows an Obsidian-inspired, developer-focused aesthetic.
+Guide for developing UI components in WhatNext following established patterns, design philosophy, and common pitfalls. The UI is built with [[React|React 19]], [[Tailwind-v4|Tailwind CSS v4]], and follows an Obsidian-inspired, developer-focused aesthetic. See [[note-251112-ui-modernization-complete]] for the milestone that established these patterns.
 
 ## Design Philosophy
 
@@ -45,7 +44,7 @@ __Typography:__
 
 ### Pattern 1: Hierarchical Navigation
 
-__Example:__ Sidebar with collapsible sections
+__Example:__ Sidebar with collapsible sections (see [[note-251112-modern-sidebar-navigation]])
 
 ```tsx
 const [expandedSections, setExpandedSections] = useState<Set<string>>(
@@ -133,7 +132,7 @@ __Parent highlighting:__ When child is active, highlight parent section too.
 
 ### Pattern 4: Scrolling Container Pattern
 
-__Main content area is the scroll container:__
+__Main content area is the scroll container__ (background: [[note-251112-scrolling-fix]]):
 
 ```tsx
 // App.tsx - Main layout
@@ -309,7 +308,7 @@ __Problem:__ Using arbitrary color values instead of Tailwind's semantic classes
 
 __Benefits:__
 - Consistent with design system
-- Responsive to theme changes
+- Responsive to [[Theme-System|theme changes]]
 - Better IntelliSense support
 
 ## Testing Checklist
@@ -354,6 +353,8 @@ When adding/modifying UI components:
 - [[Tailwind-v4]] - Styling framework and patterns
 - [[React-Patterns]] - React-specific patterns
 - [[Electron-IPC]] - Renderer ↔ Main communication
+- [[Theme-System]] - Runtime-switchable theming via CSS variables
+- [[coding-standards]] - Component, hook, and styling standards
 
 ## References
 

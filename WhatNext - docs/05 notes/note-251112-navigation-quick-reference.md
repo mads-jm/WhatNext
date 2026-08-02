@@ -134,10 +134,10 @@ __Icons__: FontAwesome solid icons, consistent sizing
 
 ## Related Concepts
 
-[[React-Patterns]] [[Electron]]
+[[React-Patterns]] [[Electron]] [[UI-Development]]
 
 ## Related Docs
 
-- `note-251112-modern-sidebar-navigation.md` - Full design documentation
-- `note-251112-ui-modernization-complete.md` - Complete changes summary
+- [[note-251112-modern-sidebar-navigation]] - Full design documentation
+- [[note-251112-ui-modernization-complete]] - Complete changes summary
 

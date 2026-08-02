@@ -481,7 +481,7 @@ The POC is ready for real-world testing. The architecture is solid and extensibl
 
 ## Related Concepts
 
-[[libp2p]] [[WebRTC]] [[Handshake-Protocol]] [[Electron-IPC]]
+[[libp2p]] [[WebRTC]] [[Handshake-Protocol]] [[Electron-IPC]] [[P2P-Discovery]]
 
 ---
 

@@ -31,5 +31,7 @@ Custom component classes use `@utility`, not `@layer components`. The project's 
 
 - [[Tailwind-v4]] — Full documentation
 - [[React-Patterns]] — Applying utilities in JSX
+- [[Theme-System]] — Theming guide built on these utilities
+- [[note-251109-tailwind-v4-migration]] — Historical note: the v4 migration
 - [Tailwind CSS v4 Docs](https://tailwindcss.com/docs)
 

@@ -1,3 +1,9 @@
+---
+tags:
+  - ux/theming
+  - ux/ui/design-system
+---
+
 # Design System Specification: Resilient Desktop Audio
 
 ## 1. Overview & Creative North Star: "The Sonic Vault"
@@ -83,3 +89,11 @@ Depth is achieved through **Tonal Layering**—the "stacking" of colors—rather
 *   **DON'T** use pure white (#ffffff). Use `on-surface` (#f6f3f5) for a sophisticated, slightly "off-white" look that is easier on the eyes in dark mode.
 *   **DON'T** use standard system scrolls. Use a custom, thin scrollbar in `surface-variant` to maintain the "high-end tool" aesthetic.
 *   **DON'T** use high-saturation reds for errors. Use the sophisticated `error_dim` (#d73357) to keep the palette grounded.
+
+---
+
+## Related Concepts
+
+- [[Theme-System]] — the live theming implementation
+- [[05 notes/pure_void/DESIGN|pure_void theme design]]
+- [[05 notes/solar_resignation/DESIGN|solar_resignation theme design]]

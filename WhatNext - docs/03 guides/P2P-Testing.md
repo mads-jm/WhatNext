@@ -1,7 +1,7 @@
 ---
 tags:
   - guides/testing
-  - core/net
+  - core/net/p2p/testing/test-peer
   - core/development
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:44 am
@@ -11,7 +11,7 @@ date modified: Monday, March 9th 2026, 12:20:44 am
 
 ## Overview
 
-Guide for testing P2P connections between the Electron app and the barebones test peer. The test peer is a lightweight Node.js CLI tool with identical libp2p configuration, enabling fast iteration without Electron overhead.
+Guide for testing P2P connections between the [[Electron]] app and the barebones test peer. The test peer is a lightweight Node.js CLI tool with identical [[libp2p]] configuration, enabling fast iteration without Electron overhead. See [[note-251110-barebones-test-peer-created]] for its origin story.
 
 ## Initial Setup
 
@@ -33,7 +33,7 @@ __One-time setup complete!__
 
 ### Scenario 1: mDNS Discovery + Manual Connection
 
-Test automatic peer discovery on local network.
+Test automatic [[P2P-Discovery|peer discovery]] on local network.
 
 #### Terminal 1: Start Test Peer
 
@@ -192,9 +192,9 @@ whatnext> list
 Ensure peer is discovered before attempting connection.
 
 __Check 2: NAT/Firewall__
-- WebRTC may fail behind strict NAT/firewall
+- [[WebRTC]] may fail behind strict NAT/firewall
 - Try on same subnet without VPN
-- Future: Relay servers will enable NAT traversal
+- Future: [[Circuit-Relay|Relay servers]] will enable NAT traversal
 
 __Check 3: Logs__
 
@@ -383,9 +383,11 @@ peer.stdout.on('data', (data) => {
 4. ✅ Test protocol URLs (`whtnxt://connect/<peerId>`)
 
 Then move to Phase 2:
-- Add relay server support for NAT traversal
-- Implement RxDB replication over P2P
+- Add [[Circuit-Relay|relay server]] support for NAT traversal
+- Implement [[RxDB-Replication|RxDB replication]] over P2P
 - Build automated integration tests
+
+See the [[Protocol-Implementation-Roadmap]] for the protocol work that follows, starting with the [[Handshake-Protocol]].
 
 ---
 
@@ -408,6 +410,7 @@ Then move to Phase 2:
 
 - Test peer README: `/test-peer/README.md`
 - Quick start: [[Quick-Start]]
+- Test peer learnings: [[note-251109-custom-protocol-barebones-peer]]
 
 ---
 

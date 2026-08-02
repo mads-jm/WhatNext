@@ -1,5 +1,7 @@
 ---
-tags: core/net/p2p/protocols/handshake
+tags:
+  - core/net/p2p/protocols/handshake
+  - core/net/p2p/protocols
 date created: Saturday, February 14th 2026, 11:36:56 am
 date modified: Monday, March 9th 2026, 12:20:46 am
 ---
@@ -8,7 +10,7 @@ date modified: Monday, March 9th 2026, 12:20:46 am
 
 ## What It Is
 
-The WhatNext handshake protocol (`/whatnext/handshake/1.0.0`) is exchanged immediately after a libp2p connection is established. It shares peer metadata so both sides know who they are talking to and what capabilities are supported.
+The WhatNext handshake protocol (`/whatnext/handshake/1.0.0`) is exchanged immediately after a [[libp2p]] connection is established. It shares peer metadata so both sides know who they are talking to and what capabilities are supported.
 
 ## Why We Use It
 
@@ -82,7 +84,7 @@ Replication bootstrap is claimed **once per (peer, connection)** via `BootstrapT
 
 ## Common Pitfalls
 
-- __Never reply on a new stream__ (#58). A reply on a fresh stream is indistinguishable from a fresh request at the far end, so the far end's own responder answers it — and so on, forever. Every lap also re-fired handshake completion, which re-triggered replication bootstrap: a pull storm that made stable 2-peer sessions impossible. Reply on the inbound stream; libp2p streams are half-closable, so `close()` on the write side leaves the stream readable for the reply.
+- __Never reply on a new stream__ (#58, [[epic-handshake-stabilization]]). A reply on a fresh stream is indistinguishable from a fresh request at the far end, so the far end's own responder answers it — and so on, forever. Every lap also re-fired handshake completion, which re-triggered replication bootstrap: a pull storm that made stable 2-peer sessions impossible. Reply on the inbound stream; libp2p streams are half-closable, so `close()` on the write side leaves the stream readable for the reply.
 - __The dialer needs a real completion path__. Before the fix, `initiateHandshake()` returned a placeholder and the dialer learned about its peer *only* because the loop re-entered its own responder. Removing the loop without making `initiateHandshake()` resolve with the remote's data would have traded a pull storm for silent no-sync.
 - __Mixed versions__: a peer still running the old reply-on-a-new-stream shape makes a current peer *inert, not storming* — the current side completes once (the old peer's "reply" arrives as a request) and its dialer times out. The old peer never completes.
 - __Protocol registration timing__: `node.handle()` must be called before `node.start()` or at least before any peer connects. Currently registered in `registerProtocols()` right after `node.start()`.
@@ -90,9 +92,11 @@ Replication bootstrap is claimed **once per (peer, connection)** via `BootstrapT
 ## Related Concepts
 
 - [[libp2p]]
+- [[P2P-Discovery]]
 - [[Electron-IPC]]
 - [[RxDB-Replication]]
 - [[Circuit-Relay]]
+- [[epic-handshake-stabilization]]
 
 ## References
 

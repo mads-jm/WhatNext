@@ -1,6 +1,10 @@
-# TapeC + WhatNext Integration Analysis
+---
+tags:
+  - architecture/adapters
+  - data/local-files
+---
 
-#architecture/integrations #data/local-files
+# TapeC + WhatNext Integration Analysis
 
 **Date**: 2026-03-22
 **Status**: Evaluated — Approach 2 (Partial Integration) recommended
@@ -9,7 +13,7 @@
 
 ## Context
 
-A buddy is building [TapeC](https://github.com/iBumpthis/tapec) — a lightweight self-hosted local media server (~1200 lines). WhatNext already has a well-defined import adapter architecture (Spotify is the first adapter) and explicitly plans local file support in Phase 3. This analysis evaluates four integration approaches to determine what value TapeC brings and when/how to act on it.
+A buddy is building [TapeC](https://github.com/iBumpthis/tapec) — a lightweight self-hosted local media server (~1200 lines). WhatNext already has a well-defined import adapter architecture ([[Spotify-Integration|Spotify]] is the first adapter) and explicitly plans local file support in Phase 3. This analysis evaluates four integration approaches to determine what value TapeC brings and when/how to act on it.
 
 ---
 

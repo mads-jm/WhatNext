@@ -1,6 +1,11 @@
-# Audio Acquisition Service
+---
+tags:
+  - specs/downloader
+  - architecture/adapters
+  - data/local-files
+---
 
-#architecture/adapters #data/local-files #data/download #ethics/artist-funding
+# Audio Acquisition Service
 
 **Date**: 2026-03-22
 **Status**: Spec — not yet implemented
@@ -14,7 +19,7 @@ Two features share the same schema migration and architectural surface:
 1. **Local File Import** — scan directories, parse filenames, import metadata for files already on disk
 2. **Cloud Playlist Download** — download audio from YouTube/SoundCloud/Bandcamp via pluggable backends, enrich with purchase links
 
-Both produce the same outcome: a track in RxDB with a `localFilePath` pointing to audio on disk. This spec merges them into a single schema migration, shared field conventions, and unified architecture.
+Both produce the same outcome: a track in [[RxDB]] with a `localFilePath` pointing to audio on disk. This spec merges them into a single schema migration, shared field conventions, and unified architecture.
 
 **Architecture**: Hybrid — core download engine in `/service/downloader/` (reusable without Electron), thin IPC bridge in Electron main process. Local file scanner lives in `app/src/main/media/`.
 
@@ -300,7 +305,7 @@ Standalone Node module. No Electron dependencies. Reusable outside the desktop a
 
 **New file**: `app/src/main/downloader/downloader-ipc.ts`
 
-Thin wrapper calling into `/service/downloader`. Registers all `download:*` and `purchase:*` IPC handlers.
+Thin wrapper calling into `/service/downloader`. Registers all `download:*` and `purchase:*` [[Electron-IPC|IPC]] handlers.
 
 ### 4.3 Audio Storage
 
@@ -708,3 +713,4 @@ Delivers the [[local-file-import-adapter]] spec with the unified schema.
 - [[architecture-whatnext]] — Import adapter pattern
 - [[the-walled-garden-cracks]] — Coordinator model and source abstraction philosophy
 - [[Spotify-Integration]] — Existing Spotify adapter (reference implementation)
+- [[epic-audio-acquisition-hardening]] — Follow-up epic: backend-execution tests and custom binary paths for this spec's backends

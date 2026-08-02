@@ -1,6 +1,11 @@
-# Local File Import Adapter
+---
+tags:
+  - specs/downloader
+  - architecture/adapters
+  - data/local-files
+---
 
-#architecture/adapters #data/local-files
+# Local File Import Adapter
 
 **Date**: 2026-03-22
 **Status**: Absorbed into [[audio-acquisition-service]] (Phase A)
@@ -12,7 +17,7 @@
 
 ## Context
 
-WhatNext's import adapter architecture abstracts streaming services behind a translation layer. Spotify is the first adapter. This spec defines the **local file import adapter** — the same pattern applied to files on disk. Users can import tracks from their filesystem into the library, add them to collaborative playlists, and share metadata via P2P.
+WhatNext's import adapter architecture abstracts streaming services behind a translation layer. [[Spotify-Integration|Spotify]] is the first adapter. This spec defines the **local file import adapter** — the same pattern applied to files on disk. Users can import tracks from their filesystem into the library, add them to collaborative playlists, and share metadata via P2P.
 
 **Scope**: Metadata import only. No playback, no streaming, no markers, no ID3 tag reading (future enhancements).
 
@@ -250,7 +255,7 @@ Update source filtering to use `source` field instead of `spotifyId` presence. A
 3. **Scan flow**: Click import → pick a folder with audio files → verify scanned list appears
 4. **Import flow**: Select tracks → import → verify they appear in Library with "Local" badge
 5. **Source filtering**: Library view tabs correctly count and filter by source
-6. **P2P safety**: Imported local tracks should replicate as metadata only (no file path shared to peers) — verify `localFilePath` doesn't leak via replication
+6. **P2P safety**: Imported local tracks should replicate as metadata only (no file path shared to peers) — verify `localFilePath` doesn't leak via [[RxDB-Replication|replication]]
 
 ---
 

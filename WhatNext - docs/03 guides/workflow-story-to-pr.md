@@ -270,7 +270,7 @@ Individual save points during implementation. Each commit should be a coherent u
 
 ### Commit Message Convention
 
-WhatNext uses __Conventional Commits__ with a rich body:
+WhatNext uses __Conventional Commits__ with a rich body (full guidelines: [[coding-standards]] §13):
 
 ```ts
 <type>(<scope>): <short summary, ≤72 chars>
@@ -417,9 +417,9 @@ In both cases: the human is the author of record for the PR.
 
 __The P2P protocol is off-limits for fully autonomous agentic work__ without explicit human approval. This covers:
 
-- `app/src/main/p2p/` and any libp2p stream handlers
-- `app/src/renderer/db/replication*.ts`
-- The handshake protocol (`app/src/main/handshake.ts`)
+- `app/src/main/p2p/` and any [[libp2p]] stream handlers
+- `app/src/renderer/db/replication*.ts` (see [[RxDB-Replication]])
+- The [[Handshake-Protocol|handshake protocol]] (`app/src/main/handshake.ts`)
 - Any changes to `app/src/shared/core/ipc-protocol.ts` that affect P2P message types
 
 Everything else may be implemented autonomously, subject to normal review.
@@ -560,6 +560,8 @@ New idea
 - [[whtnxt-nextspec]] — Full technical specification (source of truth for scope)
 - [[the-walled-garden-cracks]] — Vision document and coordinator model
 - [[ADR]] — Architecture Decision Record index
+- [[coding-standards]] — Coding and commit-style standards enforced by this workflow
+- [[srs-whatnext]] — Software Requirements Specification
 
 ---
 

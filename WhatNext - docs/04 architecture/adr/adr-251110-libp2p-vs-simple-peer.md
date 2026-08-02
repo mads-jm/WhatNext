@@ -2,6 +2,7 @@
 tags:
   - architecture/decisions
   - core/net
+  - core/net/p2p/libp2p
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:43 am
 ---
@@ -14,7 +15,7 @@ __Issue__: - P2P Library Selection
 
 ## Executive Summary
 
-__Question__: Should WhatNext use __libp2p__ (with webrtc-private-to-private) or __simple-peer__ for P2P networking?
+__Question__: Should WhatNext use __[[libp2p]]__ (with webrtc-private-to-private) or __simple-peer__ for P2P networking?
 
 __Recommendation__: __libp2p__ - Despite higher complexity, it aligns better with our long-term architecture and provides critical features we'll need.
 
@@ -49,10 +50,10 @@ __Confidence__: Medium-High (pending prototype validation)
 #### libp2p WebRTC Private-to-Private
 
 - __How it works__:
-  1. Peer A connects to Circuit Relay server, reserves slot
+  1. Peer A connects to [[Circuit-Relay|Circuit Relay]] server, reserves slot
   2. Peer B discovers Peer A's relay address
   3. Peers exchange SDP via relay (out-of-band signaling)
-  4. Direct WebRTC connection established via ICE/STUN
+  4. Direct [[WebRTC]] connection established via ICE/STUN
   5. Relay is discarded after direct connection succeeds
 
 - __Pros__:
@@ -94,7 +95,7 @@ __Analysis__: Both require external infrastructure (libp2p relay vs signaling se
 #### libp2p
 
 Provides multiple discovery mechanisms:
-- __mDNS__: Automatic local network peer discovery (same WiFi → instant connection)
+- __[[P2P-Discovery|mDNS]]__: Automatic local network peer discovery (same WiFi → instant connection)
 - __DHT (Kademlia)__: Distributed peer lookup without central directory
 - __PubSub__: Topic-based peer discovery (e.g., "WhatNext-Collaborative-Playlist")
 - __Bootstrap nodes__: Connect to known relay nodes to discover peers
@@ -215,7 +216,7 @@ peer.on('data', (rawData) => {
 });
 ```
 
-__Analysis__: RxDB replication will be __complex__. libp2p's stream multiplexing reduces cognitive load and prevents bugs (e.g., accidentally sending RxDB data to the wrong handler).
+__Analysis__: [[RxDB-Replication|RxDB replication]] will be __complex__. libp2p's stream multiplexing reduces cognitive load and prevents bugs (e.g., accidentally sending RxDB data to the wrong handler).
 
 ---
 
@@ -277,7 +278,7 @@ __Analysis__: WhatNext has __permission-based collaboration__ (playlist owners, 
 - __Memory__: ~20-40MB per node (includes DHT routing table)
 
 __Impact__:
-- Desktop app: Acceptable (Electron apps are typically 100-200MB)
+- Desktop app: Acceptable ([[Electron]] apps are typically 100-200MB)
 - Web app: Significant (but we're Electron-only for MVP)
 
 #### Simple-peer
@@ -556,6 +557,9 @@ __Time box__: 1 week maximum for POC
 
 ## References
 
+- Related concepts: [[libp2p]], [[WebRTC]], [[Circuit-Relay]], [[RxDB-Replication]]
+- Related ADR: [[adr-251110-electron-process-model]] — where the libp2p node runs
+- Implementation learnings: [[note-251110-libp2p-first-implementation-learnings]]
 - [libp2p WebRTC docs](https://docs.libp2p.io/concepts/transports/webrtc/)
 - [libp2p WebRTC private-to-private example](https://github.com/libp2p/js-libp2p-example-webrtc-private-to-private)
 - [simple-peer GitHub](https://github.com/feross/simple-peer)

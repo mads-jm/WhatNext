@@ -1,6 +1,10 @@
-# Companion Client
+---
+tags:
+  - architecture/companion
+  - core/sessions
+---
 
-#architecture/companion #p2p/companion
+# Companion Client
 
 ## What It Is
 
@@ -10,7 +14,7 @@ A lightweight web page served by the coordinator's Electron main process over lo
 
 ## Why We Use It
 
-Running libp2p in a mobile browser is fragile — WebRTC connections die when the phone app-switches between browser and Spotify. A simple HTTP + WebSocket server in the Electron main process gives us:
+Running [[libp2p]] in a mobile browser is fragile — [[WebRTC]] connections die when the phone app-switches between browser and Spotify. A simple HTTP + WebSocket server in the [[Electron]] main process gives us:
 
 - **Zero friction join**: scan QR, enter name, done
 - **App-switch resilience**: WebSocket reconnects seamlessly after tab suspension
@@ -23,9 +27,9 @@ Running libp2p in a mobile browser is fragile — WebRTC connections die when th
 Phone Browser ←→ WebSocket ←→ HTTP Server (Electron Main) ←→ IPC ←→ Renderer (RxDB + Spotify polling)
 ```
 
-1. Coordinator starts a session → `companion:start` IPC boots an HTTP + WS server on a dynamic port
+1. Coordinator starts a session → `companion:start` [[Electron-IPC|IPC]] boots an HTTP + WS server on a dynamic port
 2. Desktop displays QR code: `http://192.168.x.x:{port}/session`
-3. Participant scans QR → phone loads `index.html` with Tailwind CDN + vanilla JS
+3. Participant scans QR → phone loads `index.html` with [[Tailwind]] CDN + vanilla JS
 4. Participant enters display name → WebSocket connects → server sends `session:snapshot`
 5. Renderer pushes state changes (playback, tracks, participants) to main via IPC → main fans out to all WebSocket clients
 6. Phone → server: reactions, time requests, heartbeats
@@ -45,7 +49,7 @@ Phone Browser ←→ WebSocket ←→ HTTP Server (Electron Main) ←→ IPC ←
 
 ## Key Patterns
 
-- **Renderer pushes, main broadcasts**: Main process has no RxDB access, so the renderer's `useCompanionBridge` hook subscribes to RxDB changes and pushes them to main via `ipcRenderer.send()`. Main fans out to WebSocket clients.
+- **Renderer pushes, main broadcasts**: Main process has no [[RxDB]] access, so the renderer's `useCompanionBridge` hook subscribes to RxDB changes and pushes them to main via `ipcRenderer.send()`. Main fans out to WebSocket clients.
 - **Cached snapshot**: The server caches the last full snapshot so new/reconnecting clients get state instantly.
 - **Heartbeat + exponential backoff**: Phone sends heartbeat every 15s. On disconnect, reconnects with backoff (1s, 2s, 4s, max 10s). After reconnect, re-sends `join` to get a fresh snapshot.
 - **Debounced pushes**: Track and participant updates are debounced (500ms) to avoid flooding during bulk imports.
@@ -62,7 +66,9 @@ Phone Browser ←→ WebSocket ←→ HTTP Server (Electron Main) ←→ IPC ←
 
 - [[Sessions]] — the session state model this mirrors
 - [[libp2p]] — P2P layer for desktop-to-desktop; companion is the phone-accessible alternative
+- [[Electron-IPC]] — the renderer↔main bridge the state push rides on
 - [[adr-260315-companion-client-architecture]] — decision record for this approach
+- [[companion-client-spec]] — feature spec for the companion client
 
 ## References
 

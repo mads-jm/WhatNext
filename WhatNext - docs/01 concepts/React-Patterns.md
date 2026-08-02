@@ -222,6 +222,8 @@ Some hooks intentionally omit dependencies to avoid re-subscribing on every rend
 - [[Electron-IPC]] — How `window.electron` calls reach the main process
 - [[Sessions]] — Session hooks: `useSessionState`, `useTrackSource`, `usePlaybackState`
 - [[Tailwind-v4]] — Styling utilities applied in JSX
+- [[UI-Development]] — Renderer development guide
+- [[mvp-reality-react-quality]] — React quality audit of the MVP codebase
 
 ## References
 

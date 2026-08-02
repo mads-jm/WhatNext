@@ -234,7 +234,7 @@ __Goal__: Turn developer interface into user-friendly experience
 
 ## Related Concepts
 
-[[libp2p]] [[React-Patterns]] [[Electron-IPC]]
+[[libp2p]] [[React-Patterns]] [[Electron-IPC]] [[P2P-Testing]]
 
 ---
 
@@ -243,8 +243,8 @@ __Goal__: Turn developer interface into user-friendly experience
 - [libp2p Connection API](https://docs.libp2p.io/concepts/fundamentals/connections/)
 - [libp2p Stream Protocols](https://docs.libp2p.io/concepts/fundamentals/protocols-and-streams/)
 - [Multiaddr Specification](https://github.com/multiformats/multiaddr)
-- Previous Notes: `note-251110-libp2p-first-implementation-learnings.md`
-- Spec: `docs/whtnxt-nextspec.md` §2.3 (Backend & Network Architecture)
+- Previous Notes: [[note-251110-libp2p-first-implementation-learnings]]
+- Spec: [[whtnxt-nextspec]] §2.3 (Backend & Network Architecture)
 
 ## Conclusion
 

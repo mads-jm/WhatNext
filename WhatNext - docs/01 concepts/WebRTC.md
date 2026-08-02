@@ -1,8 +1,7 @@
 ---
 tags:
-  - core/net/webrtc
+  - core/net/p2p/transports/webrtc
   - core/net
-  - core/net/transports
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:45 am
 ---
@@ -13,7 +12,7 @@ date modified: Monday, March 9th 2026, 12:20:45 am
 
 WebRTC (Web Real-Time Communication) is a set of APIs and protocols for peer-to-peer data, audio, and video communication in browsers and native applications. It provides NAT traversal via ICE, STUN, and TURN, enabling direct connections between peers even behind firewalls.
 
-In WhatNext, WebRTC serves as one of the primary P2P transports through libp2p's `@libp2p/webrtc` package, enabling browser-compatible peer-to-peer connections.
+In WhatNext, WebRTC serves as one of the primary P2P transports through [[libp2p]]'s `@libp2p/webrtc` package, enabling browser-compatible peer-to-peer connections.
 
 ## Why We Use It
 
@@ -50,8 +49,8 @@ libp2p automatically selects WebRTC transport when:
 
 ### Connection Establishment Flow
 
-1. __Discovery__: Peer A discovers Peer B via mDNS or DHT
-2. __Signaling__: Exchange SDP offers/answers via Circuit Relay
+1. __Discovery__: Peer A discovers Peer B via mDNS or DHT (see [[P2P-Discovery]])
+2. __Signaling__: Exchange SDP offers/answers via [[Circuit-Relay|Circuit Relay]]
 3. __ICE Candidates__: Exchange network endpoint candidates
 4. __STUN__: Query public STUN server for NAT-translated addresses
 5. __Connection__: Establish direct encrypted data channel
@@ -282,7 +281,9 @@ transports: [
 
 - [[libp2p]] - P2P framework using WebRTC transport
 - [[P2P-Discovery]] - How peers find each other before WebRTC connection
+- [[Circuit-Relay]] - Signaling path and required transport dependency
 - [[Electron-IPC]] - Utility process running libp2p with WebRTC
+- [[note-251110-webrtc-node-js-compatibility-resolved]] - Historical note: how the Node.js compatibility question was settled
 
 ## References
 

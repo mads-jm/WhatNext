@@ -1,6 +1,11 @@
-# WhatNext: Beyond MVP — Design Language & UX Drivers
+---
+tags:
+  - ux/theming
+  - ux/ui/design-system
+  - mvp
+---
 
-#design/language #ux/post-mvp
+# WhatNext: Beyond MVP — Design Language & UX Drivers
 
 > Compiled from 11 high-fidelity view prototypes. These are the design decisions and interaction patterns that should guide post-MVP UX iteration.
 
@@ -24,7 +29,7 @@
 | `outline-variant` | `#48474a` | Borders, dividers (always low opacity) |
 | `error` | `#ff6e84` | Error states, downvotes |
 
-Full M3 token set is defined in the Tailwind config across prototypes — extract and formalize into a shared `tailwind.preset.ts`.
+Full M3 token set is defined in the [[Tailwind-v4|Tailwind]] config across prototypes — extract and formalize into a shared `tailwind.preset.ts`.
 
 ### Typography
 
@@ -246,7 +251,7 @@ Glass panels only for the player bar and mobile navigation — the two elements 
 - "Connected Peers" / "Connected Souls" (not "Online Users")
 - "Session Feed" (not "Chat")
 - "Memory" / "Memory Lane" (not "Comments")
-- "The Sonic Vault" / "Resilient Audio" (tagline exploration)
+- [[05 notes/resilient_nocturne/DESIGN|"The Sonic Vault"]] / "Resilient Audio" (tagline exploration)
 - "Digital Campfire" (session visualization metaphor)
 - "Queue Governance" (not "Queue Settings")
 
@@ -273,3 +278,11 @@ Prototypes use Google Material Symbols (Outlined, variable weight/fill). Current
 
 **Last Updated**: 2026-03-21
 **Source**: 11 HTML prototypes generated via design exploration session
+
+---
+
+## Related Concepts
+
+- [[Theme-System]]
+- [[UI-Development]]
+- [[Tailwind-v4]]

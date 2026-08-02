@@ -50,9 +50,10 @@ The MVP delivers the __Collaborative Playlist Accessory__ -- a system where one 
 
 ### 1.4 References
 
-- Technical Specification: `docs/whtnxt-nextspec.md` (source of truth)
-- Coordinator Model: `docs/07 stories/the-walled-garden-cracks.md`
-- Architecture Decisions: [[adr-251110-libp2p-vs-simple-peer]], [[adr-251110-electron-process-model]], [[adr-251109-database-storage-location]]
+- Technical Specification: [[whtnxt-nextspec]] (source of truth)
+- Architecture Design Document: [[architecture-whatnext]]
+- Coordinator Model: [[the-walled-garden-cracks]]
+- Architecture Decisions: [[adr-251110-libp2p-vs-simple-peer]], [[adr-251110-electron-process-model]], [[adr-251109-database-storage-location]], [[adr-260307-session-architecture-provider-abstraction]]
 - Concept Pages: [[libp2p]], [[RxDB]], [[RxDB-Replication]], [[Circuit-Relay]], [[Handshake-Protocol]], [[Electron-IPC]], [[WebRTC]], [[Electron]]
 
 ---
@@ -61,7 +62,7 @@ The MVP delivers the __Collaborative Playlist Accessory__ -- a system where one 
 
 ### 2.1 Product Perspective
 
-WhatNext occupies a unique position: it is not a streaming service, not a social network, and not a cloud application. It is a __local-first desktop tool__ that treats external streaming platforms as data sources rather than dependencies. The Coordinator model (documented in `the-walled-garden-cracks.md`) defines the interaction pattern:
+WhatNext occupies a unique position: it is not a streaming service, not a social network, and not a cloud application. It is a __local-first desktop tool__ that treats external streaming platforms as data sources rather than dependencies. The Coordinator model (documented in [[the-walled-garden-cracks]]) defines the interaction pattern:
 
 1. One person (Coordinator) connects to the source (e.g., Spotify).
 2. They import the playlist into WhatNext, normalizing it to the canonical format.
@@ -138,7 +139,7 @@ All P2P functionality is built on [[libp2p]] per [[adr-251110-libp2p-vs-simple-p
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-P2P-001 | The system shall discover peers on the local network using mDNS with service name `_whatnext._udp.local` and a broadcast interval of 1000ms. | Must |
+| FR-P2P-001 | The system shall discover peers on the local network using [[P2P-Discovery|mDNS]] with service name `_whatnext._udp.local` and a broadcast interval of 1000ms. | Must |
 | FR-P2P-002 | The system shall establish direct connections to discovered peers over TCP and WebSocket transports, listening on `127.0.0.1` with OS-assigned ports. | Must |
 | FR-P2P-003 | The system shall execute the [[Handshake-Protocol]] (`/whatnext/handshake/1.0.0`) upon connection, exchanging display name, application version, and capability list. | Must |
 | FR-P2P-004 | The system shall support a maximum of 10 simultaneous peer connections, with a dial timeout of 30 seconds. | Must |
@@ -165,7 +166,7 @@ All P2P functionality is built on [[libp2p]] per [[adr-251110-libp2p-vs-simple-p
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-IMPORT-001 | The system shall authenticate with the Spotify Web API using OAuth 2.0 with PKCE, initiated only by the Coordinator. | Must |
+| FR-IMPORT-001 | The system shall authenticate with the [[Spotify-Integration|Spotify Web API]] using OAuth 2.0 with PKCE, initiated only by the Coordinator. | Must |
 | FR-IMPORT-002 | The system shall fetch the Coordinator's Spotify playlists using the `/me/playlists` endpoint and playlist tracks using the `/playlists/{id}/items` endpoint (updated per Spotify's February 2026 API changes). | Must |
 | FR-IMPORT-003 | The system shall normalize imported Spotify tracks to the canonical `TrackDocType` format, mapping Spotify fields to: `title`, `artists[]`, `album`, `durationMs`, `spotifyId`, `addedAt`, `addedBy`. | Must |
 | FR-IMPORT-004 | The system shall implement a Spotify adapter conforming to a generic adapter interface, enabling future source adapters (e.g., MusicBrainz, local files) without architectural changes. | Must |
@@ -189,13 +190,13 @@ Replication synchronizes [[RxDB]] collections across peers using the `/whatnext/
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-SESSION-001 | The Coordinator shall be able to create a new collaboration session, generating a shareable session link. | Must |
+| FR-SESSION-001 | The Coordinator shall be able to create a new collaboration [[Sessions|session]], generating a shareable session link. | Must |
 | FR-SESSION-002 | Participants shall be able to join a session via the shared link with zero additional setup (no accounts, no API keys, no OAuth). | Must |
 | FR-SESSION-003 | The system shall display real-time presence information for all peers in the current session, including display name and connection status. | Must |
 | FR-SESSION-004 | The system shall track user identity via the `users` collection, distinguishing the local user (`isLocal: true`) from remote peers. | Must |
 | FR-SESSION-005 | The system shall support track interactions (vote, like, skip, play, queue, reaction) scoped to a user, track, and optionally a playlist, stored in the `trackInteractions` collection. | Must |
 | FR-SESSION-006 | The system shall update `lastSeenAt` for connected peers to reflect activity. | Must |
-| FR-SESSION-007 | The session architecture shall be platform-agnostic: a `TrackSource` interface abstracts where tracks come from, and a `PlaybackProvider` interface abstracts how music plays. These are discriminated union configs stored in Zustand session state. | Must |
+| FR-SESSION-007 | The session architecture shall be platform-agnostic per [[adr-260307-session-architecture-provider-abstraction]]: a `TrackSource` interface abstracts where tracks come from, and a `PlaybackProvider` interface abstracts how music plays. These are discriminated union configs stored in Zustand session state. | Must |
 | FR-SESSION-008 | The v1 `TrackSource` implementation shall poll a Spotify collaborative playlist (`spotify-collab` type) every 5 seconds, using `snapshotId` to skip reprocessing unchanged playlists, and map `added_by.id` to WhatNext user IDs via `resolveSpotifyUser()`. | Must (v1) |
 | FR-SESSION-009 | The v1 `PlaybackProvider` implementation shall control Spotify playback on the coordinator's device via the Spotify Web API (play, pause, skip, seek). Sessions shall also support a `none` playback provider for metadata-only operation without Spotify Premium. | Must (v1) |
 | FR-SESSION-010 | The system shall support comments on playlists and individual tracks, stored in the `comments` collection, with threading (parentId) and soft-delete (isDeleted) for P2P tombstoning. | Must |
@@ -439,7 +440,7 @@ comment |o--o{ comment : "parentId (replies)"
 
 ### 8.1 Spotify Web API
 
-__Purpose__: Playlist import and track metadata retrieval (Coordinator only).
+__Purpose__: Playlist import and track metadata retrieval (Coordinator only). See [[Spotify-Integration]] for the adapter implementation.
 
 __Authentication__: OAuth 2.0 with PKCE. No client secret stored in the application. Tokens stored locally and never shared with peers.
 
@@ -476,7 +477,7 @@ __IPC Channels__:
 
 __Purpose__: NAT traversal for peers that cannot establish direct connections.
 
-__Protocol__: libp2p circuit-relay-v2 (see [[Circuit-Relay]]).
+__Protocol__: [[libp2p]] circuit-relay-v2 (see [[Circuit-Relay]]).
 
 __Configuration__: Relay addresses configured in `P2P_CONFIG.RELAY.ADDRESSES`. Auto-connect on startup with retry (10s interval, max 5 retries).
 
@@ -507,19 +508,19 @@ __Status__: Not implemented in MVP. Planned for Phase 2+ as an additional adapte
 |------------|---------|---------|
 | Electron   | Latest stable | Desktop runtime (Chromium + Node.js). See [[Electron]]. |
 | Node.js    | v24.3.0 | Runtime for main and utility processes |
-| React      | 19.x | UI framework for renderer process |
+| React      | 19.x | UI framework for renderer process. See [[React]]. |
 | TypeScript | 5.x | Type safety across all process boundaries |
 | RxDB       | Latest stable | Reactive local database with replication support. See [[RxDB]]. |
 | libp2p     | Latest stable | P2P networking stack (transport, discovery, encryption). See [[libp2p]]. |
 | Vite       | Latest stable | Build tool and dev server for renderer |
 | Zustand    | Latest stable | Lightweight state management for non-persistent UI state |
-| Tailwind CSS | 4.x | Utility-first CSS framework |
+| Tailwind CSS | 4.x | Utility-first CSS framework. See [[Tailwind]], [[Tailwind-v4]]. |
 
 ### 9.3 Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Spotify further restricts API access | Medium | High | Adapter architecture isolates Spotify dependency; Coordinator model limits blast radius to one user per session |
-| libp2p browser/Electron compatibility issues | Medium | Medium | Utility process isolation (see [[adr-251110-electron-process-model]]); test-peer harness for rapid iteration |
+| libp2p browser/Electron compatibility issues | Medium | Medium | Utility process isolation (see [[adr-251110-electron-process-model]]); [[P2P-Testing|test-peer harness]] for rapid iteration |
 | LWW conflict resolution causes data loss | Low | Medium | Clear migration path to CRDTs; `updatedAt` timestamps on all mutable documents |
 | NAT traversal failures prevent remote connections | Medium | Medium | Multiple transport fallbacks (TCP, WebSocket, WebRTC, Circuit Relay); relay retry logic |

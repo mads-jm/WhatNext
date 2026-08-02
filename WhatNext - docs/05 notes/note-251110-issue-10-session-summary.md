@@ -382,7 +382,7 @@ __Total__: ~10-14 days (2-3 weeks)
 
 ## Related Concepts
 
-[[libp2p]] [[adr-251110-libp2p-vs-simple-peer]] [[adr-251110-electron-process-model]]
+[[libp2p]] [[P2P-Discovery]] [[adr-251110-libp2p-vs-simple-peer]] [[adr-251110-electron-process-model]]
 
 ---
 
@@ -391,7 +391,7 @@ __Total__: ~10-14 days (2-3 weeks)
 - Issue: Handle `whtnxt://connect` Custom Protocol
 - Spec §2.3: Backend & Network Architecture
 - Spec §4.3: Collaborative & Social Features
-- CLAUDE.md: Development Commands, Architecture Principles
+- `CLAUDE.md`: Development Commands, Architecture Principles
 - [libp2p Documentation](https://docs.libp2p.io/)
 - [Electron utilityProcess](https://www.electronjs.org/docs/latest/api/utility-process)
 

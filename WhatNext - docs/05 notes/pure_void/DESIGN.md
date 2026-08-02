@@ -1,3 +1,9 @@
+---
+tags:
+  - ux/theming
+  - ux/ui/design-system
+---
+
 # Design System Strategy: Pure Void OLED
 
 ## 1. Overview & Creative North Star
@@ -80,3 +86,11 @@ In a true black environment, shadows are invisible. We define depth through ligh
 
 ### Director's Closing Note
 This system is about the **energy of light**. Every element should feel like it was placed with surgical intent into a digital void. If the layout feels cluttered, delete a container and let the typography breathe. The void is your most powerful asset—don't fill it unless you have to.
+
+---
+
+## Related Concepts
+
+- [[Theme-System]] — the live theming implementation
+- [[05 notes/resilient_nocturne/DESIGN|resilient_nocturne theme design]]
+- [[05 notes/solar_resignation/DESIGN|solar_resignation theme design]]

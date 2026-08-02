@@ -1,12 +1,17 @@
-# Companion Client Implementation Spec
+---
+tags:
+  - specs/sessions
+  - architecture/companion
+  - core/sessions
+---
 
-#architecture/companion #specs
+# Companion Client Implementation Spec
 
 > Phone browser companion for WhatNext sessions — view-only with reactions and time requests.
 
 ## Overview
 
-The companion client enables phone participation in WhatNext sessions without installing anything. The coordinator's Electron app serves a mobile web page over local WiFi that mirrors the session state in real-time.
+The companion client enables phone participation in WhatNext [[Sessions|sessions]] without installing anything. The coordinator's Electron app serves a mobile web page over local WiFi that mirrors the session state in real-time.
 
 **ADR**: [[adr-260315-companion-client-architecture]]
 **Concept**: [[Companion-Client]]
@@ -43,7 +48,7 @@ All messages are JSON. Connection endpoint: `ws://{host}:{port}/ws`
 ## Join Flow
 
 1. Coordinator starts session in Electron app
-2. Renderer calls `window.electron.companion.start()` → IPC → main boots HTTP + WS server on port 0
+2. Renderer calls `window.electron.companion.start()` → [[Electron-IPC|IPC]] → main boots HTTP + WS server on port 0
 3. Server returns `{ port, localIp }` → renderer displays QR code with URL
 4. Participant scans QR → phone loads `index.html`
 5. Participant enters display name (stored in `localStorage` for reconnection)
@@ -74,7 +79,7 @@ All messages are JSON. Connection endpoint: `ws://{host}:{port}/ws`
 
 ## State Bridge Architecture
 
-RxDB lives in the renderer process. The companion server runs in the main process. The `useCompanionBridge` hook bridges them:
+[[RxDB]] lives in the renderer process. The companion server runs in the main process. The `useCompanionBridge` hook bridges them:
 
 ```
 RxDB (renderer) → useCompanionBridge hook → ipcRenderer.send() → main process → WebSocket broadcast
@@ -167,7 +172,7 @@ Server sends playback updates every 3s. Between updates, the phone client increm
 
 ## Future Enhancements
 
-- **Remote access via relay**: Proxy WebSocket through libp2p relay for cross-network participation
+- **Remote access via relay**: Proxy WebSocket through the [[Circuit-Relay|libp2p relay]] for cross-network participation
 - **QR code component**: Desktop UI component displaying scannable QR with local URL
 - **Richer interactions**: Track suggestions, voting, comments
 - **Participant auth**: Tie phone client to WhatNext user identity

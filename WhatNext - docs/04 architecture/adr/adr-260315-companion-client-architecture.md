@@ -1,13 +1,18 @@
+---
+tags:
+  - architecture/decisions
+  - architecture/companion
+  - core/electron
+---
+
 # ADR: Companion Client — Electron-Served HTTP + WebSocket for Phone Participants
 
 **Date**: 2026-03-15
 **Status**: Accepted
 
-#architecture/decisions #architecture/companion
-
 ## Context
 
-WhatNext sessions need phone participation: friends scanning a QR code to see what's playing, react, and request more time on a track. The coordinator runs the Electron desktop app with Spotify control; participants need a zero-install mobile experience.
+WhatNext [[Sessions|sessions]] need phone participation: friends scanning a QR code to see what's playing, react, and request more time on a track. The coordinator runs the [[Electron]] desktop app with [[Spotify-Integration|Spotify]] control; participants need a zero-install mobile experience.
 
 Key constraints:
 - Must survive phone app-switching (browser ↔ Spotify) — connections will be killed and must reconnect seamlessly
@@ -29,7 +34,7 @@ Phone Browser ←→ WebSocket ←→ HTTP + WS Server (Main Process) ←→ IPC
 - **WebSocket**: Bidirectional real-time channel on `/ws`
 - **Dynamic port**: OS-assigned (port 0) to avoid conflicts
 - **State bridge**: Renderer pushes RxDB/playback changes to main via IPC; main broadcasts to all WebSocket clients
-- **Mobile UI**: Vanilla HTML + JS + Tailwind CDN — no React, no build step, < 50KB
+- **Mobile UI**: Vanilla HTML + JS + [[Tailwind]] CDN — no [[React]], no build step, < 50KB
 
 ### Join Flow
 
@@ -56,7 +61,7 @@ Phone Browser ←→ WebSocket ←→ HTTP + WS Server (Main Process) ←→ IPC
 ## Alternatives Considered
 
 ### 1. libp2p in Mobile Browser
-- js-libp2p browser bundle is ~200KB+ and requires WebRTC
+- js-[[libp2p]] browser bundle is ~200KB+ and requires [[WebRTC]]
 - WebRTC connections in mobile browsers are fragile and die on tab suspension
 - Reconnection requires full ICE negotiation — slow and unreliable
 - **Rejected**: too heavy, too fragile for the use case
@@ -82,4 +87,5 @@ Phone Browser ←→ WebSocket ←→ HTTP + WS Server (Main Process) ←→ IPC
 ## References
 
 - Related concepts: [[Companion-Client]], [[Sessions]]
+- Spec: [[companion-client-spec]] — companion client feature spec
 - Previous decision: [[adr-260315-p2p-session-pairing]] — P2P pairing for desktop-to-desktop

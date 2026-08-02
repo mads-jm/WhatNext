@@ -443,7 +443,7 @@ Move to main process ONLY if:
 
 ## Related Concepts
 
-[[RxDB]] [[Electron]] [[adr-251109-database-storage-location]]
+[[RxDB]] [[Electron]] [[WebRTC]] [[adr-251109-database-storage-location]]
 
 ---
 

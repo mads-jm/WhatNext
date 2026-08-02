@@ -15,7 +15,7 @@ date modified: 2026-06-27
 **Depends on**: [[epic-replication-reliability]] (mutex/turn state syncs over replication)
 **Source audit**: [[report-260627-mvp-state-of-the-union]] §3
 
-> ⚠️ The playback mutex (#36) touches the P2P protocol — needs explicit human approval before agentic work (CLAUDE.md / `needs-p2p-review`).
+> ⚠️ The playback mutex (#36) touches the P2P protocol — needs explicit human approval before agentic work (`CLAUDE.md` / `needs-p2p-review`).
 
 > This epic builds the "who controls what, when" layer of a live session: a single-controller playback mutex with handoff (#36), conflict-free turn advancement across peers (#43), and a bidirectional companion-phone control path so phone participants can act, not just watch (#39). All three are currently *schema-and-scaffold only* — the fields, message types, and a renderer bridge exist, but nothing enforces ownership, deduplicates turn advances, or fans phone input back into the session.
 
@@ -32,7 +32,7 @@ A WhatNext session today has four participant roles (host / co-host / desktop pa
 
 3. **Companion phones are snapshot-only.** The companion server already *receives and handles* phone→server `reaction` and `time-request` messages (`app/src/main/companion/companion-server.ts:191`, `:211`; ack at `:434`) and the protocol defines them (`app/src/main/companion/companion-protocol.ts:71-72`). But the renderer hook that would surface those events into session logic — `app/src/renderer/hooks/useCompanionBridge.ts` — is **orphaned**: it is never imported anywhere (confirmed by grep; flagged in [[dead-code-audit-260322]]). `CompanionSharePanel.tsx` starts the server directly but does not consume reactions, time-requests, or push host-side actions. So a phone can *send* a reaction and the desktop will broadcast it to other phones, but nothing in the WhatNext session (reactions feed, turn timer, queue) reacts to it.
 
-Session state lives in the navigation store (Zustand, in-memory, per CLAUDE.md), while collaborative playlist data syncs via RxDB replication. Coordination state therefore has to choose its home deliberately: ephemeral control (who *currently* holds the mutex) vs. durable record (turn counters already on the playlist schema).
+Session state lives in the navigation store (Zustand, in-memory, per `CLAUDE.md`), while collaborative playlist data syncs via RxDB replication. Coordination state therefore has to choose its home deliberately: ephemeral control (who *currently* holds the mutex) vs. durable record (turn counters already on the playlist schema).
 
 ## Goals
 
@@ -48,7 +48,7 @@ Session state lives in the navigation store (Zustand, in-memory, per CLAUDE.md),
 - Replacing LWW with CRDTs (tracked under the conflict-resolution migration; LWW is the MVP baseline).
 - Multi-room / multiple simultaneous active sessions per app instance.
 - Companion *audio playback* on the phone — companions remain remote controllers/viewers, not playback devices.
-- Spotify-side write-back / Proxy Owner mode (Phase 2 per CLAUDE.md roadmap).
+- Spotify-side write-back / Proxy Owner mode (Phase 2 per `CLAUDE.md` roadmap).
 - Reworking the track-sourcing poll loop itself — see [[epic-track-sourcing]]; this epic only consumes its outputs.
 
 ## Proposed Approach
@@ -129,7 +129,7 @@ Treat coordination as a small, explicit **session control protocol** layered on 
 - [ ] Phone participants can react, request time, and perform role-permitted queue/playback actions that fan back into the session (#39).
 - [ ] All control actions are consistently role-gated across desktop and companion surfaces.
 - [ ] All distributed guarantees hold over RxDB replication ([[epic-replication-reliability]]).
-- [ ] Human review obtained for all P2P-protocol-touching changes (#36) per CLAUDE.md.
+- [ ] Human review obtained for all P2P-protocol-touching changes (#36) per `CLAUDE.md`.
 
 ## Risks & Open Questions
 

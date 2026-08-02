@@ -2,7 +2,7 @@
 tags:
   - specs/quality
   - architecture/review
-  - ui
+  - ux/react
 status: draft
 date created: 2026-06-27
 date modified: 2026-06-27
@@ -38,7 +38,7 @@ The renderer is ~45 `.tsx` components following a clean orchestrator-plus-sub-co
 ## Non-Goals
 
 - The broader refactor backlog from [[mvp-reality-react-quality]] (`<ArtworkImage>` dedup, modal standardisation, `session-store` extraction, visibility-based polling, `ReactionBar` batching). Worthwhile, but tracked separately — this epic is reliability-and-verification, not aesthetic cleanup.
-- CRDT migration, replication-protocol changes, or anything under the [[CLAUDE]] Agentic Work Policy P2P off-limits list. E2E *exercises* replication; it does not modify it.
+- CRDT migration, replication-protocol changes, or anything under the `CLAUDE.md` Agentic Work Policy P2P off-limits list. E2E *exercises* replication; it does not modify it.
 - New product features. This epic adds no user-visible capability beyond graceful error recovery.
 
 ## Proposed Approach
@@ -164,12 +164,13 @@ Test infrastructure already exists to build on: **Vitest** is the unit runner (`
 4. **#48** (E2E flows) — fourth; benefits from #50's testability; replication spec last within the issue.
 5. **#22** (packaging) — independent; runnable in parallel, but validate after the shell is stable.
 
-Cross-cutting: do alongside the feature epics rather than blocking them. None of this work touches the P2P protocol surface restricted by the [[CLAUDE]] Agentic Work Policy (E2E only observes replication).
+Cross-cutting: do alongside the feature epics rather than blocking them. None of this work touches the P2P protocol surface restricted by the `CLAUDE.md` Agentic Work Policy (E2E only observes replication).
 
 ## References
 
 - Audit: [[report-260627-mvp-state-of-the-union]] §5, [[mvp-reality-react-quality]]
 - Patterns: [[React-Patterns]]
+- Concepts: [[React]], [[Electron]]
 - Cleanup backlog: [[dead-code-audit-260322]]
 - Related epics: [[epic-spotify-resilience]], [[epic-audio-acquisition-hardening]]
 - Code: `app/src/renderer/index.tsx`, `app/src/renderer/components/Session/SessionView.tsx`, `app/src/renderer/components/Playlist/PlaylistView.tsx`, `app/src/renderer/db/services/playlist-service.ts`, `app/src/renderer/db/services/track-service.ts`, `app/src/main/companion/companion-server.ts`, `app/src/main/main.ts`, `app/package.json`, `app/playwright.config.ts`

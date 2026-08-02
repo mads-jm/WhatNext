@@ -1,6 +1,6 @@
 ---
 tags:
-  - report
+  - reports/review
   - process/backlog
   - mvp
 status: active
@@ -9,8 +9,6 @@ date modified: 2026-06-27
 ---
 
 # GitHub Issue Reconciliation — 2026-06-27
-
-#report #process/backlog #mvp
 
 > **Purpose**: The GitHub board ([WhatNext MVP - Electron Client POC](https://github.com/users/mads-jm/projects/2)) is stale — **all 25 open issues date from Jul–Aug 2025** and describe foundational work that is now largely shipped. This is the **plan-only** reconciliation (no GitHub writes performed yet, per direction). Companion to [[report-260627-mvp-state-of-the-union]]. Evidence cited at `file:line`.
 
@@ -98,7 +96,7 @@ Ordered to match near-term focus: **finish stubbed features → harden → test 
 
 1. Bulk-close the 18 done issues with evidence comments; WONT-FIX #29 (link ADR); reframe #22.
 2. Keep + retitle #26/#32/#33 with current paths (become N15/N13/N14).
-3. Open N1–N18 with labels above; **P2P-touching items (N1,N3,N5,N6,N7,N12,N13) flagged for human approval** per [[CLAUDE]] agentic policy.
+3. Open N1–N18 with labels above; **P2P-touching items (N1,N3,N5,N6,N7,N12,N13) flagged for human approval** per `CLAUDE.md` agentic policy.
 4. Seed `00 index/BACKLOG.kanban.md` to mirror the GitHub state inside Obsidian.
 5. Reconcile the GitHub Project board columns to match.
 

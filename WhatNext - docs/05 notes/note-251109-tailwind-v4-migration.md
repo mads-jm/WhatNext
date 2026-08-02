@@ -1,7 +1,7 @@
 ---
 tags:
-  - ux/ui/tailwind
-  - ux/ui/vite
+  - ux/styling/tailwind
+  - core/build-tools
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:34 am
 ---

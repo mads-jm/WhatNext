@@ -1,7 +1,7 @@
 ---
 tags:
   - guides/roadmap
-  - core/net/protocols
+  - core/net/p2p/protocols
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:44 am
 ---
@@ -14,13 +14,13 @@ __Purpose__: Step-by-step guide for implementing WhatNext P2P protocols
 
 ## Overview
 
-This document provides a detailed roadmap for implementing custom libp2p protocols in WhatNext. Each protocol builds on the previous one, teaching progressively more complex patterns.
+This document provides a detailed roadmap for implementing custom [[libp2p]] protocols in WhatNext. Each protocol builds on the previous one, teaching progressively more complex patterns. See also [[note-251110-libp2p-learning-roadmap]] for the original learning roadmap.
 
 ## Protocol 1: Handshake (`/whatnext/handshake/1.0.0`)
 
 ### Purpose
 
-Establish peer identity and capabilities when connection is made.
+Establish peer identity and capabilities when connection is made. The implemented protocol is documented in [[Handshake-Protocol]].
 
 ### What You'll Learn
 
@@ -295,14 +295,14 @@ Synchronize playlist changes between peers in real-time.
 ### What You'll Learn
 
 - CRDT concepts (Conflict-Free Replicated Data Types)
-- RxDB replication protocol
+- [[RxDB-Replication|RxDB replication]] protocol
 - Conflict resolution strategies
 - Event-driven updates
 - Operational transformation
 
 ### Implementation Steps
 
-1. __Integrate RxDB Replication__
+1. __Integrate [[RxDB]] Replication__
 
    ```typescript
    // Use RxDB's built-in P2P replication
@@ -473,7 +473,7 @@ export async function writeJSON(stream, obj) {
 
 ### Test with Multiple Peers
 
-- Use test-peer CLI
+- Use test-peer CLI (see [[P2P-Testing]])
 - Start multiple WhatNext instances
 - Test concurrent operations
 
@@ -511,4 +511,15 @@ By the end of this roadmap, you should be able to:
 Start with `Protocol 1: Handshake` above. It's the simplest and most important. Everything else builds on it.
 
 Good luck! 🚀
+
+---
+
+## Related Concepts
+
+- [[Handshake-Protocol]] — The implemented handshake protocol
+- [[libp2p]] — P2P networking library
+- [[RxDB-Replication]] — Replication over P2P streams
+- [[P2P-Testing]] — Testing protocols against the test peer
+- [[epic-file-transfer-guards]] — Hardening spec for file transfer
+- [[epic-handshake-stabilization]] — Hardening spec for the handshake
 

@@ -1,5 +1,8 @@
 ---
-tags: guides/setup
+tags:
+  - guides/setup
+  - core/development
+  - core/net
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:52 am
 ---
@@ -29,7 +32,7 @@ Navigate to "P2P Network" tab in the app. You should see:
 
 ### Workflow 1: Testing Basic Discovery
 
-__Goal__: Verify mDNS discovery works
+__Goal__: Verify [[P2P-Discovery|mDNS discovery]] works
 
 ```bash
 # Start app
@@ -262,9 +265,9 @@ window.electron.p2p.onNodeError(callback)
 ## Next Steps After Setup
 
 1. __Verify everything works__: Follow Workflow 1-5 above
-2. __Read the notes__: Start with `note-251112-p2p-development-interface-complete.md`
-3. __Explore libp2p docs__: <https://docs.libp2p.io/>
-4. __Plan first protocol__: Handshake is recommended (see v0.0.0 release summary)
+2. __Read the notes__: Start with [[note-251112-p2p-development-interface-complete]]
+3. __Explore [[libp2p]] docs__: <https://docs.libp2p.io/>
+4. __Plan first protocol__: [[Handshake-Protocol|Handshake]] is recommended (see [[note-251112-v0.0.0-release-summary|v0.0.0 release summary]] and the [[Protocol-Implementation-Roadmap]])
 5. __Document learnings__: Continue the notes pattern in `/docs/notes/`
 
 ## Getting Help
@@ -279,11 +282,12 @@ If you encounter issues:
 
 ## Related Documentation
 
-- `note-251112-v0.0.0-release-summary.md` - What's in this release
-- `note-251112-p2p-development-interface-complete.md` - Technical details
-- `note-251110-libp2p-first-implementation-learnings.md` - Initial P2P setup
+- [[note-251112-v0.0.0-release-summary]] - What's in this release
+- [[note-251112-p2p-development-interface-complete]] - Technical details
+- [[note-251110-libp2p-first-implementation-learnings]] - Initial P2P setup
+- [[P2P-Testing]] - Detailed P2P testing scenarios
 - `CLAUDE.md` - Project working guidelines
-- `whtnxt-nextspec.md` - Full specification
+- [[whtnxt-nextspec]] - Full specification
 
 ---
 

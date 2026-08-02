@@ -1,5 +1,7 @@
 ---
-tags: core/net/p2p/relay/circuit-relay-v2
+tags:
+  - core/net/p2p/relay/circuit-relay-v2
+  - core/net
 date created: Saturday, February 14th 2026, 11:36:18 am
 date modified: Monday, March 9th 2026, 12:20:46 am
 ---
@@ -8,13 +10,13 @@ date modified: Monday, March 9th 2026, 12:20:46 am
 
 ## What It Is
 
-Circuit relay v2 is a libp2p protocol that allows peers behind NAT or firewalls to communicate by routing traffic through a publicly-reachable relay server. Unlike relay v1, v2 is "limited" by design -- it enforces time and data limits on relayed connections, encouraging peers to upgrade to direct connections (e.g., via hole-punching) when possible.
+Circuit relay v2 is a [[libp2p]] protocol that allows peers behind NAT or firewalls to communicate by routing traffic through a publicly-reachable relay server. Unlike relay v1, v2 is "limited" by design -- it enforces time and data limits on relayed connections, encouraging peers to upgrade to direct connections (e.g., via hole-punching) when possible.
 
 ## Why We Use It
 
 WhatNext peers are desktop applications that are frequently behind NAT. Without a relay:
 - Peers on different LANs cannot discover or connect to each other
-- mDNS only works on the same local network
+- [[P2P-Discovery|mDNS]] only works on the same local network
 - Direct TCP/WS connections fail when both peers are behind NAT
 
 Circuit relay v2 provides the bridge for cross-network connectivity.
@@ -49,7 +51,7 @@ The `RelayManager` class (`app/src/utility/relay-manager.ts`) handles:
 ## Key Patterns
 
 - __Auto-connect on startup__: The P2P service connects to configured relays immediately after the node starts
-- __Relay hint in protocol URLs__: `whtnxt://connect/<peerId>?relay=<relayMultiaddr>` passes relay info for cross-network connections
+- __Relay hint in protocol URLs__: `whtnxt://connect/<peerId>?relay=<relayMultiaddr>` passes relay info for cross-network connections (see [[adr-260315-p2p-session-pairing|the session pairing ADR]] and [[p2p-session-pairing-spec|its spec]])
 - __Fallback ordering__: Try direct connection first, fall back to relay if needed
 
 ## Deploying a Relay
@@ -70,9 +72,11 @@ The `RelayManager` class (`app/src/utility/relay-manager.ts`) handles:
 ## Related Concepts
 
 - [[libp2p]]
+- [[P2P-Discovery]]
 - [[WebRTC]]
 - [[Handshake-Protocol]]
 - [[RxDB-Replication]]
+- [[adr-260315-p2p-session-pairing]]
 
 ## References
 

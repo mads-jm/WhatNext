@@ -407,10 +407,13 @@ See `app/src/renderer/db/services/user-service.ts` and [[Sessions]].
 ## Related Concepts
 
 - [[libp2p]] - P2P networking for RxDB replication
+- [[RxDB-Replication]] - The custom P2P replication protocol and LWW conflict resolution
 - [[Electron-IPC]] - Database operations in renderer context
 - [[React-Patterns]] - Reactive query patterns with React hooks
 - [[Sessions]] - Session participant attribution via RxDB user service
 - [[adr-251109-database-storage-location]] - Where RxDB data is stored
+- [[note-251109-rxdb-dev-mode]] - Historical note: dev-mode plugin setup
+- [[note-251109-rxdb-schema-validation-dexie-constraints]] - Historical note: Dexie index/validation constraints
 
 ## References
 

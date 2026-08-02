@@ -15,7 +15,7 @@ WhatNext's Spotify integration is a __read-and-control adapter__ — it reads pl
 
 All Spotify interaction is in the __main process__ behind IPC. The renderer never calls the Spotify API directly.
 
-> ⚠️ **Reliability status (2026-06-27)** — OAuth PKCE, token refresh, import, and playback control are **implemented and work for a Premium account**, but error handling is **naive** (see [[report-260627-mvp-state-of-the-union]] §2, issue N9). The Premium/204 guidance in *Common Pitfalls* below describes what the code *should* do — currently every non-200 throws a generic `Spotify API error {status}` (`spotify-client.ts:76–77`): **no 403/Premium detection, no 429/rate-limit backoff, no retry, no request timeout.** Token can also expire mid-flow (`main.ts:498` TODO). OAuth + playback paths are **untested.**
+> ⚠️ **Reliability status (2026-06-27)** — OAuth PKCE, token refresh, import, and playback control are **implemented and work for a Premium account**, but error handling is **naive** (see [[report-260627-mvp-state-of-the-union]] §2, issue N9). The Premium/204 guidance in *Common Pitfalls* below describes what the code *should* do — currently every non-200 throws a generic `Spotify API error {status}` (`spotify-client.ts:76–77`): **no 403/Premium detection, no 429/rate-limit backoff, no retry, no request timeout.** Token can also expire mid-flow (`main.ts:498` TODO). OAuth + playback paths are **untested.** Remediation is tracked in [[epic-spotify-resilience]].
 
 ## Why We Use It
 
@@ -208,6 +208,8 @@ Tokens are stored in Electron's `userData` directory. On first launch (or after 
 - [[Electron-IPC]] — All Spotify calls cross the IPC boundary
 - [[the-walled-garden-cracks]] — Context for why Spotify is a peripheral adapter
 - [[RxDB]] — Imported tracks and playlists are stored here
+- [[epic-spotify-resilience]] — Hardening spec for the naive error handling
+- [[adr-260307-session-architecture-provider-abstraction]] — Why Spotify sits behind provider interfaces
 
 ## References
 

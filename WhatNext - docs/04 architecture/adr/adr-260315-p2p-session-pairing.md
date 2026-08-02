@@ -13,11 +13,9 @@ date modified: Sunday, March 15th 2026, 12:00:00 am
 **Date**: 2026-03-15
 **Status**: Accepted
 
-#architecture/decisions
-
 ## Context
 
-WhatNext sessions v1 (shipped 2026-03-07) established the provider abstraction layer and Spotify-based track source. All collaboration happened on the same LAN: mDNS discovers peers automatically, and WebRTC connects them. No cross-network pairing existed.
+WhatNext [[Sessions|sessions]] v1 (shipped 2026-03-07, see [[adr-260307-session-architecture-provider-abstraction]]) established the provider abstraction layer and Spotify-based track source. All collaboration happened on the same LAN: [[P2P-Discovery|mDNS]] discovers peers automatically, and [[WebRTC]] connects them. No cross-network pairing existed.
 
 Milestone 1 (Remote Session Pairing) required answering four questions:
 
@@ -30,12 +28,12 @@ Milestone 1 (Remote Session Pairing) required answering four questions:
 
 ### 1. Circuit Relay + DCUtR, not DHT
 
-**Decision**: Use circuit relay v2 for initial cross-network connection and DCUtR for direct upgrade. Defer DHT-based peer discovery to Phase 2.
+**Decision**: Use [[Circuit-Relay|circuit relay v2]] for initial cross-network connection and DCUtR for direct upgrade. Defer DHT-based peer discovery to Phase 2.
 
 **Rationale**:
 - DHT requires a bootstrapped network of peers. WhatNext has no peer network yet.
 - Circuit relay is deterministic: the host's relay address is known at invite time.
-- DCUtR fires automatically after the relay connection is established — no additional code needed once the service is wired into libp2p config.
+- DCUtR fires automatically after the relay connection is established — no additional code needed once the service is wired into [[libp2p]] config.
 - The relay-based approach is simpler to reason about for an MVP.
 
 **Trade-off accepted**: Sessions require at least one peer to have a relay configured. Purely LAN sessions (mDNS) continue to work without a relay.
@@ -44,7 +42,7 @@ Milestone 1 (Remote Session Pairing) required answering four questions:
 
 **Decision**: Relay addresses are stored in `userData/relay-config.json` (via `relay-config-store.ts`) and managed by users through Settings > P2P. No relay addresses are hardcoded in source.
 
-**Rationale**: Hardcoding relay addresses in source code violates User Sovereignty. If the hardcoded relay goes offline or is discontinued, all users are broken with no recourse. User-configured relays mean:
+**Rationale**: Hardcoding relay addresses in source code violates [[the-walled-garden-cracks|User Sovereignty]]. If the hardcoded relay goes offline or is discontinued, all users are broken with no recourse. User-configured relays mean:
 - Users can self-host for full sovereignty
 - A community relay can be shared without depending on WhatNext infrastructure
 - Users are never silently broken by a service they don't control
@@ -63,7 +61,7 @@ The 4-character short code (`generateShortCode(id)` in `app/src/shared/core/prot
 
 ### 4. Replication Pull-Request Bridge: Utility → Main → Renderer Correlation
 
-**Decision**: When the utility process needs data from the renderer's RxDB (for responding to a remote peer's pull request), it sends a `REPLICATION_PULL_REQUEST` event to main, which forwards it to the renderer with a `requestId`. The renderer queries RxDB, calls `replication.respondToPullRequest(requestId, docs)`, which routes back to main and resolves a pending Promise in the utility process keyed by `requestId`.
+**Decision**: When the utility process needs data from the renderer's [[RxDB]] (for responding to a remote peer's pull request), it sends a `REPLICATION_PULL_REQUEST` event to main, which forwards it to the renderer with a `requestId`. The renderer queries RxDB, calls `replication.respondToPullRequest(requestId, docs)`, which routes back to main and resolves a pending Promise in the utility process keyed by `requestId`.
 
 **Rationale**: RxDB runs in the renderer (Chromium/IndexedDB). The utility process cannot access IndexedDB directly. The renderer must do the query. A simple request-response correlation with a `Map<requestId, {resolve, reject}>` and a 5-second timeout is sufficient. If the renderer does not respond in time, the utility resolves with an empty response so the remote peer is not left waiting forever.
 

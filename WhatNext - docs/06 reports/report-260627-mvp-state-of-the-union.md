@@ -1,6 +1,6 @@
 ---
 tags:
-  - report
+  - reports/review
   - architecture/review
   - mvp
 status: active
@@ -9,8 +9,6 @@ date modified: 2026-06-27
 ---
 
 # MVP State of the Union — 2026-06-27
-
-#report #architecture/review #mvp
 
 > **Purpose**: A ground-truth vetting of WhatNext after a stale period. Reconciles the optimistic "✅ done" status in [[index]] against actual code reality across the three MVP pillars — **playback, sessions, sourcing** — and confirms the Spotify API strategy. Companion document: [[report-260627-issue-reconciliation]].
 
@@ -38,7 +36,7 @@ The February 2026 Developer Mode restrictions are real, in force, and **not bein
 - **Extended Quota** now requires a registered business with **250,000 MAU** — effectively unreachable for an indie/sovereign app.
 - The gutted endpoints — **audio-features, audio-analysis, recommendations, artist top-tracks, new-releases, bulk track metadata, other-user profiles, artist followers/popularity, album labels, markets-for-tracks** — remain **dead for new/dev-mode apps with no replacement** ~18 months after the Nov-2024 announcement.
 
-**Implication for WhatNext:** the current Spotify adapter already uses **only allowed endpoints** — playlist-read, playback-control (Premium-gated), own-profile. It depends on **none** of the gutted endpoints. The [[the-walled-garden-cracks]] coordinator model isn't merely defensible; it is the only viable path. **No reason to shift away from provider decoupling — this confirms it.**
+**Implication for WhatNext:** the current [[Spotify-Integration|Spotify adapter]] already uses **only allowed endpoints** — playlist-read, playback-control (Premium-gated), own-profile. It depends on **none** of the gutted endpoints. The [[the-walled-garden-cracks]] coordinator model isn't merely defensible; it is the only viable path. **No reason to shift away from provider decoupling — this confirms it.**
 
 **Sources:**
 - [Feb 2026 migration guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)
@@ -67,9 +65,9 @@ The February 2026 Developer Mode restrictions are real, in force, and **not bein
 
 ## 3. SESSIONS — Architecturally Sound, Operationally Fragile
 
-> ⚠️ The P2P protocol is off-limits for autonomous agentic work per [[CLAUDE]] policy — all changes here require explicit human approval.
+> ⚠️ The P2P protocol is off-limits for autonomous agentic work per `CLAUDE.md` policy — all changes here require explicit human approval.
 
-**Implemented & working:** clean utility↔main↔renderer process model, mDNS discovery, circuit-relay + DCUtR remote pairing, length-framed handshake, turn-taking UI, reactions/comments, companion HTTP+WebSocket server. Architecture per [[adr-260307-session-architecture-provider-abstraction]] and [[adr-260315-p2p-session-pairing]] is genuinely good.
+**Implemented & working:** clean utility↔main↔renderer process model, [[P2P-Discovery|mDNS discovery]], [[Circuit-Relay|circuit-relay]] + DCUtR remote pairing, length-framed [[Handshake-Protocol|handshake]], turn-taking UI, reactions/comments, [[Companion-Client|companion]] HTTP+WebSocket server. Architecture per [[adr-260307-session-architecture-provider-abstraction]] and [[adr-260315-p2p-session-pairing]] is genuinely good.
 
 **Fragile / stubbed — the operational risk lives here:**
 - **Checkpoints are in-memory only** (`app/src/utility/p2p-service.ts:71`) → **full resync of all collections on every app launch**.
@@ -81,7 +79,7 @@ The February 2026 Developer Mode restrictions are real, in force, and **not bein
 - **Companion is snapshot-only** — bidirectional control wired in protocol but not in app logic (§4).
 - **File-transfer backpressure unhandled** for files >10MB (`app/src/utility/protocols/file-transfer.ts:463–466`).
 
-**Tests:** **zero** for p2p-service, replication, handshake, relay-manager, turn coordination. This is the highest-risk gap in the codebase — regressions here are invisible.
+**Tests:** **zero** for p2p-service, [[RxDB-Replication|replication]], handshake, relay-manager, turn coordination. This is the highest-risk gap in the codebase — regressions here are invisible.
 
 ---
 
@@ -107,7 +105,7 @@ The February 2026 Developer Mode restrictions are real, in force, and **not bein
 The vault is comprehensive but its **status claims run ahead of code reality**. Corrections needed (tracked, not yet applied beyond [[index]]):
 
 - **[[index]] "Active Development Status"** marked replication, sessions v1, co-host/mutex, and companion as plain ✅. Reality: feature-present but fragile/partially-stubbed. → **Updated by this pass** to reflect honest state.
-- **Sessions / RxDB-Replication concept pages** describe checkpoint sync, LWW, and the mutex as complete. They should note: in-memory checkpoints, string-LWW, unimplemented mutex. → *Pending.*
+- **[[Sessions]] / [[RxDB-Replication]] concept pages** describe checkpoint sync, LWW, and the mutex as complete. They should note: in-memory checkpoints, string-LWW, unimplemented mutex. → *Pending.*
 - **[[Companion-Client]]** should note bidirectional control is stubbed (snapshot-only today). → *Pending.*
 - Pre-existing candid audits remain accurate and worth re-reading: [[mvp-reality-react-quality]] (zero component tests, no error boundaries, god-orchestrator `SessionView`) and [[dead-code-audit-260322]].
 - **Vault hygiene:** `06 reports/` was empty (now seeded); `09 PRs/` and `09 milestones/` are empty while `10 PRs/` holds the PR index — folder numbering is duplicated and should be consolidated. → *Pending.*

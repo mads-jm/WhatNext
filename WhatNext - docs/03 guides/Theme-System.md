@@ -1,8 +1,14 @@
+---
+tags:
+  - guides/ui
+  - ux/styling/tailwind
+  - ux/theming
+  - architecture/patterns
+---
+
 # Theme System: CSS Variable Bridge Pattern
 
-#guides/ui #ux/styling/tailwind #ux/theming #architecture/patterns
-
-> A portable, runtime-switchable theme system using CSS custom properties as the single source of truth. Designed for Tailwind CSS v4 but applicable to any CSS-based stack. No framework lock-in — works with React, Svelte, vanilla JS, or a future Rust/WASM shell.
+> A portable, runtime-switchable theme system using CSS custom properties as the single source of truth. Designed for [[Tailwind-v4|Tailwind CSS v4]] but applicable to any CSS-based stack. No framework lock-in — works with [[React]], Svelte, vanilla JS, or a future Rust/WASM shell.
 
 ---
 
@@ -343,7 +349,7 @@ The `$schema` field enables version detection for forward compatibility. Import 
 
 ### Electron
 
-- **Chromium version**: Electron 25+ supports `color-mix()`. Electron 37+ supports `rgba(from var() r g b / alpha)` relative color syntax.
+- **Chromium version**: [[Electron]] 25+ supports `color-mix()`. Electron 37+ supports `rgba(from var() r g b / alpha)` relative color syntax.
 - **System theme detection**: Use `nativeTheme.shouldUseDarkColors` in main process, or `window.matchMedia('(prefers-color-scheme: dark)')` in renderer.
 - **Title bar**: If using custom window chrome, theme the close/minimize/maximize buttons via the same CSS vars.
 
@@ -420,6 +426,8 @@ app/src/styles/
 
 - [[UI-Development]] — Component patterns and layout conventions
 - [[coding-standards]] — Portable core vs. replaceable shell architecture
+- [[Tailwind-v4]] — The `@theme` block and v4 token system
+- [[note-251109-tailwind-v4-migration]] — Migration notes from the v4 upgrade
 
 ## References
 

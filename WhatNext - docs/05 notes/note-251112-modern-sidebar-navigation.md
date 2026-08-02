@@ -236,8 +236,8 @@ SECTION HEADER (uppercase, small)
 
 ## Related Documentation
 
-- `note-251112-p2p-development-interface-complete.md` - The comprehensive P2P UI this navigation serves
-- `note-251112-protocol-implementation-roadmap.md` - Protocols referenced in navigation
+- [[note-251112-p2p-development-interface-complete]] - The comprehensive P2P UI this navigation serves
+- [[Protocol-Implementation-Roadmap]] - Protocols referenced in navigation
 - `CLAUDE.md` - Obsidian inspiration for local-first philosophy
 
 ## Conclusion
@@ -250,6 +250,6 @@ __Ready for exploration and protocol development.__ 🎯
 
 ## Related Concepts
 
-[[React-Patterns]] [[Electron]]
+[[React-Patterns]] [[Electron]] [[UI-Development]]
 
 

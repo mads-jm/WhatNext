@@ -1,6 +1,11 @@
-# MVP Reality Check: React Quality & Best Practices
+---
+tags:
+  - architecture/review
+  - ux/react
+  - mvp
+---
 
-#architecture/review #react #quality
+# MVP Reality Check: React Quality & Best Practices
 
 **Date**: 2026-03-15
 **Scope**: Full renderer codebase audit
@@ -210,7 +215,7 @@ Custom hooks are well-structured and follow React conventions. `useRxDBQuery` an
 ## Related Concepts
 
 - [[React]]
-- [[Zustand]]
+- [[React-Patterns|Zustand]]
 - [[RxDB]]
 - [[Electron-IPC]]
-- [[P2P]]
+- [[libp2p|P2P]]

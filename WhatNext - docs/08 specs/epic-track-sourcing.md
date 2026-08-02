@@ -14,7 +14,7 @@ date modified: 2026-06-27
 **Depends on**: [[epic-replication-reliability]] (the P2P source rides on trustworthy replication)
 **Source audit**: [[report-260627-mvp-state-of-the-union]] §3
 
-> ⚠️ The P2P track source (#38) touches the P2P protocol — needs explicit human approval before agentic work (CLAUDE.md / `needs-p2p-review`). The Manual source (#37) does NOT.
+> ⚠️ The P2P track source (#38) touches the P2P protocol — needs explicit human approval before agentic work (`CLAUDE.md` / `needs-p2p-review`). The Manual source (#37) does NOT.
 
 > WhatNext's session layer already abstracts track input behind a `TrackSourceConfig` discriminated union (`spotify-collab` | `manual` | `p2p`), but only the `spotify-collab` arm is real. `manual` and `p2p` are no-op stubs, so today a session is *impossible* without one coordinator holding a Spotify Premium account — directly contradicting the user-sovereignty thesis. This epic finishes the abstraction so a session can be sourced from the local library / manual entry (#37) and from remote peers over replication (#38), making WhatNext usable with zero Spotify dependency.
 
@@ -105,7 +105,7 @@ Treat the two arms as a shared write-path with two different *inputs*:
 - [ ] A locally-added track is *not* double-counted when it round-trips through replication (dedup verified).
 - [ ] Turn-taking accounts for remote adds correctly across at least two peers.
 - [ ] The `p2p` arm surfaces a non-silent error/sync state when replication stalls (no silent track loss).
-- [ ] Explicit human P2P approval recorded before merge (CLAUDE.md Agentic Work Policy / `needs-p2p-review`).
+- [ ] Explicit human P2P approval recorded before merge (`CLAUDE.md` Agentic Work Policy / `needs-p2p-review`).
 - [ ] Behavior verified against persisted checkpoints (depends on #40) — a P2P session survives an app restart without losing previously-replicated tracks.
 
 ## Epic Acceptance Criteria (Definition of Done)

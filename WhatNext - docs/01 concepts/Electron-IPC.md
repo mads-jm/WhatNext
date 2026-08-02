@@ -13,7 +13,7 @@ date modified: Monday, March 9th 2026, 12:20:46 am
 
 Inter-Process Communication (IPC) in Electron enables secure communication between the main process (Node.js), preload scripts (bridge), and renderer processes (web pages). IPC is the foundation of Electron's security model, allowing renderers to access system capabilities without direct Node.js access.
 
-In WhatNext, IPC provides the bridge between the React UI (renderer) and system-level operations (main process), with an additional layer for P2P networking (utility process).
+In WhatNext, IPC provides the bridge between the [[React]] UI (renderer) and system-level operations (main process), with an additional layer for P2P networking (utility process) — see [[Electron]] for the process model.
 
 ## Why We Use It
 
@@ -409,6 +409,10 @@ All channel names are defined in `IPC_CHANNELS` in `app/src/shared/core/ipc-prot
 - [[libp2p]] - Utility process running P2P networking
 - [[React-Patterns]] - Using IPC in React components
 - [[Spotify-Integration]] - Full Spotify IPC surface and OAuth flow
+- [[RxDB-Replication]] - The replication traffic that crosses this IPC boundary
+- [[Companion-Client]] - Companion server state push rides the same renderer→main bridge
+- [[epic-ipc-trust-boundary]] - Hardening spec for validating input at the IPC boundary
+- [[adr-251110-electron-process-model]] - Decision record for the three-process split
 
 ## References
 

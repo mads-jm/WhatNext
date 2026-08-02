@@ -1,5 +1,7 @@
 ---
-tags: core/vision
+tags:
+  - core/vision
+  - stories/origin
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:53 am
 ---
@@ -10,26 +12,26 @@ date modified: Monday, March 9th 2026, 12:20:53 am
 
 ### 1.1. Project Goals & Core Concept
 
-__WhatNext__ is a resilient, user-centric music management platform designed for musical permanence and deep collaboration. The core concept is to architect a system where __[[User Sovereignty]]__ is the central, non-negotiable design principle. It achieves this through a decentralized, __[[Peer-to-Peer]]__ networking for playlist management and social interaction, complemented by a __[[Local-First Data]]__ storage model that gives users complete ownership and control over their musical lives.
+__WhatNext__ is a resilient, user-centric music management platform designed for musical permanence and deep collaboration. The core concept is to architect a system where __User Sovereignty__ is the central, non-negotiable design principle. It achieves this through a decentralized, __[[libp2p|Peer-to-Peer]]__ networking for playlist management and social interaction, complemented by a __Local-First Data__ storage model that gives users complete ownership and control over their musical lives.
 
 This project is a direct response to the systemic fragility of the centralized streaming ecosystem, where licensing volatility, economic curation, and abrupt service shutdowns can decimate a user's curated music collection. WhatNext is conceived as a necessary antidote, a sovereign tool designed for resilience and permanence.
 
 The primary goals are:
 
-- __[[User Sovereignty]]:__ To prioritize a [[Local-First Data]] architecture where the user's local database is the absolute source of truth. Data will be stored in a user-accessible, [[Plaintext Data Format]], ensuring longevity, transparency, and interoperability.
+- __User Sovereignty:__ To prioritize a __Local-First Data__ architecture where the user's local database is the absolute source of truth. Data will be stored in a user-accessible, __Plaintext Data Format__, ensuring longevity, transparency, and interoperability.
     
-- __Decentralized Collaboration:__ To build playlist management and social features on a [[Peer-to-Peer]] Network, allowing users to collaborate directly without reliance on a central server for core functionality. This enhances privacy, reduces latency, and eliminates central points of failure.
+- __Decentralized Collaboration:__ To build playlist management and social features on a [[libp2p|Peer-to-Peer]] Network, allowing users to collaborate directly without reliance on a central server for core functionality. This enhances privacy, reduces latency, and eliminates central points of failure.
     
 - __Rich & Intelligent Music Experience:__ To deliver a superior user experience that rivals the best proprietary tools. This includes deep metadata enrichment inspired by Roon, intelligent discovery powered by local AI analysis like Plexamp, and powerful organizational tools like Serato's "Smart Crates".
     
-- __Extensible & Resilient Foundation:__ To build a modular, extensible platform with a potential [[Plugin Architecture]], ensuring the application can adapt and grow over the long term. The architecture will be designed to be resilient against the transient nature of web services, providing a fundamentally safer and more reliable home for a user's music collection.
+- __Extensible & Resilient Foundation:__ To build a modular, extensible platform with a potential __Plugin Architecture__, ensuring the application can adapt and grow over the long term. The architecture will be designed to be resilient against the transient nature of web services, providing a fundamentally safer and more reliable home for a user's music collection.
     
 
 ### 1.2. Target Platform: Electron Desktop Application
 
 The initial target platform is a cross-platform desktop application built using __[[Electron]]__. This choice is critical for fulfilling the project's core mission:
 
-- __Direct Filesystem & System Access:__ Essential for the [[Local-First Data]] model, enabling the application to manage data directly on the user's machine and integrate deeply with the operating system.
+- __Direct Filesystem & System Access:__ Essential for the __Local-First Data__ model, enabling the application to manage data directly on the user's machine and integrate deeply with the operating system.
     
 - __Rich, Performant User Experience:__ Allows for the creation of a powerful and responsive UI, leveraging a well-defined process model to keep intensive tasks off the main UI thread, preventing sluggishness.
     
@@ -42,16 +44,16 @@ The initial target platform is a cross-platform desktop application built using 
 
 The application's "backend" is not a traditional monolithic server. Instead, it's a two-part system:
 
-1. __Decentralized P2P Network:__ The core of all collaborative and social functionality will be built on a [[Peer-to-Peer]] Network, likely leveraging __[[WebRTC]]__. This handles all user-to-user interactions, such as sharing playlists and collaborative editing. There is no central database of user data.
+1. __Decentralized P2P Network:__ The core of all collaborative and social functionality will be built on a [[libp2p|Peer-to-Peer]] Network, likely leveraging __[[WebRTC]]__. This handles all user-to-user interactions, such as sharing playlists and collaborative editing. There is no central database of user data.
     
-2. __[[Helper Backend Service]]:__ A lightweight backend service, written in __TypeScript__ on Node.js, will exist solely to perform tasks that cannot be decentralized. Its primary responsibility will be managing interactions with third-party, centralized APIs (e.g., authenticating with the Spotify API, fetching track metadata) and brokering initial P2P connections via a __[[Signaling Server]]__.
+2. __Helper Backend Service:__ A lightweight backend service, written in __TypeScript__ on Node.js, will exist solely to perform tasks that cannot be decentralized. Its primary responsibility will be managing interactions with third-party, centralized APIs (e.g., authenticating with the Spotify API, fetching track metadata) and brokering initial P2P connections via a __[[Circuit-Relay|Signaling Server]]__.
     
 
 This hybrid approach ensures that user data and social interactions remain sovereign and decentralized, while still allowing for powerful integrations with the wider music ecosystem.
 
 ### 1.4. Key Principle: Local-First Data with User-Accessible Plaintext Storage
 
-This is a foundational principle. Data is stored locally first, making the application fully functional offline. All core user data, especially playlists, will be stored in a user-accessible, [[Plaintext Data Format]] like __Structured Markdown with YAML Frontmatter__.
+This is a foundational principle. Data is stored locally first, making the application fully functional offline. All core user data, especially playlists, will be stored in a user-accessible, __Plaintext Data Format__ like __Structured Markdown with YAML Frontmatter__.
 
 - __User Control & Ownership:__ Users can directly access, read, edit, back up, or use version control (like Git) on their data files.
     
@@ -60,7 +62,7 @@ This is a foundational principle. Data is stored locally first, making the appli
 - __Transparency & Interoperability:__ The data format is human-readable and can be used by other scripts or applications.
     
 
-__Decision:__ We will proceed with __Structured Markdown with YAML Frontmatter__ as the primary [[Plaintext Data Format]]. It provides the ideal balance of structured, machine-readable metadata (in the frontmatter) and human-readable, rich-text notes and descriptions (in the Markdown body), aligning perfectly with the project's "searchable magazine" and deep organizational goals.
+__Decision:__ We will proceed with __Structured Markdown with YAML Frontmatter__ as the primary __Plaintext Data Format__. It provides the ideal balance of structured, machine-readable metadata (in the frontmatter) and human-readable, rich-text notes and descriptions (in the Markdown body), aligning perfectly with the project's "searchable magazine" and deep organizational goals.
 
 ### 1.5. External Integrations (Spotify)
 
@@ -70,7 +72,7 @@ The primary external integration will be with __Spotify__. This will be a "progr
     
 - Fetching rich track metadata from Spotify to enrich the local library.
     
-- Synchronizing playlist changes *from* WhatNext *to* Spotify using the [[Spotify Collaborative Sync Strategy]].
+- Synchronizing playlist changes *from* WhatNext *to* Spotify using the [[Spotify-Integration|Spotify Collaborative Sync Strategy]].
     
 - Controlling Spotify playback.
     
@@ -79,26 +81,26 @@ The primary external integration will be with __Spotify__. This will be a "progr
 
 The architecture is explicitly designed for future growth.
 
-- __[[Plugin Architecture]]:__ Inspired by Obsidian, a robust plugin architecture is a key long-term goal. This will allow the community to extend WhatNext with new features, data sources, and integrations, fostering a vibrant ecosystem.
+- __Plugin Architecture:__ Inspired by Obsidian, a robust plugin architecture is a key long-term goal. This will allow the community to extend WhatNext with new features, data sources, and integrations, fostering a vibrant ecosystem.
     
-- __Mobile Client:__ The [[Helper Backend Service]] can be leveraged by a future mobile client (e.g., using React Native). The [[Local-First Data]] and [[Peer-to-Peer]] Network principles will be adapted for mobile, likely using a local mobile database (like SQLite) and synchronizing with the user's desktop instance(s).
+- __Mobile Client:__ The __Helper Backend Service__ can be leveraged by a future mobile client (e.g., using React Native). The __Local-First Data__ and [[libp2p|Peer-to-Peer]] Network principles will be adapted for mobile, likely using a local mobile database (like SQLite) and synchronizing with the user's desktop instance(s).
     
 - __Abstracted Sync Engines:__ The project will monitor the evolution of schema-aware synchronization engines like Triplit or ElectricSQL. As these technologies mature, migrating to a more comprehensive solution could be a strategic move to further enhance capabilities.
     
 
 ## 2. System Architecture
 
-The WhatNext architecture is designed around three core principles: __[[Local-First Data]]__, __decentralized collaboration__, and __modular integration__ with external services. It separates the user-facing application from the collaborative logic and external API management.
+The WhatNext architecture is designed around three core principles: __Local-First Data__, __decentralized collaboration__, and __modular integration__ with external services. It separates the user-facing application from the collaborative logic and external API management.
 
 ### 2.1. High-Level Overview
 
 The system consists of three primary architectural components:
 
-1. __The [[Electron]] Client:__ The user's interface to their music world. It handles rendering the UI, managing the [[Local Database]], and interacting directly with the local filesystem.
+1. __The [[Electron]] Client:__ The user's interface to their music world. It handles rendering the UI, managing the [[RxDB|Local Database]], and interacting directly with the local filesystem.
     
-2. __The [[Peer-to-Peer]] Network Layer:__ The substrate for all collaboration. It allows multiple Electron clients to connect directly to each other to share and synchronize playlist data without a central server.
+2. __The [[libp2p|Peer-to-Peer]] Network Layer:__ The substrate for all collaboration. It allows multiple Electron clients to connect directly to each other to share and synchronize playlist data without a central server.
     
-3. __The [[Helper Backend Service]]:__ A lightweight, optional cloud service whose only roles are to assist with P2P connection discovery ([[Signaling Server]]) and to manage authenticated communication with centralized services like Spotify.
+3. __The Helper Backend Service:__ A lightweight, optional cloud service whose only roles are to assist with P2P connection discovery ([[Circuit-Relay|Signaling Server]]) and to manage authenticated communication with centralized services like Spotify.
 
 ```ts
 sequenceDiagram
@@ -144,7 +146,7 @@ The [[Electron]] application follows a standard multi-process model to ensure a 
         
     - Manages all application state and interaction logic.
         
-    - Hosts the [[Local Database]] instance and the P2P connection logic.
+    - Hosts the [[RxDB|Local Database]] instance and the P2P connection logic.
         
 - __Inter-Process Communication (IPC):__
     
@@ -155,11 +157,11 @@ The [[Electron]] application follows a standard multi-process model to ensure a 
 
 This is not a traditional backend but a combination of a decentralized network and a minimal helper service.
 
-- __Pathway A: [[Peer-to-Peer]] Network (WebRTC)__
+- __Pathway A: [[libp2p|Peer-to-Peer]] Network (WebRTC)__
     
     - __Description:__ This is the primary pathway for collaboration. WebRTC allows for direct, app-to-app communication of arbitrary data. It is highly suitable for replicating database state between peers in a collaborative session.
         
-    - __[[Signaling Server]]:__ A lightweight signaling server, hosted by the [[Helper Backend Service]], is required to allow peers to find each other and broker the initial connection.
+    - __[[Circuit-Relay|Signaling Server]]:__ A lightweight signaling server, hosted by the __Helper Backend Service__, is required to allow peers to find each other and broker the initial connection.
         
 - __Pathway B: Peer-to-Peer Network (Libp2p)__
     
@@ -167,7 +169,7 @@ This is not a traditional backend but a combination of a decentralized network a
         
     - __Fit:__ While powerful, this may be over-engineering for the initial scope but remains a viable path for future evolution towards a more truly distributed network.
         
-- __[[Helper Backend Service]] (TypeScript)__
+- __Helper Backend Service (TypeScript)__
     
     - __Role:__ A minimal, stateless API built with Node.js and a lightweight framework (e.g., Express, Fastify).
         
@@ -182,7 +184,7 @@ This is not a traditional backend but a combination of a decentralized network a
 
 ### 2.4. Data Model & Core Entities
 
-The core data entities will be stored in the [[Local Database]] and serialized to [[Plaintext Data Format]] files.
+The core data entities will be stored in the [[RxDB|Local Database]] and serialized to __Plaintext Data Format__ files.
 
 - __Playlist:__ `id`, `playlistName`, `description`, ordered list of `tracks`, `createdAt`, `updatedAt`, `linkedSpotifyId`, `tags`.
     
@@ -193,7 +195,7 @@ The core data entities will be stored in the [[Local Database]] and serialized t
 
 ### 2.5. Local Database & Persistence Strategy
 
-The choice of [[Local Database]] technology is critical for performance, reactivity, and enabling P2P synchronization.
+The choice of [[RxDB|Local Database]] technology is critical for performance, reactivity, and enabling P2P synchronization.
 
 - __Pathway 1: Reactive Database ([[RxDB]])__
     
@@ -241,7 +243,7 @@ This section translates the architectural concepts into tangible user-facing fea
 
 ### 4.1. Playlist Management
 
-- __Local Playlist Management:__ Full CRUD operations on local playlists, with all changes saved to the [[Local Database]] and reflected in the [[Plaintext Data Format]] files.
+- __Local Playlist Management:__ Full CRUD operations on local playlists, with all changes saved to the [[RxDB|Local Database]] and reflected in the __Plaintext Data Format__ files.
     
 - __Spotify Playlist Importing:__ A one-way import function to copy a Spotify playlist into a new, independent, local-first playlist in WhatNext.
     
@@ -255,7 +257,7 @@ This section translates the architectural concepts into tangible user-facing fea
 
 ### 4.3. Collaborative & Social Features
 
-This is the core of the WhatNext experience, built on the [[Peer-to-Peer]] Network.
+This is the core of the WhatNext experience, built on the [[libp2p|Peer-to-Peer]] Network.
 
 - __User Identity:__ Each user's identity is a cryptographic key pair, with the public key serving as their unique `peerId`.
     
@@ -269,7 +271,7 @@ This is the core of the WhatNext experience, built on the [[Peer-to-Peer]] Netwo
         
 - __Real-Time Collaboration:__ Changes to a shared playlist are replicated in near real-time to all connected collaborators.
     
-- __[[Conflict Resolution]]:__ The system is designed for eventual consistency.
+- __[[RxDB-Replication|Conflict Resolution]]:__ The system is designed for eventual consistency.
     
     - __Architecture Goal:__ The architecture will be built with __Conflict-Free Replicated Data Types (CRDTs)__ in mind to ensure concurrent edits are merged logically without data loss.
         
@@ -278,7 +280,7 @@ This is the core of the WhatNext experience, built on the [[Peer-to-Peer]] Netwo
 
 ### 4.4. Spotify Integration
 
-- __Authentication (OAuth 2.0):__ The app will use the Authorization Code with PKCE flow, coordinated by the [[Helper Backend Service]].
+- __Authentication (OAuth 2.0):__ The app will use the Authorization Code with PKCE flow, coordinated by the __Helper Backend Service__.
     
 - __API Usage:__ The client will use the access token to fetch user data, search for tracks, and control playback.
     
@@ -300,9 +302,9 @@ This section outlines the specific technologies, libraries, and implementation p
 
 ### 5.2. Services & External API Integration
 
-- __[[Helper Backend Service]]__: A minimal __Node.js__ server in __TypeScript__ using a lightweight framework like __Express.js__. Its responsibilities are limited to WebRTC signaling and Spotify OAuth management.
+- __Helper Backend Service__: A minimal __Node.js__ server in __TypeScript__ using a lightweight framework like __Express.js__. Its responsibilities are limited to WebRTC signaling and Spotify OAuth management.
     
-- __[[Spotify Collaborative Sync Strategy]]:__ The application will support multiple sync strategies to provide maximum flexibility and user choice. See [[#8.1. Spotify Integration Strategies]] for a detailed breakdown.
+- __[[Spotify-Integration|Spotify Collaborative Sync Strategy]]:__ The application will support multiple sync strategies to provide maximum flexibility and user choice. See [[#8.1. Spotify Integration Strategies]] for a detailed breakdown.
     
 
 ### 5.3. Build & Packaging
@@ -335,7 +337,7 @@ This roadmap prioritizes the core collaborative experience as the central featur
         
         - Rock-solid P2P connection flow (`whtnxt://`).
             
-        - __"Accessory Mode"__ Spotify sync ([[Spotify Integration Strategies]]).
+        - __"Accessory Mode"__ Spotify sync ([[#8.1. Spotify Integration Strategies|Spotify Integration Strategies]]).
             
         - A social layer for turn-taking or a shared queue.
             
@@ -351,7 +353,7 @@ This roadmap prioritizes the core collaborative experience as the central featur
         
         - Direct track management from within the WhatNext UI.
             
-        - Implementation of __"True Collaborate Mode"__ and __"Proxy Mode"__ sync strategies ([[Spotify Integration Strategies]]).
+        - Implementation of __"True Collaborate Mode"__ and __"Proxy Mode"__ sync strategies ([[#8.1. Spotify Integration Strategies|Spotify Integration Strategies]]).
             
         - Creation of local-only, unlinked playlists.
             
@@ -367,9 +369,9 @@ This roadmap prioritizes the core collaborative experience as the central featur
             
         - Local, privacy-preserving LLM integration for semantic search.
             
-        - A public [[Plugin Architecture]].
+        - A public __Plugin Architecture__.
             
-    - __Success Metric:__ WhatNext becomes a premier tool for managing both streaming and local music libraries, with unique, AI-driven discovery features that respect [[User Sovereignty]].
+    - __Success Metric:__ WhatNext becomes a premier tool for managing both streaming and local music libraries, with unique, AI-driven discovery features that respect __User Sovereignty__.
         
 
 ## 8. Appendix

@@ -59,7 +59,7 @@ __The P2P connection management service will run as a separate Electron utility 
 
 This aligns with:
 - __Spec §2.3__: Helper service for P2P signaling (this utility process is the MVP precursor)
-- __CLAUDE.md__: "Minimize IPC surface" (utility process encapsulates all P2P complexity)
+- `CLAUDE.md`: "Minimize IPC surface" (utility process encapsulates all P2P complexity)
 - __Security Posture__: Further isolation from renderer sandbox
 
 ### Architecture Diagram
@@ -357,7 +357,7 @@ This architecture is successful if:
 
 - Issue: Handle `whtnxt://connect` Custom Protocol
 - Spec §2.3: Backend & Network Architecture
-- CLAUDE.md: Architecture Principles (IPC Communication)
+- `CLAUDE.md`: Architecture Principles (IPC Communication)
 - Electron Docs: [Utility Process](https://www.electronjs.org/docs/latest/api/utility-process)
-- [note-251109-custom-protocol-barebones-peer.md](note-251109-custom-protocol-barebones-peer.md): Test peer architecture
+- [[note-251109-custom-protocol-barebones-peer]]: Test peer architecture
 

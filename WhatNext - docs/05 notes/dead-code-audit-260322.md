@@ -1,6 +1,10 @@
-# Dead Code Audit — 2026-03-22
+---
+tags:
+  - architecture/review
+  - core/development
+---
 
-#chore/cleanup
+# Dead Code Audit — 2026-03-22
 
 ## Files to Delete
 
@@ -56,4 +60,4 @@
 
 - `app/src/renderer/db/dev-helpers.ts` attaches `window.resetRxDB` / `window.nukeRxDB` — imported as side-effect in `database.ts`. Intentional dev tooling, not dead code.
 - `app/src/styles/fonts.css` is deleted in git but no references remain — migration to `main.css` Google Font imports is complete.
-- Companion server (`app/src/main/companion/`) is wired into main.ts and preload.ts — it's live code, only the **renderer hook** (`useCompanionBridge.ts`) is orphaned.
+- [[Companion-Client|Companion server]] (`app/src/main/companion/`) is wired into main.ts and preload.ts — it's live code, only the **renderer hook** (`useCompanionBridge.ts`) is orphaned.

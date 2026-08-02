@@ -3,7 +3,7 @@ tags:
   - specs/p2p
   - core/net/p2p/relay
   - core/sessions
-  - core/sessions/replication
+  - data/rxdb/replication
 date created: Sunday, March 15th 2026, 12:00:00 am
 date modified: Sunday, March 15th 2026, 12:00:00 am
 ---
@@ -14,7 +14,7 @@ date modified: Sunday, March 15th 2026, 12:00:00 am
 **ADR**: [[adr-260315-p2p-session-pairing]]
 **Status**: Shipped
 
-This spec covers the implementation of remote session pairing across three milestones: cross-network relay connectivity (M1), RxDB replication wired to sessions (M2), and the co-host/playback mutex model (M3).
+This spec covers the implementation of remote session pairing across three milestones: cross-network [[Circuit-Relay|relay]] connectivity (M1), [[RxDB-Replication|RxDB replication]] wired to [[Sessions|sessions]] (M2), and the co-host/playback mutex model (M3).
 
 ---
 
@@ -48,7 +48,7 @@ The relay peer ID appears in every invite URL. If it changed, previously shared 
 
 **File**: `app/src/utility/relay-manager.ts`
 
-`RelayManager` is instantiated once in `p2p-service.ts` after the libp2p node starts. It accepts a list of multiaddr strings and:
+`RelayManager` is instantiated once in `p2p-service.ts` after the [[libp2p]] node starts. It accepts a list of multiaddr strings and:
 
 1. Dials each relay address using `node.dial(multiaddr)`
 2. On connection success, emits `{ status: 'connected', addr }` via the provided status callback

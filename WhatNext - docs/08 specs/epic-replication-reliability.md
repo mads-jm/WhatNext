@@ -15,7 +15,7 @@ date modified: 2026-06-27
 **Depends on**: none (foundational — other epics depend on this)
 **Source audit**: [[report-260627-mvp-state-of-the-union]] §3
 
-> ⚠️ Touches the P2P protocol — needs explicit human approval before agentic work (CLAUDE.md / `needs-p2p-review`).
+> ⚠️ Touches the P2P protocol — needs explicit human approval before agentic work (`CLAUDE.md` / `needs-p2p-review`).
 
 > WhatNext's P2P RxDB replication exists end-to-end but is happy-path-only and has **zero test coverage**. Checkpoints live in memory, pull requests silently drop data on a 5s timeout, conflict resolution leans on string comparison, the relay reconnect path has no backoff or fallback, and the v0 fileshare transfer ignores backpressure for large files. This epic makes replication *trustworthy* — durable, observable, and tested — so that downstream epics ([[epic-track-sourcing]] P2P track source #38, [[epic-session-coordination]] remote sessions) can build on a foundation that does not lose data.
 
@@ -52,7 +52,7 @@ Treat replication as a system with four reliability surfaces — **durability** 
 
 Sequencing rationale: #42 (LWW) and #40 (checkpoints) are the lowest-risk, highest-value data-integrity fixes and should land first. #41 (timeout/backoff) depends on a clear policy decision about what "synced" means and is best done once checkpoints are durable. #47 (fileshare backpressure) is orthogonal and can proceed in parallel. #32 is continuous.
 
-All work here is **`needs-p2p-review`** and requires human approval before agentic implementation (CLAUDE.md Agentic Work Policy: `app/src/utility/protocols/`, `replication-handler.ts`, handshake, and P2P IPC message types).
+All work here is **`needs-p2p-review`** and requires human approval before agentic implementation (`CLAUDE.md` Agentic Work Policy: `app/src/utility/protocols/`, `replication-handler.ts`, handshake, and P2P IPC message types).
 
 ## Work Breakdown
 
@@ -162,7 +162,7 @@ All work here is **`needs-p2p-review`** and requires human approval before agent
 - **Open: checkpoint store location.** JSON file under `userData` (main-owned) vs a dedicated RxDB collection (renderer-owned)? Trade-off: file is simpler and decoupled; RxDB collection is consistent with local-first but couples checkpoints to the replicated DB. *Needs a decision.*
 - **Open: does fixing the silent-empty timeout require a wire-protocol change?** If the requester must distinguish "no changes" from "peer timed out", the response shape may need a status field — potentially a `1.0.0 → 1.1.0` bump. Confirm backward-compat before changing the protocol id.
 - **Open: clock-skew policy.** LWW fundamentally trusts wall clocks. Do we clamp implausibly-future timestamps, or accept the skew and rely on the CRDT migration? Document the chosen posture.
-- **Risk: agentic policy.** This entire epic is inside the P2P off-limits zone; no autonomous merge — every PR needs a human reviewer (CLAUDE.md).
+- **Risk: agentic policy.** This entire epic is inside the P2P off-limits zone; no autonomous merge — every PR needs a human reviewer (`CLAUDE.md`).
 - **Risk: fileshare LOC.** v0 is ~4.6k untested LOC; backpressure changes may surface latent bugs. Tests (#32) must land *before or with* the #47 change.
 - **Open: heartbeat reuse.** Can the existing `ping` protocol (`app/src/utility/protocols/ping.ts`) double as the liveness heartbeat, or does it need a separate keepalive? Decide in #41 design.
 

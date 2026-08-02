@@ -14,7 +14,7 @@ __Status__: Accepted
 
 ## Context
 
-WhatNext is approaching MVP with a Sessions feature — live collaborative playlist building with turn-taking, playback, and per-user attribution. The immediate implementation targets Spotify (collaborative playlists, playback control, `added_by` attribution), but Spotify's February 2026 API restrictions (Premium required, 5-user cap, `POST /users/{id}/playlists` removed, metadata fields stripped) reinforce that coupling to any single platform contradicts the project's core values of [[User Sovereignty]] and [[Local-First Data]].
+WhatNext is approaching MVP with a [[Sessions]] feature — live collaborative playlist building with turn-taking, playback, and per-user attribution. The immediate implementation targets [[Spotify-Integration|Spotify]] (collaborative playlists, playback control, `added_by` attribution), but Spotify's February 2026 API restrictions (Premium required, 5-user cap, `POST /users/{id}/playlists` removed, metadata fields stripped) reinforce that coupling to any single platform contradicts the project's core values of [[the-walled-garden-cracks|user sovereignty]] and [[whtnxt-nextspec|local-first data]].
 
 The question: how do we ship a Spotify-powered session experience while architecting for platform independence from day one?
 
@@ -60,7 +60,7 @@ __v1 implementation:__ `SpotifyCollabSource` — polls a Spotify collaborative p
 
 __Future implementations:__
 - `ManualTrackSource` — host types track info or pastes a URL
-- `P2PTrackSource` — participants running WhatNext submit tracks via libp2p
+- `P2PTrackSource` — participants running WhatNext submit tracks via [[libp2p]]
 - `AppleMusicSource` — same polling pattern, different API
 - `LocalFileSource` — pick tracks from local audio library
 
@@ -193,6 +193,8 @@ WP1+WP2 parallelizable. WP3-WP6 sequential.
 
 ## Related Concepts
 
+- [[Sessions]] — Sessions concept page (lifecycle, turn-taking, social layer)
+- [[Spotify-Integration]] — Spotify adapter and API surface
 - [[the-walled-garden-cracks]] — Coordinator model and service abstraction vision
 - [[whtnxt-nextspec]] — Full technical specification
 - [[architecture-whatnext]] — System architecture (adapter pattern, P2P, local-first)

@@ -5,13 +5,10 @@ status: Living Document
 created: 2026-02-14
 updated: 2026-03-08
 tags:
-  - "#architecture/design"
-  - "#core/architecture"
-  - "#core/net/p2p/libp2p"
-  - "#data/rxdb"
-  - "#integrations/spotify"
   - architecture/design
-  - core/architecture
+  - core/net/p2p/libp2p
+  - data/rxdb
+  - integrations/spotify
 date created: Sunday, February 15th 2026, 7:36:38 am
 date modified: Monday, March 9th 2026, 12:20:42 am
 ---
@@ -72,7 +69,7 @@ This architecture covers the MVP (Phase 1: Collaborative Playlist Accessory), in
 
 ### 2.1 User Sovereignty
 
-The user's local database is the absolute source of truth. All external services (Spotify, future Apple Music, MusicBrainz) are enhancement layers that feed into the local store. Data is stored in user-accessible formats (RxDB over IndexedDB for runtime, with planned Markdown + YAML frontmatter plaintext export) so users can read, edit, and migrate their data without any WhatNext tooling.
+The user's local database is the absolute source of truth. All external services (Spotify, future Apple Music, MusicBrainz) are enhancement layers that feed into the local store. Data is stored in user-accessible formats ([[RxDB]] over IndexedDB for runtime, with planned Markdown + YAML frontmatter plaintext export) so users can read, edit, and migrate their data without any WhatNext tooling.
 
 ### 2.2 Local-First
 
@@ -80,7 +77,7 @@ WhatNext is fully functional offline. The application reads from and writes to t
 
 ### 2.3 Decentralized Collaboration
 
-Peer-to-peer networking via libp2p enables collaborative playlist management without routing data through a central server. A helper service exists only for NAT traversal (circuit relay signaling) and OAuth coordination -- never for storing or processing user data.
+Peer-to-peer networking via [[libp2p]] enables collaborative playlist management without routing data through a central server. A helper service exists only for NAT traversal ([[Circuit-Relay|circuit relay]] signaling) and OAuth coordination -- never for storing or processing user data.
 
 ### 2.4 Platform Abstraction
 
@@ -188,7 +185,7 @@ end note
 The main process runs in a Node.js context and is responsible for:
 
 - __Window management__: Creating and configuring `BrowserWindow` instances
-- __IPC routing__: Bridging communication between the renderer and utility processes
+- __[[Electron-IPC|IPC routing]]__: Bridging communication between the renderer and utility processes
 - __Spotify OAuth__: Handling the PKCE flow (code verifier generation, browser launch, callback processing, token exchange)
 - __Utility process lifecycle__: Spawning the P2P utility process via `utilityProcess.fork()`, monitoring its health, relaying messages
 - __Protocol URL handling__: Registering and processing `whtnxt://` custom protocol URLs (peer connections and Spotify callbacks)
@@ -196,7 +193,7 @@ The main process runs in a Node.js context and is responsible for:
 
 ### 4.2 Renderer Process (`app/src/renderer/`)
 
-The renderer runs React 19 in a sandboxed Chromium environment:
+The renderer runs [[React|React 19]] in a sandboxed Chromium environment:
 
 - __React UI__: Component tree for playlists, library, Spotify import, session views, settings, social (comments/reactions)
 - __Zustand stores__: Non-persistent UI state, split into two stores:
@@ -210,9 +207,9 @@ The renderer runs React 19 in a sandboxed Chromium environment:
 
 The utility process is a separate Node.js process spawned by Electron's `utilityProcess.fork()`:
 
-- __libp2p node__: Full P2P networking stack with TCP, WebSockets, WebRTC, and circuit relay transports
-- __Protocol handlers__: Handshake and replication protocol implementations
-- __Connection management__: Peer discovery via mDNS, connection lifecycle, relay connectivity
+- __libp2p node__: Full P2P networking stack with TCP, WebSockets, [[WebRTC]], and circuit relay transports
+- __Protocol handlers__: [[Handshake-Protocol|Handshake]] and replication protocol implementations
+- __Connection management__: Peer discovery via [[P2P-Discovery|mDNS]], connection lifecycle, relay connectivity
 - __Communication__: Receives commands from main via `process.parentPort` (MessagePort), sends events back
 
 ### 4.4 IPC Message Types
@@ -575,7 +572,7 @@ RH -> LDB : Apply documents
 
 __Current strategy: Last-Write-Wins (LWW)__
 
-Each `ReplicationDocument` carries an `updatedAt` ISO timestamp. When two peers modify the same document concurrently, the document with the later `updatedAt` value wins. This is simple and sufficient for the MVP, where collaborative sessions are typically synchronous.
+Each `ReplicationDocument` carries an `updatedAt` ISO timestamp. When two peers modify the same document concurrently, the document with the later `updatedAt` value wins. This is simple and sufficient for the MVP, where collaborative sessions are typically synchronous. See [[RxDB-Replication]] for protocol details.
 
 __Migration path: CRDTs__
 
@@ -697,7 +694,7 @@ end note
 
 ### 7.4 Protocol Specifications
 
-__Handshake Protocol__ (`/whatnext/handshake/1.0.0`)
+__[[Handshake-Protocol|Handshake Protocol]]__ (`/whatnext/handshake/1.0.0`)
 
 Exchanged after connection to share peer metadata. Uses JSON-over-stream.
 
@@ -710,7 +707,7 @@ interface HandshakeData {
 }
 ```
 
-__Replication Protocol__ (`/whatnext/rxdb-replication/1.0.0`)
+__[[RxDB-Replication|Replication Protocol]]__ (`/whatnext/rxdb-replication/1.0.0`)
 
 Checkpoint-based document synchronization. Uses JSON-over-stream with four message types:
 
@@ -743,11 +740,11 @@ __Playlist Sync Protocol__ (`/whatnext/playlist-sync/1.0.0`) -- Defined in confi
 
 ### 7.5 NAT Traversal Strategy
 
-1. __Local network__: mDNS discovery enables zero-configuration connection between peers on the same subnet. Peers dial directly via TCP or WebSocket.
+1. __Local network__: [[P2P-Discovery|mDNS discovery]] enables zero-configuration connection between peers on the same subnet. Peers dial directly via TCP or WebSocket.
 
-2. __Remote peers (across NAT)__: Circuit relay v2 provides NAT traversal. The relay server is a lightweight VPS running a libp2p relay node. The relay handles only signaling -- no user data passes through it. Configuration is in `P2P_CONFIG.RELAY` with auto-connect, retry intervals (10s), and max retries (5).
+2. __Remote peers (across NAT)__: [[Circuit-Relay|Circuit relay v2]] provides NAT traversal. The relay server is a lightweight VPS running a libp2p relay node. The relay handles only signaling -- no user data passes through it. Configuration is in `P2P_CONFIG.RELAY` with auto-connect, retry intervals (10s), and max retries (5).
 
-3. __WebRTC__: Available as a transport for browser-to-browser and NAT-punched connections. Requires the identify service and circuit relay transport as dependencies.
+3. __[[WebRTC]]__: Available as a transport for browser-to-browser and NAT-punched connections. Requires the identify service and circuit relay transport as dependencies.
 
 ---
 
@@ -916,7 +913,7 @@ UI -> UI : Store tracks in RxDB\n(renderer-side)
 
 ### 8.3 Session Provider Abstraction
 
-Sessions v1 (shipped 2026-03-07) decouples the session layer from any specific platform. The session coordinates participants, turn order, and the track list, but delegates all platform-specific behavior to two pluggable adapter interfaces. See [[adr-260307-session-architecture-provider-abstraction]] for the full decision record.
+[[Sessions|Sessions v1]] (shipped 2026-03-07) decouples the session layer from any specific platform. The session coordinates participants, turn order, and the track list, but delegates all platform-specific behavior to two pluggable adapter interfaces. See [[adr-260307-session-architecture-provider-abstraction]] for the full decision record.
 
 __TrackSource__ — "Where do new tracks come from?"
 
@@ -984,7 +981,9 @@ Album art and playlist cover art downloaded from Spotify CDN URLs are cached to 
 
 ### 8.5 Coordinator Model
 
-1. __Coordinator connects to source__: The session initiator authenticates with Spotify (only they need OAuth), imports a playlist, and normalizes it to canonical format in RxDB.
+The coordinator model is described in full in [[the-walled-garden-cracks]].
+
+1. __Coordinator connects to source__: The session initiator authenticates with [[Spotify-Integration|Spotify]] (only they need OAuth), imports a playlist, and normalizes it to canonical format in RxDB.
 2. __Coordinator opens P2P session__: A `whtnxt://connect/<peerId>` link is generated and shared.
 3. __Participants join__: Peers connect via the link. No Spotify authentication required for participants -- they receive normalized track data over P2P replication.
 4. __Collaboration in WhatNext P2P layer__: All participants can add tracks, vote, and interact. Changes replicate in real-time via the replication protocol.
@@ -1115,15 +1114,15 @@ All libp2p connections use the __Noise protocol__ (`@chainsafe/libp2p-noise`) fo
 
 | Technology         | Version   | Purpose                                    | Rationale                                              |
 |--------------------|-----------|--------------------------------------------|---------------------------------------------------------|
-| Electron           | Latest    | Desktop application framework              | Cross-platform, mature, supports utility processes      |
-| React              | 19        | UI framework                               | Component model, hooks, concurrent features             |
+| [[Electron]]       | Latest    | Desktop application framework              | Cross-platform, mature, supports utility processes      |
+| [[React]]          | 19        | UI framework                               | Component model, hooks, concurrent features             |
 | TypeScript         | Strict    | Type safety across all processes            | Catch errors at compile time, self-documenting code     |
 | Vite               | Latest    | Renderer build tool and dev server          | Fast HMR, ESM-native, minimal config                   |
-| Tailwind CSS       | Latest    | Utility-first styling                       | Rapid UI development, small bundle with purge           |
+| [[Tailwind|Tailwind CSS]] | Latest | Utility-first styling                    | Rapid UI development, small bundle with purge           |
 | Zustand            | Latest    | Lightweight state management                | Simple API, no boilerplate, non-persistent UI state     |
-| RxDB               | Latest    | Reactive local-first database               | Reactive queries, replication-ready, IndexedDB storage  |
+| [[RxDB]]           | Latest    | Reactive local-first database               | Reactive queries, replication-ready, IndexedDB storage  |
 | Dexie.js           | Latest    | IndexedDB wrapper (RxDB storage engine)     | Reliable IndexedDB access, used via RxDB storage plugin |
-| libp2p             | Latest    | P2P networking framework                    | Modular, multi-transport, battle-tested ([[adr-251110-libp2p-vs-simple-peer]]) |
+| [[libp2p]]         | Latest    | P2P networking framework                    | Modular, multi-transport, battle-tested ([[adr-251110-libp2p-vs-simple-peer]]) |
 | @chainsafe/libp2p-noise | Latest | Connection encryption                  | Authenticated encryption, libp2p standard               |
 | @chainsafe/libp2p-yamux | Latest | Stream multiplexing                    | Efficient multiplexing, low overhead                    |
 | @libp2p/tcp        | Latest    | TCP transport                              | Reliable local connections                              |
@@ -1288,6 +1287,8 @@ docs_md/                               # Project documentation (Obsidian vault a
 - [[adr-251110-libp2p-vs-simple-peer]] -- libp2p selection rationale
 - [[adr-251109-database-storage-location]] -- RxDB/IndexedDB storage decision
 - [[adr-260307-session-architecture-provider-abstraction]] -- Session provider abstraction (TrackSource / PlaybackProvider)
+- [[adr-260315-p2p-session-pairing]] -- Remote session pairing (circuit relay + DCUtR, invite URLs)
+- [[adr-260315-companion-client-architecture]] -- Companion client for phone participants
 - [[libp2p]] -- libp2p concept page
 - [[RxDB]] -- RxDB concept page
 - [[RxDB-Replication]] -- Replication strategy details

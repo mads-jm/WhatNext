@@ -1,7 +1,13 @@
+---
+tags:
+  - ux/theming
+  - ux/ui/design-system
+---
+
 # Design System Document: Solar Resignation
 
 ## 1. Overview & Creative North Star: "The Ethereal Archivist"
-This design system marks a transition from the heavy, shielded aesthetic of "Sonic Vault" into a high-visibility, light-drenched environment. Our Creative North Star is **The Ethereal Archivist**—an interface that feels like a clean, sunlit gallery where data is treated with the reverence of a physical artifact. 
+This design system marks a transition from the heavy, shielded aesthetic of [[05 notes/resilient_nocturne/DESIGN|"Sonic Vault"]] into a high-visibility, light-drenched environment. Our Creative North Star is **The Ethereal Archivist**—an interface that feels like a clean, sunlit gallery where data is treated with the reverence of a physical artifact. 
 
 By moving away from standard "app" layouts, we embrace **Editorial Asymmetry**. We break the grid by using oversized headlines (`display-lg`), intentional negative space (leveraging the `20` and `24` spacing tokens), and overlapping surfaces. The goal is "Solar Resignation": a state of calm, high-contrast clarity that feels technical yet deeply human.
 
@@ -74,3 +80,11 @@ Traditional drop shadows are too "standard." We achieve depth through atmospheri
 *   **No Pure Black:** Never use #000000. Use `on_surface` (#1b1b1d) for maximum readability without the "vibration" of pure black on white.
 *   **No Sharp Corners:** Avoid `none` or `sm` rounding for large containers. Use `lg` or `xl` to maintain the "calm" daytime feel.
 *   **No High-Contrast Borders:** Avoid the `outline` token at 100% opacity; it breaks the "Ethereal" aesthetic.
+
+---
+
+## Related Concepts
+
+- [[Theme-System]] — the live theming implementation
+- [[05 notes/pure_void/DESIGN|pure_void theme design]]
+- [[05 notes/resilient_nocturne/DESIGN|resilient_nocturne theme design]]

@@ -130,9 +130,9 @@ The P2P development interface has many collapsible sections that can create very
 
 ## Related Concepts
 
-[[React-Patterns]] [[Tailwind-v4]]
+[[React-Patterns]] [[Tailwind-v4]] [[UI-Development]]
 
 ## Related Notes
 
-- `note-251112-p2p-development-interface-complete.md` - The comprehensive UI that needed scrolling
+- [[note-251112-p2p-development-interface-complete]] - The comprehensive UI that needed scrolling
 

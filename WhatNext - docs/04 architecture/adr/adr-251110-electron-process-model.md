@@ -1,7 +1,7 @@
 ---
 tags:
   - architecture/decisions
-  - core/electron
+  - core/electron/process-model
   - core/net
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:43 am
@@ -15,7 +15,7 @@ __Issue__: - P2P Integration
 
 ## Context
 
-While implementing the `whtnxt://` protocol handler for P2P connections, we needed to decide where P2P networking logic lives within Electron's multi-process architecture. The decision impacts security, maintainability, performance, and future scalability.
+While implementing the `whtnxt://` protocol handler for P2P connections, we needed to decide where P2P networking logic lives within [[Electron]]'s multi-process architecture. The decision impacts security, maintainability, performance, and future scalability.
 
 ## Decision
 
@@ -65,7 +65,7 @@ __The P2P connection management service runs as a separate Electron utility proc
 ### 1. Separation of Concerns (MVC Pattern)
 
 - __Main Process__: Controller - orchestration, lifecycle, protocol handling
-- __Utility Process__: Service - P2P networking, WebRTC, libp2p node
+- __Utility Process__: Service - P2P networking, [[WebRTC]], [[libp2p]] node
 - __Renderer Process__: View - UI rendering, user interactions
 
 __Benefits__:
@@ -195,7 +195,7 @@ __State synchronization__:
 __Debugging__:
 - Comprehensive logging in each process
 - Development helpers (`window.p2pDebug()`)
-- Test peer for isolated testing
+- [[P2P-Testing|Test peer]] for isolated testing
 
 ## Implementation Notes
 
@@ -270,11 +270,12 @@ app.on('open-url', (event, url) => {
 ### Related ADRs
 
 - [[adr-251110-libp2p-vs-simple-peer]] - Why libp2p chosen for P2P networking
+- [[note-251110-p2p-utility-process-architecture]] - Development note from this implementation
 
 ### Specification
 
-- WhatNext spec §2.3: Helper Backend Service
-- CLAUDE.md: Security Posture (sandbox enforcement)
+- WhatNext spec §2.3: Helper Backend Service (see [[whtnxt-nextspec]])
+- `CLAUDE.md`: Security Posture (sandbox enforcement)
 
 ---
 

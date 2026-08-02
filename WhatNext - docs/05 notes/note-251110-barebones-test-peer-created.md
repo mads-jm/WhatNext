@@ -248,7 +248,7 @@ Files to keep in sync:
 
 ## Related Concepts
 
-[[libp2p]] [[WebRTC]]
+[[libp2p]] [[WebRTC]] [[P2P-Testing]] [[P2P-Discovery]]
 
 ---
 

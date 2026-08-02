@@ -1,6 +1,11 @@
-# Coding Standards
+---
+tags:
+  - guides/standards
+  - guides/standards/commits
+  - core/development
+---
 
-#guides/standards
+# Coding Standards
 
 > Living document. Reflects decisions made during MVP development with an eye toward post-MVP extensibility and eventual platform migration.
 
@@ -8,7 +13,7 @@
 
 ## 1. Architecture Boundaries: Portable Core vs. Shell
 
-WhatNext treats Electron + React as a **replaceable shell** around a **portable core**. The long-term target is Rust/WASM for cross-platform delivery. Standards must protect this boundary.
+WhatNext treats [[Electron]] + [[React]] as a **replaceable shell** around a **portable core**. The long-term target is Rust/WASM for cross-platform delivery. Standards must protect this boundary.
 
 ### Portable Core (framework-agnostic)
 
@@ -18,7 +23,7 @@ Code that must remain decoupled from React and Electron:
 |-------|----------|------|
 | Domain types | `app/src/shared/` | No React imports. No Electron imports. Pure TypeScript. |
 | Domain constants | `app/src/shared/core/reactions.ts` | Reaction emoji vocabulary. No framework deps. |
-| Data schemas | `app/src/renderer/db/schemas.ts` | RxDB-specific but logic is portable. Schema shape is the contract. |
+| Data schemas | `app/src/renderer/db/schemas.ts` | [[RxDB]]-specific but logic is portable. Schema shape is the contract. |
 | Services | `app/src/renderer/db/services/` | Pure async functions. No hooks, no UI state, no `window.*` access. |
 | Pure utilities | `app/src/renderer/utils/` | Framework-free transforms, aggregations, helpers. |
 | Mappers | `app/src/main/spotify/spotify-mapper.ts` | Pure transformations. Zero side effects. |
@@ -279,7 +284,7 @@ export async function createTrack(input: CreateTrackInput): Promise<TrackDocumen
 
 ### P2P Integration
 
-Services that modify P2P-replicated collections accept an optional `ReplicationSink` callback to push changes to peers. The sink is **injected by the caller** (a component or hook in the shell layer), keeping services decoupled from `window.electron`:
+Services that modify [[RxDB-Replication|P2P-replicated]] collections accept an optional `ReplicationSink` callback to push changes to peers. The sink is **injected by the caller** (a component or hook in the shell layer), keeping services decoupled from `window.electron`:
 
 ```typescript
 import type { ReplicationSink } from '../../../shared/core/types';
@@ -367,7 +372,7 @@ useDebugLogStore.getState().addLog('error', 'P2P connection failed', details);
 
 ### Approach
 
-Pure Tailwind CSS. No CSS modules, no styled-components, no framework-coupled UI libraries.
+Pure [[Tailwind|Tailwind CSS]]. No CSS modules, no styled-components, no framework-coupled UI libraries. Theming follows the [[Theme-System|CSS variable bridge pattern]].
 
 **Why no Radix/Headless UI:** These are React-only. Given the Rust/WASM migration path, avoid dependencies that don't survive a framework change. Tailwind is framework-agnostic.
 
@@ -448,7 +453,7 @@ import { getAssetPath } from '@assets/utils';
 
 ### Channel Naming
 
-`domain:action` in kebab-case — `spotify:get-playlists`, `p2p:connect`, `artwork:download`
+[[Electron-IPC|IPC]] channels use `domain:action` in kebab-case — `spotify:get-playlists`, `p2p:connect`, `artwork:download`
 
 Constants defined in `shared/core/ipc-protocol.ts` as `IPC_CHANNELS` enum.
 
@@ -572,9 +577,7 @@ Enforced by tooling — not subject to review debate.
 
 ## 13. Commit Style
 
-#guides/standards/commits
-
-Conventional Commits, human-owned. Established 2026-08-01; the handshake-stabilization
+Conventional Commits, human-owned. Established 2026-08-01; the [[epic-handshake-stabilization|handshake-stabilization]]
 sequence (`b14e13f..8fc4ccc` on `mvp`) is the worked example of this style.
 
 ```
@@ -666,7 +669,7 @@ versions, IPC message shapes.
 - **PRs land as merge commits** — preserving the atomic sequence (squash-merge
   would erase it). `mvp` and `main` are append-only; no force-push, ever.
 - **No `Co-Authored-By` lines.** All commits are human-owned; AI assistance is
-  noted in the PR description instead (see CLAUDE.md).
+  noted in the PR description instead (see `CLAUDE.md`).
 
 ---
 
@@ -705,7 +708,9 @@ The portable core boundary (Section 1) is the primary preparation. Additionally:
 
 ## Related Documents
 
-- [[CLAUDE.md]] — Project overview, build commands, commit conventions
+- `CLAUDE.md` — Project overview, build commands, commit conventions
 - [[architecture-whatnext]] — System architecture
 - [[srs-whatnext]] — Software Requirements Specification
 - [[workflow-story-to-pr]] — Development workflow
+- [[UI-Development]] — UI component patterns
+- [[Electron-IPC]] — IPC architecture and patterns

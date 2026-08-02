@@ -593,5 +593,5 @@ Let's build and learn! 🚀
 
 ## Related Concepts
 
-[[libp2p]] [[WebRTC]] [[Circuit-Relay]] [[RxDB-Replication]]
+[[libp2p]] [[WebRTC]] [[Circuit-Relay]] [[RxDB-Replication]] [[P2P-Discovery]] [[Protocol-Implementation-Roadmap]]
 

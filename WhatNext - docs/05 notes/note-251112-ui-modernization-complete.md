@@ -271,13 +271,13 @@ __After__:
 
 ## Related Concepts
 
-[[React-Patterns]] [[Tailwind-v4]] [[Electron]]
+[[React-Patterns]] [[Tailwind-v4]] [[Electron]] [[UI-Development]]
 
 ## Related Notes
 
-- `note-251112-p2p-development-interface-complete.md` - P2P UI this navigation serves
-- `note-251112-protocol-implementation-roadmap.md` - Protocols shown in navigation
-- `note-251112-v0.0.0-release-summary.md` - Overall release summary
+- [[note-251112-p2p-development-interface-complete]] - P2P UI this navigation serves
+- [[Protocol-Implementation-Roadmap]] - Protocols shown in navigation
+- [[note-251112-v0.0.0-release-summary]] - Overall release summary
 - `CLAUDE.md` - Obsidian philosophy inspiration
 
 ## Conclusion

@@ -1,7 +1,8 @@
 ---
 tags:
   - architecture/decisions
-  - data
+  - data/rxdb
+  - core/electron/process-model
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:53 am
 ---
@@ -14,7 +15,7 @@ __Context__: Initial RxDB integration
 
 ## Context
 
-During initial RxDB integration, we needed to decide where the database logic should live within Electron's multi-process architecture. This decision impacts performance, security, architecture complexity, and API compatibility.
+During initial [[RxDB]] integration, we needed to decide where the database logic should live within [[Electron]]'s multi-process architecture. This decision impacts performance, security, architecture complexity, and API compatibility.
 
 ## Decision
 
@@ -27,7 +28,7 @@ __RxDB database runs in the renderer process (`/app/src/renderer/db/`), not the 
 __Critical blocker__: RxDB fundamentally requires browser APIs that don't exist in Node.js:
 
 - __IndexedDB__: Browser-only storage API (not available in Node.js main process)
-- __WebRTC__: Required for P2P replication (browser-only)
+- __[[WebRTC]]__: Required for P2P replication (browser-only)
 - __Reactive observables__: Optimized for browser event loop
 
 ```javascript
@@ -97,7 +98,7 @@ With main process DB, this would require:
 
 ### 5. P2P Replication Architecture
 
-RxDB's P2P replication uses WebRTC (browser-only API):
+RxDB's [[RxDB-Replication|P2P replication]] uses WebRTC (browser-only API):
 
 - WebRTC only available in renderer
 - P2P connections happen in renderer anyway
@@ -297,6 +298,7 @@ __Review date__: 2026-01-09 (after 2 months production use)
 - [[RxDB]] - Database running in renderer process
 - [[Electron-IPC]] - Communication patterns between processes
 - [[libp2p]] - P2P replication architecture
+- [[adr-251110-electron-process-model]] - Where P2P networking lives (utility process)
 
 ## References
 
@@ -314,8 +316,8 @@ __Review date__: 2026-01-09 (after 2 months production use)
 
 ### Specification
 
-- WhatNext spec §2.1: Local-First Data with User-Accessible Storage
-- CLAUDE.md: Security Posture
+- WhatNext spec §2.1: Local-First Data with User-Accessible Storage (see [[whtnxt-nextspec]])
+- `CLAUDE.md`: Security Posture
 
 ---
 

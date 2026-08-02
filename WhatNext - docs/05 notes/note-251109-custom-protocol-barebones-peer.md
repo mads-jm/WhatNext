@@ -598,7 +598,7 @@ __The test peer isn't just a nice-to-have — it's foundational infrastructure f
 
 ## Related Concepts
 
-[[libp2p]] [[WebRTC]] [[RxDB-Replication]] [[Handshake-Protocol]]
+[[libp2p]] [[WebRTC]] [[RxDB-Replication]] [[Handshake-Protocol]] [[P2P-Testing]]
 
 ---
 

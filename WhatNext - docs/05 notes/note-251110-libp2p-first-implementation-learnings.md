@@ -220,7 +220,7 @@ __Action Items__:
 
 ## Related Concepts
 
-[[libp2p]] [[WebRTC]] [[Circuit-Relay]] [[Electron-IPC]]
+[[libp2p]] [[WebRTC]] [[Circuit-Relay]] [[Electron-IPC]] [[P2P-Discovery]]
 
 ---
 

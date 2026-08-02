@@ -61,15 +61,15 @@ The February 2026 changes demand we think bigger.
 
 Accessory Mode shouldn't just accessorize Spotify. It should be a __translation layer__ — a bridge between the walled gardens. The playlist creator acts as the __coordinator__: they set up the session, they connect to the source (Spotify today, Apple Music or YouTube Music or Tidal tomorrow), and the collaborative experience lives in WhatNext, independent of any single service.
 
-Not everyone needs to download the app. Not everyone needs a Client ID. The coordinator imports the playlist. The P2P session is where the collaboration happens. The source platform is just that — a source. One of many.
+Not everyone needs to download the app. Not everyone needs a Client ID. The coordinator imports the playlist. The [[Sessions|P2P session]] is where the collaboration happens. The source platform is just that — a source. One of many.
 
 This reframing turns Spotify's API restrictions from a blocker into a catalyst. If only the coordinator needs API access, the five-user cap doesn't matter. If the collaborative experience lives in WhatNext's P2P layer, the platform underneath becomes interchangeable.
 
 ### The Coordinator Model
 
-1. __One person connects to the source__ (Spotify, Apple Music, a folder of local files, a URL to a public playlist)
+1. __One person connects to the source__ (Spotify, Apple Music, a folder of [[local-file-import-adapter|local files]], a URL to a public playlist)
 2. __They import the playlist into WhatNext__, which normalizes it into the local-first format
-3. __They open a P2P session__ and share the link
+3. __They open a P2P session__ and [[p2p-session-pairing-spec|share the link]]
 4. __Friends join the session__ — no accounts, no API keys, no OAuth flows
 5. __The collaboration happens in WhatNext__ — turn-taking, queue management, reactions, conversation
 6. __Changes flow back to the source__ only if the coordinator has write access, and only if they choose to sync
@@ -84,7 +84,7 @@ Instead of building around Spotify's data model, WhatNext defines its own. A tra
 
 This means:
 
-- __Import adapters__ for each source (Spotify adapter exists; others follow)
+- __[[adr-260307-session-architecture-provider-abstraction|Import adapters]]__ for each source ([[Spotify-Integration|Spotify adapter]] exists; others follow)
 - __A canonical internal format__ that owns no allegiance to any platform (already designed: the plaintext model)
 - __Optional sync-back__ to the source, handled by the coordinator's adapter
 - __Metadata enrichment__ from open sources (MusicBrainz, ListenBrainz, Discogs) that don't require API keys or premium accounts
@@ -97,7 +97,7 @@ Before streaming, sharing music was inherently peer-to-peer. You dubbed a casset
 
 Streaming centralized this. It replaced "here, listen to this" with "here's a link to a corporate catalog entry that may or may not exist next month." The convenience was real, but something was lost: the intimacy of the exchange.
 
-P2P networking brings that back, with modern capabilities. A WhatNext session between friends is a direct connection — no server in the middle, no corporation mediating the interaction, no API rate limit on how many times you can share a song with someone you care about.
+[[libp2p|P2P networking]] brings that back, with modern capabilities. A WhatNext session between friends is a direct connection — no server in the middle, no corporation mediating the interaction, no API rate limit on how many times you can share a song with someone you care about.
 
 The data flows directly between the people who care about it. The playlists live on their machines, in plaintext, readable and portable. The social layer — the turn-taking, the reactions, the shared listening experience — exists in the space between peers, not in a cloud database.
 
@@ -173,4 +173,8 @@ For the record, here's what Spotify pulled:
 - [[libp2p]] — P2P networking implementation
 - [[RxDB-Replication]] — Data sync between peers
 - [[Handshake-Protocol]] — P2P connection establishment
+- [[Sessions]] — The collaborative session concept at the heart of the coordinator model
+- [[adr-260307-session-architecture-provider-abstraction]] — ADR formalizing the coordinator/provider-abstraction architecture
+- [[Spotify-Integration]] — The Spotify import adapter
+- [[epic-spotify-resilience]] — Hardening work against further API restrictions
 

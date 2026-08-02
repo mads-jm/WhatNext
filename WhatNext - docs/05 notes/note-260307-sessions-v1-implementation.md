@@ -99,6 +99,8 @@ Session state is ephemeral (Zustand, in-memory). The playlist and all tracks per
 
 ## Related
 
+- [[Sessions]] — living concept page for the session experience
+- [[Spotify-Integration]] — the platform layer behind the v1 track source and playback provider
 - [[adr-260307-session-architecture-provider-abstraction]] — The architectural decision this implements
 - [[the-walled-garden-cracks]] — Why the provider abstraction matters (Spotify API restrictions)
 - [[RxDB]] — Local data layer, all tracks/playlists/users persist here

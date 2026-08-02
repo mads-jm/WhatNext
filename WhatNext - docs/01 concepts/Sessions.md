@@ -16,8 +16,8 @@ A WhatNext session is a live, collaborative playlist-building experience hosted 
 Sessions v1 shipped with the __provider abstraction__: the session layer is platform-agnostic and never imports Spotify directly. All external platform interaction is behind two interfaces — `TrackSource` and `PlaybackProvider`.
 
 > ⚠️ **Reliability status (2026-06-27)** — v1 is feature-present but *Spotify-only-robust*; the collaborative path is fragile. Known gaps (see [[report-260627-mvp-state-of-the-union]] §3):
-> - **Manual & P2P `TrackSource` are no-op stubs** (`useTrackSource.ts:322`).
-> - **Playback mutex unimplemented** — `coHostIds`/`playbackOwnerId` are schema fields only; no enforcement or handoff.
+> - **Manual & P2P `TrackSource` are no-op stubs** (`useTrackSource.ts:322`) — remediation tracked in [[epic-track-sourcing]].
+> - **Playback mutex unimplemented** — `coHostIds`/`playbackOwnerId` are schema fields only; no enforcement or handoff ([[epic-session-coordination]]; design in [[adr-260315-p2p-session-pairing]]).
 > - **Companion is snapshot-only** — bidirectional control (react / request-time) is stubbed.
 > - **Turn-advance race** on concurrent adds (see Pitfall 5 — the per-track loop is *not* coordinated across peers).
 > - **Zero tests** on session/replication/turn logic.
@@ -203,8 +203,10 @@ Companion participants connect via the [[Companion-Client]] — a lightweight we
 ## Related Concepts
 
 - [[adr-260307-session-architecture-provider-abstraction]] — The architectural decision this implements
+- [[adr-260315-p2p-session-pairing]] — Remote pairing, invite URLs, and the playback mutex design
 - [[Spotify-Integration]] — Spotify adapter: OAuth, polling, playback IPC
 - [[RxDB]] — All session data (tracks, participants) persists here
+- [[RxDB-Replication]] — How session data syncs between desktop participants
 - [[React-Patterns]] — Subscription patterns used in SessionView
 - [[the-walled-garden-cracks]] — Coordinator model rationale
 - [[Companion-Client]] — Phone browser session viewer for lightweight participation

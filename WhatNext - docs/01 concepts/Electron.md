@@ -14,7 +14,7 @@ Electron is a framework for building cross-platform desktop applications using w
 
 ## Process Model
 
-WhatNext runs three Electron processes:
+WhatNext runs three Electron processes (see [[adr-251110-electron-process-model]] for the decision record):
 
 ```ts
 ┌──────────────────────────────────────────┐
@@ -76,6 +76,8 @@ In development, Vite runs a hot-reload dev server and the main/preload are rebui
 - [[Electron-IPC]] — Full IPC patterns: preload API surface, handlers, event-based push
 - [[libp2p]] — What runs in the utility process
 - [[React-Patterns]] — Renderer-side patterns
+- [[adr-251110-electron-process-model]] — Why the three-process split
+- [[note-251110-p2p-utility-process-architecture]] — Historical note on moving P2P into the utility process
 
 ## References
 
