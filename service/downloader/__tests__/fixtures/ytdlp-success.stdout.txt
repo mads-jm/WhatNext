@@ -1,0 +1,10 @@
+[youtube] Extracting URL: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+[youtube] dQw4w9WgXcQ: Downloading webpage
+[info] dQw4w9WgXcQ: Downloading 1 format(s): 251
+[download] Destination: /home/u/WhatNext/audio/Rick Astley - Never Gonna Give You Up.webm
+[download]   0.0% of    3.50MiB at  Unknown B/s ETA Unknown
+[download]  42.3% of    3.50MiB at    1.23MiB/s ETA 00:03
+[download] 100% of    3.50MiB in 00:02
+[ExtractAudio] Destination: /home/u/WhatNext/audio/Rick Astley - Never Gonna Give You Up.mp3
+Deleting original file /home/u/WhatNext/audio/Rick Astley - Never Gonna Give You Up.webm (pass -k to keep)
+WHATNEXT_FILEPATH=/home/u/WhatNext/audio/Rick Astley - Never Gonna Give You Up.mp3

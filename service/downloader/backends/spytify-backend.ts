@@ -3,6 +3,9 @@ import type { DownloadBackend, BackendStatus, DownloadOptions } from '../backend
 import type { DownloadInput, ResolvedTrack, DownloadEvent } from '../types';
 import { runCommand, killProcess } from '../subprocess';
 
+/** Bare command name resolved via PATH when no custom path is configured. */
+const DEFAULT_EXE = 'spytify';
+
 /**
  * Spytify backend — Windows-only.
  *
@@ -24,25 +27,43 @@ export class SpytifyBackend implements DownloadBackend {
 
     private activeProcess: ChildProcess | null = null;
 
+    /** Executable actually invoked: a user-configured path, or the bare command. */
+    private readonly exe: string;
+    /** The configured custom path (undefined when relying on PATH lookup). */
+    private readonly customPath?: string;
+
+    /**
+     * @param executablePath Optional path to the Spytify binary. When omitted
+     *   (or blank), the bare command `spytify` is resolved via PATH.
+     */
+    constructor(executablePath?: string) {
+        const trimmed = executablePath?.trim();
+        this.exe = trimmed || DEFAULT_EXE;
+        this.customPath = trimmed || undefined;
+    }
+
     async checkInstalled(): Promise<BackendStatus> {
         if (process.platform !== 'win32') {
             return {
                 installed: false,
+                path: this.customPath,
                 error: 'Spytify requires Windows and the Spotify desktop app',
             };
         }
         try {
-            const result = await runCommand('spytify', ['--version']);
+            const result = await runCommand(this.exe, ['--version']);
             if (result.code === 0) {
-                return { installed: true, version: result.stdout.trim() };
+                return { installed: true, version: result.stdout.trim(), path: this.customPath };
             }
             return {
                 installed: false,
+                path: this.customPath,
                 error: `spytify exited with code ${result.code}: ${result.stderr.trim()}`,
             };
         } catch (err) {
             return {
                 installed: false,
+                path: this.customPath,
                 error: err instanceof Error ? err.message : String(err),
             };
         }
@@ -79,7 +100,7 @@ export class SpytifyBackend implements DownloadBackend {
                 ];
 
                 const { spawn } = await import('child_process');
-                const proc = spawn('spytify', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+                const proc = spawn(this.exe, args, { stdio: ['ignore', 'pipe', 'pipe'] });
                 this.activeProcess = proc;
 
                 let lastStderr = '';

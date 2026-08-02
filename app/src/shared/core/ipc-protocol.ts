@@ -273,6 +273,8 @@ export const IPC_CHANNELS = {
     DOWNLOAD_RESOLVE: 'download:resolve',
     DOWNLOAD_START: 'download:start',
     DOWNLOAD_CANCEL: 'download:cancel',
+    DOWNLOAD_GET_BACKEND_PATHS: 'download:get-backend-paths',
+    DOWNLOAD_SET_BACKEND_PATH: 'download:set-backend-path',
 
     // Download events (main → renderer)
     DOWNLOAD_PROGRESS: 'download:progress',
@@ -566,7 +568,20 @@ export interface BackendStatusResult {
     name: string;
     installed: boolean;
     version?: string;
+    /** Configured custom executable path, when one is set (else PATH lookup). */
+    path?: string;
     error?: string;
+}
+
+export type DownloaderBackendId = 'ytdlp' | 'spotdl' | 'spytify';
+
+/** Map of per-backend custom executable paths. Absent = resolve via PATH. */
+export type BackendPathMap = Partial<Record<DownloaderBackendId, string>>;
+
+export interface SetBackendPathPayload {
+    id: DownloaderBackendId;
+    /** Custom executable path, or null/empty to clear and fall back to PATH. */
+    path: string | null;
 }
 
 export interface DownloadResolveRequest {

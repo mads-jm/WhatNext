@@ -3,6 +3,9 @@ import type { DownloadInput, ResolvedTrack, DownloadEvent } from '../types';
 import { runCommand, spawnLines, killProcess, parseYtdlpProgress } from '../subprocess';
 import type { ChildProcess } from 'child_process';
 
+/** Bare command name resolved via PATH when no custom path is configured. */
+const DEFAULT_EXE = 'spotdl';
+
 /**
  * spotDL backend.
  *
@@ -11,29 +14,46 @@ import type { ChildProcess } from 'child_process';
  * metadata (album art, lyrics, correct ID3 tags).
  *
  * Supports:
- *   - 'url'        — any Spotify URL (playlist, album, track)
- *   - 'spotify-id' — WhatNext-held spotifyId values; resolved to Spotify track URLs internally
+ *   - 'url'         — any Spotify URL (playlist, album, track)
+ *   - 'spotify-ids' — WhatNext-held spotifyId values; resolved to Spotify track URLs internally
  */
 export class SpotdlBackend implements DownloadBackend {
     readonly id = 'spotdl';
     readonly name = 'spotDL';
-    readonly supportedInputs = ['url', 'spotify-id'] as const;
+    readonly supportedInputs = ['url', 'spotify-ids'] as const;
 
     private activeProcess: ChildProcess | null = null;
 
+    /** Executable actually invoked: a user-configured path, or the bare command. */
+    private readonly exe: string;
+    /** The configured custom path (undefined when relying on PATH lookup). */
+    private readonly customPath?: string;
+
+    /**
+     * @param executablePath Optional path to the spotdl binary. When omitted
+     *   (or blank), the bare command `spotdl` is resolved via PATH.
+     */
+    constructor(executablePath?: string) {
+        const trimmed = executablePath?.trim();
+        this.exe = trimmed || DEFAULT_EXE;
+        this.customPath = trimmed || undefined;
+    }
+
     async checkInstalled(): Promise<BackendStatus> {
         try {
-            const result = await runCommand('spotdl', ['--version']);
+            const result = await runCommand(this.exe, ['--version']);
             if (result.code === 0) {
-                return { installed: true, version: result.stdout.trim() };
+                return { installed: true, version: result.stdout.trim(), path: this.customPath };
             }
             return {
                 installed: false,
+                path: this.customPath,
                 error: `spotdl exited with code ${result.code}: ${result.stderr.trim()}`,
             };
         } catch (err) {
             return {
                 installed: false,
+                path: this.customPath,
                 error: err instanceof Error ? err.message : String(err),
             };
         }
@@ -49,7 +69,7 @@ export class SpotdlBackend implements DownloadBackend {
 
         for (const url of urls) {
             // spotdl save --save-file - --output /dev/null prints JSON metadata to stdout
-            const result = await runCommand('spotdl', ['save', url, '--save-file', '-']);
+            const result = await runCommand(this.exe, ['save', url, '--save-file', '-']);
             if (result.code !== 0) {
                 // Non-fatal per-track: skip and continue
                 continue;
@@ -98,7 +118,7 @@ export class SpotdlBackend implements DownloadBackend {
                     '--print-errors',
                 ];
 
-                const result = spawnLines('spotdl', args, opts.timeoutMs);
+                const result = spawnLines(this.exe, args, opts.timeoutMs);
                 this.activeProcess = result.proc;
 
                 for await (const line of result.lines) {

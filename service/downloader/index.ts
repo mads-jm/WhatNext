@@ -22,15 +22,18 @@ import { SpytifyBackend } from './backends/spytify-backend';
 /**
  * Factory: get a download backend by id.
  * Throws if the requested backend is not registered.
+ *
+ * @param execPath Optional user-configured executable path for the backend.
+ *   When omitted, the backend resolves its bare command name via PATH.
  */
-export function createBackend(id: string): DownloadBackend {
+export function createBackend(id: string, execPath?: string): DownloadBackend {
     switch (id) {
         case 'ytdlp':
-            return new YtdlpBackend();
+            return new YtdlpBackend(execPath);
         case 'spotdl':
-            return new SpotdlBackend();
+            return new SpotdlBackend(execPath);
         case 'spytify':
-            return new SpytifyBackend();
+            return new SpytifyBackend(execPath);
         default:
             throw new Error(`Unknown download backend: "${id}"`);
     }

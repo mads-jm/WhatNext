@@ -1,0 +1,4 @@
+[youtube] Extracting URL: https://www.youtube.com/watch?v=abc123
+[download]  50.0% of    4.00MiB at    2.00MiB/s ETA 00:01
+[download] 100% of    4.00MiB in 00:01
+[ExtractAudio] Destination: /home/u/WhatNext/audio/Some Artist - A Song.mp3
