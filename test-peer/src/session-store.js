@@ -4,12 +4,14 @@
  * Maintains all replicated documents in memory with LWW conflict resolution.
  * Document shapes match app/src/renderer/db/schemas.ts.
  *
- * ISO 8601 UTC string comparison is used for LWW because UTC timestamps
- * sort lexicographically in the same order as chronologically.
+ * LWW is NOT reimplemented here. `incomingWins` / `contentKey` are imported from
+ * app/src/shared/lww/index.js — the same module the app's renderer imports — so
+ * the two peers cannot elect different winners for the same conflict (#58).
  */
 
 import { randomUUID } from 'crypto';
 import chalk from 'chalk';
+import { incomingWins, envelopeCandidate } from '../../app/src/shared/lww/index.js';
 
 // ─── Collections ─────────────────────────────────────────────────────────────
 
@@ -45,8 +47,18 @@ const handshakeInfoByPeer = new Map();
 // ─── LWW merge ───────────────────────────────────────────────────────────────
 
 /**
- * Apply LWW for a single document. Incoming wins if there is no existing doc
- * or incoming.updatedAt is strictly newer.
+ * Apply LWW for a single document. Incoming wins if there is no existing doc, or
+ * if the shared comparator says so.
+ *
+ * Was a raw `incoming.updatedAt > existing.updatedAt` string compare (pre-#54
+ * semantics), which mis-sorts across ISO format/precision drift and has no
+ * tie-break — so on equal timestamps the test peer kept its copy while the app
+ * picked a content-derived winner, and the two diverged permanently.
+ *
+ * Everything stored here is a replication envelope, so BOTH sides project
+ * through the shared `envelopeCandidate`. The app compares an envelope against
+ * an RxDocument (`storedCandidate`); both projections drop the same
+ * non-discriminating keys, so the two peers elect the same winner.
  *
  * @param {Map} collectionMap
  * @param {{id: string, data: object, updatedAt: string, deleted?: boolean}} incoming
@@ -54,7 +66,7 @@ const handshakeInfoByPeer = new Map();
  */
 function applyLWW(collectionMap, incoming) {
     const existing = collectionMap.get(incoming.id);
-    if (!existing || incoming.updatedAt > existing.updatedAt) {
+    if (!existing || incomingWins(envelopeCandidate(incoming), envelopeCandidate(existing))) {
         collectionMap.set(incoming.id, incoming);
         return { applied: true, previous: existing ?? null };
     }
@@ -101,6 +113,12 @@ export function applyDocuments(collection, documents) {
     }
 
     // Update checkpoint to the max updatedAt among accepted documents.
+    // Deliberately still a string compare (not parseTimestampMs): checkpoints are
+    // only ever compared against other checkpoints/updatedAt values, and every
+    // producer on both sides emits `new Date().toISOString()` — one format, one
+    // precision, UTC — so lexicographic order equals chronological order here.
+    // Unlike the LWW merge above, a checkpoint has no cross-peer tie-break to
+    // diverge on. See impl notes for #58.
     const accepted = documents.filter((_, i) => changes[i]?.type !== 'skipped');
     if (accepted.length > 0) {
         const maxTs = accepted.reduce((max, d) => (d.updatedAt > max ? d.updatedAt : max), '');
