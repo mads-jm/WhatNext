@@ -19,8 +19,12 @@ import {
     type CompanionParticipant,
     type CompanionTurnState,
     type ServerToPhoneMessage,
+    type PhoneToServerMessage,
     serializeMessage,
+    serializeHostEnvelope,
+    parseRelayEnvelope,
     parsePhoneMessage,
+    parsePhoneMessageValue,
 } from './companion-protocol';
 
 // ========================================
@@ -41,7 +45,10 @@ export interface CompanionServerCallbacks {
 }
 
 interface TrackedClient extends CompanionClient {
-    ws: WebSocket;
+    /** LAN clients hold their own socket; relay-tunnelled phones have none. */
+    ws: WebSocket | null;
+    /** Relay-assigned phone id, set only for phones reached through the tunnel. */
+    relayPhoneId?: string;
 }
 
 // ========================================
@@ -148,9 +155,13 @@ function handleConnection(ws: WebSocket): void {
 
         switch (msg.type) {
             case 'join': {
-                // Check for reconnecting client with same displayName
+                // Check for reconnecting client with same displayName.
+                // Only LAN clients (those holding a socket) are adoptable — a
+                // relay-tunnelled phone with the same name is a different device.
                 const existing = Array.from(clients.values()).find(
-                    c => c.displayName === msg.displayName && c.ws.readyState !== WebSocket.OPEN
+                    c => c.displayName === msg.displayName
+                        && c.ws !== null
+                        && c.ws.readyState !== WebSocket.OPEN
                 );
 
                 const client: TrackedClient = {
@@ -250,23 +261,42 @@ function findClientByWs(ws: WebSocket): TrackedClient | undefined {
     return Array.from(clients.values()).find(c => c.ws === ws);
 }
 
+/** Strip the transport fields before handing a client to a callback. */
+function toCompanionClient(client: TrackedClient): CompanionClient {
+    return {
+        id: client.id,
+        displayName: client.displayName,
+        lastHeartbeat: client.lastHeartbeat,
+        status: client.status,
+    };
+}
+
 function send(ws: WebSocket, msg: ServerToPhoneMessage): void {
     if (ws.readyState === WebSocket.OPEN) {
         ws.send(serializeMessage(msg));
     }
 }
 
+/** Send to a single client regardless of whether it is LAN- or relay-attached. */
+function sendToClient(client: TrackedClient, msg: ServerToPhoneMessage): void {
+    if (client.relayPhoneId) {
+        sendToRelay(msg, client.relayPhoneId);
+    } else if (client.ws) {
+        send(client.ws, msg);
+    }
+}
+
 function broadcast(msg: ServerToPhoneMessage): void {
     const data = serializeMessage(msg);
     for (const client of clients.values()) {
-        if (client.ws.readyState === WebSocket.OPEN) {
+        // Relay phones have no local socket — they are covered by the single
+        // fan-out envelope below, so sending here would double-deliver.
+        if (client.ws && client.ws.readyState === WebSocket.OPEN) {
             client.ws.send(data);
         }
     }
-    // Also forward to relay tunnel if active
-    if (relayWs && relayWs.readyState === WebSocket.OPEN) {
-        relayWs.send(data);
-    }
+    // Also forward to relay tunnel if active (to: null = every relay phone)
+    sendToRelay(msg, null);
 }
 
 // ========================================
@@ -285,13 +315,8 @@ function startHeartbeatMonitor(): void {
 
             if (elapsed > REMOVE_THRESHOLD_MS) {
                 clients.delete(id);
-                callbacks.onClientLeft?.({
-                    id: client.id,
-                    displayName: client.displayName,
-                    lastHeartbeat: client.lastHeartbeat,
-                    status: client.status,
-                });
-                if (client.ws.readyState === WebSocket.OPEN) {
+                callbacks.onClientLeft?.(toCompanionClient(client));
+                if (client.ws && client.ws.readyState === WebSocket.OPEN) {
                     client.ws.close();
                 }
             } else if (elapsed > AWAY_THRESHOLD_MS && client.status !== 'away') {
@@ -353,7 +378,7 @@ export function stopCompanionServer(): void {
 
     // Close all client connections
     for (const client of clients.values()) {
-        if (client.ws.readyState === WebSocket.OPEN) {
+        if (client.ws && client.ws.readyState === WebSocket.OPEN) {
             client.ws.close();
         }
     }
@@ -431,7 +456,9 @@ export function pushTurnUpdate(turn: CompanionTurnState): void {
 export function sendTimeRequestAck(clientId: string, status: 'seen' | 'granted'): void {
     const client = clients.get(clientId);
     if (client) {
-        send(client.ws, { type: 'time-request:ack', data: { status } });
+        // Addressed to one client only — relay phones get a targeted envelope
+        // so the other phones on the same tunnel do not see the ack.
+        sendToClient(client, { type: 'time-request:ack', data: { status } });
     }
 }
 
@@ -446,8 +473,21 @@ export function isCompanionServerRunning(): boolean {
 let relayWs: WebSocket | null = null;
 let relaySessionCode: string | null = null;
 let relayBaseUrl: string | null = null;
+/** Host credential minted by the relay at session creation. Never leaves this process except as an Authorization header. */
+let relayHostToken: string | null = null;
 let relayReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let relayReconnectAttempt = 0;
+
+/** Relay close codes that will never succeed on retry — stop the backoff loop. */
+const RELAY_FATAL_CLOSE_CODES = new Set([
+    4001, // session not found (relay restarted or session expired)
+    4003, // unauthorized (host token rejected)
+]);
+
+/** Namespaced client id for a relay-tunnelled phone. */
+function relayClientId(phoneId: string): string {
+    return `relay:${phoneId}`;
+}
 
 export interface RelayTunnelInfo {
     sessionCode: string;
@@ -468,15 +508,32 @@ export async function startRelayTunnel(relayHost: string): Promise<RelayTunnelIn
 
     // Normalize host — strip trailing slash, ensure http(s)
     const baseUrl = relayHost.replace(/\/+$/, '');
-    relayBaseUrl = baseUrl;
 
     // 1. Create session on relay
     const resp = await fetch(`${baseUrl}/session`, { method: 'POST' });
     if (!resp.ok) {
         throw new Error(`Relay returned ${resp.status}: ${await resp.text()}`);
     }
-    const { code } = await resp.json() as { code: string };
+    const { code, hostToken } = await resp.json() as { code?: string; hostToken?: string };
+
+    if (typeof code !== 'string' || code.length === 0) {
+        throw new Error(`Relay at ${baseUrl} returned no session code.`);
+    }
+
+    // Fail closed on version skew: a relay that mints no host credential is
+    // older than this app and would accept an unauthenticated tunnel, which
+    // anyone holding the public session code could hijack.
+    if (typeof hostToken !== 'string' || hostToken.length === 0) {
+        throw new Error(
+            `Relay at ${baseUrl} did not issue a host credential — it is running an older ` +
+            `companion tunnel than this version of WhatNext requires. Update and restart the relay ` +
+            `(relay/companion-tunnel.mjs); WhatNext will not open an unauthenticated tunnel.`
+        );
+    }
+
+    relayBaseUrl = baseUrl;
     relaySessionCode = code;
+    relayHostToken = hostToken;
 
     // 2. Connect as host
     const wsProtocol = baseUrl.startsWith('https') ? 'wss:' : 'ws:';
@@ -490,7 +547,7 @@ export async function startRelayTunnel(relayHost: string): Promise<RelayTunnelIn
 
             // Send cached snapshot so relay phones get current state
             if (cachedSnapshot) {
-                sendToRelay({ type: 'session:snapshot', data: cachedSnapshot });
+                sendToRelay({ type: 'session:snapshot', data: cachedSnapshot }, null);
             }
 
             resolve({
@@ -506,7 +563,11 @@ function connectRelayWs(
     onFirstOpen?: () => void,
     onFirstError?: (err: Error) => void
 ): void {
-    relayWs = new WebSocket(wsUrl);
+    // The host credential travels as a request header, never in the URL, so it
+    // cannot leak into the phone-facing link, the QR payload, or access logs.
+    relayWs = new WebSocket(wsUrl, {
+        headers: { Authorization: `Bearer ${relayHostToken ?? ''}` },
+    });
     let resolved = false;
 
     relayWs.onopen = () => {
@@ -518,24 +579,55 @@ function connectRelayWs(
             onFirstOpen();
         } else if (cachedSnapshot) {
             // Reconnection — re-send snapshot
-            sendToRelay({ type: 'session:snapshot', data: cachedSnapshot });
+            sendToRelay({ type: 'session:snapshot', data: cachedSnapshot }, null);
         }
     };
 
     relayWs.onmessage = (event: { data: unknown }) => {
-        // Phone messages forwarded from relay — handle like local clients
-        // These are raw PhoneToServerMessage JSON strings
-        try {
-            const raw = typeof event.data === 'string' ? event.data : String(event.data);
-            const msg = JSON.parse(raw);
-            if (msg && typeof msg.type === 'string') {
-                handleRelayPhoneMessage(msg);
-            }
-        } catch { /* ignore malformed */ }
+        // Relay → host frames are v1 tunnel envelopes. Anything else is a
+        // protocol mismatch and is dropped rather than guessed at.
+        const raw = typeof event.data === 'string' ? event.data : String(event.data);
+        const envelope = parseRelayEnvelope(raw);
+        if (!envelope) return;
+
+        if (envelope.type === 'phone:disconnect') {
+            handleRelayPhoneDisconnect(envelope.from);
+            return;
+        }
+
+        const msg = parsePhoneMessageValue(envelope.payload);
+        if (msg) handleRelayPhoneMessage(envelope.from, msg);
     };
 
-    relayWs.onclose = () => {
-        console.log('[Companion] Relay WS closed');
+    relayWs.onclose = (event: { code?: number; reason?: string }) => {
+        const code = event?.code;
+        console.log(`[Companion] Relay WS closed (code ${code ?? 'unknown'})`);
+
+        if (typeof code === 'number' && RELAY_FATAL_CLOSE_CODES.has(code)) {
+            // Retrying cannot help: the relay rejected the credential or the
+            // session is gone. Tear down instead of spinning the backoff loop.
+            console.error(
+                `[Companion] Relay refused the tunnel (code ${code}). ` +
+                'The session must be re-created against a matching relay.'
+            );
+            if (!resolved && onFirstError) {
+                resolved = true;
+                onFirstError(new Error(
+                    code === 4003
+                        ? 'Relay rejected the host credential — relay and app builds may not match.'
+                        : 'Relay has no such session — it may have restarted or the session expired.'
+                ));
+            }
+            stopRelayTunnel();
+            return;
+        }
+
+        if (!resolved && onFirstError) {
+            resolved = true;
+            onFirstError(new Error('Relay closed the tunnel before it was established.'));
+            return;
+        }
+
         scheduleRelayReconnect(wsUrl);
     };
 
@@ -562,62 +654,90 @@ function scheduleRelayReconnect(wsUrl: string): void {
     }, delay);
 }
 
-function handleRelayPhoneMessage(msg: { type: string; [key: string]: unknown }): void {
-    // Relay phone messages trigger the same callbacks as local clients
-    switch (msg.type) {
-        case 'join': {
-            const displayName = typeof msg.displayName === 'string' ? msg.displayName : 'Guest';
-            callbacks.onClientJoined?.({
-                id: `relay-${displayName}`,
-                displayName,
-                lastHeartbeat: Date.now(),
-                status: 'active',
-            });
+/**
+ * Handle a phone message that arrived through the relay tunnel.
+ *
+ * Relay phones are registered in the same `clients` map as LAN phones, keyed by
+ * the relay-assigned phone id, so every per-client path (targeted acks, client
+ * counts, leave events) works identically on both transports.
+ */
+function handleRelayPhoneMessage(phoneId: string, msg: PhoneToServerMessage): void {
+    const id = relayClientId(phoneId);
 
-            // Send join:ack back through relay
-            const isHostUser = cachedSnapshot?.participants.some(
-                p => p.isHost && p.displayName.toLowerCase() === displayName.toLowerCase()
-            ) ?? false;
-            sendToRelay({ type: 'join:ack', data: { isHost: isHostUser } });
+    if (msg.type === 'join') {
+        const client: TrackedClient = {
+            id,
+            displayName: msg.displayName,
+            lastHeartbeat: Date.now(),
+            status: 'active',
+            ws: null,
+            relayPhoneId: phoneId,
+        };
+        clients.set(id, client);
+        callbacks.onClientJoined?.(toCompanionClient(client));
 
-            // Send snapshot to the newly joined phone via relay
-            if (cachedSnapshot) {
-                sendToRelay({ type: 'session:snapshot', data: cachedSnapshot });
-            }
-            break;
+        const isHost = cachedSnapshot?.participants.some(
+            p => p.isHost && p.displayName.toLowerCase() === msg.displayName.toLowerCase()
+        ) ?? false;
+        sendToClient(client, { type: 'join:ack', data: { isHost } });
+
+        if (cachedSnapshot) {
+            sendToClient(client, { type: 'session:snapshot', data: cachedSnapshot });
         }
+        return;
+    }
+
+    // Everything else requires a prior join so the sender is attributable.
+    const client = clients.get(id);
+    if (!client) return;
+    client.lastHeartbeat = Date.now();
+
+    switch (msg.type) {
         case 'reaction':
-            callbacks.onReaction?.(
-                'relay-phone',
-                String(msg.displayName ?? 'Guest'),
-                String(msg.emoji ?? ''),
-                typeof msg.trackId === 'string' ? msg.trackId : null
-            );
-            // Broadcast reaction back to all relay phones
-            sendToRelay({
+            client.status = 'active';
+            callbacks.onReaction?.(client.id, client.displayName, msg.emoji, msg.trackId);
+            broadcast({
                 type: 'reaction:broadcast',
                 data: {
-                    clientId: 'relay-phone',
-                    displayName: String(msg.displayName ?? 'Guest'),
-                    emoji: String(msg.emoji ?? ''),
-                    trackId: typeof msg.trackId === 'string' ? msg.trackId : null,
+                    clientId: client.id,
+                    displayName: client.displayName,
+                    emoji: msg.emoji,
+                    trackId: msg.trackId,
                 },
             });
             break;
+
         case 'time-request':
-            callbacks.onTimeRequest?.(
-                'relay-phone',
-                String(msg.displayName ?? 'Guest'),
-                typeof msg.trackId === 'string' ? msg.trackId : null
-            );
+            client.status = 'active';
+            callbacks.onTimeRequest?.(client.id, client.displayName, msg.trackId);
             break;
-        // heartbeat — no action needed
+
+        case 'heartbeat':
+            client.status = 'active';
+            break;
     }
 }
 
-function sendToRelay(msg: ServerToPhoneMessage): void {
+function handleRelayPhoneDisconnect(phoneId: string): void {
+    const client = clients.get(relayClientId(phoneId));
+    if (!client) return;
+    clients.delete(client.id);
+    callbacks.onClientLeft?.(toCompanionClient(client));
+}
+
+/** Drop every relay-tunnelled client, notifying the renderer for each. */
+function purgeRelayClients(): void {
+    for (const client of Array.from(clients.values())) {
+        if (!client.relayPhoneId) continue;
+        clients.delete(client.id);
+        callbacks.onClientLeft?.(toCompanionClient(client));
+    }
+}
+
+/** `to === null` fans out to every phone on the tunnel; otherwise one phone. */
+function sendToRelay(msg: ServerToPhoneMessage, to: string | null): void {
     if (relayWs && relayWs.readyState === WebSocket.OPEN) {
-        relayWs.send(serializeMessage(msg));
+        relayWs.send(serializeHostEnvelope(to, msg));
     }
 }
 
@@ -632,8 +752,13 @@ export function stopRelayTunnel(): void {
         relayWs = null;
     }
 
+    // Phones reached through the tunnel are unreachable now — drop them so the
+    // client count and the roster do not keep ghosts around.
+    purgeRelayClients();
+
     relaySessionCode = null;
     relayBaseUrl = null;
+    relayHostToken = null;
     relayReconnectAttempt = 0;
 
     console.log('[Companion] Relay tunnel closed');

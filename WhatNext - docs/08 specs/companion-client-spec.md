@@ -45,6 +45,47 @@ All messages are JSON. Connection endpoint: `ws://{host}:{port}/ws`
 
 ---
 
+## Relay Tunnel (remote access)
+
+When the phone cannot reach the coordinator's LAN, the Electron host opens an **outbound** WebSocket to the companion tunnel on the relay (`relay/companion-tunnel.mjs`), and phones connect to the relay instead of to the desktop.
+
+```
+Phone ──WS──► Relay (public) ◄──WS── Electron host (outbound)
+```
+
+### Host attach handshake
+
+| Step | Call | Result |
+|------|------|--------|
+| 1 | Host `POST /session` | `{ code, hostToken, tunnelProtocolVersion }` |
+| 2 | Host opens `WS /host/{code}` with `Authorization: Bearer {hostToken}` | Attached as host |
+| 3 | Phones open `WS /ws/{code}` (no credential — see cycle 2b) | Attached as phones |
+
+- The **session code is public** — it is in the phone URL (`/s/{code}`) and the QR payload. The **host token is not**: it is returned once, to its creator, held only in the host process, sent only as a request header, and never logged.
+- Possession of the code alone does **not** permit attaching as the host. A host WebSocket with a missing or wrong credential is closed with **4003 Unauthorized** *before* the relay touches the session's host slot, so a rejected impostor cannot displace or disturb the attached host. (Before this handshake existed, any socket reaching `/host/{code}` replaced the live host — full remote session hijack.)
+- The credential is compared in constant time.
+- **Fail closed on version skew**: if `POST /session` returns no `hostToken`, the relay is older than the app and the host **refuses to open the tunnel**, surfacing an error that names the relay/app mismatch. There is no unauthenticated fallback. Deploying this change therefore requires updating **relay and app together**.
+- Close codes `4001` (session not found) and `4003` (unauthorized) are terminal: the host stops its reconnect backoff instead of retrying forever. Any other close (transport drop) re-attaches with the same credential and re-sends the cached snapshot.
+
+### Host ↔ relay envelope (v1)
+
+Host↔relay frames are wrapped so individual phones are addressable. **Phone↔relay frames are unchanged raw companion JSON** — the phone web client knows nothing about the envelope.
+
+| Direction | Frame |
+|-----------|-------|
+| Host → relay | `{ v: 1, type: 'host:message', to: phoneId \| null, payload }` |
+| Relay → host | `{ v: 1, type: 'phone:message', from: phoneId, payload }` |
+| Relay → host | `{ v: 1, type: 'phone:disconnect', from: phoneId }` |
+
+- `to: null` fans the payload out to every phone; a phone id delivers to that phone only. `time-request:ack` is always addressed, so phones that did not ask for time no longer receive one.
+- The relay assigns each phone an id (`phone-N`) and tags everything it forwards, so two phones on one tunnel are distinguishable at the host.
+- Tunnelled phones are registered in the host's `clients` map as `relay:{phoneId}`, so client counts, `companion:client-left`, and per-client sends work identically on both transports.
+- Frames that are not well-formed v1 envelopes are dropped by both sides — no silent legacy fallback.
+
+Types live in `app/src/main/companion/companion-protocol.ts` and are hand-mirrored in `relay/companion-tunnel.mjs` (the relay is a separate JS package and cannot import them).
+
+---
+
 ## Join Flow
 
 1. Coordinator starts session in Electron app
@@ -140,11 +181,13 @@ Server sends playback updates every 3s. Between updates, the phone client increm
 - Acceptable for LAN trust model (same WiFi = implicit trust)
 - Path traversal prevention on static file serving
 
-### Future (Remote via Relay)
-- WebSocket traffic could be tunneled through the libp2p relay
-- Session tokens or short-lived invite codes for auth
-- Rate limiting on reactions and time requests
-- Consider TLS for relay-proxied connections
+### Relay tunnel (remote)
+
+**Trust model**: the relay is a *trusted* component — reaching it requires deliberate configuration (free-text host, persisted as `wn-companion-relay-host`). The in-scope adversary is a third party who learns the public session code, **not** the relay operator. There is no end-to-end encryption between app and phone; the relay holds and compares the host credential in plaintext memory.
+
+- **Host authentication (done)**: 256-bit host token minted per session, presented as a bearer header, constant-time compared. See *Relay Tunnel* above.
+- **Participant authentication (cycle 2b)**: phones still join unauthenticated. Planned: join PIN, per-client reconnect token replacing display-name adoption, LAN `isHost` claim.
+- Still open: TLS, rate limiting on reactions and time requests, session-code entropy, CORS tightening, `/session/:code/status` information disclosure.
 
 ---
 
@@ -167,6 +210,7 @@ Server sends playback updates every 3s. Between updates, the phone client increm
 | `app/src/main/preload.ts` | `companion` namespace in `window.electron` |
 | `app/src/main/main.ts` | IPC handlers + server lifecycle |
 | `app/package.json` | `ws` dependency |
+| `relay/companion-tunnel.mjs` | Relay-side tunnel: host auth + per-phone addressing |
 
 ---
 

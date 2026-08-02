@@ -47,6 +47,25 @@ Phone Browser ←→ WebSocket ←→ HTTP Server (Electron Main) ←→ IPC ←
 | Phone → Server | `time-request` | Request coordinator rewind 30s |
 | Phone → Server | `heartbeat` | Every 15s keepalive |
 
+### Remote path: the relay tunnel
+
+When the phone can't reach the desktop's LAN, the host opens an outbound WebSocket to the companion tunnel on the relay and phones connect there instead:
+
+```
+Phone ←→ WS ←→ Companion Tunnel (relay) ←→ WS ←→ Electron Main ←→ IPC ←→ Renderer
+```
+
+**Host attach is authenticated.** `POST /session` mints a public 6-character session code *and* a secret 256-bit host token. Only a socket presenting `Authorization: Bearer <token>` may attach to `/host/<code>`; anything else is closed with `4003` before the relay touches the host slot, so a rejected impostor can't displace the live host. The token never appears in the phone URL, the QR payload, or relay logs. If the relay mints no token it is an older build, and the app **refuses to open the tunnel** rather than falling back to an unauthenticated one — so relay and app must be deployed together.
+
+**Host↔relay frames are enveloped (v1)** so single phones can be addressed:
+
+| Direction | Frame |
+|-----------|-------|
+| Host → relay | `{ v, type: 'host:message', to: phoneId \| null, payload }` |
+| Relay → host | `{ v, type: 'phone:message', from: phoneId, payload }` / `{ v, type: 'phone:disconnect', from }` |
+
+Phone↔relay traffic stays raw companion JSON — the phone client is unaware of the envelope. `to: null` fans out; a phone id targets one phone, which is how a `time-request:ack` reaches only the phone that asked.
+
 ## Key Patterns
 
 - **Renderer pushes, main broadcasts**: Main process has no [[RxDB]] access, so the renderer's `useCompanionBridge` hook subscribes to RxDB changes and pushes them to main via `ipcRenderer.send()`. Main fans out to WebSocket clients.
@@ -60,7 +79,9 @@ Phone Browser ←→ WebSocket ←→ HTTP Server (Electron Main) ←→ IPC ←
 - **Tab suspension**: Mobile browsers aggressively suspend background tabs. The WebSocket *will* die. Design assumes reconnection is the norm, not the exception.
 - **Port conflicts**: Server binds to port 0 (OS-assigned) to avoid collisions with Vite (1313) or relay (4001/4002).
 - **Path resolution**: `companion-web/` static files must be found in both dev (`src/companion-web/`) and packaged (`resources/companion-web/`) builds.
-- **No auth for MVP**: Anyone on the local network can connect. Acceptable for MVP (LAN trust), needs addressing for remote relay mode.
+- **No participant auth yet**: anyone on the local network — or anyone holding the public relay session code — can join as a *phone*. Acceptable under the LAN/trusted-relay model for now; the join PIN and per-client reconnect token are the next slice. The **host** slot is authenticated (above).
+- **Two hand-maintained copies of the phone UI**: `app/src/companion-web/` (LAN) and `relay/companion-web/` (relay) are duplicates with no sync script — every phone-UI change must land twice. Known debt.
+- **Relay-tunnelled phones are real clients**: they live in the same `clients` map as LAN phones under `relay:{phoneId}`. Addressing them by a constant id (the old `'relay-phone'`) silently broke per-client sends and client counts.
 
 ## Related Concepts
 
@@ -72,7 +93,8 @@ Phone Browser ←→ WebSocket ←→ HTTP Server (Electron Main) ←→ IPC ←
 
 ## References
 
-- `app/src/main/companion/companion-server.ts` — HTTP + WebSocket server
-- `app/src/main/companion/companion-protocol.ts` — message types
+- `app/src/main/companion/companion-server.ts` — HTTP + WebSocket server, relay tunnel client
+- `app/src/main/companion/companion-protocol.ts` — message types + host↔relay envelope
+- `relay/companion-tunnel.mjs` — relay-side tunnel (host auth, per-phone addressing)
 - `app/src/companion-web/` — mobile web UI
 - `app/src/renderer/hooks/useCompanionBridge.ts` — renderer state bridge

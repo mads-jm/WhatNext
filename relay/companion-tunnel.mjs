@@ -11,18 +11,38 @@
  * phone browsers connect to /ws/<sessionCode>. The relay bridges
  * JSON messages between them and serves the companion static files.
  *
+ * Host authentication:
+ *   POST /session mints a session code AND a secret host token. The code is
+ *   public (it is in the phone URL); the token is not. Only a WebSocket that
+ *   presents `Authorization: Bearer <token>` may attach to /host/<code>, so
+ *   knowing the code is not enough to hijack a session.
+ *
+ * Host <-> relay envelope (v1):
+ *   host  -> relay: { v, type: 'host:message', to: phoneId|null, payload }
+ *   relay -> host:  { v, type: 'phone:message', from: phoneId, payload }
+ *                   { v, type: 'phone:disconnect', from: phoneId }
+ *   `to: null` fans out to every phone. Phone <-> relay traffic is unwrapped
+ *   raw companion JSON — the phone web client is unaware of the envelope.
+ *   Mirrored in app/src/main/companion/companion-protocol.ts; keep in sync.
+ *
  * Environment variables:
  *   COMPANION_PORT - HTTP listen port (default: 4003)
  */
 
 import { createServer } from 'node:http';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 const COMPANION_PORT = parseInt(process.env.COMPANION_PORT ?? '4003', 10);
+
+/** Wire version of the host<->relay envelope. No fallback to unversioned frames. */
+const TUNNEL_PROTOCOL_VERSION = 1;
+
+/** 256 bits of host credential — brute-forcing it from the public code is hopeless. */
+const HOST_TOKEN_BYTES = 32;
 
 // ========================================
 // Session Registry
@@ -30,7 +50,7 @@ const COMPANION_PORT = parseInt(process.env.COMPANION_PORT ?? '4003', 10);
 
 /**
  * Each session has one host (Electron app) and N phone clients.
- * @type {Map<string, { host: WebSocket | null, phones: Map<string, WebSocket> }>}
+ * @type {Map<string, { host: WebSocket | null, hostToken: string, phones: Map<string, WebSocket>, createdAt: number }>}
  */
 const sessions = new Map();
 
@@ -48,11 +68,36 @@ function generateSessionCode() {
     return code;
 }
 
-function getOrCreateSession(code) {
-    if (!sessions.has(code)) {
-        sessions.set(code, { host: null, phones: new Map(), createdAt: Date.now() });
-    }
-    return sessions.get(code);
+function createSession(code) {
+    const session = {
+        host: null,
+        hostToken: randomBytes(HOST_TOKEN_BYTES).toString('hex'),
+        phones: new Map(),
+        createdAt: Date.now(),
+    };
+    sessions.set(code, session);
+    return session;
+}
+
+/**
+ * Constant-time credential comparison. Length is compared first because
+ * timingSafeEqual throws on mismatched buffers; the token length is fixed and
+ * public, so leaking it tells an attacker nothing.
+ */
+function tokenMatches(presented, expected) {
+    if (typeof presented !== 'string' || typeof expected !== 'string') return false;
+    const a = Buffer.from(presented, 'utf-8');
+    const b = Buffer.from(expected, 'utf-8');
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+}
+
+/** Extract the host credential from `Authorization: Bearer <token>`. */
+function extractHostToken(req) {
+    const header = req?.headers?.authorization;
+    if (typeof header !== 'string') return null;
+    const match = header.match(/^Bearer (.+)$/);
+    return match ? match[1] : null;
 }
 
 function cleanupSession(code) {
@@ -73,7 +118,7 @@ function cleanupSession(code) {
 }
 
 // Periodic cleanup of stale sessions
-setInterval(() => {
+const expiryTimer = setInterval(() => {
     const now = Date.now();
     for (const [code, session] of sessions) {
         if (now - session.createdAt > SESSION_TTL_MS) {
@@ -86,6 +131,8 @@ setInterval(() => {
         }
     }
 }, 60_000);
+// Don't hold the process (or a test runner) open just for the sweep.
+expiryTimer.unref?.();
 
 // ========================================
 // Static File Serving
@@ -143,11 +190,16 @@ const httpServer = createServer((req, res) => {
             code = generateSessionCode();
         } while (sessions.has(code));
 
-        getOrCreateSession(code);
+        const session = createSession(code);
+        // The token is returned exactly once, to its creator. Never logged.
         console.log(`[Companion Tunnel] Session ${code} created`);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ code }));
+        res.end(JSON.stringify({
+            code,
+            hostToken: session.hostToken,
+            tunnelProtocolVersion: TUNNEL_PROTOCOL_VERSION,
+        }));
         return;
     }
 
@@ -198,7 +250,7 @@ wss.on('connection', (ws, req) => {
     // Host connection: /host/<sessionCode>
     const hostMatch = pathname.match(/^\/host\/([A-Z0-9]+)$/);
     if (hostMatch) {
-        handleHostConnection(ws, hostMatch[1]);
+        handleHostConnection(ws, hostMatch[1], req);
         return;
     }
 
@@ -217,10 +269,45 @@ wss.on('connection', (ws, req) => {
 // Host Connection (Electron → Relay)
 // ========================================
 
-function handleHostConnection(ws, code) {
+/**
+ * Parse a host -> relay frame. Returns null unless it is a well-formed v1
+ * envelope, so a version-skewed host is dropped instead of guessed at.
+ */
+function parseHostEnvelope(raw) {
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    } catch {
+        return null;
+    }
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (parsed.v !== TUNNEL_PROTOCOL_VERSION) return null;
+    if (parsed.type !== 'host:message') return null;
+    if (!parsed.payload || typeof parsed.payload !== 'object') return null;
+
+    const to = typeof parsed.to === 'string' && parsed.to.length > 0 ? parsed.to : null;
+    return { to, payload: parsed.payload };
+}
+
+/** Send a relay -> host control/message envelope. */
+function sendToHost(session, envelope) {
+    if (session.host && session.host.readyState === WebSocket.OPEN) {
+        session.host.send(JSON.stringify({ v: TUNNEL_PROTOCOL_VERSION, ...envelope }));
+    }
+}
+
+function handleHostConnection(ws, code, req) {
     const session = sessions.get(code);
     if (!session) {
         ws.close(4001, 'Session not found');
+        return;
+    }
+
+    // Authenticate BEFORE touching session.host: an unauthenticated attach must
+    // not disturb — let alone replace — the host that is already attached.
+    if (!tokenMatches(extractHostToken(req), session.hostToken)) {
+        console.warn(`[Companion Tunnel] Rejected host attach to session ${code} (bad or missing credential)`);
+        ws.close(4003, 'Unauthorized');
         return;
     }
 
@@ -233,8 +320,26 @@ function handleHostConnection(ws, code) {
     console.log(`[Companion Tunnel] Host connected to session ${code}`);
 
     ws.on('message', (raw) => {
-        // Forward host messages to all phones
-        const data = raw.toString('utf-8');
+        const envelope = parseHostEnvelope(raw.toString('utf-8'));
+        if (!envelope) {
+            // Unversioned or malformed frame — an app older than this relay.
+            // Dropped rather than broadcast, so no accidental legacy fallback.
+            console.warn(`[Companion Tunnel] Dropped unrecognised host frame for session ${code}`);
+            return;
+        }
+
+        const data = JSON.stringify(envelope.payload);
+
+        if (envelope.to !== null) {
+            // Addressed to one phone (e.g. a time-request ack)
+            const phone = session.phones.get(envelope.to);
+            if (phone && phone.readyState === WebSocket.OPEN) {
+                phone.send(data);
+            }
+            return;
+        }
+
+        // Fan out to every phone
         for (const phone of session.phones.values()) {
             if (phone.readyState === WebSocket.OPEN) {
                 phone.send(data);
@@ -276,15 +381,22 @@ function handlePhoneConnection(ws, code) {
     console.log(`[Companion Tunnel] Phone ${phoneId} connected to session ${code} (${session.phones.size} phones)`);
 
     ws.on('message', (raw) => {
-        // Forward phone messages to host
-        if (session.host && session.host.readyState === WebSocket.OPEN) {
-            session.host.send(raw.toString('utf-8'));
+        // Forward phone messages to the host, tagged with this phone's id so
+        // the host can tell two phones on the same tunnel apart.
+        let payload;
+        try {
+            payload = JSON.parse(raw.toString('utf-8'));
+        } catch {
+            return;
         }
+        if (!payload || typeof payload !== 'object') return;
+        sendToHost(session, { type: 'phone:message', from: phoneId, payload });
     });
 
     ws.on('close', () => {
         session.phones.delete(phoneId);
         console.log(`[Companion Tunnel] Phone ${phoneId} disconnected from session ${code} (${session.phones.size} phones)`);
+        sendToHost(session, { type: 'phone:disconnect', from: phoneId });
         if (session.phones.size === 0 && (!session.host || session.host.readyState !== WebSocket.OPEN)) {
             cleanupSession(code);
         }
@@ -302,21 +414,25 @@ function handlePhoneConnection(ws, code) {
 export function startCompanionTunnel(port = COMPANION_PORT) {
     return new Promise((resolve, reject) => {
         httpServer.listen(port, '0.0.0.0', () => {
-            console.log(`[Companion Tunnel] Listening on http://0.0.0.0:${port}`);
-            resolve({ port });
+            // Read the bound port back — callers may pass 0 for an OS-assigned one.
+            const address = httpServer.address();
+            const boundPort = typeof address === 'object' && address ? address.port : port;
+            console.log(`[Companion Tunnel] Listening on http://0.0.0.0:${boundPort}`);
+            resolve({ port: boundPort });
         });
         httpServer.on('error', reject);
     });
 }
 
 export function stopCompanionTunnel() {
-    for (const [code, session] of sessions) {
+    for (const session of sessions.values()) {
         if (session.host?.readyState === WebSocket.OPEN) session.host.close();
         for (const ws of session.phones.values()) {
             if (ws.readyState === WebSocket.OPEN) ws.close();
         }
     }
     sessions.clear();
+    clearInterval(expiryTimer);
     wss.close();
     httpServer.close();
 }
