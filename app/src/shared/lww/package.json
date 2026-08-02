@@ -1,0 +1,7 @@
+{
+    "//": "Marks this directory as ESM. app/package.json declares \"type\": \"commonjs\" and Node picks a file's module system from the NEAREST package.json, so without this the test peer (plain `node`, no bundler) could not import index.js.",
+    "name": "@whatnext/lww",
+    "private": true,
+    "type": "module",
+    "main": "index.js"
+}

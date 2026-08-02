@@ -22,15 +22,14 @@ import type { PurchaseLink } from '../../shared/core/download-types';
  * a document is transmitted (see useSessionReplication push) and MUST also be
  * excluded from the LWW equal-timestamp content tie-break key (see lww.contentKey)
  * so both peers compute the key over the identical field set and converge on the
- * same winner. This is the single source of truth so the sender-strip and the
- * tiebreak-strip cannot drift apart.
+ * same winner.
+ *
+ * Defined in `app/src/shared/lww/index.js` and re-exported here so the app's
+ * existing `./schemas` import path is unchanged. The shared module is the single
+ * source of truth for the app AND the test peer (#58) — sender-strip, tiebreak-strip,
+ * and the test peer's merge cannot drift apart.
  */
-export const DEVICE_LOCAL_FIELDS = [
-    'localFilePath',
-    'localFileSize',
-    'albumArtLocalPath',
-    'coverArtLocalPath',
-] as const;
+export { DEVICE_LOCAL_FIELDS } from '../../shared/lww/index.js';
 
 // ========================================
 // User/Peer Schema

@@ -25,7 +25,7 @@
 
 import { getDatabase } from './database';
 import type { WhatNextCollections } from './schemas';
-import { incomingWins, contentKey } from './lww';
+import { incomingWins, envelopeCandidate, storedCandidate } from './lww';
 
 type CollectionName = keyof WhatNextCollections;
 
@@ -54,17 +54,15 @@ export async function applyReplicatedChanges(
         } else {
             // LWW: only update if incoming wins. Comparison is skew-aware —
             // timestamps are parsed to epoch-ms (not string-compared) and ties
-            // are broken deterministically by content so peers converge. See lww.ts.
+            // are broken deterministically by content so peers converge. The
+            // projections come from lww.ts (shared with the test peer) so both
+            // ends of a session derive the same candidate from the same doc.
             const existing = await col.findOne(doc.id).exec();
             if (existing) {
                 const existingData = existing.toJSON() as Record<string, unknown>;
                 const winner = incomingWins(
-                    { updatedAt: doc.updatedAt, tiebreak: contentKey(doc.data) },
-                    {
-                        updatedAt: existingData.updatedAt,
-                        addedAt: existingData.addedAt,
-                        tiebreak: contentKey(existingData),
-                    }
+                    envelopeCandidate(doc),
+                    storedCandidate(existingData)
                 );
                 if (winner) {
                     await existing.update({ $set: doc.data });

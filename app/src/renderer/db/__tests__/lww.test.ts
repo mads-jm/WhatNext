@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { parseTimestampMs, resolveTimestampMs, incomingWins, stableStringify, contentKey } from '../lww';
+import {
+    parseTimestampMs,
+    resolveTimestampMs,
+    incomingWins,
+    stableStringify,
+    contentKey,
+    envelopeCandidate,
+    storedCandidate,
+} from '../lww';
 
 describe('parseTimestampMs', () => {
     it('parses an ISO-8601 string to epoch ms', () => {
@@ -230,5 +238,95 @@ describe('stableStringify', () => {
 
     it('preserves array order (arrays are not reordered)', () => {
         expect(stableStringify([3, 1, 2])).toBe('[3,1,2]');
+    });
+});
+
+describe('app ↔ test-peer LWW parity (#58)', () => {
+    // These exercise the exact functions BOTH peers run. The app merges an
+    // incoming envelope against a stored RxDocument
+    // (replication-handler.ts: incomingWins(envelopeCandidate, storedCandidate));
+    // the test peer merges an incoming envelope against a stored envelope
+    // (test-peer/src/session-store.js applyLWW: incomingWins(envelopeCandidate,
+    // envelopeCandidate)). Both import app/src/shared/lww/index.js, so covering
+    // the shared functions here covers the test peer's merge by construction —
+    // no test runner is added to test-peer/.
+    const TS = '2026-06-27T12:00:00.000Z';
+
+    /** The wire shape: {id, data, updatedAt}. `data` still carries id/updatedAt. */
+    const envelope = (data: Record<string, unknown>) => ({
+        id: data.id as string,
+        data,
+        updatedAt: TS,
+    });
+
+    const appEdit = { id: 'tr-1', title: 'App edit', artists: ['Band'], updatedAt: TS };
+    const peerEdit = { id: 'tr-1', title: 'Peer edit', artists: ['Band'], updatedAt: TS };
+
+    it('converges on the same winner when both sides edit the same doc at the same timestamp', () => {
+        // The app's stored copy is an RxDocument: RxDB internals plus a
+        // device-local field the wire payload never carried.
+        const appStored = {
+            ...appEdit,
+            _rev: '4-aaa',
+            _meta: { lwt: 1 },
+            localFilePath: '/home/a/tr-1.flac',
+        };
+
+        // App receives the peer's edit.
+        const peerWinsOnApp = incomingWins(
+            envelopeCandidate(envelope(peerEdit)),
+            storedCandidate(appStored)
+        );
+        // Test peer receives the app's edit; its stored copy is the peer's own envelope.
+        const appWinsOnPeer = incomingWins(
+            envelopeCandidate(envelope(appEdit)),
+            envelopeCandidate(envelope(peerEdit))
+        );
+
+        // Exactly one version survives, and it is the SAME one on both sides.
+        expect(peerWinsOnApp).toBe(!appWinsOnPeer);
+        const appHolds = peerWinsOnApp ? peerEdit.title : appEdit.title;
+        const peerHolds = appWinsOnPeer ? appEdit.title : peerEdit.title;
+        expect(appHolds).toBe(peerHolds);
+    });
+
+    it('is the divergence the test peer had: a raw string compare never breaks a tie', () => {
+        // Regression pin for the pre-#54 semantics the test peer still carried:
+        // `incoming.updatedAt > existing.updatedAt` is false on an exact tie, so
+        // the peer ALWAYS kept its own copy while the app picked by content —
+        // one of the two orderings below is guaranteed to disagree with it.
+        const rawStringCompareAcceptsApp = envelope(appEdit).updatedAt > envelope(peerEdit).updatedAt;
+        expect(rawStringCompareAcceptsApp).toBe(false);
+
+        const sharedAcceptsApp = incomingWins(
+            envelopeCandidate(envelope(appEdit)),
+            envelopeCandidate(envelope(peerEdit))
+        );
+        const sharedAcceptsPeer = incomingWins(
+            envelopeCandidate(envelope(peerEdit)),
+            envelopeCandidate(envelope(appEdit))
+        );
+        // The shared comparator is antisymmetric on a tie — it does break it.
+        expect(sharedAcceptsApp).toBe(!sharedAcceptsPeer);
+    });
+
+    it('still prefers the strictly-newer timestamp regardless of content key', () => {
+        const older = envelope({ id: 'tr-1', title: 'zzz-old', updatedAt: TS });
+        const newer = { id: 'tr-1', data: { id: 'tr-1', title: 'aaa-new' }, updatedAt: '2026-06-27T12:00:01.000Z' };
+
+        expect(incomingWins(envelopeCandidate(newer), envelopeCandidate(older))).toBe(true);
+        expect(incomingWins(envelopeCandidate(older), envelopeCandidate(newer))).toBe(false);
+    });
+
+    it('ignores device-local fields on the stored side when breaking a tie', () => {
+        // Only the app can hold device-local fields (the test peer never receives
+        // them). If storedCandidate did not drop them, the app's key would differ
+        // from the peer's for identical content and the two would oscillate.
+        const shared = { id: 'tr-1', title: 'Same', updatedAt: TS };
+        const appStored = { ...shared, localFilePath: '/x.flac', localFileSize: 9, _rev: '2-b' };
+
+        expect(storedCandidate(appStored).tiebreak).toBe(
+            envelopeCandidate(envelope(shared)).tiebreak
+        );
     });
 });
