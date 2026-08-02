@@ -60,6 +60,7 @@ import {
     getDocuments,
     getCheckpoint,
     setHandshakeInfo,
+    getHandshakeInfo,
     removeHandshakeInfo,
     createTrackDocument,
     createVoteDocument,
@@ -150,13 +151,9 @@ async function startNode() {
         // Now that we have a peerId, patch the handshake identity.
         LOCAL_HANDSHAKE_DATA.peerId = node.peerId.toString();
 
-        // Register protocol handlers.
-        registerHandshakeProtocol(node, LOCAL_HANDSHAKE_DATA, (remotePeerId, data) => {
-            setHandshakeInfo(remotePeerId, data);
-            console.log(chalk.magenta(`\n[Handshake] ✅ Complete with ${data.displayName}`));
-            console.log(chalk.gray(`   Capabilities: ${(data.capabilities ?? []).join(', ')}\n`));
-            rl.prompt();
-        });
+        // Register protocol handlers. The responder and the dialer share one
+        // completion path (onHandshakeComplete) — mirrors the app's p2p-service.
+        registerHandshakeProtocol(node, LOCAL_HANDSHAKE_DATA, onHandshakeComplete);
 
         registerReplicationProtocol(
             node,
@@ -255,6 +252,37 @@ async function startNode() {
 }
 
 // ========================================
+// Handshake completion
+// ========================================
+
+/**
+ * Shared handshake-completion path for BOTH sides of a connection.
+ *
+ * The responder reaches it from the protocol handler; the dialer reaches it from
+ * initiateHandshake's resolved value. Before #58 the dialer had no completion
+ * path at all — it learned its peer only because the responder replied on a NEW
+ * stream, which re-entered our own responder (the handshake loop).
+ *
+ * Reports completion at most once per connection. Both ends dial on peer:connect,
+ * so one connection legitimately completes the handshake twice locally (once as
+ * dialer, once as responder); live QA reads these lines to confirm the loop is
+ * gone, so a duplicate would be actively misleading. removeHandshakeInfo() on
+ * peer:disconnect re-arms it for a reconnect.
+ *
+ * @param {string} remotePeerId
+ * @param {object} data - the remote peer's HandshakeData
+ */
+function onHandshakeComplete(remotePeerId, data) {
+    const alreadyKnown = getHandshakeInfo(remotePeerId) !== undefined;
+    setHandshakeInfo(remotePeerId, data);
+    if (alreadyKnown) return;
+
+    console.log(chalk.magenta(`\n[Handshake] ✅ Complete with ${data.displayName}`));
+    console.log(chalk.gray(`   Capabilities: ${(data.capabilities ?? []).join(', ')}\n`));
+    rl.prompt();
+}
+
+// ========================================
 // Event listeners
 // ========================================
 
@@ -288,7 +316,10 @@ function setupEventListeners() {
         // before we dial it. Both sides fire peer:connect simultaneously.
         setTimeout(async () => {
             try {
-                await initiateHandshake(node, peerId, LOCAL_HANDSHAKE_DATA);
+                // initiateHandshake now resolves with the REMOTE's HandshakeData;
+                // this is the dialing side's only completion path (#58).
+                const remoteData = await initiateHandshake(node, peerId, LOCAL_HANDSHAKE_DATA);
+                onHandshakeComplete(peerId, remoteData);
             } catch (err) {
                 console.log(chalk.yellow(`[Handshake] Failed to initiate: ${err.message}\n`));
             }

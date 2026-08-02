@@ -73,12 +73,54 @@ async function writeStreamMessage(stream, data) {
 // ─── Handshake Protocol ──────────────────────────────────────────────────────
 
 /**
+ * How long the dialer waits for the responder's handshake before giving up.
+ * Mirrors HANDSHAKE_RESPONSE_TIMEOUT in app/src/utility/protocols/handshake.ts.
+ *
+ * The responder now replies on the SAME stream (#58), so a peer that opens the
+ * stream and never writes back — one still running the pre-#58
+ * reply-on-a-new-stream shape, or one whose handler threw — would otherwise
+ * leave the read awaiting for the life of the connection.
+ */
+const HANDSHAKE_RESPONSE_TIMEOUT = 10_000; // 10s
+
+/**
+ * Read one framed message, giving up after `timeoutMs` and aborting the stream
+ * so the stalled read is released instead of pinned open.
+ *
+ * @param {import('@libp2p/interface').Stream} stream
+ * @param {number} timeoutMs
+ * @returns {Promise<object>}
+ */
+async function readStreamMessageWithTimeout(stream, timeoutMs) {
+    let timer;
+    try {
+        return await Promise.race([
+            readStreamMessage(stream),
+            new Promise((_resolve, reject) => {
+                timer = setTimeout(() => {
+                    const err = new Error(`[Handshake] No response within ${timeoutMs}ms`);
+                    try { stream.abort(err); } catch { /* already gone */ }
+                    reject(err);
+                }, timeoutMs);
+            }),
+        ]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
  * Register the responder side of /whatnext/handshake/1.0.0.
  *
- * Flow (mirrors handshake.ts):
+ * Flow (mirrors handshake.ts — request/response on ONE stream, #58):
  *   1. Read remote peer's HandshakeData from the incoming stream.
- *   2. Open a NEW stream on the same connection and write localData.
+ *   2. Write localData back on that SAME stream.
  *   3. Fire onHandshake(remotePeerId, remoteData).
+ *
+ * Step 2 must never open a new stream. A reply on a fresh stream is
+ * indistinguishable from a fresh request at the far end, so the far end's own
+ * responder answered it — an unbounded handshake ping-pong in which every lap
+ * re-fired handshake completion (and, in the app, replication bootstrap).
  *
  * @param {import('libp2p').Libp2p} node
  * @param {object} localData - HandshakeData for this peer
@@ -92,9 +134,8 @@ export function registerHandshakeProtocol(node, localData, onHandshake) {
 
             const remoteData = await readStreamMessage(stream);
 
-            // Respond on a new stream (same pattern as TS original)
-            const responseStream = await connection.newStream(P2P_CONFIG.PROTOCOLS.HANDSHAKE);
-            await writeStreamMessage(responseStream, localData);
+            // Reply on the same stream — see the loop warning above.
+            await writeStreamMessage(stream, localData);
 
             console.log(`[Handshake] Complete with ${remoteData.displayName}`);
             onHandshake(remotePeerId, remoteData);
@@ -105,21 +146,30 @@ export function registerHandshakeProtocol(node, localData, onHandshake) {
 }
 
 /**
- * Initiator side: dial the handshake protocol and send localData.
- * The response arrives via the registered handler above.
+ * Initiator side: dial the handshake protocol, send localData, and read the
+ * peer's HandshakeData back off the same stream.
+ *
+ * Resolves with the REMOTE peer's data. This is the dialing side's only
+ * completion path now that the handshake loop is gone — callers must run their
+ * handshake-complete work on the returned value (see index.js).
  *
  * @param {import('libp2p').Libp2p} node
  * @param {string} remotePeerId
  * @param {object} localData
- * @returns {Promise<void>}
+ * @param {number} [timeoutMs] - overridable only for tests
+ * @returns {Promise<object>} the remote peer's HandshakeData
  */
-export async function initiateHandshake(node, remotePeerId, localData) {
+export async function initiateHandshake(node, remotePeerId, localData, timeoutMs = HANDSHAKE_RESPONSE_TIMEOUT) {
     const peerId = peerIdFromString(remotePeerId);
     console.log(`[Handshake] Initiating with ${remotePeerId.slice(0, 12)}...`);
 
     const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.HANDSHAKE);
-    await writeStreamMessage(stream, localData);
-    // Response arrives asynchronously via the registered protocol handler.
+    try {
+        stream.send(encodeFramed(localData));
+        return await readStreamMessageWithTimeout(stream, timeoutMs);
+    } finally {
+        try { await stream.close(); } catch { /* ignore */ }
+    }
 }
 
 // ─── Replication Protocol ────────────────────────────────────────────────────
