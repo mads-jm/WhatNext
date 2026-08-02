@@ -320,10 +320,16 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                     setError(err instanceof Error ? err.message : String(err));
                 }
             } finally {
-                if (!cancelled) {
-                    setSyncing(false);
-                    syncingRef.current = false;
-                }
+                // Unconditional: `syncingRef` outlives this effect run, so
+                // skipping the reset when `cancelled` (unmount, or an `enabled`
+                // / playlist change tearing the effect down mid-poll) left the
+                // flag stuck `true` and wedged every future poll at the guard
+                // above. No poll can be in flight behind us — the guard means
+                // only one poll holds the flag at a time — so clearing it here
+                // cannot cut short a newer run. `setSyncing` after unmount is a
+                // no-op in React 18+.
+                setSyncing(false);
+                syncingRef.current = false;
             }
         };
 
