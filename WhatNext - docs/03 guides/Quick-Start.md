@@ -9,17 +9,17 @@ date modified: Monday, March 9th 2026, 12:20:52 am
 
 # Quick Start Guide
 
-__Last Updated__: 2025-11-12
-__For__: v0.0.0 Alpha - P2P Learning Build
+__Last Updated__: 2026-08-02
+__For__: P2P development workflow (originally written for the v0.0.0 alpha; commands refreshed against current scripts)
 
 ## TL;DR
 
 ```bash
 # Terminal 1: Start app + test-peer together
-./scripts/start-dev.sh
+node scripts/start-dev.mjs
 
-# Terminal 2 (optional): Start second instance for multi-peer testing
-./scripts/start-dev.sh --test-peer-only
+# Terminal 2 (optional): Start second test-peer for multi-peer testing
+node scripts/start-dev.mjs --test-peer-only
 ```
 
 Navigate to "P2P Network" tab in the app. You should see:
@@ -36,7 +36,7 @@ __Goal__: Verify [[P2P-Discovery|mDNS discovery]] works
 
 ```bash
 # Start app
-./scripts/start-dev.sh
+node scripts/start-dev.mjs
 
 # Expected: Within 2 seconds, test-peer appears in "Discovered Peers"
 # If not: Check firewall, ensure same network
@@ -58,10 +58,14 @@ __Goal__: Connect two WhatNext instances
 
 ```bash
 # Terminal 1: Start first instance
-./scripts/start-dev.sh --app-only
+node scripts/start-dev.mjs --app-only
 
-# Terminal 2: Start second instance (different port)
-cd app && PORT=1314 npm run dev
+# Terminal 2: Start second instance
+# The Vite dev port is fixed at 1313 in app/package.json's `dev` script,
+# so a second dev instance needs the port changed there (e.g. 1314) in a
+# second checkout. For most multi-peer testing, the test-peer CLI is the
+# easier second peer:
+node scripts/start-dev.mjs --test-peer-only
 
 # Copy URL from one instance, paste in other
 # Expected: Both show each other as connected
@@ -128,14 +132,14 @@ __Causes__:
 __Solutions__:
 1. Check debug logs for specific error
 2. Try copying fresh URL (peer may have restarted)
-3. Check firewall allows TCP ports in range 49152-65535
+3. Note: TCP now listens on localhost only — remote peers connect via [[WebRTC]] / [[Circuit-Relay|circuit relay]], so check relay reachability rather than TCP firewall rules
 
 __Debug__:
 
 ```bash
 # Check what ports libp2p is listening on
 # (Look in "Listening Addresses" section)
-# Example: /ip4/0.0.0.0/tcp/54321
+# Example: /ip4/127.0.0.1/tcp/54321
 
 # Test TCP connectivity
 nc -zv <peer-ip> <port>
@@ -198,9 +202,10 @@ __Solutions__:
   /src
     index.js               - Barebones CLI peer for testing
 
-/docs
-  whtnxt-nextspec.md       - Original specification
-  /notes                   - Learning documentation
+/WhatNext - docs           - Obsidian docs vault (see [[index]])
+  /07 stories
+    whtnxt-nextspec.md     - Original specification
+  /05 notes                - Learning documentation
 ```
 
 ## Important Configuration Files
@@ -214,16 +219,17 @@ MDNS_SERVICE_NAME: '_whatnext._udp.local',  // Must match across all peers
 MDNS_INTERVAL: 1000,                         // Discovery broadcast interval (ms)
 MAX_CONNECTIONS: 10,                         // Simultaneous connection limit
 LISTEN_ADDRESSES: [
-    '/ip4/0.0.0.0/tcp/0',                   // Random TCP port
-    '/ip4/0.0.0.0/tcp/0/ws',                // Random WebSocket port
+    '/ip4/127.0.0.1/tcp/0',                 // TCP (localhost only; remote peers use WebRTC/relay)
 ]
 ```
 
 ### Development Scripts (`scripts/`)
 
-- `start-dev.sh` - Runs app + test-peer with logging
-- `start-app.sh` - App only (traditional mode)
-- `dev-init.sh` - First-time setup (installs nvm, dependencies)
+- `start-dev.mjs` - Runs app + test-peer with prefixed logging (`--app-only` / `--test-peer-only` flags)
+- `start-app.mjs` - App only (traditional mode)
+- `start-service.mjs` - Helper service via ts-node (default port 4200)
+- `dev-init.sh` - First-time setup (installs nvm, Node, dependencies)
+- `proj-init.sh` - Original monorepo scaffolding script (historical)
 
 ## Quick Reference: IPC Protocol
 
@@ -268,7 +274,7 @@ window.electron.p2p.onNodeError(callback)
 2. __Read the notes__: Start with [[note-251112-p2p-development-interface-complete]]
 3. __Explore [[libp2p]] docs__: <https://docs.libp2p.io/>
 4. __Plan first protocol__: [[Handshake-Protocol|Handshake]] is recommended (see [[note-251112-v0.0.0-release-summary|v0.0.0 release summary]] and the [[Protocol-Implementation-Roadmap]])
-5. __Document learnings__: Continue the notes pattern in `/docs/notes/`
+5. __Document learnings__: Continue the notes pattern in `WhatNext - docs/05 notes/` (see [[NOTES]])
 
 ## Getting Help
 
@@ -277,7 +283,7 @@ If you encounter issues:
 1. Check debug logs in UI (most common issues show there)
 2. Check browser DevTools console (renderer errors)
 3. Check terminal output (main process & utility process logs)
-4. Review notes in `/docs/notes/` for similar issues
+4. Review notes in `WhatNext - docs/05 notes/` ([[NOTES]]) for similar issues
 5. Consult libp2p docs: <https://docs.libp2p.io/>
 
 ## Related Documentation

@@ -106,7 +106,7 @@ Human — the product owner or any contributor with a clear user insight. Claude
 
 ### Where It Lives
 
-Every story lives in `docs_md/07 stories/` as a standalone document, regardless of size. Even a one-sentence story gets a file. This keeps Obsidian's linking and graph intact and builds a comprehensive record of the project's evolution.
+Every story lives in `WhatNext - docs/07 stories/` as a standalone document, regardless of size. Even a one-sentence story gets a file. This keeps Obsidian's linking and graph intact and builds a comprehensive record of the project's evolution.
 
 __Filename__: `story-<slug>.md`
 
@@ -126,7 +126,7 @@ Link to the story doc from the GitHub Issue body using its WikiLink: `[[story-<s
 - Human desire clearly stated in one or two sentences
 - Clear who the user is (end user, coordinator, participant)
 - Decoupled from implementation — describes the outcome, not the mechanism
-- File exists in `docs_md/07 stories/`
+- File exists in `WhatNext - docs/07 stories/`
 
 ---
 
@@ -208,10 +208,10 @@ A technical specification describing how the acceptance criteria will be met —
 Not every issue needs a spec. Use judgment:
 
 - Simple UI fix → no spec, work directly
-- New DB field → brief spec note in the issue comment is fine, but document in `docs_md/` if it introduces a pattern
-- New subsystem, provider interface, or cross-cutting change → full spec in `docs_md/04 architecture/`
+- New DB field → brief spec note in the issue comment is fine, but document in `WhatNext - docs/` if it introduces a pattern
+- New subsystem, provider interface, or cross-cutting change → full spec in `WhatNext - docs/04 architecture/`
 
-All specs eventually land in `docs_md/` for Obsidian graph visibility. Issue comments are acceptable for quick drafts, but the final spec belongs in the vault.
+All specs eventually land in `WhatNext - docs/` for Obsidian graph visibility. Issue comments are acceptable for quick drafts, but the final spec belongs in the vault.
 
 ### Who Creates It
 
@@ -221,11 +221,11 @@ Human or human + Claude Code collaboratively. The human must review and approve 
 
 | Scope | Location |
 |---|---|
-| Architectural decision | `docs_md/04 architecture/adr/adr-YYMMDD-<slug>.md` |
-| Feature / component spec | `docs_md/08 specs/<feature-slug>.md` |
-| Quick spec draft | GitHub Issue comment (migrated to `docs_md/08 specs/` before implementation) |
+| Architectural decision | `WhatNext - docs/04 architecture/adr/adr-YYMMDD-<slug>.md` |
+| Feature / component spec | `WhatNext - docs/08 specs/<feature-slug>.md` |
+| Quick spec draft | GitHub Issue comment (migrated to `WhatNext - docs/08 specs/` before implementation) |
 
-For ADRs, follow the template in [[ADR]] and the established format in `docs_md/04 architecture/adr/`.
+For ADRs, follow the template in [[ADR]] and the established format in `WhatNext - docs/04 architecture/adr/`.
 
 ### Spec Minimum Content
 
@@ -258,7 +258,7 @@ Decisions that must be made before implementation begins
 - Schema changes documented with migration plan
 - Human has explicitly approved (GitHub comment or PR review)
 - `needs-spec` label removed from the issue
-- Spec is in `docs_md/`
+- Spec is in `WhatNext - docs/`
 
 ---
 
@@ -500,10 +500,10 @@ __`dev`__ (once created):
 | GitHub Releases | Automated release notes via semantic-release |
 | `.github/ISSUE_TEMPLATE/` | `todo.md` for features, `bug_report.md` for defects |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Standard PR checklist |
-| `docs_md/07 stories/` | Story documents |
-| `docs_md/04 architecture/adr/` | Architectural Decision Records |
-| `docs_md/08 specs/` | Feature and component specs |
-| `docs_md/09 PRs/` | Auto-generated PR records (on merge) |
+| `WhatNext - docs/07 stories/` | Story documents |
+| `WhatNext - docs/04 architecture/adr/` | Architectural Decision Records |
+| `WhatNext - docs/08 specs/` | Feature and component specs |
+| `WhatNext - docs/10 PRs/` | Auto-generated PR records (on merge) |
 | Claude Code (CLI) | AI-assisted implementation, worktree-based parallel tasks |
 
 ---
@@ -542,9 +542,9 @@ For major releases (e.g., `v1.0.0`), supplement the automated notes with a hand-
 
 ```ts
 New idea
-  └─> Write story doc (docs_md/07 stories/story-<slug>.md)
+  └─> Write story doc (WhatNext - docs/07 stories/story-<slug>.md)
         └─> Open GitHub Issue (todo template, link story, acceptance criteria, labels)
-              └─> If complex: write spec (ADR or architecture doc in docs_md/)
+              └─> If complex: write spec (ADR or architecture doc in WhatNext - docs/)
                     └─> Branch from dev/mvp
                           └─> Implement → commit (typecheck + lint before push)
                                 └─> Open PR (closes #issue, checklist, human review)

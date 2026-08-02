@@ -1264,18 +1264,19 @@ test-peer/                             # Standalone libp2p test peer for P2P dev
 scripts/                               # Development scripts
   start-dev.mjs                        # Starts Electron app + test peer together
   start-app.mjs                        # Starts the Electron app in dev mode
+  start-service.mjs                    # Starts the helper service (ts-node, default port 4200)
   dev-init.sh                          # Initial setup: nvm, Node, dependencies
 
-docs_md/                               # Project documentation (Obsidian vault at docs_md/)
-  00 index/
-    ADR.md                             # ADR index
-    NOTES.md                           # Development notes index
+WhatNext - docs/                       # Project documentation (Obsidian vault)
+  00 index/                            # Vault indexes and backlog board
   01 concepts/                         # Technology concept pages
   03 guides/                           # How-to guides
   04 architecture/
     architecture-whatnext.md           # This document
     srs-whatnext.md                    # Software Requirements Specification
     adr/                               # Architecture Decision Records
+  05 notes/                            # Development notes
+  08 specs/                            # Feature and epic specs
 ```
 
 ---
