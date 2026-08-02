@@ -9,39 +9,44 @@ WhatNext is a resilient, user-centric music management platform built on three c
 - **Decentralized Collaboration**: P2P networking for playlist management without central servers
 - **Rich Music Experience**: Deep metadata, intelligent discovery, and powerful organization
 
-The project is architected as an Electron desktop application with a circuit relay server for P2P NAT traversal and a planned helper service for OAuth coordination.
+The project is architected as an Electron desktop application with a circuit relay server for P2P NAT traversal and a helper service housing the audio downloader module and an OAuth-coordination skeleton.
 
 ## Repository Structure
 
 ```
 /app        - Main Electron application (Electron + React + RxDB)
-/relay      - Circuit relay server for P2P NAT traversal
+/relay      - Circuit relay server for P2P NAT traversal (+ companion tunnel)
 /test-peer  - Barebones libp2p test peer for P2P development
-/service    - Helper service for OAuth coordination and API proxying (planned)
-/docs_md    - Obsidian vault: project documentation organized by concept
-  /00 index     - Documentation maps and indexes
+/service    - Helper service: downloader module (yt-dlp/spotDL backends) + Express/WS skeleton for OAuth coordination and API proxying
+/WhatNext - docs - Obsidian vault: project documentation organized by concept
+  /00 index     - Vault indexes (.base files) and backlog board
   /01 concepts  - Core technology and pattern explanations
+  /02 references - Reference material and external resource summaries
   /03 guides    - How-to documents and workflows
   /04 architecture - System design, ADRs, SRS, and architecture docs
   /05 notes     - Development notes and learnings
+  /06 reports   - State-of-project vettings and audits
   /07 stories   - Vision documents and project narratives
+  /08 specs     - Feature and component specs (linked from GitHub Issues)
+  /09 milestones - Development milestones
+  /10 PRs       - PR records
   /99 meta      - Templates and vault configuration
-/docs       - Generated HTML documentation site (do not edit directly)
+/docs       - Generated HTML documentation site (vault export; do not edit directly)
 /scripts    - Development and initialization scripts
 ```
 
 ## Documentation Navigation
 
-All project documentation is indexed in **`docs_md/index.md`**, organized by concept for efficient LLM interaction. This index:
+All project documentation is indexed in **`WhatNext - docs/index.md`**, organized by concept for efficient LLM interaction. This index:
 - Maps all markdown files by architectural concept
 - Links documentation using Obsidian-style `[[WikiLinks]]`
 - Provides quick reference for common commands and file locations
 - Must be maintained when new documentation is created
 
 Key formal documents:
-- **`docs_md/04 architecture/srs-whatnext.md`** — Software Requirements Specification (MVP baseline)
-- **`docs_md/04 architecture/architecture-whatnext.md`** — Architecture Design Document
-- **`docs_md/03 guides/workflow-story-to-pr.md`** — Development workflow (Story → Issue → Spec → Commit → PR)
+- **`WhatNext - docs/04 architecture/srs-whatnext.md`** — Software Requirements Specification (MVP baseline)
+- **`WhatNext - docs/04 architecture/architecture-whatnext.md`** — Architecture Design Document
+- **`WhatNext - docs/03 guides/workflow-story-to-pr.md`** — Development workflow (Story → Issue → Spec → Commit → PR)
 
 ## Development Commands
 
@@ -83,6 +88,8 @@ cd app && npm run build:preload  # Build preload script only
 ```bash
 cd app && npm run lint      # ESLint
 cd app && npm run typecheck # TypeScript type checking (no emit)
+cd app && npm test          # Vitest unit/integration suites
+cd app && npm run test:e2e  # Playwright E2E (needs built app + display)
 ```
 
 ### Packaging
@@ -123,9 +130,10 @@ cd app && npm run package   # Creates distributable with electron-builder
 - **RxDB**: Reactive local database with P2P replication support
 - **WebRTC**: NAT traversal via circuit relay
 
-### Service Stack (Planned)
-- **Circuit Relay**: libp2p relay server for NAT traversal (implemented in `/relay`)
-- **Express/Fastify**: Helper service for OAuth coordination (planned)
+### Service Stack
+- **Circuit Relay**: libp2p relay server for NAT traversal + companion tunnel (implemented in `/relay`)
+- **Downloader**: yt-dlp/spotDL subprocess backends for audio acquisition (implemented in `/service/downloader`, consumed by the app's main process)
+- **Express + WebSocket**: Helper service for OAuth coordination and API proxying (skeleton in `/service/src`)
 
 ## Architecture Principles
 
@@ -156,7 +164,7 @@ Main process handles OS-level tasks (file dialogs, system integration). Renderer
 
 ### Spotify Integration Strategy — The Coordinator Model
 
-Spotify's February 2026 API restrictions (Premium required, 5-user cap, 16 endpoints gutted) validated WhatNext's user-sovereignty thesis and catalyzed the **Coordinator Model** (see `docs/07 stories/the-walled-garden-cracks.md`):
+Spotify's February 2026 API restrictions (Premium required, 5-user cap, 16 endpoints gutted) validated WhatNext's user-sovereignty thesis and catalyzed the **Coordinator Model** (see `WhatNext - docs/07 stories/the-walled-garden-cracks.md`):
 
 **Primary approach (MVP):**
 - **One person** (the coordinator) connects to Spotify, imports the playlist, and opens a P2P session
@@ -246,7 +254,7 @@ Scopes: `sessions`, `p2p`, `spotify`, `db`, `ipc`, `ui`, `auth`, `relay`
 
 ## Knowledge Management: Obsidian-First Documentation
 
-The `/docs_md` directory is structured as an **Obsidian vault** optimized for concept-based knowledge growth, not chronological logging. This approach prioritizes enduring knowledge over ephemeral notes.
+The `/WhatNext - docs` directory is structured as an **Obsidian vault** optimized for concept-based knowledge growth, not chronological logging. This approach prioritizes enduring knowledge over ephemeral notes.
 
 ### Documentation Philosophy
 
@@ -262,20 +270,22 @@ The `/docs_md` directory is structured as an **Obsidian vault** optimized for co
 ### Directory Structure (Wide, Not Deep)
 
 ```
-/docs_md
-  /00 index         Documentation maps and indexes
+/WhatNext - docs
+  /00 index         Vault indexes and backlog board
   /01 concepts      Core technology and pattern explanations
   /02 references    Reference material and external resource summaries
   /03 guides        How-to documents and workflows (including workflow-story-to-pr.md)
   /04 architecture  System design, ADRs, SRS, and architecture docs
   /05 notes         Development notes and learnings
+  /06 reports       State-of-project vettings and audits
   /07 stories       Vision documents and project narratives
   /08 specs         Feature and component specs (linked from GitHub Issues)
-  /09 PRs           Auto-generated PR records (written on merge via GitHub Action)
+  /09 milestones    Development milestones
+  /10 PRs           PR records (auto-generated on merge)
   /99 meta          Templates and vault configuration
 ```
 
-**Flat folders with semantic depth via nested tags**: Use tags like `#architecture/patterns/ipc`, `#p2p/discovery/mdns`, `#data/rxdb/replication` to convey hierarchical relationships without deep nesting.
+**Flat folders with semantic depth via nested tags**: Use tags like `#architecture/patterns/ipc`, `#core/net/p2p/libp2p`, `#data/rxdb/replication` to convey hierarchical relationships without deep nesting.
 
 ### Concept Page Template
 
@@ -356,7 +366,7 @@ What we didn't choose and why
 
 ### Maintenance Discipline
 
-1. **Update `docs_md/index.md`** when creating new documentation
+1. **Update `WhatNext - docs/index.md`** when creating new documentation
 2. **Use `[[WikiLinks]]`** liberally to connect related concepts
 3. **Apply nested tags** (`#category/subcategory`) for graph visualization in Obsidian
 4. **Consolidate learning** into concept pages rather than scattering across timestamped notes
@@ -366,19 +376,19 @@ What we didn't choose and why
 
 When working on WhatNext:
 - **Prioritize updating existing concept pages** over creating new timestamped notes
-- **Check `docs_md/index.md`** for relevant existing documentation before creating new files
+- **Check `WhatNext - docs/index.md`** for relevant existing documentation before creating new files
 - **Use WikiLink syntax** `[[Concept-Name]]` when referencing other documentation
 - **Apply appropriate nested tags** to new documentation for Obsidian graph navigation
 - **Propose consolidation** when you notice scattered information that should be unified
 
 ## Reference Documentation
 
-- **Documentation Index**: `docs_md/index.md` - Complete map of all project documentation
-- **Full specification**: `docs_md/07 stories/whtnxt-nextspec.md` - Technical specification (source of truth)
-- **SRS**: `docs_md/04 architecture/srs-whatnext.md` - Software Requirements Specification
-- **Architecture**: `docs_md/04 architecture/architecture-whatnext.md` - Architecture Design Document
-- **Vision supplement**: `docs_md/07 stories/the-walled-garden-cracks.md` - Coordinator model and service abstraction
-- **Workflow guide**: `docs_md/03 guides/workflow-story-to-pr.md` - Development workflow
+- **Documentation Index**: `WhatNext - docs/index.md` - Complete map of all project documentation
+- **Full specification**: `WhatNext - docs/07 stories/whtnxt-nextspec.md` - Technical specification (source of truth)
+- **SRS**: `WhatNext - docs/04 architecture/srs-whatnext.md` - Software Requirements Specification
+- **Architecture**: `WhatNext - docs/04 architecture/architecture-whatnext.md` - Architecture Design Document
+- **Vision supplement**: `WhatNext - docs/07 stories/the-walled-garden-cracks.md` - Coordinator model and service abstraction
+- **Workflow guide**: `WhatNext - docs/03 guides/workflow-story-to-pr.md` - Development workflow
 - **README**: High-level structure and stack overview
-- **Development notes**: `docs_md/05 notes/` for lessons learned and troubleshooting
+- **Development notes**: `WhatNext - docs/05 notes/` for lessons learned and troubleshooting
 - **Electron docs**: https://www.electronjs.org/docs/latest/
