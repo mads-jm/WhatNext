@@ -66,6 +66,9 @@ cd app && npm run build                 # Production build
 | Companion server | `app/src/main/companion/companion-server.ts` |
 | Companion web UI | `app/src/companion-web/index.html` |
 | Spotify OAuth | `app/src/main/spotify/spotify-auth.ts` |
+| Spotify error taxonomy | `app/src/main/spotify/spotify-errors.ts` (typed `SpotifyApiError` kinds, `Retry-After` parsing) |
+| Spotify transport resilience | `app/src/main/spotify/spotify-resilience.ts` (timeout + bounded backoff/retry) |
+| Spotify runtime-event bridge | `app/src/main/spotify/spotify-events.ts` (main→renderer `auth-error` / `playback-degraded`) |
 
 ---
 

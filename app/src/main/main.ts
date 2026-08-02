@@ -49,6 +49,7 @@ import {
     removeRelayAddress,
 } from './relay-config-store';
 import { killAll as killDownloadProcesses } from '../../../service/downloader/subprocess';
+import type { SpotifyRuntimeEvent } from './spotify/spotify-events';
 
 let mainWindow: BrowserWindow | null = null;
 let p2pUtilityProcess: UtilityProcess | null = null;
@@ -495,7 +496,11 @@ async function handleSpotifyCallbackUrl(url: string): Promise<void> {
         const result = await handleSpotifyCallback(code);
 
         if (result.success && result.tokens) {
-            // TODO : need a UX pass on token expiry, right now you have to see an error within a flow. We should proactively refresh and/or prompt the user before it becomes an interuption.
+            // Token-expiry UX: the client proactively refreshes within the
+            // expiry buffer and, on a failed refresh, emits a `spotify:auth-error`
+            // reconnect prompt via the runtime-event bridge (see
+            // forwardSpotifyEvent / ensureSpotifyModules) rather than throwing
+            // mid-flow.
             const { saveTokens } = await import('./spotify/token-store');
             const { initSpotifyClient } =
                 await import('./spotify/spotify-client');
@@ -1042,11 +1047,41 @@ ipcMain.handle(IPC_CHANNELS.REPLICATION_PULL, async (_event, payload) => {
 
 let spotifyInitialized = false;
 
+/**
+ * Forward Spotify main-process runtime events to the renderer.
+ * `auth-error` reuses the existing reconnect-prompt channel; `playback-degraded`
+ * signals a Premium-required downgrade so the session can drop to metadata-only.
+ */
+function forwardSpotifyEvent(event: SpotifyRuntimeEvent): void {
+    if (!mainWindow) return;
+    if (event.type === 'auth-error') {
+        mainWindow.webContents.send('spotify:auth-error', {
+            error: event.error,
+        });
+    } else if (event.type === 'playback-degraded') {
+        // The preload exposes `spotify.onPlaybackDegraded` so the renderer can
+        // subscribe to this channel. The renderer-side state transition itself —
+        // setting `playbackProvider: 'none'` on the session and surfacing the
+        // "Premium required" UI banner — is OUT OF THIS LANE. It belongs to the
+        // renderer-cluster lane that owns the session schema / playback model.
+        // Tracking: epic-spotify-resilience #44 open question "Degraded-mode
+        // contract: where does `playbackProvider: 'none'` live and who owns the
+        // transition?" (see WhatNext - docs/08 specs/epic-spotify-resilience.md).
+        mainWindow.webContents.send('spotify:playback-degraded', {
+            reason: event.reason,
+            status: event.status,
+        });
+    }
+}
+
 async function ensureSpotifyModules(): Promise<void> {
     if (!spotifyInitialized) {
         try {
             const { loadStoredTokens } =
                 await import('./spotify/spotify-client');
+            const { setSpotifyEventListener } =
+                await import('./spotify/spotify-events');
+            setSpotifyEventListener(forwardSpotifyEvent);
             loadStoredTokens();
             spotifyInitialized = true;
         } catch (e) {

@@ -318,6 +318,12 @@ const electronHandler = {
             return () => ipcRenderer.removeListener('spotify:auth-error', listener);
         },
 
+        onPlaybackDegraded: (callback: (data: { reason: 'premium-required'; status: number }) => void) => {
+            const listener = (_event: IpcRendererEvent, data: { reason: 'premium-required'; status: number }) => callback(data);
+            ipcRenderer.on('spotify:playback-degraded', listener);
+            return () => ipcRenderer.removeListener('spotify:playback-degraded', listener);
+        },
+
         // Playback control
         getPlaybackState: (): Promise<{ success: boolean; state?: SpotifyPlaybackStateResult; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYBACK_STATE),

@@ -19,6 +19,56 @@ vi.mock('uuid', () => ({ v4: () => 'test-uuid' }));
 
 import { mapSpotifyTrack, mapSpotifyTracks } from '../spotify/spotify-mapper';
 
+// ---------------------------------------------------------------------------
+// Spotify resilience / auth / client suites (#44, #33)
+//
+// These exercise modules that import `electron` (shell, safeStorage) and the
+// encrypted token-store. `vi.mock` is hoisted above the imports below so the
+// real Electron + fs/crypto side effects never run.
+// ---------------------------------------------------------------------------
+
+vi.mock('electron', () => ({
+    shell: { openExternal: vi.fn().mockResolvedValue(undefined) },
+    app: { getPath: vi.fn(() => '/tmp') },
+    safeStorage: {
+        isEncryptionAvailable: () => false,
+        encryptString: (s: string) => Buffer.from(s),
+        decryptString: (b: Buffer) => b.toString('utf-8'),
+    },
+}));
+
+vi.mock('../spotify/token-store', () => ({
+    saveTokens: vi.fn(),
+    loadTokens: vi.fn(() => null),
+    clearTokens: vi.fn(),
+    hasTokens: vi.fn(() => false),
+}));
+
+import crypto from 'node:crypto';
+import { shell } from 'electron';
+import { SPOTIFY_CONFIG } from '../../shared/spotify-config';
+import {
+    SpotifyApiError,
+    kindForStatus,
+    isRetryableKind,
+    parseRetryAfterMs,
+} from '../spotify/spotify-errors';
+import { resilientFetch } from '../spotify/spotify-resilience';
+import {
+    setSpotifyEventListener,
+    type SpotifyRuntimeEvent,
+} from '../spotify/spotify-events';
+import {
+    startSpotifyAuth,
+    handleSpotifyCallback,
+    refreshSpotifyToken,
+} from '../spotify/spotify-auth';
+import {
+    initSpotifyClient,
+    getCurrentUser,
+    getPlaybackState,
+} from '../spotify/spotify-client';
+
 /** Minimal valid SpotifyTrackItem fixture */
 function makeTrackItem(overrides: Partial<SpotifyTrackItem> = {}): SpotifyTrackItem {
     return {
@@ -598,5 +648,373 @@ describe('preload API surface (type smoke tests)', () => {
         }>;
         const _typeCheck: SyncPlaylist = async (_id: string) => ({ success: true });
         expect(typeof _typeCheck).toBe('function');
+    });
+
+    it('window.electron.spotify.onPlaybackDegraded takes a degraded-payload callback and returns a cleanup fn', () => {
+        // Mirrors onAuthError: subscribes to spotify:playback-degraded and
+        // returns an unsubscribe function. The payload matches the
+        // playback-degraded SpotifyRuntimeEvent forwarded by main.ts.
+        type OnPlaybackDegraded = (
+            callback: (data: { reason: 'premium-required'; status: number }) => void,
+        ) => () => void;
+        const _typeCheck: OnPlaybackDegraded = (_cb) => () => undefined;
+        expect(typeof _typeCheck).toBe('function');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Spotify error taxonomy (#44)
+// ---------------------------------------------------------------------------
+
+describe('spotify error taxonomy', () => {
+    it('maps HTTP status onto a kind', () => {
+        expect(kindForStatus(401)).toBe('unauthorized');
+        expect(kindForStatus(403)).toBe('forbidden');
+        expect(kindForStatus(404)).toBe('not_found');
+        expect(kindForStatus(429)).toBe('rate_limited');
+        expect(kindForStatus(500)).toBe('server');
+        expect(kindForStatus(503)).toBe('server');
+        expect(kindForStatus(418)).toBe('unknown');
+    });
+
+    it('classifies which kinds are retryable', () => {
+        for (const k of ['rate_limited', 'server', 'network', 'timeout'] as const) {
+            expect(isRetryableKind(k)).toBe(true);
+        }
+        for (const k of ['unauthorized', 'forbidden', 'not_found', 'unknown'] as const) {
+            expect(isRetryableKind(k)).toBe(false);
+        }
+    });
+
+    it('parses a numeric Retry-After (seconds) into ms', () => {
+        expect(parseRetryAfterMs('2')).toBe(2000);
+        expect(parseRetryAfterMs('0')).toBe(0);
+    });
+
+    it('parses an HTTP-date Retry-After into a non-negative ms delta', () => {
+        const future = new Date(Date.now() + 5000).toUTCString();
+        const ms = parseRetryAfterMs(future);
+        expect(ms).toBeGreaterThan(0);
+        expect(ms).toBeLessThanOrEqual(6000);
+
+        const past = new Date(Date.now() - 5000).toUTCString();
+        expect(parseRetryAfterMs(past)).toBe(0);
+    });
+
+    it('returns undefined for a missing or unparseable Retry-After', () => {
+        expect(parseRetryAfterMs(null)).toBeUndefined();
+        expect(parseRetryAfterMs('not-a-date')).toBeUndefined();
+    });
+
+    it('SpotifyApiError carries kind/status and survives instanceof', () => {
+        const err = new SpotifyApiError('forbidden', 403, 'nope', { body: 'x' });
+        expect(err).toBeInstanceOf(SpotifyApiError);
+        expect(err).toBeInstanceOf(Error);
+        expect(err.kind).toBe('forbidden');
+        expect(err.status).toBe(403);
+        expect(err.body).toBe('x');
+        expect(err.retryable).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Resilient fetch — timeout, backoff, Retry-After, no-retry (#44)
+// ---------------------------------------------------------------------------
+
+/** Queue a sequence of fetch outcomes (Response resolved, Error rejected). */
+function fetchSequence(...outcomes: Array<Response | Error>) {
+    const fn = vi.fn();
+    for (const outcome of outcomes) {
+        if (outcome instanceof Error) {
+            fn.mockRejectedValueOnce(outcome);
+        } else {
+            fn.mockResolvedValueOnce(outcome);
+        }
+    }
+    return fn;
+}
+
+const abortError = (): Error => Object.assign(new Error('aborted'), { name: 'AbortError' });
+
+describe('resilientFetch', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('retries a transient 5xx then resolves the next 2xx', async () => {
+        const sleep = vi.fn().mockResolvedValue(undefined);
+        const fetchFn = fetchSequence(
+            new Response('boom', { status: 503 }),
+            new Response('{}', { status: 200 }),
+        );
+        vi.stubGlobal('fetch', fetchFn);
+
+        const res = await resilientFetch('https://api/x', {}, { sleep, baseBackoffMs: 1 });
+
+        expect(res.status).toBe(200);
+        expect(fetchFn).toHaveBeenCalledTimes(2);
+        expect(sleep).toHaveBeenCalledTimes(1);
+    });
+
+    it('waits the exact Retry-After before retrying a 429', async () => {
+        const sleep = vi.fn().mockResolvedValue(undefined);
+        const fetchFn = fetchSequence(
+            new Response('slow down', { status: 429, headers: { 'retry-after': '2' } }),
+            new Response('{}', { status: 200 }),
+        );
+        vi.stubGlobal('fetch', fetchFn);
+
+        await resilientFetch('https://api/x', {}, { sleep });
+
+        expect(sleep).toHaveBeenCalledWith(2000);
+    });
+
+    it('does not retry a 403 and throws a forbidden error', async () => {
+        const sleep = vi.fn();
+        vi.stubGlobal('fetch', fetchSequence(new Response('no', { status: 403 })));
+
+        await expect(
+            resilientFetch('https://api/x', {}, { sleep }),
+        ).rejects.toMatchObject({ kind: 'forbidden', status: 403 });
+        expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it('does not retry a 404 and throws not_found', async () => {
+        const sleep = vi.fn();
+        vi.stubGlobal('fetch', fetchSequence(new Response('missing', { status: 404 })));
+
+        await expect(
+            resilientFetch('https://api/x', {}, { sleep }),
+        ).rejects.toMatchObject({ kind: 'not_found', status: 404 });
+        expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it('retries network failures then throws a network error after maxAttempts', async () => {
+        const sleep = vi.fn().mockResolvedValue(undefined);
+        const netErr = new TypeError('fetch failed');
+        vi.stubGlobal('fetch', fetchSequence(netErr, netErr, netErr));
+
+        await expect(
+            resilientFetch('https://api/x', {}, { sleep, maxAttempts: 3 }),
+        ).rejects.toMatchObject({ kind: 'network' });
+        expect(sleep).toHaveBeenCalledTimes(2);
+    });
+
+    it('maps an AbortError to a timeout kind once retries are exhausted', async () => {
+        const sleep = vi.fn().mockResolvedValue(undefined);
+        vi.stubGlobal('fetch', fetchSequence(abortError(), abortError(), abortError()));
+
+        await expect(
+            resilientFetch('https://api/x', {}, { sleep, maxAttempts: 3 }),
+        ).rejects.toMatchObject({ kind: 'timeout' });
+    });
+
+    it('recovers after a single timeout', async () => {
+        const sleep = vi.fn().mockResolvedValue(undefined);
+        vi.stubGlobal('fetch', fetchSequence(abortError(), new Response('{}', { status: 200 })));
+
+        const res = await resilientFetch('https://api/x', {}, { sleep });
+        expect(res.status).toBe(200);
+    });
+
+    it('resolves a 204 No Content without throwing', async () => {
+        vi.stubGlobal('fetch', fetchSequence(new Response(null, { status: 204 })));
+
+        const res = await resilientFetch('https://api/x', {}, { sleep: vi.fn() });
+        expect(res.status).toBe(204);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 6. OAuth PKCE / token exchange / refresh (#33)
+// ---------------------------------------------------------------------------
+
+describe('spotify OAuth (PKCE, exchange, refresh)', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.clearAllMocks();
+    });
+
+    it('produces a PKCE pair whose challenge is the SHA-256 of the verifier', async () => {
+        await startSpotifyAuth();
+        const authUrl = vi.mocked(shell.openExternal).mock.calls[0][0] as string;
+        const challenge = new URL(authUrl).searchParams.get('code_challenge');
+        expect(challenge).toMatch(/^[A-Za-z0-9_-]+$/);
+
+        // Capture the verifier from the token-exchange request body.
+        const fetchFn = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 3600, scope: 's' }),
+                { status: 200 },
+            ),
+        );
+        vi.stubGlobal('fetch', fetchFn);
+        await handleSpotifyCallback('code123');
+
+        const body = fetchFn.mock.calls[0][1].body as URLSearchParams;
+        const verifier = body.get('code_verifier') as string;
+        const expected = crypto.createHash('sha256').update(verifier).digest('base64url');
+        expect(expected).toBe(challenge);
+    });
+
+    it('exchanges an auth code into tokens', async () => {
+        await startSpotifyAuth();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(
+                new Response(
+                    JSON.stringify({ access_token: 'AT', refresh_token: 'RT', expires_in: 3600, scope: 'sc' }),
+                    { status: 200 },
+                ),
+            ),
+        );
+
+        const result = await handleSpotifyCallback('code');
+        expect(result.success).toBe(true);
+        expect(result.tokens?.accessToken).toBe('AT');
+        expect(result.tokens?.refreshToken).toBe('RT');
+        expect(result.tokens?.expiresAt).toBeGreaterThan(Date.now());
+    });
+
+    it('surfaces the error body when the token exchange fails', async () => {
+        await startSpotifyAuth();
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('invalid_grant', { status: 400 })));
+
+        const result = await handleSpotifyCallback('bad');
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('invalid_grant');
+    });
+
+    it('refreshes tokens on success', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(
+                new Response(
+                    JSON.stringify({ access_token: 'AT2', refresh_token: 'RT2', expires_in: 3600, scope: 'sc' }),
+                    { status: 200 },
+                ),
+            ),
+        );
+
+        const r = await refreshSpotifyToken('old-refresh');
+        expect(r.success).toBe(true);
+        expect(r.tokens?.accessToken).toBe('AT2');
+        expect(r.tokens?.refreshToken).toBe('RT2');
+    });
+
+    it('keeps the old refresh token when none is rotated', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(
+                new Response(
+                    JSON.stringify({ access_token: 'AT3', expires_in: 3600, scope: 'sc' }),
+                    { status: 200 },
+                ),
+            ),
+        );
+
+        const r = await refreshSpotifyToken('keep-me');
+        expect(r.success).toBe(true);
+        expect(r.tokens?.refreshToken).toBe('keep-me');
+    });
+
+    it('fails cleanly on a revoked/invalid refresh token', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('invalid_grant', { status: 400 })));
+
+        const r = await refreshSpotifyToken('revoked');
+        expect(r.success).toBe(false);
+        expect(r.error).toContain('invalid_grant');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 7. Spotify client — proactive refresh, degraded mode, 204, 401 retry (#33/#44)
+// ---------------------------------------------------------------------------
+
+const validToken = (overrides: Partial<{ expiresAt: number; accessToken: string }> = {}) => ({
+    accessToken: overrides.accessToken ?? 'tok',
+    refreshToken: 'r',
+    expiresAt: overrides.expiresAt ?? Date.now() + 3_600_000,
+    scope: 's',
+});
+
+describe('spotify client resilience integration', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        setSpotifyEventListener(null);
+    });
+
+    it('proactively refreshes a token within REFRESH_BUFFER_MS and uses the fresh one', async () => {
+        initSpotifyClient(validToken({ accessToken: 'old', expiresAt: Date.now() + 1000 }));
+        const fetchFn = vi.fn(async (url: string, init: RequestInit) => {
+            if (url === SPOTIFY_CONFIG.API.TOKEN) {
+                return new Response(
+                    JSON.stringify({ access_token: 'fresh', refresh_token: 'r2', expires_in: 3600, scope: 's' }),
+                    { status: 200 },
+                );
+            }
+            const headers = init.headers as Record<string, string>;
+            expect(headers.Authorization).toBe('Bearer fresh');
+            return new Response(JSON.stringify({ id: 'u', display_name: 'U', images: [] }), { status: 200 });
+        });
+        vi.stubGlobal('fetch', fetchFn);
+
+        const user = await getCurrentUser();
+        expect(user.id).toBe('u');
+        expect(fetchFn.mock.calls.some((c) => c[0] === SPOTIFY_CONFIG.API.TOKEN)).toBe(true);
+    });
+
+    it('emits playback-degraded on a 403 from /me/player and still throws forbidden', async () => {
+        initSpotifyClient(validToken());
+        const events: SpotifyRuntimeEvent[] = [];
+        setSpotifyEventListener((e) => events.push(e));
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('premium required', { status: 403 })));
+
+        await expect(getPlaybackState()).rejects.toMatchObject({ kind: 'forbidden' });
+        expect(events).toContainEqual({ type: 'playback-degraded', reason: 'premium-required', status: 403 });
+    });
+
+    it('returns null on a 204 playback state without parsing a body', async () => {
+        initSpotifyClient(validToken());
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 204 })));
+
+        const state = await getPlaybackState();
+        expect(state).toBeNull();
+    });
+
+    it('triggers exactly one refresh-and-retry on a 401 mid-flow', async () => {
+        initSpotifyClient(validToken({ accessToken: 'stale' }));
+        let apiCalls = 0;
+        const fetchFn = vi.fn(async (url: string, init: RequestInit) => {
+            if (url === SPOTIFY_CONFIG.API.TOKEN) {
+                return new Response(
+                    JSON.stringify({ access_token: 'new', refresh_token: 'r2', expires_in: 3600, scope: 's' }),
+                    { status: 200 },
+                );
+            }
+            apiCalls += 1;
+            if (apiCalls === 1) return new Response('expired', { status: 401 });
+            const headers = init.headers as Record<string, string>;
+            expect(headers.Authorization).toBe('Bearer new');
+            return new Response(JSON.stringify({ id: 'u2', display_name: 'U2', images: [] }), { status: 200 });
+        });
+        vi.stubGlobal('fetch', fetchFn);
+
+        const user = await getCurrentUser();
+        expect(user.id).toBe('u2');
+        expect(apiCalls).toBe(2);
+    });
+
+    it('emits auth-error instead of throwing a raw error when refresh fails', async () => {
+        initSpotifyClient(validToken({ accessToken: 'old', expiresAt: Date.now() + 1000 }));
+        const events: SpotifyRuntimeEvent[] = [];
+        setSpotifyEventListener((e) => events.push(e));
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url === SPOTIFY_CONFIG.API.TOKEN) return new Response('invalid_grant', { status: 400 });
+            return new Response('{}', { status: 200 });
+        }));
+
+        await expect(getCurrentUser()).rejects.toBeInstanceOf(SpotifyApiError);
+        expect(events.some((e) => e.type === 'auth-error')).toBe(true);
     });
 });
