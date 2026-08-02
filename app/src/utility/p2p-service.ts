@@ -39,7 +39,7 @@ import {
 import { P2P_CONFIG } from '../shared/p2p-config';
 import { FILE_TRANSFER_CAPABILITY } from '../shared/core/file-transfer-types';
 import { registerHandshakeProtocol, initiateHandshake, type HandshakeData } from './protocols/handshake';
-import { registerReplicationProtocol, pushToRemotePeer, pullFromRemotePeer, type ReplicationDocument } from './protocols/replication';
+import { registerReplicationProtocol, pushToRemotePeer, pullFromRemotePeer, newestCheckpoint, type ReplicationDocument } from './protocols/replication';
 import { registerPingProtocol, startPresenceTracking } from './protocols/ping';
 import {
     registerFileTransferProtocol,
@@ -52,6 +52,7 @@ import {
 } from './protocols/file-transfer';
 import type { FileTransferMessage } from '../shared/core/file-transfer-types';
 import { RelayManager } from './relay-manager';
+import { CheckpointStore, resolveCheckpointPath } from './checkpoint-store';
 import type {
     PeerDiscoveryEvent,
     PeerConnectionEvent,
@@ -68,7 +69,9 @@ class P2PService {
     private libp2pNode: Libp2p | null = null;
     private isStarted = false;
     private connectedPeerNames: Map<string, string> = new Map();
-    private replicationCheckpoints: Map<string, string> = new Map(); // "peerId:collection" -> checkpoint
+    // Durable per-peer/per-collection checkpoints ("peerId:collection" -> checkpoint).
+    // Persisted to disk so a relaunch resumes incrementally instead of full-resyncing (#40).
+    private checkpointStore: CheckpointStore = new CheckpointStore(resolveCheckpointPath());
 
     // User identity (set via IPC from main process, used in handshake)
     private userDisplayName: string | null = null;
@@ -367,6 +370,13 @@ class P2PService {
         try {
             this.log('info', 'Starting libp2p node...');
 
+            // Load durable replication checkpoints before any peer connects so the
+            // first pull resumes from the saved checkpoint (incremental, not full resync).
+            if (!this.checkpointStore.isLoaded) {
+                await this.checkpointStore.load();
+                this.log('info', `Loaded ${this.checkpointStore.entries().length} persisted checkpoint(s)`);
+            }
+
             // LEARNING: Minimal libp2p configuration for desktop-to-desktop connections
             // We start with WebRTC and mDNS discovery
             //
@@ -484,6 +494,9 @@ class P2PService {
         try {
             this.log('info', 'Stopping libp2p node...');
 
+            // Flush any pending checkpoint writes before the process can exit.
+            await this.checkpointStore.dispose();
+
             // Clean up presence tracking
             this.stopPresenceTracking?.();
             this.stopPresenceTracking = null;
@@ -543,35 +556,48 @@ class P2PService {
         // Register replication handler
         registerReplicationProtocol(
             this.libp2pNode,
-            // onPullRequest: request data from renderer via main (async bridge)
+            // onPullRequest (responder): request our data from the renderer via main.
             async (collection, checkpoint, limit) => {
                 this.log('info', `Pull request for ${collection} (checkpoint: ${checkpoint})`);
 
-                // Generate a correlation ID and wait for main to relay back renderer's data
+                // Generate a correlation ID and wait for main to relay back renderer's data.
                 const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                const documents = await new Promise<ReplicationDocument[]>((resolve, reject) => {
-                    const timer = setTimeout(() => {
-                        this.pendingPullRequests.delete(requestId);
-                        // Resolve empty rather than reject — partial sync is OK for MVP
-                        resolve([]);
-                    }, 5000);
+                try {
+                    const documents = await new Promise<ReplicationDocument[]>((resolve, reject) => {
+                        // On timeout REJECT (don't resolve empty). Resolving empty +
+                        // a fresh checkpoint made a slow peer look like it had no
+                        // changes, silently advancing the requester past unsent data (#41).
+                        const timer = setTimeout(() => {
+                            this.pendingPullRequests.delete(requestId);
+                            reject(new Error(`Pull request for ${collection} timed out after ${P2P_CONFIG.REPLICATION.PULL_TIMEOUT}ms`));
+                        }, P2P_CONFIG.REPLICATION.PULL_TIMEOUT);
 
-                    this.pendingPullRequests.set(requestId, {
-                        resolve: (docs) => { clearTimeout(timer); resolve(docs); },
-                        reject: (err) => { clearTimeout(timer); reject(err); },
+                        this.pendingPullRequests.set(requestId, {
+                            resolve: (docs) => { clearTimeout(timer); resolve(docs); },
+                            reject: (err) => { clearTimeout(timer); reject(err); },
+                        });
+
+                        this.sendToMain(UtilityToMainMessageType.REPLICATION_PULL_REQUEST, {
+                            requestId,
+                            collection,
+                            checkpoint,
+                            limit,
+                        });
                     });
 
-                    this.sendToMain(UtilityToMainMessageType.REPLICATION_PULL_REQUEST, {
-                        requestId,
-                        collection,
-                        checkpoint,
-                        limit,
-                    });
-                });
-
-                return { documents, checkpoint: new Date().toISOString() };
+                    // Advance the checkpoint to the newest doc we're actually sending,
+                    // not to "now" — "now" would skip docs written between the newest
+                    // returned doc and wall-clock time.
+                    return { documents, checkpoint: newestCheckpoint(documents, checkpoint) };
+                } catch (err) {
+                    // Surface the timeout/failure and DO NOT advance the requester's
+                    // checkpoint: echo back the checkpoint they sent so the missed
+                    // changes are re-pulled next time rather than silently dropped.
+                    this.log('warn', `Pull for ${collection} failed, not advancing checkpoint: ${err}`);
+                    return { documents: [], checkpoint: checkpoint ?? new Date(0).toISOString() };
+                }
             },
-            // onPushReceived: forward changes to main -> renderer
+            // onPushReceived: forward changes to main -> renderer.
             async (collection, documents) => {
                 this.log('info', `Received ${documents.length} docs for ${collection}`);
                 this.sendToMain(UtilityToMainMessageType.REPLICATION_CHANGES, {
@@ -579,6 +605,20 @@ class P2PService {
                     documents,
                     checkpoint: new Date().toISOString(),
                 });
+            },
+            // onPullResponse (requester): apply pulled docs and persist the checkpoint (#40).
+            (remotePeerId, collection, documents, checkpoint) => {
+                this.log('info', `Pull-response from ${remotePeerId.slice(0, 12)}: ${documents.length} docs for ${collection}`);
+                if (documents.length > 0) {
+                    this.sendToMain(UtilityToMainMessageType.REPLICATION_CHANGES, {
+                        collection,
+                        documents,
+                        checkpoint: checkpoint ?? new Date().toISOString(),
+                    });
+                }
+                if (checkpoint) {
+                    this.checkpointStore.set(`${remotePeerId}:${collection}`, checkpoint);
+                }
             }
         );
 
@@ -861,7 +901,7 @@ class P2PService {
 
         for (const collection of SESSION_COLLECTIONS) {
             const checkpointKey = `${peerId}:${collection}`;
-            const checkpoint = this.replicationCheckpoints.get(checkpointKey) ?? null;
+            const checkpoint = this.checkpointStore.get(checkpointKey);
 
             // pullFromRemotePeer sends a pull-request; the response arrives via
             // the replication protocol handler (pull-response case in replication.ts).

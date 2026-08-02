@@ -23,6 +23,7 @@
 
 import { useEffect, useRef } from 'react';
 import { getDatabase } from '../db/database';
+import { DEVICE_LOCAL_FIELDS } from '../db/schemas';
 import type {
     ReplicationPullRequestPayload,
 } from '../../shared/core/ipc-protocol';
@@ -89,14 +90,13 @@ export function useSessionReplication(enabled: boolean) {
                                     return { id, data: {}, updatedAt: new Date().toISOString(), deleted: true };
                                 }
                                 const data = { ...doc.toJSON() } as Record<string, unknown>;
-                                // Strip device-local fields before sending to peers
-                                if (col === 'tracks') {
-                                    delete data.localFilePath;
-                                    delete data.localFileSize;
-                                    delete data.albumArtLocalPath;
-                                }
-                                if (col === 'playlists') {
-                                    delete data.coverArtLocalPath;
+                                // Strip device-local fields before sending to peers.
+                                // Sourced from the shared DEVICE_LOCAL_FIELDS so this
+                                // strip and the LWW tiebreak strip (lww.contentKey)
+                                // can never drift apart. Field names are unique per
+                                // collection, so deleting the full set is safe here.
+                                for (const field of DEVICE_LOCAL_FIELDS) {
+                                    delete data[field];
                                 }
                                 return {
                                     id,

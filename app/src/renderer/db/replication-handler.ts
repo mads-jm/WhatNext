@@ -25,6 +25,7 @@
 
 import { getDatabase } from './database';
 import type { WhatNextCollections } from './schemas';
+import { incomingWins, contentKey } from './lww';
 
 type CollectionName = keyof WhatNextCollections;
 
@@ -51,13 +52,21 @@ export async function applyReplicatedChanges(
                 await existing.remove();
             }
         } else {
-            // LWW: only update if incoming is newer
+            // LWW: only update if incoming wins. Comparison is skew-aware —
+            // timestamps are parsed to epoch-ms (not string-compared) and ties
+            // are broken deterministically by content so peers converge. See lww.ts.
             const existing = await col.findOne(doc.id).exec();
             if (existing) {
-                const existingTime = (existing as unknown as Record<string, unknown>).updatedAt as string
-                    || (existing as unknown as Record<string, unknown>).addedAt as string
-                    || '';
-                if (doc.updatedAt > existingTime) {
+                const existingData = existing.toJSON() as Record<string, unknown>;
+                const winner = incomingWins(
+                    { updatedAt: doc.updatedAt, tiebreak: contentKey(doc.data) },
+                    {
+                        updatedAt: existingData.updatedAt,
+                        addedAt: existingData.addedAt,
+                        tiebreak: contentKey(existingData),
+                    }
+                );
+                if (winner) {
                     await existing.update({ $set: doc.data });
                 }
             } else {
