@@ -9,7 +9,7 @@
         "watch:main": "tsup src/main/main.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist --watch",
         "watch:preload": "tsup src/main/preload.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist --watch",
         "watch:utility": "tsup src/utility/p2p-service.ts --format esm --platform node --target node18 --sourcemap --out-dir dist --watch",
-        "dev:electron": "wait-on dist/main.js dist/preload.js dist/p2p-service.mjs && cross-env NODE_ENV=development electron dist/main.js",
+        "dev:electron": "wait-on dist/main.js dist/preload.js dist/p2p-service.mjs && cross-env NODE_ENV=development ELECTRON_OZONE_PLATFORM_HINT=x11 electron dist/main.js",
         "build": "npm run build:renderer && npm run build:main && npm run build:preload && npm run build:utility",
         "build:renderer": "vite build",
         "build:main": "tsup src/main/main.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist",
@@ -20,7 +20,7 @@
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
         "test:e2e": "playwright test",
-        "postinstall": "echo skipping electron-builder install-app-deps (no native deps yet)",
+        "postinstall": "echo 'skipping electron-builder install-app-deps (no native deps yet)'",
         "package": "npm run build && electron-builder build --publish never"
     },
     "browserslist": [],
@@ -124,5 +124,8 @@
                 "to": "assets"
             }
         ]
+    },
+    "allowScripts": {
+        "electron@37.10.3": true
     }
 }
