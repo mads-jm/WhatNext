@@ -28,7 +28,12 @@ import type {
 } from '../../shared/session-interfaces';
 import type { SpotifyFullTrackItem } from '../../shared/core/ipc-protocol';
 
-const POLL_INTERVAL_MS = 2000;
+/**
+ * Poll cadence for the Spotify arm. Widened from 2 s (30 req/min, straight into
+ * Spotify's rate limiter) now that the phase-1 snapshot check makes a no-change
+ * poll ~200 bytes and `syncNow` covers "I want it right now".
+ */
+const POLL_INTERVAL_MS = 12_000;
 
 export interface UseTrackSourceOptions {
     config: TrackSourceConfig;
