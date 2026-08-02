@@ -21,11 +21,13 @@ Thumbs.db
 *.cursorrules
 *.cursorignore
 
-# agent-cycle scratch — working artifacts, not project source.
-# .claude/settings.json and .claude/cycle/brief.md stay tracked on purpose.
+# agent-cycle scratch — process residue, never project source. The vault
+# ("WhatNext - docs/") is the single source of truth: durable outcomes land
+# there as reports/ADRs/specs and as PR records on merge. Only
+# .claude/settings.json stays tracked.
 .claude/worktrees/
-.claude/cycle/impl-notes.md
-.claude/cycle/verdicts/
+.claude/cycle/
+.claude/cycle-archive/
 
 # local
 TODO.md
