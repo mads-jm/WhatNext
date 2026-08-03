@@ -34,8 +34,11 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
 
     const companion = window.electron?.companion;
 
+    // The join PIN rides in the URL *fragment*, so scanning the QR is still a
+    // one-step join while the credential never reaches an HTTP server or log.
+    // The relay link is built the same way in companion-server.ts; keep in step.
     const localUrl = serverInfo
-        ? `http://${serverInfo.localIp}:${serverInfo.port}`
+        ? `http://${serverInfo.localIp}:${serverInfo.port}/#pin=${serverInfo.joinPin}`
         : null;
 
     // ---- Server lifecycle ----
@@ -161,6 +164,16 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
                 </div>
             ) : (
                 <div className="space-y-4">
+                    {/* === Join PIN (same credential on both transports) === */}
+                    <div className="flex items-center justify-between bg-surface-high rounded-lg px-3 py-2">
+                        <span className="text-xs text-on-surface-variant">
+                            Join PIN — needed if the link is typed by hand
+                        </span>
+                        <span className="text-sm font-mono tracking-[0.3em] text-on-surface">
+                            {serverInfo.joinPin}
+                        </span>
+                    </div>
+
                     {/* === Local LAN === */}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">

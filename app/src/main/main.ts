@@ -1457,10 +1457,14 @@ ipcMain.handle(IPC_CHANNELS.COMPANION_START, async () => {
         const { getCompanionServerInfo } =
             await import('./companion/companion-server');
         const info = getCompanionServerInfo();
-        return { port: info?.port ?? 0, localIp: info?.localIp ?? '127.0.0.1' };
+        return {
+            port: info?.port ?? 0,
+            localIp: info?.localIp ?? '127.0.0.1',
+            joinPin: info?.joinPin ?? '',
+        };
     }
 
-    const { port, localIp } = await startCompanionServer({
+    const { port, localIp, joinPin } = await startCompanionServer({
         onClientJoined: (client) => {
             mainWindow?.webContents.send(IPC_CHANNELS.COMPANION_CLIENT_JOINED, {
                 clientId: client.id,
@@ -1490,7 +1494,7 @@ ipcMain.handle(IPC_CHANNELS.COMPANION_START, async () => {
         },
     });
 
-    return { port, localIp };
+    return { port, localIp, joinPin };
 });
 
 ipcMain.handle(IPC_CHANNELS.COMPANION_STOP, async () => {

@@ -10,12 +10,15 @@
 import { create } from 'zustand';
 
 interface CompanionStore {
-    /** Non-null when the local companion HTTP server is running. */
-    serverInfo: { port: number; localIp: string } | null;
+    /**
+     * Non-null when the local companion HTTP server is running. `joinPin` is
+     * the session-scoped participant credential minted at start.
+     */
+    serverInfo: { port: number; localIp: string; joinPin: string } | null;
     /** Non-null when an active relay tunnel URL has been established. */
     relayUrl: string | null;
 
-    setServerInfo: (info: { port: number; localIp: string } | null) => void;
+    setServerInfo: (info: { port: number; localIp: string; joinPin: string } | null) => void;
     setRelayUrl: (url: string | null) => void;
     clearAll: () => void;
 }

@@ -18,7 +18,27 @@ let reconnectAttempt = 0;
 let reconnectTimer = null;
 let heartbeatTimer = null;
 let timeRequestCooldown = false;
-let isHost = false;
+
+// ---- Join credentials ----
+
+/**
+ * The join PIN travels in the URL fragment (`#pin=ABCD`), which the browser
+ * never sends to any server — so a scanned link carries the credential without
+ * writing it into the relay's access log. Typed links have no fragment, so the
+ * PIN field is shown instead.
+ */
+function readPinFromUrl() {
+    const match = location.hash.match(/pin=([A-Za-z0-9]{1,8})/);
+    return match ? match[1].toUpperCase() : '';
+}
+
+/** One host + path = one session, so two sessions on one phone don't share a token. */
+const TOKEN_STORAGE_KEY = `wn-companion-token:${location.host}${location.pathname}`;
+
+let joinPin = readPinFromUrl();
+let reconnectToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+let joined = false;
+let joinTimeoutTimer = null;
 
 // ========================================
 // DOM References
@@ -29,6 +49,9 @@ const joinScreen = $('#join-screen');
 const sessionScreen = $('#session-screen');
 const joinForm = $('#join-form');
 const nameInput = $('#display-name-input');
+const pinInput = $('#join-pin-input');
+const joinSubmit = $('#join-submit');
+const joinError = $('#join-error');
 const sessionName = $('#session-name');
 const connectionDot = $('#connection-dot');
 const clientCount = $('#client-count');
@@ -71,9 +94,9 @@ function connect() {
         reconnectAttempt = 0;
         setConnectionStatus('connected');
 
-        // Re-join if we have a name (reconnection)
-        if (displayName) {
-            send({ type: 'join', displayName });
+        // Re-join if we hold both halves of the credential (reconnection)
+        if (displayName && joinPin) {
+            sendJoin();
         }
 
         startHeartbeat();
@@ -87,6 +110,9 @@ function connect() {
     };
 
     ws.onclose = () => {
+        // Any pending join timeout is left running: if the socket never comes
+        // back, the user who pressed Join deserves to be told.
+        joined = false;
         stopHeartbeat();
         scheduleReconnect();
     };
@@ -113,6 +139,32 @@ function send(msg) {
     if (ws?.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(msg));
     }
+}
+
+/** How long to wait for a join answer before telling the user nobody replied. */
+const JOIN_TIMEOUT_MS = 10000;
+
+/**
+ * Ask to join. The host answers with `join:ack` (identity granted) or
+ * `join:denied` (with a reason) — never with silence, so the session screen is
+ * only ever shown to a client that actually got in.
+ */
+function sendJoin() {
+    send({ type: 'join', displayName, pin: joinPin, reconnectToken });
+}
+
+/**
+ * Armed only by a deliberate join attempt — never by a background reconnect,
+ * which must not throw the user off the session screen on a transient drop.
+ * Covers both "the host never answered" and "the socket never opened".
+ */
+function armJoinTimeout() {
+    clearTimeout(joinTimeoutTimer);
+    joinTimeoutTimer = setTimeout(() => {
+        if (!joined) {
+            showJoinScreen('No answer from the session host. Check the link and try again.');
+        }
+    }, JOIN_TIMEOUT_MS);
 }
 
 function startHeartbeat() {
@@ -164,9 +216,47 @@ function handleMessage(msg) {
             handleTimeRequestAck(msg.data.status);
             break;
         case 'join:ack':
-            isHost = msg.data.isHost;
-            applyHostMode();
+            handleJoinAck(msg.data);
             break;
+        case 'join:denied':
+            handleJoinDenied(msg.data);
+            break;
+    }
+}
+
+// ========================================
+// Join Result
+// ========================================
+
+function handleJoinAck(data) {
+    clearTimeout(joinTimeoutTimer);
+    joined = true;
+
+    // The token, not the display name, is what makes a returning phone *this*
+    // participant. Two guests called "Sam" stay two participants.
+    if (data?.reconnectToken) {
+        reconnectToken = data.reconnectToken;
+        try {
+            localStorage.setItem(TOKEN_STORAGE_KEY, reconnectToken);
+        } catch { /* private mode: identity just won't survive a reload */ }
+    }
+
+    showSessionScreen();
+}
+
+function handleJoinDenied(data) {
+    clearTimeout(joinTimeoutTimer);
+    joined = false;
+
+    if (data?.reason === 'locked-out') {
+        // Phrased about the session, not about this phone: the lockout is
+        // session-wide, so whoever sees this may not be who typed the bad PINs.
+        // (A phone holding a valid reconnect token is exempt server-side, so a
+        // mid-session reconnect never lands here.)
+        const seconds = Math.max(1, Math.ceil((data.retryAfterMs ?? 60000) / 1000));
+        showJoinScreen(`This session paused new joins after too many wrong PINs. Try again in about ${seconds}s.`);
+    } else {
+        showJoinScreen('That PIN is not right for this session.');
     }
 }
 
@@ -354,48 +444,71 @@ function resetTimeRequestBtn() {
 }
 
 // ========================================
-// Host Mode
-// ========================================
-
-function applyHostMode() {
-    if (isHost) {
-        // Hide "More Time" button (host doesn't request time from themselves)
-        timeRequestBtn.classList.add('hidden');
-
-        // Show host badge in header
-        const badge = document.createElement('span');
-        badge.id = 'host-badge';
-        badge.className = 'text-[10px] text-primary-400 bg-primary-400/10 border border-primary-400/20 rounded px-1.5 py-0.5 ml-1';
-        badge.textContent = 'HOST';
-        const existing = document.getElementById('host-badge');
-        if (!existing) {
-            sessionName.parentElement?.appendChild(badge);
-        }
-    }
-}
-
-// ========================================
 // Join Flow
 // ========================================
+
+function showSessionScreen() {
+    setJoinError('');
+    joinSubmit.disabled = false;
+    joinSubmit.textContent = 'Join Session';
+    joinScreen.classList.add('hidden');
+    sessionScreen.classList.remove('hidden');
+}
+
+function showJoinScreen(message) {
+    sessionScreen.classList.add('hidden');
+    joinScreen.classList.remove('hidden');
+    joinSubmit.disabled = false;
+    joinSubmit.textContent = 'Join Session';
+    // A refused join means the PIN in the link is wrong or stale — show the
+    // field so the user can correct it by hand.
+    pinInput.classList.remove('hidden');
+    setJoinError(message ?? '');
+}
+
+function setJoinError(message) {
+    joinError.textContent = message ?? '';
+    joinError.classList.toggle('hidden', !message);
+}
 
 // Pre-fill name from localStorage
 if (displayName) {
     nameInput.value = displayName;
 }
 
+// A PIN in the link is prefilled and hidden: scanning stays a one-step join.
+if (joinPin) {
+    pinInput.value = joinPin;
+    pinInput.classList.add('hidden');
+}
+
 joinForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    displayName = nameInput.value.trim();
-    if (!displayName) return;
 
+    const name = nameInput.value.trim();
+    const pin = pinInput.value.trim().toUpperCase();
+    if (!name) return;
+    if (!pin) {
+        setJoinError('Enter the session PIN shown on the host’s screen.');
+        return;
+    }
+
+    displayName = name;
+    joinPin = pin;
     localStorage.setItem('wn-companion-name', displayName);
 
-    // Switch to session view
-    joinScreen.classList.add('hidden');
-    sessionScreen.classList.remove('hidden');
+    setJoinError('');
+    joinSubmit.disabled = true;
+    joinSubmit.textContent = 'Joining…';
 
-    // Connect and join
-    connect();
+    // Stay on the join screen until the host answers — the session view is
+    // only shown to a client that actually got in.
+    armJoinTimeout();
+    if (ws?.readyState === WebSocket.OPEN) {
+        sendJoin();
+    } else {
+        connect();
+    }
 });
 
 // ========================================

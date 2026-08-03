@@ -164,7 +164,13 @@ function serveStatic(res, filePath) {
     try {
         const data = readFileSync(normalizedFull);
         const ext = extname(normalizedFull).toLowerCase();
-        res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream' });
+        // Never cached: a phone holding a stale companion.js sends no join PIN
+        // and is refused by the host with no way to self-heal. Mirrored in
+        // app/src/main/companion/companion-server.ts (same files, LAN path).
+        res.writeHead(200, {
+            'Content-Type': MIME_TYPES[ext] ?? 'application/octet-stream',
+            'Cache-Control': 'no-store',
+        });
         res.end(data);
     } catch {
         res.writeHead(404);

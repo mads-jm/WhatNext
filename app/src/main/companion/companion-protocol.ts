@@ -5,6 +5,42 @@
  * and phone browser clients (WebSocket clients).
  */
 
+import { randomBytes } from 'crypto';
+
+// ========================================
+// Join Credential (participant side)
+// ========================================
+
+/**
+ * Ambiguity-free alphabet shared with the relay's session-code generator
+ * (`relay/companion-tunnel.mjs` — `generateSessionCode`). The relay is a
+ * separate JS package and cannot import this module, so the constant is
+ * hand-mirrored in both places; keep them in sync. No I/O/0/1.
+ */
+export const COMPANION_PIN_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+/** 4 characters over a 32-symbol alphabet ≈ 1.05M combinations. */
+export const JOIN_PIN_LENGTH = 4;
+
+/** Mint a session-scoped join PIN. Host-side only — the relay never sees it. */
+export function generateJoinPin(): string {
+    const bytes = randomBytes(JOIN_PIN_LENGTH);
+    let pin = '';
+    for (let i = 0; i < JOIN_PIN_LENGTH; i++) {
+        pin += COMPANION_PIN_ALPHABET[bytes[i] % COMPANION_PIN_ALPHABET.length];
+    }
+    return pin;
+}
+
+/**
+ * Fold a phone-supplied PIN for comparison: case-insensitive, whitespace
+ * tolerant. Length is capped so a hostile client cannot make the server
+ * compare megabytes.
+ */
+export function normalizeJoinPin(value: string): string {
+    return value.trim().toUpperCase().slice(0, JOIN_PIN_LENGTH * 2);
+}
+
 // ========================================
 // Server → Phone Messages
 // ========================================
@@ -60,14 +96,25 @@ export type ServerToPhoneMessage =
     | { type: 'turn:update'; data: CompanionTurnState }
     | { type: 'reaction:broadcast'; data: { clientId: string; displayName: string; emoji: string; trackId: string | null } }
     | { type: 'time-request:ack'; data: { status: 'seen' | 'granted' } }
-    | { type: 'join:ack'; data: { isHost: boolean } };
+    | { type: 'join:ack'; data: { reconnectToken: string } }
+    | { type: 'join:denied'; data: JoinDenial };
+
+/**
+ * Why a join was refused. Sent instead of `join:ack` so the phone can say what
+ * went wrong rather than sitting on an empty session screen forever.
+ */
+export interface JoinDenial {
+    reason: 'invalid-pin' | 'locked-out';
+    /** Populated for `locked-out` so the phone can show a countdown. */
+    retryAfterMs: number | null;
+}
 
 // ========================================
 // Phone → Server Messages
 // ========================================
 
 export type PhoneToServerMessage =
-    | { type: 'join'; displayName: string }
+    | { type: 'join'; displayName: string; pin: string; reconnectToken: string | null }
     | { type: 'reaction'; emoji: string; trackId: string | null }
     | { type: 'time-request'; trackId: string | null }
     | { type: 'heartbeat' };
@@ -173,11 +220,24 @@ export function parsePhoneMessageValue(value: unknown): PhoneToServerMessage | n
     if (typeof parsed.type !== 'string') return null;
 
     switch (parsed.type) {
-        case 'join':
+        case 'join': {
             if (typeof parsed.displayName !== 'string' || parsed.displayName.trim().length === 0) {
                 return null;
             }
-            return { type: 'join', displayName: parsed.displayName.trim().slice(0, 30) };
+            // A missing PIN parses as the empty string rather than failing the
+            // whole message: the server must be able to answer with an explicit
+            // `join:denied` instead of dropping the frame silently.
+            const pin = typeof parsed.pin === 'string' ? normalizeJoinPin(parsed.pin) : '';
+            const token = typeof parsed.reconnectToken === 'string' && parsed.reconnectToken.length > 0
+                ? parsed.reconnectToken.slice(0, 64)
+                : null;
+            return {
+                type: 'join',
+                displayName: parsed.displayName.trim().slice(0, 30),
+                pin,
+                reconnectToken: token,
+            };
+        }
 
         case 'reaction':
             if (typeof parsed.emoji !== 'string' || parsed.emoji.length === 0 || parsed.emoji.length > 8) {

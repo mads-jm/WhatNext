@@ -150,6 +150,17 @@ describe('companion tunnel — session creation', () => {
     });
 });
 
+describe('companion tunnel — static serving', () => {
+    it('serves the phone client uncacheable', async () => {
+        // A phone holding a stale companion.js sends no join PIN and is refused
+        // by the host with no way to self-heal, so these files must not cache.
+        const res = await fetch(`${baseUrl}/companion.js`);
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get('cache-control')).toBe('no-store');
+    });
+});
+
 describe('companion tunnel — host authentication', () => {
     it('accepts a host presenting the minted credential', async () => {
         const { code, hostToken } = await createSession();

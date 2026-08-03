@@ -499,12 +499,15 @@ export interface ReplicationPullResponsePayload {
 export interface CompanionStartResult {
     port: number;
     localIp: string;
+    /** Session-scoped join PIN participants must present. Goes in the share link. */
+    joinPin: string;
 }
 
 export interface CompanionInfoResult {
     port: number;
     localIp: string;
     connectedClients: number;
+    joinPin: string | null;
 }
 
 export interface CompanionClientEventPayload {
