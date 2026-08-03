@@ -70,10 +70,20 @@ date modified: 2026-08-01
 
 ### 4 — Companion auth + relay acks
 
-- [ ] Host attach without the secret is rejected (LAN and relay paths, tests); phone join without the PIN is rejected.
-- [ ] The QR/URL payload carries the PIN; the printed session code alone no longer grants host takeover on the relay.
-- [ ] A relay-tunneled phone's time request receives an ack (harness or manual QA evidence).
-- [ ] Same-name second guest gets a distinct identity (reconnect token, not name adoption).
+*Split across two cycles by user ruling 2026-08-02: cycle 2 landed the host half (`42f8ff4`), cycle 2b the participant half.*
+
+- [x] Host attach without the secret is rejected (LAN and relay paths, tests); phone join without the PIN is rejected. *(Host: cycle 2. Join PIN: cycle 2b — validated host-side on both transports, so the relay stays a dumb pipe and needs no lockstep wire-contract deploy.)*
+- [x] The QR/URL payload carries the PIN; the printed session code alone no longer grants host takeover on the relay. *(The PIN rides in the URL **fragment** — never sent to a server, so it stays out of relay access logs while a scanned QR is still one step.)*
+- [x] A relay-tunneled phone's time request receives an ack (harness or manual QA evidence). *(Cycle 2, covered by `companion-server.test.ts`.)*
+- [x] Same-name second guest gets a distinct identity (reconnect token, not name adoption).
+- [x] **Amendment (user ruling 2026-08-02)**: the PIN is **4 alphanumeric characters** over the existing ambiguity-free 32-symbol alphabet (`ABCDEFGHJKLMNPQRSTUVWXYZ23456789`), not the 4 digits in Risks below — 32⁴ ≈ 1.05M vs 10⁴, same generator shape, same one-step scan.
+- [x] Host-side join-attempt lockout: 10 failed PINs freeze *new* joins for 60s (session-level state, no wire change). A phone presenting a valid reconnect token is exempt — it already cleared the PIN gate this session, and without the exemption one guest's typos eject every other phone at its next ordinary reconnect.
+- [x] A refused join is visibly explained on the phone (`join:denied` + no-answer timeout), instead of hanging on an empty session screen.
+- [x] The display-name host claim is removed on **both** paths; no phone is host in Phase 1. The phone's HOST badge and host-mode behaviour go with it.
+- [x] Phone-UI changes landed in both `companion-web` copies, guarded by a checksum-diff test (`relay/__tests__/companion-web-parity.test.mjs`).
+- [ ] Live QA against a real phone browser and a separate relay process: scan-join, wrong-PIN + lockout, reconnect, same-name second guest, **and the combination — a joined phone's socket bouncing while another guest's lockout is active (it must stay in the session)**. *(Human pass — automated tests cannot cover a QR scan or a mobile browser.)*
+
+**Re-ticketed out of WB4**: unifying the two `companion-web` copies; a credentialed host-phone claim (only if the HOST badge is missed); the terminal-tunnel-failure UI in `CompanionSharePanel` (folds into WB5); the post-upgrade rejection race when the *host's own* token is wrong (host-side, not participant-side).
 
 ### 5 — Honest playback ownership
 
@@ -89,7 +99,7 @@ date modified: 2026-08-01
 ## Risks & Open Questions
 
 - **Playback ownership scope**: replicating ownership adds a message to `shared/core/protocol.ts` (session protocol surface — small but real; the honest-relabel option is zero-protocol and fine for MVP). Governor should put this choice to the user before the architect commits.
-- **Companion auth vs zero-friction join**: the PIN adds one step to the phone-join flow the product deliberately keeps frictionless — keep it short (4 digits, embedded in the QR so scanning stays one-step; typing only for manual URL entry).
+- ~~**Companion auth vs zero-friction join**~~ — **resolved 2026-08-02**: the PIN is embedded in the QR (as a URL fragment) so scanning stays one-step; the PIN field appears only for manually-typed links. **Amended from "4 digits" to 4 characters over the 32-symbol ambiguity-free alphabet** by user ruling — same friction, 105× the guess space, and a host-side lockout behind it.
 - ~~**#57 fallback resolution**~~ — **resolved 2026-08-01**: no filesystem fallback at all. Deterministic `--print after_move:` reporting is already in place; when it yields nothing the track is marked "downloaded, not imported" rather than guessed at.
 - **File overlap**: `useTrackSource.ts` is touched here only (trust-boundary lane doesn't enter renderer hooks) — but confirm at dispatch; `downloader-ipc.ts` is shared with [[epic-ipc-trust-boundary]] (disjoint hunks: validation-at-entry vs event flow).
 

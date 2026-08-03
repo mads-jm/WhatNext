@@ -28,9 +28,9 @@ Phone Browser ←→ WebSocket ←→ HTTP Server (Electron Main) ←→ IPC ←
 ```
 
 1. Coordinator starts a session → `companion:start` [[Electron-IPC|IPC]] boots an HTTP + WS server on a dynamic port
-2. Desktop displays QR code: `http://192.168.x.x:{port}/session`
+2. Desktop displays QR code and the join PIN: `http://192.168.x.x:{port}/#pin=WXYZ`
 3. Participant scans QR → phone loads `index.html` with [[Tailwind]] CDN + vanilla JS
-4. Participant enters display name → WebSocket connects → server sends `session:snapshot`
+4. Participant enters display name (the PIN rides in the link) → WebSocket connects → host validates the PIN → server sends `join:ack` + `session:snapshot`
 5. Renderer pushes state changes (playback, tracks, participants) to main via IPC → main fans out to all WebSocket clients
 6. Phone → server: reactions, time requests, heartbeats
 
@@ -42,7 +42,8 @@ Phone Browser ←→ WebSocket ←→ HTTP Server (Electron Main) ←→ IPC ←
 | Server → Phone | `playback:update` | Now playing (every 3s) |
 | Server → Phone | `tracks:update` | Queue changes |
 | Server → Phone | `reaction:broadcast` | Someone reacted |
-| Phone → Server | `join` | Display name, triggers snapshot |
+| Server → Phone | `join:ack` / `join:denied` | Join accepted (with reconnect token) or refused with a reason |
+| Phone → Server | `join` | Display name + join PIN + reconnect token; triggers snapshot |
 | Phone → Server | `reaction` | Emoji + trackId |
 | Phone → Server | `time-request` | Request coordinator rewind 30s |
 | Phone → Server | `heartbeat` | Every 15s keepalive |
@@ -70,7 +71,8 @@ Phone↔relay traffic stays raw companion JSON — the phone client is unaware o
 
 - **Renderer pushes, main broadcasts**: Main process has no [[RxDB]] access, so the renderer's `useCompanionBridge` hook subscribes to RxDB changes and pushes them to main via `ipcRenderer.send()`. Main fans out to WebSocket clients.
 - **Cached snapshot**: The server caches the last full snapshot so new/reconnecting clients get state instantly.
-- **Heartbeat + exponential backoff**: Phone sends heartbeat every 15s. On disconnect, reconnects with backoff (1s, 2s, 4s, max 10s). After reconnect, re-sends `join` to get a fresh snapshot.
+- **Heartbeat + exponential backoff**: Phone sends heartbeat every 15s. On disconnect, reconnects with backoff (1s, 2s, 4s, max 10s). After reconnect, re-sends `join` — PIN *and* token — to reclaim its identity and get a fresh snapshot.
+- **Identity outlives the socket, the roster does not**: a dropped client leaves the roster immediately but its id + token are parked for 5 minutes, so a suspended tab that comes back is the same participant rather than a second one.
 - **Debounced pushes**: Track and participant updates are debounced (500ms) to avoid flooding during bulk imports.
 - **Progress interpolation**: Phone client interpolates the progress bar locally at 100ms intervals between server updates, giving smooth movement.
 
@@ -79,8 +81,11 @@ Phone↔relay traffic stays raw companion JSON — the phone client is unaware o
 - **Tab suspension**: Mobile browsers aggressively suspend background tabs. The WebSocket *will* die. Design assumes reconnection is the norm, not the exception.
 - **Port conflicts**: Server binds to port 0 (OS-assigned) to avoid collisions with Vite (1313) or relay (4001/4002).
 - **Path resolution**: `companion-web/` static files must be found in both dev (`src/companion-web/`) and packaged (`resources/companion-web/`) builds.
-- **No participant auth yet**: anyone on the local network — or anyone holding the public relay session code — can join as a *phone*. Acceptable under the LAN/trusted-relay model for now; the join PIN and per-client reconnect token are the next slice. The **host** slot is authenticated (above).
-- **Two hand-maintained copies of the phone UI**: `app/src/companion-web/` (LAN) and `relay/companion-web/` (relay) are duplicates with no sync script — every phone-UI change must land twice. Known debt.
+- **Reachability is not a credential**: joining needs the session **join PIN**, checked host-side on both transports. Being on the Wi-Fi, or holding the public relay session code, is not enough. The PIN travels in the URL *fragment* so a scanned QR is still a one-step join while the credential never reaches the relay (fragments aren't sent to servers). Ten wrong PINs freeze *new* joins for a minute — a phone holding a valid reconnect token is exempt, or one guest's typos would bounce every other phone off the session at its next background reconnect.
+- **A display name is not an identity**: a returning phone is recognised by its per-client **reconnect token**, never by name. Adopting whoever typed the same name merged two guests into one participant; the same bug in reverse let anyone wear the HOST badge by typing the host's name. **No phone is host in Phase 1** — a host has the desktop in front of them.
+- **A refused join must be visible**: the phone stays on the join screen until `join:ack` arrives, and renders `join:denied` (wrong PIN / locked out) plus a no-answer timeout. Silently switching to an empty session screen is indistinguishable from a broken session.
+- **The relay serves the phone UI too**: a relay running an old `relay/companion-web/` hands out a pre-PIN client that can never join. Deploy the relay's copy with the app even when the host↔relay wire contract is unchanged; both static servers send `Cache-Control: no-store` so a stale phone can at least reload out of it.
+- **Two hand-maintained copies of the phone UI**: `app/src/companion-web/` (LAN) and `relay/companion-web/` (relay) are duplicates with no sync script — every phone-UI change must land twice. `relay/__tests__/companion-web-parity.test.mjs` fails the suite on drift; the real fix is de-duplication (re-ticketed). Known debt.
 - **Relay-tunnelled phones are real clients**: they live in the same `clients` map as LAN phones under `relay:{phoneId}`. Addressing them by a constant id (the old `'relay-phone'`) silently broke per-client sends and client counts.
 
 ## Related Concepts
