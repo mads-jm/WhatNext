@@ -5,7 +5,7 @@ tags:
   - mvp
 status: active
 date created: 2026-08-01
-date modified: 2026-08-01
+date modified: 2026-08-03
 ---
 
 # Pre-Merge Review: `qa/wave1` (mvp + wave-1 lanes) → `main` — 2026-08-01
@@ -176,9 +176,9 @@ Sources: [ws advisory/CVE-2026-45736](https://www.sentinelone.com/vulnerability-
 
 The five lanes are all mergeable (replication pending its required human P2P sign-off) and materially improve the branch. What blocks the merge to `main` is the mvp-side main-process trust boundary — six findings, all cheap, none architectural:
 
-1. **Remove/harden the `exec('start …')` path** in `shell:open-external` — `main.ts:911-933` (§1.1)
-2. **Contain `wn-art://` reads** to the artwork/audio dirs — `main.ts:607-626` (§1.2)
-3. **Gate `file:write`** to dialog-approved paths — `main.ts:781-788` (§1.3)
+1. ✅ **closed 2026-08-03** — **Remove/harden the `exec('start …')` path** in `shell:open-external` — `main.ts:911-933` (§1.1). The `exec` branch is gone; all allowed protocols go through `shell.openExternal` behind a shape allowlist (`app/src/main/ipc-guards.ts`). `main.ts` no longer imports `child_process`. Closed alongside it: `shell:open-path`, which this review missed and which is the sharper hole (`shell.openPath` on a file *executes* it) — now directories only, app-owned or dialog-approved.
+2. ✅ **closed 2026-08-03** — **Contain `wn-art://` reads** — `main.ts:607-626` (§1.2). Contained to the artwork roots (`<documents>/WhatNext/artwork` plus the legacy `<userData>/artwork`), images only; relative traversal and absolute out-of-tree both 403. Correction to this review's wording: there is no audio consumer of `wn-art://`, so the "artwork/audio dirs" framing narrows to artwork.
+3. ✅ **closed 2026-08-03** — **Gate `file:write`** to dialog-approved paths — `main.ts:781-788` (§1.3). One-shot approval recorded by `dialog:save-file` in main. The suggested `documents/WhatNext` containment fallback was **not** used: it would have violated sovereignty (#1/#2) by capping where a user may export. See [[epic-ipc-trust-boundary]] "Authority model".
 4. **Validate downloader URLs + add `--` separator** before yt-dlp/spotdl argv — `downloader-ipc.ts`, both backends (§1.4)
 5. **Reject unsolicited/out-of-bounds file chunks** before disk writes — `file-transfer-ipc.ts:893-944` + utility handler (§1.5; human-owned P2P territory)
 6. **Bump `ws` to ≥8.20.1** in app + relay lockfiles (§1.6)

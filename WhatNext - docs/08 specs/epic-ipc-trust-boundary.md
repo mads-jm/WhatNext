@@ -3,15 +3,15 @@ tags:
   - specs/security
   - core/electron/ipc
   - architecture/patterns/ipc
-status: draft
+status: in-progress
 date created: 2026-08-01
-date modified: 2026-08-01
+date modified: 2026-08-03
 ---
 
 # Epic: IPC Trust-Boundary Hardening
 
-**Status**: Draft
-**GitHub**: to be filed (plan-first)
+**Status**: In progress — work items 1 & 2 implemented 2026-08-03 (cycle 1 of 2); work item 3 deferred to cycle 2
+**GitHub**: to be filed (plan-first; issue text drafted 2026-08-03)
 **Depends on**: none
 **Source audit**: [[report-260801-mvp-premerge-review]] §1.1–§1.4, §2 (`set-backend-path`)
 
@@ -58,21 +58,35 @@ All citations verified on the merged mvp tree (`cafc6ab`) by the 2026-08-01 revi
 
 ## Work Breakdown
 
-### 1 — `shell:open-external` hardening
+### 1 — `shell:open-external` hardening — ✅ done 2026-08-03
 
 **Acceptance criteria.**
-- [ ] No `exec` with interpolated renderer input remains in `main.ts`; either `shell.openExternal` handles custom protocols or a `spawn`-argv fallback exists behind a `process.platform === 'win32'` gate.
-- [ ] `spotify:" & <cmd> & "`-shaped URLs are rejected before any spawn; a regression test asserts rejection.
-- [ ] The `main.ts:909` TODO is resolved/removed.
+- [x] No `exec` with interpolated renderer input remains in `main.ts`; the `exec` branch was removed outright (no `spawn` fallback needed, so no `process.platform` gate is required) and every allowed protocol now goes through `shell.openExternal`. `main.ts` no longer references `child_process` at all, and a test asserts that.
+- [x] `spotify:" & <cmd> & "`-shaped URLs are rejected before any spawn; `validateExternalUrl` in `app/src/main/ipc-guards.ts` enforces a per-scheme shape allowlist, with regression tests for the quote/`&`/backtick/`$()`/`;`/`|` shapes.
+- [x] The TODO is resolved/removed.
+- Also closed in the same pass: **`shell:open-path`** (`main.ts`), which the review did not record. It is the sharper hole of the two — `shell.openPath` on a *file* executes it via the OS handler. It now accepts directories only, and only app-owned ones or ones the user picked in a main-process dialog (see [[#Authority model]]).
 
-### 2 — Filesystem containment (`wn-art://`, `file:write`)
+### 2 — Filesystem containment (`wn-art://`, `file:write`) — ✅ done 2026-08-03
 
 **Acceptance criteria.**
-- [ ] Containment helpers live in one shared module; `file-transfer-ipc.ts` consumes the shared copy (no behavior change there).
-- [ ] `wn-art://` serves only files under the artwork/audio roots; out-of-tree requests (relative traversal *and* absolute) return an error, with tests.
-- [ ] `file:write` refuses paths not approved via the save dialog (or outside the documented containment root); the export flow still works end-to-end.
+- [x] Containment helpers live in one shared module — `app/src/main/utils/path-safety.ts`; `file-transfer-ipc.ts` imports them (definitions deleted there, no behaviour change, its suites untouched).
+- [x] `wn-art://` serves only files under the artwork roots; relative traversal *and* absolute out-of-tree requests return 403, with tests for both shapes.
+- [x] `file:write` refuses paths not approved via `dialog:save-file` in the current app session (one-shot per approval); both callers (playlist export, theme export) are dialog-then-write-once, so nothing breaks.
 
-### 3 — Downloader argv hygiene
+**Correction to the problem statement above:** there is only one live artwork root, `<documents>/WhatNext/artwork` — the `artwork:download` cache and the file-transfer receive directory are the same folder. `<userData>/artwork` is enumerated as a *legacy* root because older builds wrote the cache there and those paths can still be in the database. There is no audio consumer of `wn-art://` (playback is device-local via Spotify), so "artwork/audio roots" narrows to artwork, images only.
+
+#### Authority model
+
+For `file:write` and `shell:open-path` the review's fallback ("containment under `documents/WhatNext`") was rejected: it would trade a security hole for a sovereignty violation (CLAUDE.md #1/#2 — the user must be able to export to, and open, any directory they choose). Instead, **authority derives from the user's own main-process dialog choice**:
+
+- `dialog:save-file` records the chosen path as a one-shot, session-scoped write approval (`ipc-guards.ts`).
+- `dialog:open-directory` records the chosen directory in a persisted store (`app/src/main/approved-dirs-store.ts`, `userData/approved-dirs.json`) so the "Open" button next to a saved default export directory keeps working across restarts.
+
+This also fixes a trust problem the review did not record: the default export directory is read from renderer `localStorage`, which the renderer can rewrite, so its value was never authority for opening a folder.
+
+### 3 — Downloader argv hygiene — ⏭ deferred to cycle 2 (2026-08-03)
+
+Disjoint files from cycle 1 (`downloader-ipc.ts`, both backends). Carries a UX decision — the free-text executable-path field at `DownloadSettings.tsx:103-116` vs dialog-only sourcing — that needs user input at scoping time.
 
 **Acceptance criteria.**
 - [ ] `download:resolve`/`download:start` reject non-http(s) input with a typed error before any backend call.
@@ -82,16 +96,17 @@ All citations verified on the merged mvp tree (`cafc6ab`) by the 2026-08-01 revi
 
 ## Epic Acceptance Criteria (Definition of Done)
 
-- [ ] Review findings §1.1–§1.4 and the `set-backend-path` item are closed with the review's suggested direction or better.
-- [ ] No new IPC channels added; no handler widened.
-- [ ] All new validation has negative-path tests; `cd app && npm test` green.
-- [ ] `npm run lint` / `npm run typecheck` introduce no *new* failures (gates themselves are [[epic-quality-gates]]).
-- [ ] [[report-260801-mvp-premerge-review]] punch-list items 1–4 checked off (report updated).
+- [x] Review findings §1.1–§1.3 closed (better than the suggested direction on the sovereignty-sensitive handlers); §1.4 + `set-backend-path` remain for cycle 2.
+- [x] No new IPC channels added; no handler widened.
+- [x] All new validation has negative-path tests; `cd app && npm test` green (476 tests, 34 files — was 438/32).
+- [x] `npm run lint` / `npm run typecheck` introduce no *new* failures (typecheck 16 → 16 identical errors; lint 58 → 56 errors, two pre-existing ones incidentally fixed).
+- [x] [[report-260801-mvp-premerge-review]] punch-list items 1–3 checked off; item 4 pending cycle 2.
 
 ## Risks & Open Questions
 
-- **`shell.openExternal` behavior for `spotify:`** on each platform needs a quick manual check — if the OS has no handler registered, decide the UX (silent no-op vs toast) rather than resurrecting `exec`.
-- **Approved-path map for `file:write`**: one-shot vs session-lifetime approval; one-shot is safer, confirm it doesn't break repeated exports.
+- ~~**`shell.openExternal` behavior for `spotify:`**~~ — resolved by code: `PlaybackBar.tsx` already falls back to `https://open.spotify.com/...` when the handler returns `success: false`, so a missing OS handler degrades to the web URL. Still worth the manual check that the desktop app *does* open when installed.
+- ~~**Approved-path map for `file:write`**~~ — resolved: one-shot. Both callers are dialog-then-write-once.
+- **Pre-existing default export directories** need one re-pick: a directory chosen before this change is only in renderer `localStorage`, not in the main-process approvals store, so its "Open" button stays inert until the user clicks "Change" once. Deliberate — the renderer cannot be allowed to grant itself the permission.
 - **Concurrent lane overlap**: `downloader-ipc.ts` is also touched by [[epic-session-liveness-fixes]] (#57). Sequence this lane first or keep hunks disjoint (validation at handler entry vs event flow).
 
 ## References
