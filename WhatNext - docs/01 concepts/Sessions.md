@@ -17,7 +17,7 @@ Sessions v1 shipped with the __provider abstraction__: the session layer is plat
 
 > ⚠️ **Reliability status (2026-06-27)** — v1 is feature-present but *Spotify-only-robust*; the collaborative path is fragile. Known gaps (see [[report-260627-mvp-state-of-the-union]] §3):
 > - **Manual & P2P `TrackSource` are no-op stubs** (`useTrackSource.ts:322`) — remediation tracked in [[epic-track-sourcing]].
-> - **Playback mutex unimplemented** — `coHostIds`/`playbackOwnerId` are schema fields only; no enforcement or handoff ([[epic-session-coordination]]; design in [[adr-260315-p2p-session-pairing]]).
+> - ~~**Playback mutex unimplemented**~~ — **resolved 2026-08-03 by removal, not implementation.** The session-level `coHostIds`/`playbackOwnerId` state and the take/hand-off controls were dead UI (every peer seeded itself as owner) promising mutual exclusion no protocol could deliver, and they are deleted. **Playback is device-local by design in Phase 1**: a playback surface appears iff *this* device's `playbackProvider` is Spotify, and a participant on `playbackProvider: 'none'` gets none at all. A cross-peer mutex needs a session-message channel, which is post-MVP — decision record in [[epic-session-liveness-fixes]] §WB5, design still on record in [[adr-260315-p2p-session-pairing]] / [[epic-session-coordination]]. (`playlist.coHostIds` remains in schema v5, unused, to avoid a migration.)
 > - **Companion is snapshot-only** — bidirectional control (react / request-time) is stubbed.
 > - **Turn-advance race** on concurrent adds (see Pitfall 5 — the per-track loop is *not* coordinated across peers).
 > - **Zero tests** on session/replication/turn logic.
@@ -194,7 +194,7 @@ The snapshot ID check short-circuits the track-processing loop but still makes t
 | Role | Platform | Capabilities |
 |------|----------|-------------|
 | **Host** (coordinator) | Electron desktop | Full control: playback, queue, import, session lifecycle |
-| **Co-host** | Electron desktop (P2P) | _Planned_ — playback transfer/queue edits depend on the unimplemented mutex |
+| **Co-host** | Electron desktop (P2P) | _Post-MVP_ — playback transfer/queue edits need a session-message channel that does not exist yet ([[epic-session-liveness-fixes]] §WB5) |
 | **Desktop participant** | Electron desktop (P2P) | Add tracks, react, comment (via RxDB replication) |
 | **Companion participant** | Phone browser | View-only today; react / request-more-time are _stubbed_ (snapshot-only) |
 
@@ -228,6 +228,6 @@ Companion participants connect via the [[Companion-Client]] — a lightweight we
 
 ---
 
-__Status__: v1 shipped 2026-03-07 (Spotify collab + playback). ManualTrackSource and P2PTrackSource are stubs; playback mutex and companion control unimplemented — see reliability callout above and [[report-260627-mvp-state-of-the-union]].
-__Last Updated__: 2026-06-27 (reality-checked)
+__Status__: v1 shipped 2026-03-07 (Spotify collab + playback). ManualTrackSource and P2PTrackSource are stubs; companion control unimplemented; **playback is device-local by design — the cross-peer mutex and the P2P social layer are post-MVP** ([[epic-session-liveness-fixes]] §WB5). See reliability callout above and [[report-260627-mvp-state-of-the-union]].
+__Last Updated__: 2026-08-03 (playback ownership removed)
 

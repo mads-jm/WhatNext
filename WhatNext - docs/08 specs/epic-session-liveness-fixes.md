@@ -5,7 +5,7 @@ tags:
   - architecture/companion
 status: draft
 date created: 2026-08-01
-date modified: 2026-08-01
+date modified: 2026-08-03
 ---
 
 # Epic: Session & Downloader Liveness Fixes
@@ -49,7 +49,7 @@ date modified: 2026-08-01
 3. **Sync deadlock**: reset `syncingRef.current` unconditionally in `finally`; widen poll interval to 10–15s while in the file (one-line each).
 4. **Companion auth**: issue a host secret at `POST /session`; require it on host attach locally and on relay `/host/<code>`; add a short numeric join PIN to the QR payload and check it on join; per-client reconnect token replaces the display-name adoption at `:151-167`.
 5. **Relay acks**: register relay phones as tracked clients (or route acks through `sendToRelay`) so `sendTimeRequestAck` reaches them.
-6. **Playback ownership**: decide the open question first (see Risks); if replicating, add a minimal `playback-ownership` session message (claim/release, host-arbitrated, LWW on conflict) — note this touches `app/src/shared/core/protocol.ts`; if deferring, gate the take/hand-off controls to the host and label them.
+6. **Playback ownership**: decide the open question first (see Risks); if replicating, add a minimal `playback-ownership` session message (claim/release, host-arbitrated, LWW on conflict) — note this touches `app/src/shared/core/protocol.ts`; if deferring, gate the take/hand-off controls to the host and label them. *(Superseded 2026-08-03 — neither: the controls were dead UI and were removed outright. See WB5.)*
 
 ## Work Breakdown
 
@@ -87,8 +87,64 @@ date modified: 2026-08-01
 
 ### 5 — Honest playback ownership
 
-- [ ] Decision recorded (replicate vs relabel) with rationale in this spec's revision.
-- [ ] Two connected peers can no longer both display an active "you own playback" control (test or scripted QA for the chosen design).
+- [x] Decision recorded (replicate vs relabel) with rationale in this spec's revision. **Decision: remove, not relabel** — see below.
+- [x] Two connected peers can no longer both display an active "you own playback" control (test or scripted QA for the chosen design). *No peer displays one at all; pinned by `playback-helpers.test.ts` + `navigation-store.test.ts` and the two-peer QA script below.*
+
+#### Decision (2026-08-03): remove the ownership surface, do not replicate it
+
+The open question above offered *replicate* or *relabel*. Reading the code first
+made a third option the only honest one — **remove** — because two premises in
+the problem statement were wrong:
+
+1. **There is no session-message transport to add a message to.** `shared/core/protocol.ts` is the `whtnxt://` URL parser, not a session protocol; the libp2p protocol set is handshake / rxdb-replication / ping / file-transfer. "Replicate ownership" means *building a channel*, not extending one.
+2. **"Two peers can both render 'you own playback'" understates it — that was the only reachable state.** `sessionState` was only ever created by `SessionSetup.handleStart`, which always set `hostId = own user.id`, and `startSession` seeded `playbackOwnerId = config.hostId`. So `isPlaybackOwner` was `true` on every peer, always: the "Playback owned by …" branch, the Take Playback button (needs `!isPlaybackOwner`) and the hand-off `<select>` (needs a non-empty `coHostIds`, which nothing ever wrote) were **dead UI**. Relabelling dead controls would have preserved a promise with no mechanism behind it.
+
+A cross-peer owner needs, before any message type: an agreed session identity, an
+agreed participant set, and a stable cross-peer user identity. None exist
+(`p2p.joinSession` dials a peer; it does not create or join session state).
+
+**What shipped:** the session-level `coHostIds`/`playbackOwnerId` state, their
+store actions, the take/hand-off controls and the `App.tsx` owner check are
+deleted. Playback-surface visibility now derives from one device-local input —
+`hasLocalPlaybackSurface(session)`, true iff this device's `playbackProvider` is
+Spotify. A participant on `playbackProvider: 'none'` gets **no playback surface
+at all** (absent, not disabled). The coordinator's transport controls are
+unchanged and labelled "Your Spotify" (tooltip: *controls this device's linked
+Spotify account; session peers are unaffected*).
+
+**Deferred, deliberately:** the session-message channel gets its own scoping
+cycle and ADR. Its driving requirement is the P2P social layer — turn-taking,
+presence, queue — and per the roadmap amendment below that layer is post-MVP, so
+the channel currently has **no MVP consumer**: playback sync is doubly blocked
+(participants cannot stream from Spotify under the Feb 2026 restrictions, and
+audio distribution needs the file-transfer lane hardened first). "Now-playing
+visibility for remote peers" is logged there as a candidate requirement, not
+built here. `playlist.coHostIds` (schema v5) stays as-is — removing an unused
+field would ship a v5→v6 migration to every local DB for no user benefit. The
+mutex design survives on record in [[adr-260315-p2p-session-pairing]] and
+[[epic-session-coordination]] (#36) to rebuild from.
+
+#### Roadmap amendment (user ruling 2026-08-03)
+
+The **P2P social layer (turn-taking, presence, queue) and the session-message
+channel are post-MVP.** The social layer exists for the moment WhatNext decouples
+from Spotify, and that moment needs *proven* P2P playlist and library sharing
+first. This re-sequences `CLAUDE.md` §Development Roadmap Phase 1's "Social
+layer: turn-taking, queue management, reactions, presence" line, which is
+recorded here rather than silently contradicted; the `CLAUDE.md` edit itself is
+the user's to apply. (In-session reactions and comments are unaffected — they
+ride RxDB replication and stay in Phase 1.)
+
+#### Two-peer QA script (WB5 checkbox 2)
+
+Automated tests cover the decision points; the two-peer assertion is visual.
+
+1. Peer A: start a session on a Spotify-linked playlist with **Playback: Spotify**. Peer B: join and start a session on the same playlist with **Playback: None**.
+2. **Expect A:** the shell playback bar is present, labelled "Your Spotify"; transport controls drive A's Spotify Connect device as before.
+3. **Expect B:** *no playback bar anywhere* — not greyed, not a placeholder, no "playback owned by …" text. B's session view is playlist collaboration only.
+4. **Expect both:** no "You control playback", no "Take Playback" button, no "Hand off to…" dropdown, in either view.
+5. Peer B: set **Playback: Spotify** instead, and confirm B now gets its own bar labelled "Your Spotify" — two independent device-local transports, neither claiming authority over the other.
+6. Playlist edits on either peer still replicate both ways (regression check that nothing in the deletion touched replication).
 
 ## Epic Acceptance Criteria (Definition of Done)
 
@@ -98,7 +154,7 @@ date modified: 2026-08-01
 
 ## Risks & Open Questions
 
-- **Playback ownership scope**: replicating ownership adds a message to `shared/core/protocol.ts` (session protocol surface — small but real; the honest-relabel option is zero-protocol and fine for MVP). Governor should put this choice to the user before the architect commits.
+- ~~**Playback ownership scope**~~ — **resolved 2026-08-03**: neither replicate nor relabel. There is no session-message channel to extend (only a `whtnxt://` URL parser), the take/hand-off controls were unreachable, and the social layer that would consume such a channel is now post-MVP — so the ownership surface was **removed** and the channel deferred to its own ADR cycle. See WB5's decision record.
 - ~~**Companion auth vs zero-friction join**~~ — **resolved 2026-08-02**: the PIN is embedded in the QR (as a URL fragment) so scanning stays one-step; the PIN field appears only for manually-typed links. **Amended from "4 digits" to 4 characters over the 32-symbol ambiguity-free alphabet** by user ruling — same friction, 105× the guess space, and a host-side lockout behind it.
 - ~~**#57 fallback resolution**~~ — **resolved 2026-08-01**: no filesystem fallback at all. Deterministic `--print after_move:` reporting is already in place; when it yields nothing the track is marked "downloaded, not imported" rather than guessed at.
 - **File overlap**: `useTrackSource.ts` is touched here only (trust-boundary lane doesn't enter renderer hooks) — but confirm at dispatch; `downloader-ipc.ts` is shared with [[epic-ipc-trust-boundary]] (disjoint hunks: validation-at-entry vs event flow).

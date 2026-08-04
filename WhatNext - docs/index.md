@@ -86,14 +86,16 @@ cd app && npm run build                 # Production build
 - 🟡 Social features — reactions/comments solid; turn-taking has a concurrent-add race
 - 🟡 Remote sessions via circuit relay + DCUtR ([[adr-260315-p2p-session-pairing]]) — no reconnection/fallback
 - 🟡 Audio sourcing — local import + yt-dlp + spotDL with infra tests; Spytify Windows-only PoC; P2P fileshare v0 untested ([[audio-acquisition-service]])
-- 🟠 Co-host model + playback mutex — `coHostIds`/`playbackOwnerId` are schema fields only; **mutex unimplemented**
+- 🔜 Co-host model + playback mutex — **post-MVP.** Playback is device-local by design; the dead ownership UI was removed 2026-08-03 rather than relabelled, and a cross-peer mutex needs the (deferred) session-message channel ([[epic-session-liveness-fixes]] §WB5). `playlist.coHostIds` stays in schema v5, unused, to avoid a migration
 - 🟠 Companion client — snapshot viewer works; **bidirectional control stubbed** ([[Companion-Client]], [[companion-client-spec]])
 - 🟠 Non-Spotify track sources — Manual & P2P `TrackSource` paths are **no-op stubs** (`useTrackSource.ts:322`)
 - ⚠️ **Test coverage near-zero for P2P/replication/playback**; no React error boundaries ([[mvp-reality-react-quality]])
 - 🔜 Open metadata enrichment (MusicBrainz/ListenBrainz)
 - 📋 Local file import adapter spec'd ([[local-file-import-adapter]], [[tapec-integration-analysis]])
 
-**Next focus**: finish stubbed features (mutex, Manual/P2P sources, companion control), then harden replication + Spotify errors, then tests. Backlog reconciliation: [[report-260627-issue-reconciliation]].
+**Next focus**: finish stubbed features (Manual/P2P sources, companion control), then harden replication + Spotify errors, then tests. Backlog reconciliation: [[report-260627-issue-reconciliation]].
+
+> **Roadmap amendment (user ruling 2026-08-03)** — the **P2P social layer (turn-taking, presence, queue) and the session-message channel it needs are post-MVP**, re-sequencing `CLAUDE.md` §Development Roadmap Phase 1's "Social layer" line. The social layer serves the moment WhatNext decouples from Spotify; that moment needs *proven* P2P playlist and library sharing first. Reactions and comments are unaffected — they ride RxDB replication and stay in Phase 1. Rationale: [[epic-session-liveness-fixes]] §WB5.
 
 ---
 
