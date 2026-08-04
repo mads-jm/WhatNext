@@ -4,7 +4,23 @@
  * Pure function — no React, no IPC, no I/O.
  */
 
-import type { PlaybackState } from '../../shared/session-interfaces';
+import type { PlaybackState, SessionState } from '../../shared/session-interfaces';
+
+/**
+ * Whether this device should render a playback surface for the given session.
+ *
+ * The answer depends on the local session's `playbackProvider` and on nothing
+ * else — deliberately *not* on the local user id, the host id, or any notion of
+ * who "owns" playback. Phase 1 has no session-message channel, so peers cannot
+ * agree on an owner and any owner-derived surface would be a claim the app
+ * cannot back (see [[epic-session-liveness-fixes]] §WB5).
+ *
+ * A participant whose session has `playbackProvider: 'none'` therefore gets no
+ * playback surface at all — absent, not disabled.
+ */
+export function hasLocalPlaybackSurface(session: SessionState | null | undefined): boolean {
+    return session?.playbackProvider.type === 'spotify';
+}
 
 export interface RawSpotifyPlaybackState {
     isPlaying: boolean;

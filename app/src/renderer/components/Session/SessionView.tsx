@@ -15,6 +15,7 @@ import { useSessionReplication } from '../../hooks/useSessionReplication';
 import { getDatabase } from '../../db/database';
 import type { PlaylistDocType, TrackDocType, UserDocType } from '../../db/schemas';
 import { computeEffectiveTurn } from '../../utils/turn-helpers';
+import { hasLocalPlaybackSurface } from '../../utils/playback-helpers';
 import { advanceTurn } from '../../db/services/playlist-service';
 import { SessionSetup } from './SessionSetup';
 import { SessionEmptyState } from './SessionEmptyState';
@@ -168,17 +169,12 @@ export function SessionView({ playlistId }: SessionViewProps) {
         }
     }, [turnQuotaFull, activeId]);
 
-    const isSpotifyPlayback = sessionState?.playbackProvider.type === 'spotify';
-    const spotifyContextUri = playlist?.linkedSpotifyId
-        ? `spotify:playlist:${playlist.linkedSpotifyId}`
-        : undefined;
+    // Device-local: does *this* device drive Spotify for this session? There is
+    // no cross-peer playback ownership in Phase 1, so nothing here is derived
+    // from user identity (see `hasLocalPlaybackSurface`).
+    const isSpotifyPlayback = hasLocalPlaybackSurface(sessionState);
 
     const clearCompanion = useCompanionStore((s) => s.clearAll);
-    const handOffPlayback = useNavigationStore((s) => s.handOffPlayback);
-    const takePlayback = useNavigationStore((s) => s.takePlayback);
-    const isPlaybackOwner = !sessionState || sessionState.playbackOwnerId === userId;
-    const coHostIds = sessionState?.coHostIds ?? [];
-    const isCoHost = userId ? coHostIds.includes(userId) : false;
 
     // Replicate session collections to/from connected peers when session is active
     useSessionReplication(isActiveSession);
@@ -268,41 +264,11 @@ export function SessionView({ playlistId }: SessionViewProps) {
 
                 <TrackEndingWarning playbackState={playbackState} hasNextTrack={hasNextTrack} />
 
-                {/* Playback ownership controls — shown when Spotify is the provider */}
-                {isSpotifyPlayback && (
-                    <div className="card card-body flex items-center justify-between py-2">
-                        <span className="text-xs text-on-surface-variant">
-                            {isPlaybackOwner
-                                ? 'You control playback'
-                                : `Playback owned by ${sessionState?.playbackOwnerId}`}
-                        </span>
-                        <div className="flex gap-2">
-                            {!isPlaybackOwner && (isCoHost || userId === sessionState?.hostId) && (
-                                <button
-                                    className="btn-ghost text-xs"
-                                    onClick={() => userId && takePlayback(userId)}
-                                >
-                                    Take Playback
-                                </button>
-                            )}
-                            {isPlaybackOwner && coHostIds.length > 0 && (
-                                <select
-                                    className="bg-surface-high text-on-surface text-xs rounded px-2 py-1"
-                                    defaultValue=""
-                                    onChange={(e) => {
-                                        if (e.target.value) handOffPlayback(e.target.value);
-                                        e.target.value = '';
-                                    }}
-                                >
-                                    <option value="" disabled>Hand off to...</option>
-                                    {coHostIds.map((id) => (
-                                        <option key={id} value={id}>{id}</option>
-                                    ))}
-                                </select>
-                            )}
-                        </div>
-                    </div>
-                )}
+                {/* No playback-ownership control here by design: nothing in Phase 1
+                    propagates ownership between peers, so any take/hand-off
+                    affordance would promise mutual exclusion the app cannot
+                    deliver. The transport controls live in the shell-level
+                    PlaybackBar and are scoped to this device's Spotify. */}
 
                 {turnState && playlist && (
                     <TurnIndicator

@@ -36,12 +36,27 @@ export type TrackSourceConfig =
     | { type: 'manual' }
     | { type: 'p2p' };
 
-/** Playback provider configuration — discriminated union, serialisable for Zustand */
+/**
+ * Playback provider configuration — discriminated union, serialisable for Zustand.
+ *
+ * Strictly device-local: it describes what *this* device can drive, never what a
+ * peer may drive. There is no cross-peer playback ownership in Phase 1 — no
+ * session-message channel exists to agree on one — so nothing here is replicated
+ * and no UI may imply mutual exclusion between peers.
+ * See [[epic-session-liveness-fixes]] §WB5.
+ */
 export type PlaybackProviderConfig =
     | { type: 'spotify' }
     | { type: 'none' };
 
-/** Active session state stored in the navigation store */
+/**
+ * Active session state stored in the navigation store.
+ *
+ * Device-local and ephemeral: every peer seeds its own copy at session start and
+ * nothing here crosses the wire. Do not add a field whose meaning depends on
+ * peers agreeing on it (playback owner, co-host set, participant roster
+ * authority) until a session-message channel exists to carry that agreement.
+ */
 export interface SessionState {
     status: 'active' | 'ended';
     playlistId: string;
@@ -49,8 +64,6 @@ export interface SessionState {
     playbackProvider: PlaybackProviderConfig;
     participantIds: string[];   // WhatNext user IDs
     hostId: string;             // WhatNext user ID of the session host
-    coHostIds: string[];        // Additional coordinators with edit rights
-    playbackOwnerId: string;    // Who currently has Spotify playback control (mutex)
     startedAt: string;          // ISO timestamp
 }
 
@@ -61,5 +74,4 @@ export interface StartSessionConfig {
     playbackProvider: PlaybackProviderConfig;
     participantIds: string[];
     hostId: string;
-    coHostIds?: string[];       // Optional at start; defaults to []
 }

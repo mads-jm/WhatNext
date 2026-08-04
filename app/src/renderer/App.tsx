@@ -11,17 +11,18 @@ import { useUserStore } from './stores/user-store';
 import { useThemeStore } from './stores/theme-store';
 import { useNavigationStore, VIEW_TITLES } from './stores/navigation-store';
 import { useSessionState } from './hooks/useSessionState';
+import { hasLocalPlaybackSurface } from './utils/playback-helpers';
 import { setupReplicationListeners } from './db/replication-handler';
 
 function App() {
     const activeView = useNavigationStore((s) => s.activeView);
     const sessionPlaylistId = useNavigationStore((s) => s.sessionPlaylistId);
-    const userId = useUserStore((s) => s.userId);
 
     const { sessionState } = useSessionState(sessionPlaylistId ?? '');
 
-    const isSpotifyPlayback = sessionState?.playbackProvider?.type === 'spotify';
-    const isPlaybackOwner = !sessionState || sessionState.playbackOwnerId === userId;
+    // Playback is a property of this device's session config, never of who
+    // "owns" playback across peers — there is no such thing in Phase 1.
+    const showPlaybackBar = hasLocalPlaybackSurface(sessionState);
 
     // Initialize theme (sync), then database + user identity
     useEffect(() => {
@@ -51,9 +52,9 @@ function App() {
                 </main>
 
                 {/* Shell-level PlaybackBar — persists across views */}
-                {sessionPlaylistId && isSpotifyPlayback && (
+                {showPlaybackBar && (
                     <div className="shrink-0 backdrop-blur-xl bg-surface/80 border-t border-outline-variant/10">
-                        <PlaybackBar enabled={isPlaybackOwner} />
+                        <PlaybackBar />
                     </div>
                 )}
             </div>

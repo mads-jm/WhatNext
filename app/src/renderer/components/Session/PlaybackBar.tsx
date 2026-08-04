@@ -2,17 +2,27 @@
  * PlaybackBar
  * Self-contained Spotify playback controls component.
  * Polls playback state and exposes transport controls (play/pause/skip).
+ *
+ * Scope: these controls drive *this device's* linked Spotify account (via
+ * Spotify Connect) and nothing else. They are not a session-wide transport and
+ * carry no cross-peer ownership — the caller decides whether to mount the bar
+ * at all (see `hasLocalPlaybackSurface`), and mounting it means "this device
+ * can play", never "this device holds the session's playback lock".
  */
 
 import { usePlaybackState } from '../../hooks/usePlaybackState';
 
 interface PlaybackBarProps {
-    enabled: boolean;
     contextUri?: string;
 }
 
-export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
-    const { state, error, refresh } = usePlaybackState(enabled);
+/** Honest scope label — kept next to the transport controls, not a lock badge. */
+const SCOPE_LABEL = 'Your Spotify';
+const SCOPE_TITLE =
+    "Controls this device's linked Spotify account. Session peers are unaffected.";
+
+export function PlaybackBar({ contextUri }: PlaybackBarProps) {
+    const { state, error, refresh } = usePlaybackState(true);
 
     const spotify = window.electron?.spotify;
 
@@ -48,11 +58,12 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
         }
     };
 
-    if (!enabled) return null;
-
     if (error) {
         return (
-            <div className="card card-body flex items-center gap-3 text-sm text-on-surface-variant">
+            <div
+                className="card card-body flex items-center gap-3 text-sm text-on-surface-variant"
+                title={SCOPE_TITLE}
+            >
                 <i className="fa-brands fa-spotify text-primary" />
                 <span>Spotify unavailable: {error}</span>
             </div>
@@ -61,7 +72,10 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
 
     if (!state) {
         return (
-            <div className="card card-body flex items-center gap-3 text-sm text-on-surface-variant">
+            <div
+                className="card card-body flex items-center gap-3 text-sm text-on-surface-variant"
+                title={SCOPE_TITLE}
+            >
                 <i className="fa-brands fa-spotify text-primary" />
                 <span>No active Spotify device.</span>
                 <button
@@ -87,6 +101,15 @@ export function PlaybackBar({ enabled, contextUri }: PlaybackBarProps) {
 
     return (
         <div className="card card-body flex items-center gap-4">
+            {/* Scope label — this device's Spotify, not a session-wide control */}
+            <div
+                className="flex items-center gap-2 shrink-0 text-xs text-on-surface-variant"
+                title={SCOPE_TITLE}
+            >
+                <i className="fa-brands fa-spotify text-primary" />
+                <span className="hidden lg:inline">{SCOPE_LABEL}</span>
+            </div>
+
             {/* Track info */}
             <div className="flex-1 min-w-0">
                 {state.trackTitle ? (
