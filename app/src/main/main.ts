@@ -48,6 +48,14 @@ import {
     addRelayAddress,
     removeRelayAddress,
 } from './relay-config-store';
+import { recordApprovedDirectory } from './approved-dirs-store';
+import {
+    validateExternalUrl,
+    validateOpenPathRequest,
+    resolveArtworkPath,
+    recordApprovedSaveTarget,
+    consumeApprovedSaveTarget,
+} from './ipc-guards';
 import { killAll as killDownloadProcesses } from '../../../service/downloader/subprocess';
 import type { SpotifyRuntimeEvent } from './spotify/spotify-events';
 
@@ -610,8 +618,15 @@ app.whenReady().then(async () => {
     // Serve local artwork files via wn-art:// to work around renderer file:// restrictions.
     // Path is passed as a query param to avoid Chromium mangling Windows absolute paths in URL segments.
     protocol.handle('wn-art', async (request) => {
-        const filePath = new URL(request.url).searchParams.get('path');
-        if (!filePath) return new Response(null, { status: 400 });
+        const requested = new URL(request.url).searchParams.get('path');
+        if (!requested) return new Response(null, { status: 400 });
+        // Only files inside the artwork roots are servable — this protocol is otherwise
+        // an arbitrary-file-read primitive for the renderer.
+        const filePath = resolveArtworkPath(requested);
+        if (!filePath) {
+            console.warn('[wn-art] Rejected out-of-tree path:', requested);
+            return new Response(null, { status: 403 });
+        }
         try {
             const data = await fs.promises.readFile(filePath);
             const ext = path.extname(filePath).toLowerCase();
@@ -767,17 +782,28 @@ ipcMain.handle('dialog:open-directory', async (_event, options) => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
 
     const { dialog } = await import('electron');
-    return dialog.showOpenDialog(mainWindow, {
+    const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openDirectory'],
         ...options,
     });
+    // The user picking a directory here is the only thing that grants the renderer
+    // permission to ask us to open it later (shell:open-path).
+    if (!result.canceled) {
+        for (const dir of result.filePaths) recordApprovedDirectory(dir);
+    }
+    return result;
 });
 
 ipcMain.handle('dialog:save-file', async (_event, options) => {
     if (!mainWindow) return { canceled: true, filePath: undefined };
 
     const { dialog } = await import('electron');
-    return dialog.showSaveDialog(mainWindow, options);
+    const result = await dialog.showSaveDialog(mainWindow, options);
+    // Approve exactly this path for one subsequent file:write.
+    if (!result.canceled && result.filePath) {
+        recordApprovedSaveTarget(result.filePath);
+    }
+    return result;
 });
 
 // ========================================
@@ -786,6 +812,11 @@ ipcMain.handle('dialog:save-file', async (_event, options) => {
 ipcMain.handle(
     'file:write',
     async (_event, filePath: string, content: string) => {
+        // One-shot: the path must be one the user just chose in dialog:save-file.
+        if (!consumeApprovedSaveTarget(filePath)) {
+            console.warn('[file:write] Rejected unapproved path:', filePath);
+            return { success: false, error: 'Path not approved for writing' };
+        }
         const fs = await import('fs/promises');
         await fs.writeFile(filePath, content, 'utf-8');
         return { success: true };
@@ -911,41 +942,33 @@ ipcMain.handle(
 // ========================================
 // External Links
 // ========================================
-// TODO : This is worth hardening with a URL whitelist or stricter validation, depending on final use case
-// NOTE : Thinking spotify, youtube, soundcloud, tidal, whitelist? tie to feature flag that's coupled to actual feature status / enable
+// Renderer strings never reach a shell here: shell.openExternal hands the URI to the
+// OS via an API call, and validateExternalUrl enforces the protocol/shape allowlist
+// (http, https, and well-formed spotify: URIs) before we get that far.
 ipcMain.handle('shell:open-external', async (_event, url: string) => {
-    // Security: validate URL before opening
+    const check = validateExternalUrl(url);
+    if (!check.ok) {
+        return { success: false, error: check.error };
+    }
     try {
-        const parsedUrl = new URL(url);
-        const allowedProtocols = ['http:', 'https:', 'spotify:'];
-        if (!allowedProtocols.includes(parsedUrl.protocol)) {
-            return { success: false, error: 'Invalid protocol' };
-        }
-
-        // Custom protocol URIs (e.g. spotify:) need Windows start command
-        // because shell.openExternal often rejects non-http protocols
-        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-            const { exec } = await import('child_process');
-            return new Promise((resolve) => {
-                exec(`start "" "${url}"`, (error) => {
-                    if (error) {
-                        resolve({ success: false, error: error.message });
-                    } else {
-                        resolve({ success: true });
-                    }
-                });
-            });
-        }
-
-        await shell.openExternal(url);
+        // Custom protocols (spotify:) resolve to the OS-registered handler. When none is
+        // registered this rejects, and callers fall back to the equivalent web URL.
+        await shell.openExternal(check.url);
         return { success: true };
     } catch (error) {
-        return { success: false, error: 'Invalid URL' };
+        return { success: false, error: String(error) };
     }
 });
 
 ipcMain.handle('shell:open-path', async (_event, dirPath: string) => {
-    const result = await shell.openPath(dirPath);
+    // Directories only, and only app-owned ones or ones the user picked in a
+    // main-process dialog — shell.openPath on a file is an execution primitive.
+    const check = await validateOpenPathRequest(dirPath);
+    if (!check.ok) {
+        console.warn('[shell:open-path] Rejected:', dirPath, '-', check.error);
+        return { success: false, error: check.error };
+    }
+    const result = await shell.openPath(check.path);
     return { success: result === '', error: result || undefined };
 });
 
