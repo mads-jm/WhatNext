@@ -6,7 +6,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { PeerMetadata, P2PStatusPayload } from '../../shared/core';
 import { useDebugLogStore } from '../stores/debug-log-store';
-import type { LogEntry } from '../stores/debug-log-store';
 
 export function useP2PDevStatus() {
     const [status, setStatus] = useState<P2PStatusPayload>({

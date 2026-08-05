@@ -221,7 +221,7 @@ export function useFileTransferStatus(playlistId?: string): FileTransferStatus {
 
         let totalBytes = 0
         let bytesReceived = 0
-        let overallBps = 0
+        const overallBps = 0
         let completedFiles = 0
         let activeDownloads = 0
         let hasErrors = false

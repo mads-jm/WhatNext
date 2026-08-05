@@ -8,7 +8,8 @@
 
 import { useState } from 'react';
 import { useNavigationStore } from '../../stores/navigation-store';
-import { DownloadDisclaimerModal, hasAcceptedDisclaimer } from './DownloadDisclaimerModal';
+import { DownloadDisclaimerModal } from './DownloadDisclaimerModal';
+import { hasAcceptedDisclaimer } from '../../utils/download-disclaimer';
 import { usePlaylistDownload } from '../../hooks/usePlaylistDownload';
 import { BackendGate } from './BackendGate';
 import { BackendPicker } from './BackendPicker';

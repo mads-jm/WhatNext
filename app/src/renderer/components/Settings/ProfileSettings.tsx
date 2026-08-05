@@ -94,29 +94,6 @@ export function ProfileSettings() {
         }
     };
 
-    const handleSpotifyLink = async () => {
-        try {
-            const profile = await window.electron?.spotify.getProfile();
-            if (profile?.success && profile.userId) {
-                await linkServiceAccount({
-                    provider: 'spotify',
-                    providerUserId: profile.userId,
-                    displayName: profile.displayName,
-                    avatarUrl: profile.avatarUrl,
-                });
-                // Auto-set avatar from Spotify if none set
-                if (user.avatarSource === 'none' && profile.avatarUrl) {
-                    await updateLocalUserProfile({
-                        avatarSource: 'spotify',
-                        avatarUrl: profile.avatarUrl,
-                    });
-                }
-            }
-        } catch (err) {
-            console.error('Failed to link Spotify profile:', err);
-        }
-    };
-
     const handleSpotifyUnlink = async () => {
         await unlinkServiceAccount('spotify');
         // Clear avatar if it was from Spotify

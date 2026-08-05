@@ -11,16 +11,7 @@
  */
 
 import { ModalPortal } from '../UI/ModalPortal';
-
-const DISCLAIMER_KEY = 'whatnext:download-disclaimer-v1';
-
-export function hasAcceptedDisclaimer(): boolean {
-    return localStorage.getItem(DISCLAIMER_KEY) === 'accepted';
-}
-
-export function acceptDisclaimer(): void {
-    localStorage.setItem(DISCLAIMER_KEY, 'accepted');
-}
+import { acceptDisclaimer } from '../../utils/download-disclaimer';
 
 interface DownloadDisclaimerModalProps {
     open: boolean;

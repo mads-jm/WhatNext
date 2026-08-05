@@ -44,6 +44,12 @@ export function SessionView({ playlistId }: SessionViewProps) {
     const sessionPlaylistId = useNavigationStore((s) => s.sessionPlaylistId);
     const navigate = useNavigationStore((s) => s.navigate);
     const endSession = useNavigationStore((s) => s.endSession);
+    // Not read in this component, but the selector is what subscribes it to
+    // user-store changes that do not alter `userId` (a display-name or avatar
+    // edit, say). Deleting the binding would also delete that re-render
+    // trigger, which is a behaviour change this lint pass is not entitled to
+    // make; whether the subscription is actually wanted is a separate question.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const user = useUserStore((s) => s.user);
     const userId = useUserStore((s) => s.userId);
 

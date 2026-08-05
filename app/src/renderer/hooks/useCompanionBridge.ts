@@ -17,8 +17,6 @@ import type {
     CompanionPlaybackState,
     CompanionTrack,
     CompanionParticipant,
-    CompanionSessionSnapshot,
-    CompanionTurnState,
 } from '../../main/companion/companion-protocol';
 
 // ========================================
@@ -101,7 +99,9 @@ export function useCompanionBridge({
     playlistId,
     sessionActive,
     playbackState,
-    sessionName,
+    // `sessionName` stays on UseCompanionBridgeParams — it is part of the
+    // declared surface — but is not destructured, because nothing in this hook
+    // reads it. Callers are unaffected.
     hostId,
     coHostIds = [],
 }: UseCompanionBridgeParams): UseCompanionBridgeResult {

@@ -97,6 +97,12 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     exportTheme: (themeId) => {
         const theme = get().themes.find((t) => t.id === themeId);
         if (!theme) return '';
+        // Omit-by-rest: `_` exists only to keep `builtIn` out of `exportable`.
+        // `no-unused-vars` has an `ignoreRestSiblings` option for exactly this
+        // idiom, but this cycle is only permitted to touch the rule's `^_`
+        // ignore patterns, and any rewrite that drops the binding (spread then
+        // `delete`) changes emitted code for no gain.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { builtIn: _, ...exportable } = theme;
         const exportObj: ThemeExport = {
             $schema: 'whatnext-theme-v1',

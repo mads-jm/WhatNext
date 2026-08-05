@@ -113,7 +113,8 @@ export function usePlaylistDownload() {
     const toggleTrack = useCallback((sourceId: string) => {
         setSelectedIds((prev) => {
             const next = new Set(prev);
-            next.has(sourceId) ? next.delete(sourceId) : next.add(sourceId);
+            if (next.has(sourceId)) next.delete(sourceId);
+            else next.add(sourceId);
             return next;
         });
     }, []);
