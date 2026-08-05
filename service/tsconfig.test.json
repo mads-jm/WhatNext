@@ -1,0 +1,20 @@
+{
+    // The suites, which run under vitest rather than ts-node and so live in a
+    // different world from the code they test: native ESM (`import.meta` in
+    // load-fixture.ts), a modern lib (`Array.prototype.at`) and bundler-style
+    // extensionless imports. Checking them against the CommonJS/ES2020 config
+    // that describes `ts-node src/server.ts` reports twenty errors that say
+    // nothing about the tests and everything about the wrong config being
+    // applied. Run by the "typecheck" script alongside the root config — the
+    // same split app uses for tsconfig.node.json.
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "noEmit": true
+    },
+    "include": ["downloader/**/__tests__/**/*.ts"],
+    "exclude": []
+}

@@ -7,5 +7,12 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./dist"
-    }
+    },
+    // Our own runtime code only. Without a positive list tsc walks the whole
+    // package, which drags the suites into a program describing the wrong world
+    // (they run under vitest, not ts-node — see tsconfig.test.json) and, once
+    // dist/ exists, type-checks the emit alongside the source. app/tsconfig.json
+    // carries an include list for the same two reasons.
+    "include": ["src", "downloader"],
+    "exclude": ["dist", "**/__tests__"]
 }
