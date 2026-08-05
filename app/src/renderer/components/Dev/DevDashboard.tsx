@@ -37,8 +37,8 @@ export function DevDashboard() {
         setResetting(true);
         setResetStatus(null);
         try {
-            if ((window as any).resetRxDB) {
-                await (window as any).resetRxDB();
+            if (window.resetRxDB) {
+                await window.resetRxDB();
                 setResetStatus('Database reset successfully. Reloading...');
                 setTimeout(() => window.location.reload(), 1000);
             } else {

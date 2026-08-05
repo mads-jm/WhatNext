@@ -6,8 +6,19 @@
 
 import { resetDatabase } from './database';
 
+// Declared, not cast: these are console-only dev affordances, but they are
+// still part of the window contract. Optional because they are only assigned
+// outside production builds. Mirrors the `window.electron` augmentation in
+// src/main/preload.ts.
+declare global {
+    interface Window {
+        resetRxDB?: () => Promise<void>;
+        nukeRxDB?: () => Promise<void>;
+    }
+}
+
 if (process.env.NODE_ENV !== 'production') {
-    (window as any).resetRxDB = async () => {
+    window.resetRxDB = async () => {
         console.log('[Dev] Resetting RxDB database...');
         try {
             await resetDatabase();
@@ -25,7 +36,7 @@ if (process.env.NODE_ENV !== 'production') {
         window.location.reload();
     };
 
-    (window as any).nukeRxDB = async () => {
+    window.nukeRxDB = async () => {
         console.log('[Dev] Nuking all RxDB databases from IndexedDB...');
         const dbs = await indexedDB.databases();
         for (const db of dbs) {

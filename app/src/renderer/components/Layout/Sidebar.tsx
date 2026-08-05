@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { useNavigationStore } from '../../stores/navigation-store';
+import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
 import { useUserStore } from '../../stores/user-store';
 import { useP2PStatus } from '../../hooks/useP2PStatus';
 import wnorbIcon from '@assets/png/wnorb.png';
 
 type NavItem = {
-    id: string;
+    // Every entry below is a destination the navigation store knows about, so
+    // narrowing this from `string` lets `navigate(item.id)` type-check without
+    // a cast — and makes a typo'd destination a compile error.
+    id: ViewId;
     label: string;
     icon: string;
     badge?: string;
@@ -83,7 +86,7 @@ export function Sidebar() {
                             .map((item) => (
                                 <button
                                     key={item.id}
-                                    onClick={() => navigate(item.id as any)}
+                                    onClick={() => navigate(item.id)}
                                     className={`
                                         w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md
                                         text-sm font-medium transition-colors
