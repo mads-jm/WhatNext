@@ -90,7 +90,7 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                 schema: userSchema,
                 migrationStrategies: {
                     // v0 → v1: Added avatarSource, linkedAccounts, updatedAt, bio, avatarLocalPath, avatarUrl
-                    1(oldDoc: any) {
+                    1(oldDoc) {
                         return {
                             ...oldDoc,
                             avatarSource: oldDoc.avatarSource ?? 'none',
@@ -107,7 +107,7 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                 schema: trackSchema,
                 migrationStrategies: {
                     // v0 → v1: Added albumArtUrl, albumArtLocalPath
-                    1(oldDoc: any) {
+                    1(oldDoc) {
                         return {
                             ...oldDoc,
                             albumArtUrl: oldDoc.albumArtUrl ?? undefined,
@@ -116,7 +116,7 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                     },
                     // v1 → v2: Added Audio Acquisition Service fields
                     // Backfills source: Spotify tracks get 'spotify', others get 'manual'
-                    2(oldDoc: any) {
+                    2(oldDoc) {
                         return {
                             ...oldDoc,
                             localFilePath: undefined,
@@ -130,7 +130,7 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                         };
                     },
                     // v2 → v3: Added updatedAt for P2P replication (LWW checkpoint sync)
-                    3(oldDoc: any) {
+                    3(oldDoc) {
                         return {
                             ...oldDoc,
                             updatedAt: oldDoc.addedAt ?? new Date().toISOString(),
@@ -145,7 +145,7 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                 schema: playlistSchema,
                 migrationStrategies: {
                     // v0 → v1: Added coverArtUrl, coverArtLocalPath
-                    1(oldDoc: any) {
+                    1(oldDoc) {
                         return {
                             ...oldDoc,
                             coverArtUrl: oldDoc.coverArtUrl ?? undefined,
@@ -153,7 +153,7 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                         };
                     },
                     // v1 → v2: Added turn management fields
-                    2(oldDoc: any) {
+                    2(oldDoc) {
                         return {
                             ...oldDoc,
                             turnOrder: undefined,
@@ -165,15 +165,15 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                         };
                     },
                     // v2 → v3: Added maxDurationMs
-                    3(oldDoc: any) {
+                    3(oldDoc) {
                         return { ...oldDoc, maxDurationMs: undefined };
                     },
                     // v3 → v4: Added completedFromMode
-                    4(oldDoc: any) {
+                    4(oldDoc) {
                         return { ...oldDoc, completedFromMode: undefined };
                     },
                     // v4 → v5: Added coHostIds for co-host model
-                    5(oldDoc: any) {
+                    5(oldDoc) {
                         return { ...oldDoc, coHostIds: oldDoc.coHostIds ?? [] };
                     },
                 },
@@ -182,7 +182,7 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                 schema: commentSchema,
                 migrationStrategies: {
                     // v0 → v1: Added userAvatarUrl
-                    1(oldDoc: any) {
+                    1(oldDoc) {
                         return { ...oldDoc, userAvatarUrl: undefined };
                     },
                 },
