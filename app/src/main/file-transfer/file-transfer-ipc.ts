@@ -35,6 +35,7 @@ import {
 } from '../../shared/core/file-transfer-types'
 import { HashCache, computeFileSha256 } from './hash-cache'
 import { buildManifest } from './manifest-builder'
+import { evaluateInboundChunk } from './chunk-guards'
 // Filename sanitisation / containment helpers used to live here; they are now
 // shared with the renderer-facing IPC guards. Behaviour is unchanged.
 import { sanitizeFilename, isValidSha256, assertPathContained } from '../utils/path-safety'
@@ -88,6 +89,49 @@ let activeAudioCount = 0
 /** Number of artwork/cover-art transfers currently in-flight */
 let activeArtworkCount = 0
 
+/**
+ * sha256 → which counter this transfer's in-flight slot was taken from.
+ *
+ * The counters used to be decremented from `transfer.type` by whichever of
+ * complete/fail happened to run, so the same transfer could release twice (or
+ * release a slot it never took — e.g. a transfer that failed while still queued).
+ * `Math.max(0, …)` floored the counter but let real over-concurrency through.
+ * Ownership lives here instead: a slot is recorded when `processQueue` dispatches
+ * and released exactly once, by whoever gets there first.
+ */
+const slotHolders = new Map<string, 'audio' | 'artwork'>()
+
+/**
+ * Drop any not-yet-dispatched queue entries for a transfer that is no longer wanted.
+ *
+ * Without this, cancelling (or failing) a still-queued transfer leaves its request in
+ * `downloadQueue`; `processQueue` would then dispatch it, take a slot, and never get
+ * it back — the chunk guard drops the bytes for a cancelled/errored transfer, so no
+ * complete/error ever arrives to release the slot.
+ */
+function removeQueuedRequests(sha256: string): void {
+    for (let i = downloadQueue.length - 1; i >= 0; i--) {
+        if (downloadQueue[i].file.sha256 === sha256) {
+            downloadQueue.splice(i, 1)
+        }
+    }
+}
+
+/**
+ * Release the concurrency slot held by a transfer, if it holds one.
+ * Idempotent — the second and later calls for a sha256 are no-ops.
+ */
+function releaseSlot(sha256: string): void {
+    const kind = slotHolders.get(sha256)
+    if (!kind) return
+    slotHolders.delete(sha256)
+    if (kind === 'audio') {
+        activeAudioCount = Math.max(0, activeAudioCount - 1)
+    } else {
+        activeArtworkCount = Math.max(0, activeArtworkCount - 1)
+    }
+}
+
 // ========================================
 // Queue processing
 // ========================================
@@ -121,6 +165,7 @@ function processQueue(): void {
         }
 
         downloadQueue.splice(i, 1)
+        slotHolders.set(item.file.sha256, isAudio ? 'audio' : 'artwork')
 
         utility.postMessage(
             createIPCMessage(
@@ -439,6 +484,12 @@ export async function registerFileTransferHandlers(
 
             transfer.status = 'cancelled'
             await closePartialHandle(sha256)
+
+            removeQueuedRequests(sha256)
+
+            // Symmetric with complete/fail: give the slot back and start the next one.
+            releaseSlot(sha256)
+            processQueue()
             persistTransferState()
         },
     )
@@ -804,15 +855,26 @@ async function handleChunkReceived(payload: {
     offset: number
     data: string
 }): Promise<void> {
-    const { sha256, offset, data } = payload
+    const { peerId, sha256, offset } = payload
 
-    if (!isValidSha256(sha256)) {
-        console.error('[FileTransfer] handleChunkReceived: invalid sha256 rejected:', sha256)
-        failTransfer(sha256, 'Invalid sha256 format')
+    // Trust boundary: nothing below this point may touch the filesystem for a chunk
+    // we did not ask for. See chunk-guards.ts for why drop != fail.
+    const verdict = evaluateInboundChunk(payload, activeTransfers.get(sha256))
+    if (!verdict.ok) {
+        if (verdict.action === 'fail') {
+            console.error(
+                `[FileTransfer] Failing transfer ${sha256.slice(0, 8)}... — ${verdict.reason}`,
+            )
+            await abortTransfer(peerId, sha256, verdict.reason)
+        } else {
+            console.warn(
+                `[FileTransfer] Dropped chunk from ${peerId.slice(0, 12)}... — ${verdict.reason}`,
+            )
+        }
         return
     }
 
-    const chunkBuf = Buffer.from(data, 'base64')
+    const chunkBuf = verdict.chunk
     const partialPath = path.join(partialDir, `${sha256}.tmp`)
 
     // Open (or reuse) file handle.
@@ -837,24 +899,17 @@ async function handleChunkReceived(payload: {
         const errMsg = err instanceof Error ? err.message : String(err)
         console.error('[FileTransfer] Failed to write chunk:', errMsg)
         // Task D: abort transfer — corrupt partial is useless; stop the peer sending more chunks
-        failTransfer(sha256, 'Disk write failed: ' + errMsg)
-        const utility = _utilityGetter?.()
-        if (utility) {
-            utility.postMessage(
-                createIPCMessage(
-                    MainToUtilityMessageType.FILE_TRANSFER_CANCEL,
-                    { peerId: payload.peerId, sha256 },
-                ),
-            )
-        }
-        await closePartialHandle(sha256)
+        await abortTransfer(peerId, sha256, 'Disk write failed: ' + errMsg)
         return
     }
 
     // Update transfer state
     const transfer = activeTransfers.get(sha256)
     if (transfer) {
-        transfer.bytesReceived = offset + chunkBuf.length
+        // Re-take the maximum: chunks are dispatched concurrently (`void handleChunkReceived`),
+        // so the high-water mark computed before the await above can be stale by now.
+        // Both operands are already bounded by totalBytes (see chunk-guards).
+        transfer.bytesReceived = Math.max(transfer.bytesReceived, verdict.bytesReceived)
         transfer.status = 'transferring'
 
         const tracker = speedTrackers.get(sha256)
@@ -892,15 +947,8 @@ async function handleTransferComplete(payload: {
         return
     }
 
-    // Task B: decrement in-flight counter before draining the queue
-    const completedTransfer = activeTransfers.get(sha256)
-    if (completedTransfer) {
-        if (completedTransfer.type === 'audio') {
-            activeAudioCount = Math.max(0, activeAudioCount - 1)
-        } else {
-            activeArtworkCount = Math.max(0, activeArtworkCount - 1)
-        }
-    }
+    // Task B: release the in-flight slot before draining the queue
+    releaseSlot(sha256)
     processQueue()
 
     await closePartialHandle(sha256)
@@ -1025,19 +1073,40 @@ async function closePartialHandle(sha256: string): Promise<void> {
     }
 }
 
+/**
+ * Fail a transfer, tell the sending peer to stop, and discard the partial: used when
+ * the bytes arriving from the peer we asked cannot be written (bad offset, oversize
+ * chunk, disk error).
+ *
+ * `failTransfer` runs first so the status flips to `error` synchronously — any chunk
+ * still in flight for this transfer is dropped by the guard rather than recreating
+ * the file we are about to delete.
+ */
+async function abortTransfer(peerId: string, sha256: string, error: string): Promise<void> {
+    failTransfer(sha256, error)
+
+    const utility = _utilityGetter?.()
+    if (utility) {
+        utility.postMessage(
+            createIPCMessage(MainToUtilityMessageType.FILE_TRANSFER_CANCEL, { peerId, sha256 }),
+        )
+    }
+
+    await closePartialHandle(sha256)
+    // A peer that oversteps its own declared size is not a peer whose partial we want
+    // to resume from, and a partial we failed to write to is useless anyway.
+    await fs.promises.unlink(path.join(partialDir, `${sha256}.tmp`)).catch(() => undefined)
+}
+
 function failTransfer(sha256: string, error: string): void {
     const transfer = activeTransfers.get(sha256)
     if (transfer) {
         transfer.status = 'error'
         transfer.error = error
-
-        // Task B: decrement in-flight counter before draining the queue
-        if (transfer.type === 'audio') {
-            activeAudioCount = Math.max(0, activeAudioCount - 1)
-        } else {
-            activeArtworkCount = Math.max(0, activeArtworkCount - 1)
-        }
     }
+    // Task B: release the in-flight slot (exactly once) before draining the queue
+    removeQueuedRequests(sha256)
+    releaseSlot(sha256)
     processQueue()
     persistTransferState()
     if (_win) {
