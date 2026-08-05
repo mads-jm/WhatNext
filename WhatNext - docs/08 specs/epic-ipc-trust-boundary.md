@@ -3,14 +3,14 @@ tags:
   - specs/security
   - core/electron/ipc
   - architecture/patterns/ipc
-status: in-progress
+status: complete
 date created: 2026-08-01
-date modified: 2026-08-03
+date modified: 2026-08-04
 ---
 
 # Epic: IPC Trust-Boundary Hardening
 
-**Status**: In progress — work items 1 & 2 implemented 2026-08-03 (cycle 1 of 2); work item 3 deferred to cycle 2
+**Status**: Complete — work items 1 & 2 implemented 2026-08-03 (cycle 1), work item 3 implemented 2026-08-04 (cycle 2)
 **GitHub**: to be filed (plan-first; issue text drafted 2026-08-03)
 **Depends on**: none
 **Source audit**: [[report-260801-mvp-premerge-review]] §1.1–§1.4, §2 (`set-backend-path`)
@@ -34,7 +34,7 @@ All citations verified on the merged mvp tree (`cafc6ab`) by the 2026-08-01 revi
 - No renderer-supplied string reaches `exec`/shell interpolation. Prefer eliminating the `exec` branch entirely via `shell.openExternal`.
 - `wn-art://` reads are contained to the artwork/audio directories.
 - `file:write` only writes to paths the user actually approved via a save dialog (or, at minimum, contained under the app's documents dir).
-- Downloader inputs are validated as http(s) URLs and passed after a `--` separator so nothing beginning with `-` can be parsed as an option.
+- Downloader inputs are validated as http(s) URLs and passed after a `--` separator so nothing beginning with `-` can be parsed as an option. *(Amended 2026-08-04: `--` only where the CLI accepts it — yt-dlp does, spotDL does not. See work item 3.)*
 - `set-backend-path` is gated: dialog-sourced or stat-verified regular file, confirmed in main.
 - Shared path-containment helpers hoisted to one module and reused (not copy-pasted).
 - Regression tests for each closed hole (malicious input → rejected).
@@ -84,23 +84,41 @@ For `file:write` and `shell:open-path` the review's fallback ("containment under
 
 This also fixes a trust problem the review did not record: the default export directory is read from renderer `localStorage`, which the renderer can rewrite, so its value was never authority for opening a folder.
 
-### 3 — Downloader argv hygiene — ⏭ deferred to cycle 2 (2026-08-03)
+### 3 — Downloader argv hygiene — ✅ done 2026-08-04 (cycle 2)
 
-Disjoint files from cycle 1 (`downloader-ipc.ts`, both backends). Carries a UX decision — the free-text executable-path field at `DownloadSettings.tsx:103-116` vs dialog-only sourcing — that needs user input at scoping time.
+Disjoint files from cycle 1 (`downloader-ipc.ts`, both backends). The UX decision it carried — free-text executable path vs dialog-only sourcing — was ruled by the user on 2026-08-04 as **option C (hybrid)**: see [[#Authority model]], extended below.
 
 **Acceptance criteria.**
-- [ ] `download:resolve`/`download:start` reject non-http(s) input with a typed error before any backend call.
-- [ ] Both backends place `--` before the positional URL; existing fixture tests still pass.
-- [ ] A test asserts `--exec=…` input never reaches spawn argv as an option (rejected at the IPC layer *and* inert after `--`).
-- [ ] `set-backend-path` only accepts a stat-verified regular file sourced from a main-process dialog (or explicitly confirmed); a test covers the rejection path.
+- [x] `download:resolve`/`download:start` reject non-http(s) input with a typed error (`DownloadInputError`) before any backend is constructed — `app/src/main/downloader/downloader-guards.ts`, the cycle-1 `ipc-guards.ts` shape (one exported check per entry point, no Electron dependency, injected confirm callback).
+- [x] A test asserts `--exec=…`, `-o…`, `--config-location=…` and a bare `--` are rejected at the IPC layer, against the real exported check.
+- [x] `set-backend-path` accepts only a path a main-process dialog returned, or a stat-verified regular file the user confirms in a native prompt; nothing is persisted or spawned before acceptance. Negative-path tests cover non-existent, directory, declined, relative, unknown-id, and a forged renderer "this came from the dialog" claim.
+- [x] Existing fixture tests still pass; both backends' argv is pinned by test.
+- [x] **Correction to the acceptance criterion above: `--` lands on yt-dlp only.** Verified against the real CLIs (yt-dlp 2026.07.04, spotDL 4.5.2): yt-dlp takes `--` in both invocations (a real download was run end-to-end with the new argv). spotDL does **not** — its argparse answers `spotdl save --save-file - -- <url>` with `unrecognized arguments: --`, and both other placements fail too (`-- <url> --save-file -` → "the following arguments are required: --save-file"). spotDL's second layer is therefore an `http(s)` shape check on the query argument in `spotdl-backend.ts`, which the mocked-subprocess suites *can* prove — a `--` that the real CLI rejects would have shipped green.
+
+**Knowingly skipped:** `DOWNLOAD_SUGGEST_BACKEND`, which the approach above listed "for consistency". It string-matches `spotify.com` and returns a backend id (`service/downloader/index.ts`) — no OS capability downstream, so validating it would only grow the lane.
+
+**Found while verifying, not fixed (out of lane):** real spotDL 4.5.2 prints `Downloaded "Artist - Title":` with the resolved *YouTube URL on the following line*, so `spotdl-backend`'s `/Downloaded .+?: (.+)$/` capture never fires and `spotdl-success.stdout.txt` no longer matches reality. Downloads land on disk but the complete event carries no `localFilePath` (the #57 "unimported" path). Functional defect, belongs with the downloader lane.
+
+#### Authority model — `set-backend-path` (hybrid, extends the cycle-1 doctrine)
+
+Dialog-only sourcing was rejected for the same reason the `documents/WhatNext` containment fallback was in cycle 1: it removes a capability the user is entitled to (pointing WhatNext at your own binary by typing its path). The rule is:
+
+- **Browse…** (`DownloadSettings.tsx`) goes through `dialog:open-file`; main records what its own dialog returned (`recordApprovedOpenFile`/`wasApprovedOpenFile` in `ipc-guards.ts`, session-scoped, capped at 32). A path with such a record is accepted with no second prompt.
+- **A hand-typed or pasted path** must be absolute, `stat` as an existing regular file, and be confirmed in a native `dialog.showMessageBox` naming the binary. Declining leaves the previous setting untouched and spawns nothing.
+- **Trust never derives from the payload.** There is no "this came from the dialog" field, and adding one would change nothing: the guard consults only main's own record.
+- **Clearing needs no prompt** — it reduces privilege.
+- The persisted `downloader-config.json` format is unchanged; only the *acceptance* rules moved. `download:set-backend-path` now returns `SetBackendPathResult` (`saved` | `declined` | `rejected`) so a cancelled prompt is not shown to the user as an error.
+- **Consciously accepted (Inspector note, cycle 2):** the open-file approval record is shared across every consumer of `dialog:open-file` — a file picked through *any* such dialog (today: theme import) would skip the backend-path confirmation if the identical path is later typed in. Consistent with the cycle-1 doctrine (one main-process dialog-approval authority, not per-feature scoping); the user still picked that exact file in a native dialog themselves. Scope by a dialog "purpose" tag if a future feature needs the distinction.
+
+**Citation correction (Inspector, cycle 2):** the brief's premise that `useLibraryDownload.ts` "actively uses the `spotify-ids` branch" of `download:resolve` did not hold — no live caller constructs `{ type: 'spotify-ids' }`; the library flow builds `https://open.spotify.com/track/<id>` client-side and calls `download:start`, which the ordinary per-track `validateSourceUrl` check protects. The guard's `spotify-ids` branch (base62 shape check) is defense-in-depth for a channel with no current caller.
 
 ## Epic Acceptance Criteria (Definition of Done)
 
-- [x] Review findings §1.1–§1.3 closed (better than the suggested direction on the sovereignty-sensitive handlers); §1.4 + `set-backend-path` remain for cycle 2.
-- [x] No new IPC channels added; no handler widened.
-- [x] All new validation has negative-path tests; `cd app && npm test` green (476 tests, 34 files — was 438/32).
-- [x] `npm run lint` / `npm run typecheck` introduce no *new* failures (typecheck 16 → 16 identical errors; lint 58 → 56 errors, two pre-existing ones incidentally fixed).
-- [x] [[report-260801-mvp-premerge-review]] punch-list items 1–3 checked off; item 4 pending cycle 2.
+- [x] Review findings §1.1–§1.4 and the §2 `set-backend-path` ticket all closed (better than the suggested direction on the sovereignty-sensitive handlers).
+- [x] No new IPC channels added; no handler widened. `download:set-backend-path`'s *return* type widened to `SetBackendPathResult` so the renderer can tell "declined" from "rejected"; `SetBackendPathPayload` is unchanged.
+- [x] All new validation has negative-path tests; `cd app && npm test` green (509 tests, 36 files — was 476/34 after cycle 1).
+- [x] `npm run lint` / `npm run typecheck` introduce no *new* failures (typecheck 16 → 16 identical errors; lint 56 → 55 errors — the dead `crypto` import removed from `file-transfer-ipc.ts` accounts for the one).
+- [x] [[report-260801-mvp-premerge-review]] punch-list items 1–4 checked off. Items 5 ([[epic-file-transfer-guards]]) and 6 (`ws` bump) are owned elsewhere.
 
 ## Risks & Open Questions
 
