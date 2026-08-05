@@ -179,7 +179,7 @@ async function startNode() {
                 rl.prompt();
             },
             // onPullResponse: apply pull results and log changes
-            (collection, documents, checkpoint) => {
+            (collection, documents, _checkpoint) => {
                 const result = applyDocuments(collection, documents);
                 console.log(
                     chalk.cyan(
@@ -609,8 +609,8 @@ function showConnections() {
 
     let index = 1;
     for (const peerId of connectedPeers) {
-        const info = /** @type {any} */ (null); // getHandshakeInfo available if needed
-        const name = peerId; // display name via peers-info command
+        // Handshake details and display names are not surfaced here; the
+        // `peers-info` command shows those.
         console.log(chalk.green(`${index}. ${peerId.slice(0, 52)}...`));
         index++;
     }
@@ -955,7 +955,7 @@ async function cmdDownload(args) {
 
     try {
         await requestFile(node, peerId, sha256, 0, {
-            onTransferStarted: (sha256, filename, totalBytes, peerId) => {
+            onTransferStarted: (sha256, filename, totalBytes, _peerId) => {
                 console.log(
                     chalk.cyan(
                         `[FileTransfer] Transfer started: ${filename} (${(totalBytes / 1024).toFixed(1)}KB)\n`,
@@ -1017,7 +1017,7 @@ async function cmdDownload(args) {
                 console.log(chalk.red(`\n[FileTransfer] Error: ${error}\n`));
                 rl.prompt();
             },
-            onCancelled: (sha256) => {
+            onCancelled: (_sha256) => {
                 console.log(chalk.yellow(`\n[FileTransfer] Cancelled\n`));
                 rl.prompt();
             },
