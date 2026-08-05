@@ -15,7 +15,6 @@ import { ipcMain, app } from 'electron'
 import type { BrowserWindow, UtilityProcess } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as crypto from 'crypto'
 import {
     IPC_CHANNELS,
     MainToUtilityMessageType,
