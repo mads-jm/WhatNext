@@ -17,7 +17,7 @@
         "build:utility": "tsup src/utility/p2p-service.ts --format esm --platform node --target node18 --sourcemap --out-dir dist",
         "start": "electron dist/main.js",
         "lint": "eslint .",
-        "typecheck": "tsc --noEmit",
+        "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json",
         "test": "vitest run",
         "test:e2e": "playwright test",
         "postinstall": "echo 'skipping electron-builder install-app-deps (no native deps yet)'",
