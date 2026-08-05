@@ -3,14 +3,14 @@ tags:
   - specs/p2p
   - specs/security
   - core/net/p2p/protocols
-status: in-progress
+status: complete
 date created: 2026-08-01
-date modified: 2026-08-04
+date modified: 2026-08-05
 ---
 
 # Epic: File-Transfer Ingress Guards
 
-**Status**: In progress — work items 1 & 3 landed 2026-08-04 (cycle 1); work item 2 open (cycle 2)
+**Status**: Complete — work items 1 & 3 landed 2026-08-04 (cycle 1); work item 2 landed 2026-08-05 (cycle 2)
 **GitHub**: to be filed (plan-first)
 **Depends on**: none (independent of [[epic-handshake-stabilization]]; both touch P2P but disjoint files)
 **Source audit**: [[report-260801-mvp-premerge-review]] §1.5, §2 (sharingState, cancel slot leak)
@@ -63,14 +63,23 @@ Landed as `app/src/main/file-transfer/chunk-guards.ts` (pure, per-rule tested) c
 - The utility layer's inbound **first-message `file-chunk` branch was deleted, not guarded** — no known peer ever produces one (both the app and `test-peer` serve chunks back on the requester's stream). User ruling 2026-08-04: "dead code is dead code." A design-review issue on file-transfer stream-opening semantics stands in its place (filed 2026-08-05 as #65).
 - A third guard the plan didn't name: a chunk is dropped when its **sender is not the peer the transfer belongs to**. Wrong-peer and unsolicited chunks *drop* rather than fail — failing on them would hand any connected peer a way to kill our downloads. Only the peer we asked can fail a transfer, by overrunning its own declared size.
 
-### 2 — `sharingState` authorization — ⏳ open (cycle 2)
-
-Deliberately untouched in cycle 1: the sha256→playlist mapping question (serve if *any* sharing-enabled playlist contains the hash, vs. an allowlist built at manifest time) is still open, and the allowlist variant interacts with resume-after-restart because nothing re-requests a manifest on reconnect (`app/src/renderer/hooks/useFileTransfer.ts:103-105` is caller-driven). `handleIncomingRequest`'s authorization behavior is unchanged.
+### 2 — `sharingState` authorization — ✅ done 2026-08-05
 
 **Acceptance criteria.**
-- [ ] With sharing disabled, a request for a previously-served sha256 is refused (test).
-- [ ] Disabling sharing takes effect for requests arriving after the toggle (no revocation of in-flight transfers required — document this).
-- [ ] Manifest behavior unchanged (deny-by-default preserved).
+- [x] With sharing disabled, a request for a previously-served sha256 is refused (test).
+- [x] Disabling sharing takes effect for requests arriving after the toggle (no revocation of in-flight transfers required — document this).
+- [x] Manifest behavior unchanged (deny-by-default preserved).
+
+Landed as `app/src/main/file-transfer/serve-guards.ts` — a `ServedHashRegistry` plus a pure `evaluateServeRequest`, called at the top of `handleIncomingRequest` before any `stat` or `createReadStream`.
+
+**The open sha256→playlist question was ruled by the user on 2026-08-05: option B, the manifest-time allowlist** ("B seems to be more defensive approach; extra consent requirements are reasonable"). Consent is therefore *per exchange* — a hash is servable because we handed it to a peer in a manifest while sharing was on, not because it sits in the hash cache. That distinction matters more than it looks: `HashCache` persists to `hashes.json` and `register()` adds every file *received* from a peer, so the pre-fix servable set was every file this install had ever hashed, across all playlists and past sessions, surviving restarts even though sharing intent does not.
+
+Three notes on the implementation:
+
+- **Recording takes the manifest's own `FileEntry[]`**, captured in `handleManifestRequest` right after `buildManifest` returns (the one point where sharing has been confirmed and the published set is known). Passing entries rather than a caller-built hash list means all three entry types — audio, per-track artwork, playlist cover art — are allowlisted by construction, with no per-type branch to forget.
+- **The registry is keyed by playlist and `record` replaces rather than merges.** Per-playlist keying means disabling sharing for one playlist cannot withdraw a hash another shared playlist also published; replace-on-record means a file dropped from the playlist stops being servable once a fresh manifest goes out.
+- **Refusal is byte-identical to not-found** (`No file found for sha256: …`), so refusals cannot be used to enumerate what the user holds. The rejection *reason* is carried in the verdict for local logs only — the wire sees one answer. Unauthorized hashes are refused before the hash-cache lookup, so an unauthorized request never learns whether we hold the file. Every serve-path refusal — including the pre-initialisation branch, which is unreachable in practice — goes through one `refuseServe` helper so the messages cannot drift apart.
+- **`sharingState` is re-checked after `buildManifest` resolves** (found in review, fixed 2026-08-05 before the epic closed). `buildManifest` stats and hashes every file, so it yields for real I/O; the `set-sharing` handler is synchronous and runs `revoke()` to completion inside that window. Without the re-check, a host who toggled sharing off *during* a manifest build would have had the build's `record()` silently re-authorize the playlist they had just withdrawn — and the peer would have received a real manifest for it. A revoke landing mid-build now wins: the build is discarded and the peer gets the same deny-by-default empty manifest as a request that arrived with sharing already off. Nothing awaits between the re-check and the response, so the decision cannot go stale. Regression test: `file-transfer-ipc.test.ts` "does not re-authorize a playlist whose sharing was revoked mid-manifest-build".
 
 ### 3 — Cancel releases its slot — ✅ done 2026-08-04
 
@@ -82,9 +91,9 @@ Implemented as *ownership* rather than a shared decrement: `slotHolders` records
 
 ## Epic Acceptance Criteria (Definition of Done)
 
-- [ ] Review punch-list item 5 closed; §2 sharingState + cancel-leak items closed. *(item 5 and the cancel leak closed 2026-08-04; §2 sharingState remains — work item 2.)*
-- [x] No wire-format/message-type changes; `.partial` resume behavior for legitimate transfers unchanged. *(A code path was removed — the inbound chunk-first branch — but no message type was; the wire format is untouched.)*
-- [x] All guards covered by negative-path tests; `cd app && npm test` green; no new lint/typecheck failures. *(536 tests / 38 files green; lint and typecheck unchanged from the known-red baseline of 55 errors + 16 warnings and 16 `tsc` errors, all in `node_modules`/`vite.config.ts` — see [[epic-quality-gates]].)*
+- [x] Review punch-list item 5 closed; §2 sharingState + cancel-leak items closed. *(item 5 and the cancel leak closed 2026-08-04; §2 sharingState closed 2026-08-05.)*
+- [x] No wire-format/message-type changes; `.partial` resume behavior for legitimate transfers unchanged. *(A code path was removed — the inbound chunk-first branch — but no message type was; the wire format is untouched. Cycle 2 added no messages either: a refused serve travels the existing `file-error` path.)*
+- [x] All guards covered by negative-path tests; `cd app && npm test` green; no new lint/typecheck failures. *(Cycle 2: 553 tests / 39 files green, up from cycle 1's 536/38; lint and typecheck unchanged from the known-red baseline of 55 errors + 16 warnings and 16 `tsc` errors, all in `node_modules`/`vite.config.ts` — see [[epic-quality-gates]].)*
 - [x] [[report-260801-mvp-premerge-review]] updated (punch list checked off).
 
 ## Risks & Open Questions
@@ -92,6 +101,9 @@ Implemented as *ownership* rather than a shared decrement: `slotHolders` records
 - ~~**Resume semantics**~~ — resolved 2026-08-04 by reading the code: `loadTransferState()` rehydrates `pending`/`transferring` transfers from `.partial/transfers.json` before any peer can connect, and `cleanupStalePartials()` deletes orphan `.tmp` files, so "must be in `activeTransfers`" does not break resume. Covered by the rehydrate fixture in `app/src/main/file-transfer/__tests__/file-transfer-ipc.test.ts`.
 - ~~**Utility vs main knowledge**~~ — resolved 2026-08-04: `requestFile` registers `activeReceiveStreams[peerId:sha256]`, so the utility-layer drop is a real guard, not best-effort. It now also requires the chunk to arrive on the *same stream* we opened for that request.
 - **Stream-opening semantics (new, cycle 1)**: deleting the inbound first-message `file-chunk` branch tightens what we accept on the wire — both known implementations are unaffected, a hypothetical third-party peer relying on it would fail. The open question (does a peer opening a stream ever need to lead with a chunk; what is libp2p best practice for a chunked-transfer protocol) is carried by the design-review issue rather than by the code — filed 2026-08-05 as #65.
+- **Accepted limitation (cycle 2, user ruling 2026-08-05): served files fail closed after a host restart.** The served-hashes allowlist is in-memory, exactly like `sharingState` itself. After the host restarts the app — or for any peer that resumes a transfer without re-fetching a manifest — served-file requests are **refused until a fresh manifest is fetched under active sharing**. Nothing in the renderer re-fetches manifests on reconnect today (`app/src/renderer/hooks/useFileTransfer.ts:103-105` is caller-driven) and nothing re-enables sharing after a restart (`SessionView.tsx:301-316` is a manual host toggle over non-persistent Zustand state), so resume-across-host-restart of *served* files is parked. This is **accepted MVP behavior, not a defect**: torrent-style auto-resume-seeding is unnecessary at our peer count, and the failure mode is closed rather than open. The follow-up that would lift it is **"sharing intent / manifest re-fetch on reconnect"** — persisting sharing intent and having the requesting peer re-fetch a manifest when a session reconnects. Nominated as a candidate for cycle 3's brief (alongside the two receive-path defects), where it can be accepted or deferred. No GitHub issue filed (plan-first).
+- **In-flight serves are not revoked.** Toggling sharing off applies to requests arriving after the toggle; a stream already being served runs to completion. Documented in `serve-guards.ts` and `handleIncomingRequest`, deliberately out of scope for cycle 2.
+- **Fallback if option B proves too tight in live QA**: relaxing to option A ("any sharing-enabled playlist contains this hash") is a small contained change — swap the registry's `record`/`revoke` for a lookup over `sharingState` + the playlist's registered tracks. The verdict function and its call site would not move.
 - **Ordering with [[epic-handshake-stabilization]]**: independent files, but live QA of this lane is easier after #58 lands (stable sessions). Code can proceed in parallel; schedule *live* verification after handshake stabilization.
 
 ## References
@@ -99,4 +111,5 @@ Implemented as *ownership* rather than a shared decrement: `slotHolders` records
 - [[report-260801-mvp-premerge-review]] §1.5, §2, §3 (base64 note), §4 (house pattern)
 - Code (line numbers as of the 2026-08-01 audit; `epic-ipc-trust-boundary` has since shifted them): `app/src/main/file-transfer/file-transfer-ipc.ts:58-132,512-536,802-830,893-947,988-996,1126-1133`; `app/src/utility/protocols/file-transfer.ts:243-254`
 - Cycle 1 code: `app/src/main/file-transfer/chunk-guards.ts` (+ `__tests__/chunk-guards.test.ts`, `__tests__/file-transfer-ipc.test.ts`), `app/src/main/file-transfer/file-transfer-ipc.ts`, `app/src/utility/protocols/file-transfer.ts`
+- Cycle 2 code: `app/src/main/file-transfer/serve-guards.ts` (+ `__tests__/serve-guards.test.ts`, `__tests__/file-transfer-ipc.test.ts`), `app/src/main/file-transfer/file-transfer-ipc.ts`
 - Related: [[epic-replication-reliability]] (backpressure, landed), [[epic-ipc-trust-boundary]]
