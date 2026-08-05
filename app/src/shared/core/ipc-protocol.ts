@@ -8,7 +8,7 @@
  * This defines the "language" that different processes use to talk to each other.
  */
 
-import type { PeerId, ConnectionState, P2PConnection, PeerMetadata } from './types';
+import type { PeerId, P2PConnection, PeerMetadata } from './types';
 
 /**
  * Message types for Main → Utility communication

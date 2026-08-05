@@ -111,7 +111,7 @@ class P2PService {
     private setupMessageListener(): void {
         // Electron utility processes have process.parentPort (MessagePort)
         // This is set by Electron when spawning the utility process
-        const parentPort = (process as any).parentPort;
+        const parentPort = process.parentPort;
 
         if (!parentPort) {
             this.log('error', 'parentPort not available - not running as utility process?');
@@ -1022,7 +1022,7 @@ class P2PService {
      * Electron utility processes use process.parentPort.postMessage()
      */
     private sendToMain(type: UtilityToMainMessageType, payload: Record<string, unknown>): void {
-        const parentPort = (process as any).parentPort;
+        const parentPort = process.parentPort;
 
         if (!parentPort) {
             this.log('error', 'parentPort not available');
