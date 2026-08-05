@@ -13,6 +13,14 @@ export default tseslint.config([
     // matched by the `**/*.ts` block below.) Same class of build-state
     // dependence that the typecheck gate had before quality-gates cycle 1.
     globalIgnores(['dist', 'release', 'playwright-report', 'test-results']),
+    // The phone UI is duplicated verbatim in relay/companion-web/, which
+    // relay/eslint.config.mjs lints with browser globals and app's rule set.
+    // relay/__tests__/companion-web-parity.test.mjs holds the two byte-identical,
+    // so that one gate covers both copies. Without this ignore ESLint still
+    // *processes* these files here — matched by no rule block, so no rule runs —
+    // and the only thing it can report is that their eslint-disable directives
+    // suppress rules this config never enabled.
+    globalIgnores(['src/companion-web']),
     {
         files: ['**/*.{ts,tsx}'],
         extends: [

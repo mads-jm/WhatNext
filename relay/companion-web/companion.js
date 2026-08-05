@@ -546,6 +546,14 @@ function formatTime(ms) {
     return `${min}:${sec.toString().padStart(2, '0')}`;
 }
 
+// `escape` shadows the deprecated built-in global of the same name. Renaming
+// it to `escapeHtml` would be a four-token change, but this file is a classic
+// script sharing a global scope with the Tailwind CDN bundle, it has no
+// automated coverage of any kind (the relay suite tests the tunnel, not this
+// UI), and it is served to phones where the only verification is manual QA.
+// Restoring the built-in is a behaviour change in that shared scope, so it is
+// deferred to a change that can be QA'd rather than smuggled into a lint pass.
+// eslint-disable-next-line no-redeclare
 function escape(str) {
     if (!str) return '';
     const div = document.createElement('div');
