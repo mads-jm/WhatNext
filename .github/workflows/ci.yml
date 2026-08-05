@@ -8,6 +8,28 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Prettier lives in the root package, not in app/, because its scope spans
+  # app/, relay/, service/, test-peer/, scripts/ and the top-level markdown.
+  # That root install is this job's only dependency — the other jobs still
+  # install in app/ and are unaffected by it.
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
   typecheck:
     name: TypeCheck
     runs-on: ubuntu-latest
