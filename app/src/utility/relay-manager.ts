@@ -18,7 +18,11 @@ import type { Libp2p } from 'libp2p';
 import { P2P_CONFIG } from '../shared/p2p-config';
 import { computeBackoffDelay } from './backoff';
 
-export type RelayStatusCallback = (connected: boolean, relayMultiaddr: string | null, relayPeerId: string | null) => void;
+export type RelayStatusCallback = (
+    connected: boolean,
+    relayMultiaddr: string | null,
+    relayPeerId: string | null,
+) => void;
 
 /**
  * Pick the next relay address to try when `failedAddr` has exhausted its
@@ -26,7 +30,10 @@ export type RelayStatusCallback = (connected: boolean, relayMultiaddr: string | 
  * (wrapping around), or null when no alternative exists. Pure so the fallback
  * policy is unit-testable without any libp2p wiring.
  */
-export function nextFallbackAddress(addresses: readonly string[], failedAddr: string): string | null {
+export function nextFallbackAddress(
+    addresses: readonly string[],
+    failedAddr: string,
+): string | null {
     if (addresses.length <= 1) {
         return null;
     }
@@ -55,7 +62,11 @@ export class RelayManager {
     private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     private disposed = false;
 
-    constructor(node: Libp2p, addresses: string[], onStatusChange: RelayStatusCallback) {
+    constructor(
+        node: Libp2p,
+        addresses: string[],
+        onStatusChange: RelayStatusCallback,
+    ) {
         this.node = node;
         this.addresses = addresses;
         this.onStatusChange = onStatusChange;
@@ -103,23 +114,32 @@ export class RelayManager {
         return this.activeRelayPeerId;
     }
 
-    private async connectWithRetry(addr: string, attempt: number): Promise<void> {
+    private async connectWithRetry(
+        addr: string,
+        attempt: number,
+    ): Promise<void> {
         if (this.disposed) return;
 
         if (attempt >= P2P_CONFIG.RELAY.MAX_RETRIES) {
-            console.warn(`[RelayManager] Gave up connecting to relay ${addr} after ${attempt} attempts`);
+            console.warn(
+                `[RelayManager] Gave up connecting to relay ${addr} after ${attempt} attempts`,
+            );
             this.tryFallback(addr);
             return;
         }
 
         try {
-            console.log(`[RelayManager] Connecting to relay: ${addr} (attempt ${attempt + 1}/${P2P_CONFIG.RELAY.MAX_RETRIES})`);
+            console.log(
+                `[RelayManager] Connecting to relay: ${addr} (attempt ${attempt + 1}/${P2P_CONFIG.RELAY.MAX_RETRIES})`,
+            );
             const { multiaddr } = await import('@multiformats/multiaddr');
             const ma = multiaddr(addr);
             const connection = await this.node.dial(ma);
 
             const peerId = connection.remotePeer.toString();
-            console.log(`[RelayManager] Connected to relay: ${addr} (peer: ${peerId})`);
+            console.log(
+                `[RelayManager] Connected to relay: ${addr} (peer: ${peerId})`,
+            );
 
             this.activeRelayMultiaddr = addr;
             this.activeRelayPeerId = peerId;
@@ -138,7 +158,9 @@ export class RelayManager {
                 this.scheduleRetry(addr, 0);
             });
         } catch (err) {
-            console.warn(`[RelayManager] Failed to connect to relay ${addr}: ${err}`);
+            console.warn(
+                `[RelayManager] Failed to connect to relay ${addr}: ${err}`,
+            );
             this.scheduleRetry(addr, attempt + 1);
         }
     }
@@ -152,7 +174,9 @@ export class RelayManager {
         if (this.disposed || this.activeRelayMultiaddr) return;
         const fallback = nextFallbackAddress(this.addresses, failedAddr);
         if (fallback && !this.retryTimers.has(fallback)) {
-            console.log(`[RelayManager] Falling back from ${failedAddr} to ${fallback}`);
+            console.log(
+                `[RelayManager] Falling back from ${failedAddr} to ${fallback}`,
+            );
             void this.connectWithRetry(fallback, 0);
         }
     }
@@ -171,8 +195,13 @@ export class RelayManager {
             factor: P2P_CONFIG.RELAY.BACKOFF_FACTOR,
             jitter: P2P_CONFIG.RELAY.BACKOFF_JITTER,
         });
-        console.log(`[RelayManager] Retry ${addr} (attempt ${attempt + 1}) in ${delay}ms`);
-        const timer = setTimeout(() => this.connectWithRetry(addr, attempt), delay);
+        console.log(
+            `[RelayManager] Retry ${addr} (attempt ${attempt + 1}) in ${delay}ms`,
+        );
+        const timer = setTimeout(
+            () => this.connectWithRetry(addr, attempt),
+            delay,
+        );
         // Don't keep the event loop alive solely for a pending relay retry.
         if (typeof timer === 'object' && 'unref' in timer) {
             (timer as { unref: () => void }).unref();
@@ -200,7 +229,10 @@ export class RelayManager {
         this.heartbeatTimer = setInterval(() => {
             this.checkRelayLiveness();
         }, P2P_CONFIG.RELAY.HEARTBEAT_INTERVAL);
-        if (typeof this.heartbeatTimer === 'object' && 'unref' in this.heartbeatTimer) {
+        if (
+            typeof this.heartbeatTimer === 'object' &&
+            'unref' in this.heartbeatTimer
+        ) {
             (this.heartbeatTimer as { unref: () => void }).unref();
         }
     }
@@ -211,7 +243,11 @@ export class RelayManager {
      * for unit testing — callers should not need to invoke it directly.
      */
     checkRelayLiveness(): boolean {
-        if (this.disposed || !this.activeRelayPeerId || !this.activeRelayMultiaddr) {
+        if (
+            this.disposed ||
+            !this.activeRelayPeerId ||
+            !this.activeRelayMultiaddr
+        ) {
             return true; // nothing to check
         }
         const stillConnected = this.node
@@ -222,7 +258,9 @@ export class RelayManager {
             return true;
         }
 
-        console.warn(`[RelayManager] Heartbeat: active relay ${this.activeRelayMultiaddr} is half-open — reconnecting`);
+        console.warn(
+            `[RelayManager] Heartbeat: active relay ${this.activeRelayMultiaddr} is half-open — reconnecting`,
+        );
         const addr = this.activeRelayMultiaddr;
         this.activeRelayMultiaddr = null;
         this.activeRelayPeerId = null;

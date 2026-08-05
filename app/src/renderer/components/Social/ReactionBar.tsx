@@ -6,7 +6,10 @@
 import { useReactions } from '../../hooks/useReactions';
 import { useUserStore } from '../../stores/user-store';
 import { toggleReaction } from '../../db/services/reaction-service';
-import { ALLOWED_REACTIONS, type ReactionEmoji } from '../../../shared/core/reactions';
+import {
+    ALLOWED_REACTIONS,
+    type ReactionEmoji,
+} from '../../../shared/core/reactions';
 import { pushLocalChanges } from '../../db/replication-handler';
 import { ReactionButton } from './ReactionButton';
 

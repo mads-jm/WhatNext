@@ -16,13 +16,17 @@ export class PlaylistPage {
     readonly sessionButton: Locator;
 
     constructor(private readonly page: Page) {
-        this.createPlaylistButton = page.getByRole('button', { name: /create playlist/i });
+        this.createPlaylistButton = page.getByRole('button', {
+            name: /create playlist/i,
+        });
         this.playlistCards = page.locator('[data-testid="playlist-card"]');
 
         this.playlistTitle = page.getByRole('heading', { level: 2 });
         this.trackList = page.locator('[data-testid="track-list"]');
         this.exportButton = page.getByRole('button', { name: /export/i });
-        this.sessionButton = page.getByRole('button', { name: /start session/i });
+        this.sessionButton = page.getByRole('button', {
+            name: /start session/i,
+        });
     }
 
     async clickCreatePlaylist() {
@@ -31,6 +35,8 @@ export class PlaylistPage {
 
     /** Click a playlist card by name. */
     async selectPlaylist(name: string) {
-        await this.page.getByRole('button', { name: new RegExp(name, 'i') }).click();
+        await this.page
+            .getByRole('button', { name: new RegExp(name, 'i') })
+            .click();
     }
 }

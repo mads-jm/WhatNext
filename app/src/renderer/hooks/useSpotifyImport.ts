@@ -6,10 +6,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserStore } from '../stores/user-store';
 import { bulkImportTracks, updateTrack } from '../db/services/track-service';
-import { createPlaylist, bulkAddTracksToPlaylist } from '../db/services/playlist-service';
-import { linkServiceAccount, updateLocalUserProfile, resolveSpotifyUser, createSessionParticipant } from '../db/services/user-service';
+import {
+    createPlaylist,
+    bulkAddTracksToPlaylist,
+} from '../db/services/playlist-service';
+import {
+    linkServiceAccount,
+    updateLocalUserProfile,
+    resolveSpotifyUser,
+    createSessionParticipant,
+} from '../db/services/user-service';
 import { resolveSpotifyUsers } from '../utils/spotify-user-resolution';
-import { groupTracksByArtwork, downloadArtworkBatch } from '../utils/artwork-download';
+import {
+    groupTracksByArtwork,
+    downloadArtworkBatch,
+} from '../utils/artwork-download';
 
 export interface SpotifyPlaylist {
     id: string;
@@ -51,11 +62,16 @@ export function useSpotifyImport() {
     const [state, setState] = useState<ImportState>('idle');
     const [authenticated, setAuthenticated] = useState(false);
     const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
-    const [selectedPlaylist, setSelectedPlaylist] = useState<SpotifyPlaylist | null>(null);
+    const [selectedPlaylist, setSelectedPlaylist] =
+        useState<SpotifyPlaylist | null>(null);
     const [tracks, setTracks] = useState<MappedTrack[]>([]);
-    const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
+    const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(
+        new Set(),
+    );
     const [importCount, setImportCount] = useState(0);
-    const [createdPlaylistId, setCreatedPlaylistId] = useState<string | null>(null);
+    const [createdPlaylistId, setCreatedPlaylistId] = useState<string | null>(
+        null,
+    );
     const [error, setError] = useState<string | null>(null);
 
     const loadPlaylists = useCallback(async () => {
@@ -87,7 +103,8 @@ export function useSpotifyImport() {
                     // Ensure Spotify profile is linked (may have been skipped if auth
                     // happened in a previous app session and onAuthComplete didn't fire)
                     try {
-                        const profile = await window.electron?.spotify.getProfile();
+                        const profile =
+                            await window.electron?.spotify.getProfile();
                         if (profile?.success && profile.userId) {
                             await linkServiceAccount({
                                 provider: 'spotify',
@@ -96,7 +113,10 @@ export function useSpotifyImport() {
                                 avatarUrl: profile.avatarUrl,
                             });
                             const user = useUserStore.getState().user;
-                            if (user?.avatarSource === 'none' && profile.avatarUrl) {
+                            if (
+                                user?.avatarSource === 'none' &&
+                                profile.avatarUrl
+                            ) {
                                 await updateLocalUserProfile({
                                     avatarSource: 'spotify',
                                     avatarUrl: profile.avatarUrl,
@@ -104,48 +124,62 @@ export function useSpotifyImport() {
                             }
                         }
                     } catch (err) {
-                        console.error('[SpotifyImport] Failed to link Spotify profile on mount:', err);
+                        console.error(
+                            '[SpotifyImport] Failed to link Spotify profile on mount:',
+                            err,
+                        );
                     }
 
                     loadPlaylists();
                 }
             } catch (err) {
-                console.error('[SpotifyImport] Failed to check auth status:', err);
+                console.error(
+                    '[SpotifyImport] Failed to check auth status:',
+                    err,
+                );
             }
         })();
     }, [loadPlaylists]);
 
     // Listen for auth completion from main process
     useEffect(() => {
-        const cleanupComplete = window.electron?.spotify.onAuthComplete(async () => {
-            setAuthenticated(true);
-            setState('idle');
+        const cleanupComplete = window.electron?.spotify.onAuthComplete(
+            async () => {
+                setAuthenticated(true);
+                setState('idle');
 
-            // Link Spotify profile to local user identity
-            try {
-                const profile = await window.electron?.spotify.getProfile();
-                if (profile?.success && profile.userId) {
-                    await linkServiceAccount({
-                        provider: 'spotify',
-                        providerUserId: profile.userId,
-                        displayName: profile.displayName,
-                        avatarUrl: profile.avatarUrl,
-                    });
-                    // Auto-set avatar if user doesn't have one
-                    const user = useUserStore.getState().user;
-                    if (user?.avatarSource === 'none' && profile.avatarUrl) {
-                        await updateLocalUserProfile({
-                            avatarSource: 'spotify',
+                // Link Spotify profile to local user identity
+                try {
+                    const profile = await window.electron?.spotify.getProfile();
+                    if (profile?.success && profile.userId) {
+                        await linkServiceAccount({
+                            provider: 'spotify',
+                            providerUserId: profile.userId,
+                            displayName: profile.displayName,
                             avatarUrl: profile.avatarUrl,
                         });
+                        // Auto-set avatar if user doesn't have one
+                        const user = useUserStore.getState().user;
+                        if (
+                            user?.avatarSource === 'none' &&
+                            profile.avatarUrl
+                        ) {
+                            await updateLocalUserProfile({
+                                avatarSource: 'spotify',
+                                avatarUrl: profile.avatarUrl,
+                            });
+                        }
                     }
+                } catch (err) {
+                    console.error(
+                        '[SpotifyImport] Failed to link Spotify profile:',
+                        err,
+                    );
                 }
-            } catch (err) {
-                console.error('[SpotifyImport] Failed to link Spotify profile:', err);
-            }
 
-            loadPlaylists();
-        });
+                loadPlaylists();
+            },
+        );
 
         const cleanupError = window.electron?.spotify.onAuthError((data) => {
             setError(data.error);
@@ -178,10 +212,14 @@ export function useSpotifyImport() {
         setState('loading-tracks');
         setError(null);
         try {
-            const result = await window.electron?.spotify.getTracks(playlist.id);
+            const result = await window.electron?.spotify.getTracks(
+                playlist.id,
+            );
             if (result?.success && result.tracks) {
                 setTracks(result.tracks);
-                setSelectedTrackIds(new Set(result.tracks.map((t: MappedTrack) => t.id)));
+                setSelectedTrackIds(
+                    new Set(result.tracks.map((t: MappedTrack) => t.id)),
+                );
                 setState('selecting');
             } else {
                 setError(result?.error || 'Failed to load tracks');
@@ -202,14 +240,17 @@ export function useSpotifyImport() {
         });
     };
 
-    const selectAll = () => setSelectedTrackIds(new Set(tracks.map((t) => t.id)));
+    const selectAll = () =>
+        setSelectedTrackIds(new Set(tracks.map((t) => t.id)));
     const selectNone = () => setSelectedTrackIds(new Set());
 
     const importSelected = async () => {
         setState('importing');
         setError(null);
         try {
-            const tracksToImport = tracks.filter((t) => selectedTrackIds.has(t.id));
+            const tracksToImport = tracks.filter((t) =>
+                selectedTrackIds.has(t.id),
+            );
             const coverArtUrl = selectedPlaylist?.images?.[0]?.url;
 
             // Resolve each unique Spotify user ID to a WhatNext user ID.
@@ -227,13 +268,16 @@ export function useSpotifyImport() {
                     durationMs: t.durationMs,
                     spotifyId: t.spotifyId,
                     albumArtUrl: t.albumArtUrl,
-                    addedBy: spotifyToWhatNext.get(t.addedBySpotifyId) ?? userId,
+                    addedBy:
+                        spotifyToWhatNext.get(t.addedBySpotifyId) ?? userId,
                     addedAt: t.addedAt,
                 })),
             );
 
             // Collaborators are all resolved Spotify users except the local user
-            const collaboratorIds = [...spotifyToWhatNext.values()].filter((id) => id !== userId);
+            const collaboratorIds = [...spotifyToWhatNext.values()].filter(
+                (id) => id !== userId,
+            );
 
             const playlist = await createPlaylist({
                 playlistName: selectedPlaylist!.name,
@@ -242,7 +286,9 @@ export function useSpotifyImport() {
                 collaboratorIds,
                 linkedSpotifyId: selectedPlaylist!.id,
                 spotifySyncMode: 'accessory',
-                isCollaborative: selectedPlaylist!.collaborative || collaboratorIds.length > 0,
+                isCollaborative:
+                    selectedPlaylist!.collaborative ||
+                    collaboratorIds.length > 0,
                 tags: ['spotify'],
                 coverArtUrl,
             });
@@ -253,7 +299,13 @@ export function useSpotifyImport() {
             setState('done');
 
             // Fire-and-forget: download artwork in background after import completes
-            downloadArtworkInBackground(tracksToImport, trackIds, playlist.id, coverArtUrl, selectedPlaylist!.name);
+            downloadArtworkInBackground(
+                tracksToImport,
+                trackIds,
+                playlist.id,
+                coverArtUrl,
+                selectedPlaylist!.name,
+            );
         } catch (err) {
             setError(`Import failed: ${err}`);
             setState('error');
@@ -272,8 +324,12 @@ export function useSpotifyImport() {
         playlistName?: string,
     ) => {
         const groups = groupTracksByArtwork(importedTracks, trackIds);
-        const download = (url: string, meta?: { albumName: string; artistName: string }) =>
-            window.electron?.artwork.download(url, meta) ?? Promise.resolve({ success: false });
+        const download = (
+            url: string,
+            meta?: { albumName: string; artistName: string },
+        ) =>
+            window.electron?.artwork.download(url, meta) ??
+            Promise.resolve({ success: false });
         const updatePath = (id: string, localPath: string) =>
             updateTrack(id, { albumArtLocalPath: localPath }).then(() => {});
 
@@ -282,14 +338,26 @@ export function useSpotifyImport() {
         // Download playlist cover art
         if (coverArtUrl) {
             try {
-                const result = await window.electron?.artwork.download(coverArtUrl, { albumName: playlistName });
+                const result = await window.electron?.artwork.download(
+                    coverArtUrl,
+                    { albumName: playlistName },
+                );
                 if (result?.success && result.localPath) {
-                    const db = await import('../db/database').then((m) => m.getDatabase());
-                    const playlistDoc = await db.playlists.findOne(playlistId).exec();
-                    await playlistDoc?.update({ $set: { coverArtLocalPath: result.localPath } });
+                    const db = await import('../db/database').then((m) =>
+                        m.getDatabase(),
+                    );
+                    const playlistDoc = await db.playlists
+                        .findOne(playlistId)
+                        .exec();
+                    await playlistDoc?.update({
+                        $set: { coverArtLocalPath: result.localPath },
+                    });
                 }
             } catch (err) {
-                console.warn('[SpotifyImport] Playlist cover download failed:', err);
+                console.warn(
+                    '[SpotifyImport] Playlist cover download failed:',
+                    err,
+                );
             }
         }
     };

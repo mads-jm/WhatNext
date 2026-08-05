@@ -19,7 +19,10 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useUserStore } from '../stores/user-store';
 import { bulkImportTracks, updateTrack } from '../db/services/track-service';
 import type { BackendStatusResult } from '../../shared/core/ipc-protocol';
-import type { ResolvedTrack, DownloadEvent } from '../../../../service/downloader/types';
+import type {
+    ResolvedTrack,
+    DownloadEvent,
+} from '../../../../service/downloader/types';
 
 export type DownloadState =
     | 'idle'
@@ -60,7 +63,9 @@ export function usePlaylistDownload() {
     const [resolvedTracks, setResolvedTracks] = useState<ResolvedTrack[]>([]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [preferredFormat, setPreferredFormat] = useState(DEFAULT_FORMAT);
-    const [progress, setProgress] = useState<Map<string, TrackProgress>>(new Map());
+    const [progress, setProgress] = useState<Map<string, TrackProgress>>(
+        new Map(),
+    );
     const [completedCount, setCompletedCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
@@ -75,13 +80,16 @@ export function usePlaylistDownload() {
     // Check installed backends on mount
     useEffect(() => {
         setState('checking');
-        window.electron?.download.checkBackends().then((results) => {
-            setBackends(results);
-            // Auto-select first installed backend
-            const first = results.find((b) => b.installed);
-            if (first) setSelectedBackend(first.id);
-            setState('idle');
-        }).catch(() => setState('idle'));
+        window.electron?.download
+            .checkBackends()
+            .then((results) => {
+                setBackends(results);
+                // Auto-select first installed backend
+                const first = results.find((b) => b.installed);
+                if (first) setSelectedBackend(first.id);
+                setState('idle');
+            })
+            .catch(() => setState('idle'));
     }, []);
 
     // Cleanup listeners on unmount
@@ -127,7 +135,9 @@ export function usePlaylistDownload() {
     const selectNone = useCallback(() => setSelectedIds(new Set()), []);
 
     const startDownload = useCallback(async () => {
-        const toDownload = resolvedTracks.filter((t) => selectedIds.has(t.sourceId));
+        const toDownload = resolvedTracks.filter((t) =>
+            selectedIds.has(t.sourceId),
+        );
         if (toDownload.length === 0) return;
 
         setState('downloading');
@@ -149,63 +159,75 @@ export function usePlaylistDownload() {
         const completedPaths = new Map<string, string>(); // sourceUrl → localFilePath
         let localCompleted = 0; // Local counter — avoids async calls inside React state updaters
 
-        const unsubProgress = window.electron?.download.onProgress((event: DownloadEvent) => {
-            setProgress((prev) => {
-                const next = new Map(prev);
-                const entry = next.get(event.sourceUrl);
-                if (entry) {
-                    next.set(event.sourceUrl, {
-                        ...entry,
-                        percent: event.percent ?? entry.percent,
-                        speed: event.speed,
-                        eta: event.eta,
-                        status: 'downloading',
-                    });
-                }
-                return next;
-            });
-        });
+        const unsubProgress = window.electron?.download.onProgress(
+            (event: DownloadEvent) => {
+                setProgress((prev) => {
+                    const next = new Map(prev);
+                    const entry = next.get(event.sourceUrl);
+                    if (entry) {
+                        next.set(event.sourceUrl, {
+                            ...entry,
+                            percent: event.percent ?? entry.percent,
+                            speed: event.speed,
+                            eta: event.eta,
+                            status: 'downloading',
+                        });
+                    }
+                    return next;
+                });
+            },
+        );
 
-        const unsubComplete = window.electron?.download.onTrackComplete((event: DownloadEvent) => {
-            // No path → nothing to import. Mark it honestly instead of showing
-            // "complete" for a track that importCompleted will skip (#57).
-            const willImport = Boolean(event.localFilePath);
-            if (event.localFilePath) {
-                completedPaths.set(event.sourceUrl, event.localFilePath);
-            }
-            setProgress((prev) => {
-                const next = new Map(prev);
-                const entry = next.get(event.sourceUrl);
-                if (entry) {
-                    next.set(event.sourceUrl, {
-                        ...entry,
-                        percent: 100,
-                        status: willImport ? 'complete' : 'unimported',
-                        localFilePath: event.localFilePath,
-                    });
+        const unsubComplete = window.electron?.download.onTrackComplete(
+            (event: DownloadEvent) => {
+                // No path → nothing to import. Mark it honestly instead of showing
+                // "complete" for a track that importCompleted will skip (#57).
+                const willImport = Boolean(event.localFilePath);
+                if (event.localFilePath) {
+                    completedPaths.set(event.sourceUrl, event.localFilePath);
                 }
-                return next;
-            });
-            localCompleted += 1;
-            setCompletedCount(localCompleted);
-            if (localCompleted >= toDownload.length) {
-                // All tracks done — import into RxDB, enrich with purchase links, then transition
-                void importCompleted(toDownload, completedPaths, userId).then(() =>
-                    setState('done'),
-                );
-            }
-        });
+                setProgress((prev) => {
+                    const next = new Map(prev);
+                    const entry = next.get(event.sourceUrl);
+                    if (entry) {
+                        next.set(event.sourceUrl, {
+                            ...entry,
+                            percent: 100,
+                            status: willImport ? 'complete' : 'unimported',
+                            localFilePath: event.localFilePath,
+                        });
+                    }
+                    return next;
+                });
+                localCompleted += 1;
+                setCompletedCount(localCompleted);
+                if (localCompleted >= toDownload.length) {
+                    // All tracks done — import into RxDB, enrich with purchase links, then transition
+                    void importCompleted(
+                        toDownload,
+                        completedPaths,
+                        userId,
+                    ).then(() => setState('done'));
+                }
+            },
+        );
 
-        const unsubError = window.electron?.download.onError((event: DownloadEvent) => {
-            setProgress((prev) => {
-                const next = new Map(prev);
-                const entry = next.get(event.sourceUrl);
-                if (entry) {
-                    next.set(event.sourceUrl, { ...entry, status: 'error', error: event.error });
-                }
-                return next;
-            });
-        });
+        const unsubError = window.electron?.download.onError(
+            (event: DownloadEvent) => {
+                setProgress((prev) => {
+                    const next = new Map(prev);
+                    const entry = next.get(event.sourceUrl);
+                    if (entry) {
+                        next.set(event.sourceUrl, {
+                            ...entry,
+                            status: 'error',
+                            error: event.error,
+                        });
+                    }
+                    return next;
+                });
+            },
+        );
 
         if (unsubProgress) unsubscribeRefs.current.push(unsubProgress);
         if (unsubComplete) unsubscribeRefs.current.push(unsubComplete);
@@ -225,7 +247,14 @@ export function usePlaylistDownload() {
             setState('error');
             cleanupListeners();
         }
-    }, [resolvedTracks, selectedIds, selectedBackend, preferredFormat, cleanupListeners, userId]);
+    }, [
+        resolvedTracks,
+        selectedIds,
+        selectedBackend,
+        preferredFormat,
+        cleanupListeners,
+        userId,
+    ]);
 
     const cancel = useCallback(async () => {
         await window.electron?.download.cancel();
@@ -300,7 +329,10 @@ async function importCompleted(
 }
 
 /** Resolve purchase links for downloaded tracks and persist to RxDB. */
-async function enrichWithPurchaseLinks(tracks: ResolvedTrack[], ids: string[]): Promise<void> {
+async function enrichWithPurchaseLinks(
+    tracks: ResolvedTrack[],
+    ids: string[],
+): Promise<void> {
     for (let i = 0; i < tracks.length; i++) {
         const track = tracks[i];
         const id = ids[i];

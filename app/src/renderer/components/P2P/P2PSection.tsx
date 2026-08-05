@@ -12,7 +12,13 @@ interface P2PSectionProps {
     children: ReactNode;
 }
 
-export function P2PSection({ title, expanded = false, onToggle, badge, children }: P2PSectionProps) {
+export function P2PSection({
+    title,
+    expanded = false,
+    onToggle,
+    badge,
+    children,
+}: P2PSectionProps) {
     return (
         <div className="bg-surface-high rounded-lg overflow-hidden">
             <button
@@ -20,10 +26,16 @@ export function P2PSection({ title, expanded = false, onToggle, badge, children 
                 className="w-full px-4 py-3 flex items-center justify-between bg-surface-high hover:bg-outline-variant/30 transition-colors"
             >
                 <div className="flex items-center gap-2">
-                    <span className="font-bold text-on-surface text-sm">{title}</span>
+                    <span className="font-bold text-on-surface text-sm">
+                        {title}
+                    </span>
                     {badge}
                 </div>
-                {onToggle && <span className="text-on-surface-variant">{expanded ? '\u25BC' : '\u25B6'}</span>}
+                {onToggle && (
+                    <span className="text-on-surface-variant">
+                        {expanded ? '\u25BC' : '\u25B6'}
+                    </span>
+                )}
             </button>
             {expanded && <div className="p-4">{children}</div>}
         </div>

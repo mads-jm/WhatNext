@@ -42,10 +42,16 @@ export function DownloadTrackSelector({
             {/* Toolbar */}
             <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 text-sm text-on-surface-variant">
-                    <span className="font-semibold text-on-surface">{tracks.length}</span> track
+                    <span className="font-semibold text-on-surface">
+                        {tracks.length}
+                    </span>{' '}
+                    track
                     {tracks.length !== 1 ? 's' : ''} found
                     <span className="text-outline-variant">·</span>
-                    <button onClick={onSelectAll} className="text-primary hover:underline">
+                    <button
+                        onClick={onSelectAll}
+                        className="text-primary hover:underline"
+                    >
                         All
                     </button>
                     <button onClick={onSelectNone} className="hover:underline">
@@ -180,14 +186,41 @@ function TrackRow({ track, selected, onToggle }: TrackRowProps) {
     );
 }
 
-function ProviderBadge({ provider }: { provider: ResolvedTrack['sourceProvider'] }) {
-    const config: Record<string, { label: string; icon: string; color: string }> = {
-        youtube: { label: 'YouTube', icon: 'fa-brands fa-youtube', color: 'text-red-400' },
-        soundcloud: { label: 'SoundCloud', icon: 'fa-brands fa-soundcloud', color: 'text-orange-400' },
-        bandcamp: { label: 'Bandcamp', icon: 'fa-solid fa-b', color: 'text-teal-400' },
-        spotify: { label: 'Spotify', icon: 'fa-brands fa-spotify', color: 'text-green-400' },
+function ProviderBadge({
+    provider,
+}: {
+    provider: ResolvedTrack['sourceProvider'];
+}) {
+    const config: Record<
+        string,
+        { label: string; icon: string; color: string }
+    > = {
+        youtube: {
+            label: 'YouTube',
+            icon: 'fa-brands fa-youtube',
+            color: 'text-red-400',
+        },
+        soundcloud: {
+            label: 'SoundCloud',
+            icon: 'fa-brands fa-soundcloud',
+            color: 'text-orange-400',
+        },
+        bandcamp: {
+            label: 'Bandcamp',
+            icon: 'fa-solid fa-b',
+            color: 'text-teal-400',
+        },
+        spotify: {
+            label: 'Spotify',
+            icon: 'fa-brands fa-spotify',
+            color: 'text-green-400',
+        },
     };
-    const c = config[provider] ?? { label: provider, icon: 'fa-solid fa-globe', color: 'text-on-surface-variant' };
+    const c = config[provider] ?? {
+        label: provider,
+        icon: 'fa-solid fa-globe',
+        color: 'text-on-surface-variant',
+    };
     return (
         <span className={`text-xs flex items-center gap-1 ${c.color}`}>
             <i className={c.icon} />

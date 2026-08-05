@@ -61,7 +61,7 @@ function encodeFramed(data: unknown): Uint8Array {
 async function accumulateBytes(
     iter: AsyncIterator<Uint8Array | { subarray(): Uint8Array }>,
     needed: number,
-    carry: Uint8Array
+    carry: Uint8Array,
 ): Promise<{ buf: Uint8Array; rest: Uint8Array } | null> {
     let buf = carry;
     while (buf.length < needed) {
@@ -81,15 +81,24 @@ async function accumulateBytes(
  * Throws if the declared message length exceeds MAX_MESSAGE_SIZE.
  */
 async function readMessage<T>(stream: Stream): Promise<T> {
-    const iter = (stream as unknown as AsyncIterable<Uint8Array | { subarray(): Uint8Array }>)[Symbol.asyncIterator]();
+    const iter = (
+        stream as unknown as AsyncIterable<
+            Uint8Array | { subarray(): Uint8Array }
+        >
+    )[Symbol.asyncIterator]();
 
     // Read 4-byte length prefix
     const headerResult = await accumulateBytes(iter, 4, new Uint8Array(0));
     if (!headerResult) {
-        throw new Error('[Handshake] Stream ended before length prefix was received');
+        throw new Error(
+            '[Handshake] Stream ended before length prefix was received',
+        );
     }
 
-    const view = new DataView(headerResult.buf.buffer, headerResult.buf.byteOffset);
+    const view = new DataView(
+        headerResult.buf.buffer,
+        headerResult.buf.byteOffset,
+    );
     const length = view.getUint32(0, false); // big-endian
 
     if (length === 0) {
@@ -97,14 +106,16 @@ async function readMessage<T>(stream: Stream): Promise<T> {
     }
     if (length > MAX_MESSAGE_SIZE) {
         throw new Error(
-            `[Handshake] Rejected oversized message (length=${length}, max=${MAX_MESSAGE_SIZE})`
+            `[Handshake] Rejected oversized message (length=${length}, max=${MAX_MESSAGE_SIZE})`,
         );
     }
 
     // Read the JSON body
     const bodyResult = await accumulateBytes(iter, length, headerResult.rest);
     if (!bodyResult) {
-        throw new Error('[Handshake] Stream ended before message body was complete');
+        throw new Error(
+            '[Handshake] Stream ended before message body was complete',
+        );
     }
 
     return JSON.parse(new TextDecoder().decode(bodyResult.buf)) as T;
@@ -114,15 +125,24 @@ async function readMessage<T>(stream: Stream): Promise<T> {
  * Read one message, but give up after `timeoutMs`. Aborts the stream on expiry
  * so the pending read rejects rather than dangling for the connection's life.
  */
-async function readMessageWithTimeout<T>(stream: Stream, timeoutMs: number): Promise<T> {
+async function readMessageWithTimeout<T>(
+    stream: Stream,
+    timeoutMs: number,
+): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
         return await Promise.race([
             readMessage<T>(stream),
             new Promise<never>((_resolve, reject) => {
                 timer = setTimeout(() => {
-                    const err = new Error(`[Handshake] No response within ${timeoutMs}ms`);
-                    try { stream.abort(err); } catch { /* already gone */ }
+                    const err = new Error(
+                        `[Handshake] No response within ${timeoutMs}ms`,
+                    );
+                    try {
+                        stream.abort(err);
+                    } catch {
+                        /* already gone */
+                    }
                     reject(err);
                 }, timeoutMs);
             }),
@@ -163,24 +183,31 @@ async function writeMessage(stream: Stream, data: unknown): Promise<void> {
 export function registerHandshakeProtocol(
     node: Libp2p,
     localData: HandshakeData,
-    onHandshake: (remotePeerId: string, data: HandshakeData) => void
+    onHandshake: (remotePeerId: string, data: HandshakeData) => void,
 ): void {
-    node.handle(P2P_CONFIG.PROTOCOLS.HANDSHAKE, async (stream: Stream, connection: Connection) => {
-        try {
-            console.log(`[Handshake] Incoming handshake from ${connection.remotePeer.toString()}`);
+    node.handle(
+        P2P_CONFIG.PROTOCOLS.HANDSHAKE,
+        async (stream: Stream, connection: Connection) => {
+            try {
+                console.log(
+                    `[Handshake] Incoming handshake from ${connection.remotePeer.toString()}`,
+                );
 
-            // Read remote peer's handshake
-            const remoteData = await readMessage<HandshakeData>(stream);
+                // Read remote peer's handshake
+                const remoteData = await readMessage<HandshakeData>(stream);
 
-            // Reply on the same stream — see the loop warning above.
-            await writeMessage(stream, localData);
+                // Reply on the same stream — see the loop warning above.
+                await writeMessage(stream, localData);
 
-            console.log(`[Handshake] Complete with ${remoteData.displayName}`);
-            onHandshake(connection.remotePeer.toString(), remoteData);
-        } catch (error) {
-            console.error('[Handshake] Error:', error);
-        }
-    });
+                console.log(
+                    `[Handshake] Complete with ${remoteData.displayName}`,
+                );
+                onHandshake(connection.remotePeer.toString(), remoteData);
+            } catch (error) {
+                console.error('[Handshake] Error:', error);
+            }
+        },
+    );
 }
 
 /**
@@ -205,15 +232,24 @@ export async function initiateHandshake(
     const { peerIdFromString } = await import('@libp2p/peer-id');
     const peerId = peerIdFromString(remotePeerId);
 
-    console.log(`[Handshake] Initiating handshake with ${remotePeerId.slice(0, 12)}...`);
+    console.log(
+        `[Handshake] Initiating handshake with ${remotePeerId.slice(0, 12)}...`,
+    );
 
-    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.HANDSHAKE);
+    const stream = await node.dialProtocol(
+        peerId,
+        P2P_CONFIG.PROTOCOLS.HANDSHAKE,
+    );
 
     try {
         // Send our handshake data, then read theirs off the same stream.
         stream.send(encodeFramed(localData));
         return await readMessageWithTimeout<HandshakeData>(stream, timeoutMs);
     } finally {
-        try { await stream.close(); } catch { /* ignore */ }
+        try {
+            await stream.close();
+        } catch {
+            /* ignore */
+        }
     }
 }

@@ -28,7 +28,7 @@ export function mapSpotifyTrack(item: SpotifyTrackItem): MappedTrack {
     return {
         id: uuidv4(),
         title: item.track.name,
-        artists: item.track.artists.map(a => a.name),
+        artists: item.track.artists.map((a) => a.name),
         album: item.track.album.name,
         durationMs: item.track.duration_ms,
         spotifyId: item.track.id,
@@ -43,6 +43,6 @@ export function mapSpotifyTrack(item: SpotifyTrackItem): MappedTrack {
  */
 export function mapSpotifyTracks(items: SpotifyTrackItem[]): MappedTrack[] {
     return items
-        .filter(item => item.track && item.track.id) // Filter out null/local tracks
-        .map(item => mapSpotifyTrack(item));
+        .filter((item) => item.track && item.track.id) // Filter out null/local tracks
+        .map((item) => mapSpotifyTrack(item));
 }

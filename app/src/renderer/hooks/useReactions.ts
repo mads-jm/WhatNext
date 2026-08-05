@@ -7,16 +7,21 @@ import { useState, useEffect } from 'react';
 import { useDatabase } from './useDatabase';
 import type { TrackInteractionDocType } from '../db/schemas';
 import type { ReactionEmoji } from '../../shared/core/reactions';
-import { aggregateReactions, type ReactionSummary } from '../utils/reaction-helpers';
+import {
+    aggregateReactions,
+    type ReactionSummary,
+} from '../utils/reaction-helpers';
 
 export type { ReactionSummary };
 
 export function useReactions(
     trackId: string | undefined,
-    userId: string
+    userId: string,
 ): { reactions: Map<ReactionEmoji, ReactionSummary>; loading: boolean } {
     const { db } = useDatabase();
-    const [reactions, setReactions] = useState<Map<ReactionEmoji, ReactionSummary>>(new Map());
+    const [reactions, setReactions] = useState<
+        Map<ReactionEmoji, ReactionSummary>
+    >(new Map());
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -34,7 +39,9 @@ export function useReactions(
 
         const subscription = query.$.subscribe({
             next: (docs) => {
-                const data = docs.map((d) => d as unknown as TrackInteractionDocType);
+                const data = docs.map(
+                    (d) => d as unknown as TrackInteractionDocType,
+                );
                 setReactions(aggregateReactions(data, userId));
                 setLoading(false);
             },

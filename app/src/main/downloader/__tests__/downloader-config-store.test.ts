@@ -58,7 +58,9 @@ describe('downloader-config-store', () => {
     it('drops unknown / blank entries when reading a hand-edited file', () => {
         fs.writeFileSync(
             configFile,
-            JSON.stringify({ paths: { ytdlp: '/a', bogus: '/b', spotdl: '   ' } }),
+            JSON.stringify({
+                paths: { ytdlp: '/a', bogus: '/b', spotdl: '   ' },
+            }),
             'utf-8',
         );
         expect(getBackendPaths()).toEqual({ ytdlp: '/a' });
@@ -72,6 +74,9 @@ describe('downloader-config-store', () => {
     it('keeps independent paths per backend', () => {
         setBackendPath('ytdlp', '/a/yt-dlp');
         setBackendPath('spytify', 'C:\\tools\\spytify.exe');
-        expect(getBackendPaths()).toEqual({ ytdlp: '/a/yt-dlp', spytify: 'C:\\tools\\spytify.exe' });
+        expect(getBackendPaths()).toEqual({
+            ytdlp: '/a/yt-dlp',
+            spytify: 'C:\\tools\\spytify.exe',
+        });
     });
 });

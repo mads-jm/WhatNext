@@ -1,7 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
-import { registerHandshakeProtocol, initiateHandshake, type HandshakeData } from '../handshake';
+import {
+    registerHandshakeProtocol,
+    initiateHandshake,
+    type HandshakeData,
+} from '../handshake';
 import { P2P_CONFIG } from '../../../shared/p2p-config';
-import { MockStream, MockConnection, MockLibp2p, encodeFrame, asLibp2p } from './harness';
+import {
+    MockStream,
+    MockConnection,
+    MockLibp2p,
+    encodeFrame,
+    asLibp2p,
+} from './harness';
 
 const PROTOCOL = P2P_CONFIG.PROTOCOLS.HANDSHAKE;
 
@@ -79,12 +89,20 @@ describe('handshake protocol', () => {
         const remoteData = remote();
         node.queueDialStream(new MockStream([encodeFrame(remoteData)]));
 
-        const result = await initiateHandshake(asLibp2p(node), REMOTE_PEER_ID, localData);
+        const result = await initiateHandshake(
+            asLibp2p(node),
+            REMOTE_PEER_ID,
+            localData,
+        );
 
         expect(result).toEqual(remoteData);
-        expect(node.dials).toEqual([{ peerId: REMOTE_PEER_ID, protocol: PROTOCOL }]);
+        expect(node.dials).toEqual([
+            { peerId: REMOTE_PEER_ID, protocol: PROTOCOL },
+        ]);
         // Exactly one frame out — our handshake — on the dialed stream.
-        expect(node.dialedStreams[0].sentFrames<HandshakeData>()).toEqual([localData]);
+        expect(node.dialedStreams[0].sentFrames<HandshakeData>()).toEqual([
+            localData,
+        ]);
         expect(node.dialedStreams[0].closed).toBe(true);
     });
 
@@ -93,17 +111,23 @@ describe('handshake protocol', () => {
         const responderNode = new MockLibp2p();
         const responderLocal = remote({ displayName: 'Responder' });
         const onResponderHandshake = vi.fn();
-        registerHandshakeProtocol(asLibp2p(responderNode), responderLocal, onResponderHandshake);
+        registerHandshakeProtocol(
+            asLibp2p(responderNode),
+            responderLocal,
+            onResponderHandshake,
+        );
         const responderHandler = responderNode.handlers.get(PROTOCOL)!;
 
         // R's reply is what D will read back off the stream it dialed.
         const dialerNode = new MockLibp2p();
-        dialerNode.queueDialStream(new MockStream([encodeFrame(responderLocal)]));
+        dialerNode.queueDialStream(
+            new MockStream([encodeFrame(responderLocal)]),
+        );
 
         const learnedByDialer = await initiateHandshake(
             asLibp2p(dialerNode),
             REMOTE_PEER_ID,
-            localData
+            localData,
         );
 
         // Deliver what D actually put on the wire to R's handler.
@@ -115,13 +139,18 @@ describe('handshake protocol', () => {
         // Both sides learned the other's data...
         expect(learnedByDialer).toEqual(responderLocal);
         expect(onResponderHandshake).toHaveBeenCalledTimes(1);
-        expect(onResponderHandshake).toHaveBeenCalledWith('dialer-peer', localData);
+        expect(onResponderHandshake).toHaveBeenCalledWith(
+            'dialer-peer',
+            localData,
+        );
 
         // ...and the exchange cost exactly one stream, one dial, no new streams.
         expect(dialerNode.dials).toHaveLength(1);
         expect(responderNode.dials).toHaveLength(0);
         expect(responderConn.newStreams).toHaveLength(0);
-        expect(responderStream.sentFrames<HandshakeData>()).toEqual([responderLocal]);
+        expect(responderStream.sentFrames<HandshakeData>()).toEqual([
+            responderLocal,
+        ]);
     });
 
     it('surfaces a capability mismatch to the app layer rather than rejecting it', async () => {
@@ -134,8 +163,14 @@ describe('handshake protocol', () => {
         registerHandshakeProtocol(asLibp2p(node), localData, onHandshake);
         const handler = node.handlers.get(PROTOCOL)!;
 
-        const mismatched = remote({ capabilities: ['playlist-sync'], version: '0.9.0' });
-        await handler(new MockStream([encodeFrame(mismatched)]), new MockConnection('remote-peer'));
+        const mismatched = remote({
+            capabilities: ['playlist-sync'],
+            version: '0.9.0',
+        });
+        await handler(
+            new MockStream([encodeFrame(mismatched)]),
+            new MockConnection('remote-peer'),
+        );
 
         expect(onHandshake).toHaveBeenCalledTimes(1);
         const delivered = onHandshake.mock.calls[0][1] as HandshakeData;
@@ -155,7 +190,7 @@ describe('handshake protocol', () => {
         node.queueDialStream(silent);
 
         await expect(
-            initiateHandshake(asLibp2p(node), REMOTE_PEER_ID, localData, 20)
+            initiateHandshake(asLibp2p(node), REMOTE_PEER_ID, localData, 20),
         ).rejects.toThrow(/No response within/);
 
         // Aborted, so the stalled read is released rather than pinned open.

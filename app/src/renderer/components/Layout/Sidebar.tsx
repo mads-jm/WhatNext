@@ -17,22 +17,88 @@ type NavItem = {
 
 const navigationItems: NavItem[] = [
     // Workspace
-    { id: 'playlists', label: 'Playlists', icon: 'fa-solid fa-headphones', section: 'Workspace' },
-    { id: 'library', label: 'Library', icon: 'fa-solid fa-music', section: 'Workspace' },
-    { id: 'sessions', label: 'Sessions', icon: 'fa-solid fa-users', section: 'Workspace' },
-    { id: 'spotify', label: 'Spotify Import', icon: 'fa-brands fa-spotify', section: 'Workspace' },
-    { id: 'localImport', label: 'Local Files', icon: 'fa-solid fa-folder-open', section: 'Workspace' },
-    { id: 'download', label: 'Download', icon: 'fa-solid fa-cloud-arrow-down', section: 'Workspace' },
+    {
+        id: 'playlists',
+        label: 'Playlists',
+        icon: 'fa-solid fa-headphones',
+        section: 'Workspace',
+    },
+    {
+        id: 'library',
+        label: 'Library',
+        icon: 'fa-solid fa-music',
+        section: 'Workspace',
+    },
+    {
+        id: 'sessions',
+        label: 'Sessions',
+        icon: 'fa-solid fa-users',
+        section: 'Workspace',
+    },
+    {
+        id: 'spotify',
+        label: 'Spotify Import',
+        icon: 'fa-brands fa-spotify',
+        section: 'Workspace',
+    },
+    {
+        id: 'localImport',
+        label: 'Local Files',
+        icon: 'fa-solid fa-folder-open',
+        section: 'Workspace',
+    },
+    {
+        id: 'download',
+        label: 'Download',
+        icon: 'fa-solid fa-cloud-arrow-down',
+        section: 'Workspace',
+    },
     // P2P Network
-    { id: 'p2p-status', label: 'Network Status', icon: 'fa-solid fa-signal', section: 'Network' },
-    { id: 'p2p-config', label: 'Relay Servers', icon: 'fa-solid fa-tower-broadcast', section: 'Network' },
+    {
+        id: 'p2p-status',
+        label: 'Network Status',
+        icon: 'fa-solid fa-signal',
+        section: 'Network',
+    },
+    {
+        id: 'p2p-config',
+        label: 'Relay Servers',
+        icon: 'fa-solid fa-tower-broadcast',
+        section: 'Network',
+    },
     // Development
-    { id: 'dev-dashboard', label: 'Dev Dashboard', icon: 'fa-solid fa-flask', badge: 'Dev', section: 'Development' },
+    {
+        id: 'dev-dashboard',
+        label: 'Dev Dashboard',
+        icon: 'fa-solid fa-flask',
+        badge: 'Dev',
+        section: 'Development',
+    },
     // Settings
-    { id: 'settings-general', label: 'General', icon: 'fa-solid fa-sliders', section: 'Settings' },
-    { id: 'settings-storage', label: 'Storage', icon: 'fa-solid fa-database', section: 'Settings' },
-    { id: 'settings-download', label: 'Download', icon: 'fa-solid fa-cloud-arrow-down', section: 'Settings' },
-    { id: 'settings-appearance', label: 'Appearance', icon: 'fa-solid fa-palette', section: 'Settings' },
+    {
+        id: 'settings-general',
+        label: 'General',
+        icon: 'fa-solid fa-sliders',
+        section: 'Settings',
+    },
+    {
+        id: 'settings-storage',
+        label: 'Storage',
+        icon: 'fa-solid fa-database',
+        section: 'Settings',
+    },
+    {
+        id: 'settings-download',
+        label: 'Download',
+        icon: 'fa-solid fa-cloud-arrow-down',
+        section: 'Settings',
+    },
+    {
+        id: 'settings-appearance',
+        label: 'Appearance',
+        icon: 'fa-solid fa-palette',
+        section: 'Settings',
+    },
 ];
 
 // Group items by section for visual labels
@@ -51,12 +117,22 @@ export function Sidebar() {
             >
                 <div
                     className="flex items-center gap-2"
-                    style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+                    style={
+                        { WebkitAppRegion: 'no-drag' } as React.CSSProperties
+                    }
                 >
-                    <img src={wnorbIcon} alt="WhatNext" className="w-8 h-8 rounded-lg" />
+                    <img
+                        src={wnorbIcon}
+                        alt="WhatNext"
+                        className="w-8 h-8 rounded-lg"
+                    />
                     <div>
-                        <h1 className="text-lg font-bold text-on-surface font-headline">WhatNext</h1>
-                        <p className="text-xs text-on-surface-variant">v0.0.1 Alpha</p>
+                        <h1 className="text-lg font-bold text-on-surface font-headline">
+                            WhatNext
+                        </h1>
+                        <p className="text-xs text-on-surface-variant">
+                            v0.0.1 Alpha
+                        </p>
                     </div>
                 </div>
             </div>
@@ -97,8 +173,12 @@ export function Sidebar() {
                                         }
                                     `}
                                 >
-                                    <i className={`${item.icon} w-4 text-center text-xs`} />
-                                    <span className="flex-1 text-left">{item.label}</span>
+                                    <i
+                                        className={`${item.icon} w-4 text-center text-xs`}
+                                    />
+                                    <span className="flex-1 text-left">
+                                        {item.label}
+                                    </span>
                                     {item.badge && (
                                         <span
                                             className={`
@@ -123,7 +203,11 @@ export function Sidebar() {
             <div className="px-2 py-2 border-t border-outline-variant/10 space-y-1">
                 <button
                     className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-high transition-colors"
-                    onClick={() => window.electron?.shell.openExternal('https://github.com/mads-jm/whatnext')}
+                    onClick={() =>
+                        window.electron?.shell.openExternal(
+                            'https://github.com/mads-jm/whatnext',
+                        )
+                    }
                 >
                     <i className="fa-brands fa-github w-4 text-center" />
                     <span>View on GitHub</span>
@@ -165,20 +249,31 @@ function SidebarIdentityBar() {
                 onClick={() => navigate('settings-general')}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('settings-general'); }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ')
+                        navigate('settings-general');
+                }}
             >
                 {/* Avatar with status indicator */}
                 <div className="relative shrink-0">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-dim flex items-center justify-center text-surface text-xs font-bold overflow-hidden">
                         {user?.avatarUrl ? (
-                            <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                            <img
+                                src={user.avatarUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                            />
                         ) : (
                             initials
                         )}
                     </div>
                     <div
                         className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-surface-lowest ${
-                            isOnline ? 'bg-primary' : p2p.nodeStarted ? 'bg-secondary' : 'bg-on-surface-variant'
+                            isOnline
+                                ? 'bg-primary'
+                                : p2p.nodeStarted
+                                  ? 'bg-secondary'
+                                  : 'bg-on-surface-variant'
                         }`}
                     />
                 </div>
@@ -204,7 +299,9 @@ function SidebarIdentityBar() {
                         className="shrink-0 w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-high transition-colors"
                         title="Copy connection link"
                     >
-                        <i className={`fa-solid ${copied ? 'fa-check text-primary' : 'fa-link'} text-xs`} />
+                        <i
+                            className={`fa-solid ${copied ? 'fa-check text-primary' : 'fa-link'} text-xs`}
+                        />
                     </button>
                 )}
             </div>

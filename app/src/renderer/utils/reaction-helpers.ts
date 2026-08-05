@@ -4,7 +4,10 @@
  * Pure function — no React, no RxDB, no I/O.
  */
 
-import { ALLOWED_REACTIONS, type ReactionEmoji } from '../../shared/core/reactions';
+import {
+    ALLOWED_REACTIONS,
+    type ReactionEmoji,
+} from '../../shared/core/reactions';
 
 export interface ReactionSummary {
     count: number;

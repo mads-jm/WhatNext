@@ -44,7 +44,8 @@ export function sanitizeFilename(filename: string, sha256: string): string {
 
     // Step 4: fallback if result is empty
     if (safe.length === 0) {
-        const ext = path.extname(filename).replace(/[^a-zA-Z0-9]/g, '') || 'bin';
+        const ext =
+            path.extname(filename).replace(/[^a-zA-Z0-9]/g, '') || 'bin';
         safe = `${sha256.slice(0, 8)}.${ext}`;
         return safe;
     }
@@ -52,7 +53,9 @@ export function sanitizeFilename(filename: string, sha256: string): string {
     // Step 5: if trailing-dot strip removed the extension, restore it from the original
     // (e.g. "song." → "song" loses its extension slot; re-derive from original filename)
     if (path.extname(safe) === '') {
-        const originalExt = path.extname(filename).replace(/[^a-zA-Z0-9.]/g, '');
+        const originalExt = path
+            .extname(filename)
+            .replace(/[^a-zA-Z0-9.]/g, '');
         if (originalExt.length > 1) {
             // Guard: if `safe` is already just the bare extension (e.g. "...mp3" stripped
             // to "mp3"), appending would produce "mp3.mp3". Detect this and use the hash
@@ -85,28 +88,39 @@ export function isValidSha256(hash: string): boolean {
  * True when `candidatePath` resolves to `targetDir` itself or something beneath it.
  * Both sides are resolved first, so `..` segments are collapsed before comparison.
  */
-export function isPathContained(candidatePath: string, targetDir: string): boolean {
+export function isPathContained(
+    candidatePath: string,
+    targetDir: string,
+): boolean {
     const resolvedTarget = path.resolve(targetDir);
     const normalised = path.resolve(candidatePath);
 
     // On Windows paths are case-insensitive — compare lowercased to avoid false positives
     // (e.g. C:\Users\Joe\Audio vs c:\users\joe\audio).
     const cmp = (a: string, b: string): boolean =>
-        process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+        process.platform === 'win32'
+            ? a.toLowerCase() === b.toLowerCase()
+            : a === b;
     const startsWith = (a: string, prefix: string): boolean =>
         process.platform === 'win32'
             ? a.toLowerCase().startsWith(prefix.toLowerCase())
             : a.startsWith(prefix);
 
     // Append sep so that a dir named "audioExtra" doesn't match "audio" prefix check
-    return startsWith(normalised, resolvedTarget + path.sep) || cmp(normalised, resolvedTarget);
+    return (
+        startsWith(normalised, resolvedTarget + path.sep) ||
+        cmp(normalised, resolvedTarget)
+    );
 }
 
 /**
  * Assert the resolved path is inside targetDir (or is targetDir itself).
  * Throws if the path escapes — call site should abort the operation.
  */
-export function assertPathContained(resolvedPath: string, targetDir: string): void {
+export function assertPathContained(
+    resolvedPath: string,
+    targetDir: string,
+): void {
     if (!isPathContained(resolvedPath, targetDir)) {
         throw new Error(
             `Path traversal rejected: '${resolvedPath}' escapes target dir '${targetDir}'`,

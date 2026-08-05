@@ -46,7 +46,9 @@ export function CommentItem({
     const displayName = comment.userDisplayName || comment.userId;
 
     return (
-        <div className={`${depth > 0 ? 'ml-6 border-l border-outline-variant/50 pl-3' : ''}`}>
+        <div
+            className={`${depth > 0 ? 'ml-6 border-l border-outline-variant/50 pl-3' : ''}`}
+        >
             <div className="py-2">
                 <div className="flex items-center gap-2 mb-1">
                     <div className="w-5 h-5 rounded-full bg-primary-dim/60 flex items-center justify-center text-on-surface text-[10px] font-bold shrink-0 overflow-hidden">
@@ -60,8 +62,12 @@ export function CommentItem({
                             (displayName || '?')[0].toUpperCase()
                         )}
                     </div>
-                    <span className="text-xs font-medium text-on-surface">{displayName}</span>
-                    <span className="text-xs text-on-surface-variant">{timeAgo}</span>
+                    <span className="text-xs font-medium text-on-surface">
+                        {displayName}
+                    </span>
+                    <span className="text-xs text-on-surface-variant">
+                        {timeAgo}
+                    </span>
                 </div>
 
                 {editing ? (
@@ -73,17 +79,25 @@ export function CommentItem({
                             rows={2}
                         />
                         <div className="flex gap-1 mt-1">
-                            <button onClick={handleSaveEdit} className="text-xs text-primary hover:text-primary-dim">
+                            <button
+                                onClick={handleSaveEdit}
+                                className="text-xs text-primary hover:text-primary-dim"
+                            >
                                 Save
                             </button>
-                            <button onClick={handleCancelEdit} className="text-xs text-on-surface-variant hover:text-on-surface">
+                            <button
+                                onClick={handleCancelEdit}
+                                className="text-xs text-on-surface-variant hover:text-on-surface"
+                            >
                                 Cancel
                             </button>
                         </div>
                     </div>
                 ) : (
                     <div className="ml-7">
-                        <p className="text-sm text-on-surface">{comment.body}</p>
+                        <p className="text-sm text-on-surface">
+                            {comment.body}
+                        </p>
                         <div className="flex gap-2 mt-1">
                             {depth === 0 && (
                                 <button

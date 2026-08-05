@@ -4,7 +4,10 @@
  * Pure function — no React, no IPC, no I/O.
  */
 
-import type { PlaybackState, SessionState } from '../../shared/session-interfaces';
+import type {
+    PlaybackState,
+    SessionState,
+} from '../../shared/session-interfaces';
 
 /**
  * Whether this device should render a playback surface for the given session.
@@ -18,7 +21,9 @@ import type { PlaybackState, SessionState } from '../../shared/session-interface
  * A participant whose session has `playbackProvider: 'none'` therefore gets no
  * playback surface at all — absent, not disabled.
  */
-export function hasLocalPlaybackSurface(session: SessionState | null | undefined): boolean {
+export function hasLocalPlaybackSurface(
+    session: SessionState | null | undefined,
+): boolean {
     return session?.playbackProvider.type === 'spotify';
 }
 

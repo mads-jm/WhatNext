@@ -26,8 +26,11 @@ export interface BackendStatusView {
     error?: string;
 }
 
-export function describeBackendStatus(status: BackendStatusResult): BackendStatusView {
-    const hasPath = typeof status.path === 'string' && status.path.trim().length > 0;
+export function describeBackendStatus(
+    status: BackendStatusResult,
+): BackendStatusView {
+    const hasPath =
+        typeof status.path === 'string' && status.path.trim().length > 0;
     let state: BackendState;
     if (status.installed) {
         state = hasPath ? 'installed-custom' : 'installed-default';

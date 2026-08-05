@@ -23,8 +23,7 @@ type TracksState =
     | { status: 'error'; allTracks: TrackDocType[] };
 
 type TracksAction =
-    | { type: 'SUCCESS'; allTracks: TrackDocType[] }
-    | { type: 'ERROR' };
+    { type: 'SUCCESS'; allTracks: TrackDocType[] } | { type: 'ERROR' };
 
 function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     switch (action.type) {
@@ -35,9 +34,16 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     }
 }
 
-export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPickerModalProps) {
+export function TrackPickerModal({
+    existingTrackIds,
+    onAdd,
+    onClose,
+}: TrackPickerModalProps) {
     const { db } = useDatabase();
-    const [tracksState, dispatchTracks] = useReducer(tracksReducer, { status: 'loading', allTracks: [] });
+    const [tracksState, dispatchTracks] = useReducer(tracksReducer, {
+        status: 'loading',
+        allTracks: [],
+    });
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [adding, setAdding] = useState(false);
@@ -49,20 +55,28 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
     useEffect(() => {
         if (!db) return;
 
-        const subscription = db.tracks.find({
-            sort: [{ addedAt: 'desc' }],
-        }).$.subscribe({
-            next: (docs: RxDocument<TrackDocType>[]) => {
-                dispatchTracks({ type: 'SUCCESS', allTracks: docs.map((d) => d.toJSON() as TrackDocType) });
-            },
-            error: () => dispatchTracks({ type: 'ERROR' }),
-        });
+        const subscription = db.tracks
+            .find({
+                sort: [{ addedAt: 'desc' }],
+            })
+            .$.subscribe({
+                next: (docs: RxDocument<TrackDocType>[]) => {
+                    dispatchTracks({
+                        type: 'SUCCESS',
+                        allTracks: docs.map((d) => d.toJSON() as TrackDocType),
+                    });
+                },
+                error: () => dispatchTracks({ type: 'ERROR' }),
+            });
 
         return () => subscription.unsubscribe();
     }, [db]);
 
     // Filter: exclude already-in-playlist, apply search
-    const existingSet = useMemo(() => new Set(existingTrackIds), [existingTrackIds]);
+    const existingSet = useMemo(
+        () => new Set(existingTrackIds),
+        [existingTrackIds],
+    );
 
     const filteredTracks = useMemo(() => {
         const q = search.toLowerCase().trim();
@@ -112,14 +126,20 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
             tabIndex={0}
             onClick={(e) => e.target === e.currentTarget && onClose()}
             onKeyDown={(e) => {
-                if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) onClose();
+                if (
+                    (e.key === 'Enter' || e.key === ' ') &&
+                    e.target === e.currentTarget
+                )
+                    onClose();
             }}
         >
             <div className="bg-surface border border-outline-variant rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant">
                     <div>
-                        <h2 className="text-lg font-semibold text-on-surface">Add tracks from Library</h2>
+                        <h2 className="text-lg font-semibold text-on-surface">
+                            Add tracks from Library
+                        </h2>
                         <p className="text-xs text-on-surface-variant mt-0.5">
                             {availableCount === 0
                                 ? 'No tracks available — import from Spotify first'
@@ -158,9 +178,16 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
                     ) : filteredTracks.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-on-surface-variant">
                             <i className="fa-solid fa-music text-3xl mb-3 text-on-surface-variant" />
-                            {availableCount === 0
-                                ? <p className="text-sm">All Library tracks are already in this playlist.</p>
-                                : <p className="text-sm">No tracks match your search.</p>}
+                            {availableCount === 0 ? (
+                                <p className="text-sm">
+                                    All Library tracks are already in this
+                                    playlist.
+                                </p>
+                            ) : (
+                                <p className="text-sm">
+                                    No tracks match your search.
+                                </p>
+                            )}
                         </div>
                     ) : (
                         <table className="w-full text-sm">
@@ -169,15 +196,27 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
                                     <th className="px-4 py-2 w-10">
                                         <input
                                             type="checkbox"
-                                            checked={selected.size === filteredTracks.length && filteredTracks.length > 0}
+                                            checked={
+                                                selected.size ===
+                                                    filteredTracks.length &&
+                                                filteredTracks.length > 0
+                                            }
                                             onChange={toggleAll}
                                             className="accent-primary"
                                         />
                                     </th>
-                                    <th className="px-3 py-2 text-left">Title</th>
-                                    <th className="px-3 py-2 text-left hidden sm:table-cell">Album</th>
-                                    <th className="px-3 py-2 text-right">Dur.</th>
-                                    <th className="px-3 py-2 w-16 text-center">Source</th>
+                                    <th className="px-3 py-2 text-left">
+                                        Title
+                                    </th>
+                                    <th className="px-3 py-2 text-left hidden sm:table-cell">
+                                        Album
+                                    </th>
+                                    <th className="px-3 py-2 text-right">
+                                        Dur.
+                                    </th>
+                                    <th className="px-3 py-2 w-16 text-center">
+                                        Source
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -191,17 +230,26 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
                                                 : 'hover:bg-surface-high/40'
                                         }`}
                                     >
-                                        <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                                        <td
+                                            className="px-4 py-2.5"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
                                             <input
                                                 type="checkbox"
                                                 checked={selected.has(track.id)}
-                                                onChange={() => toggleTrack(track.id)}
+                                                onChange={() =>
+                                                    toggleTrack(track.id)
+                                                }
                                                 className="accent-primary"
                                             />
                                         </td>
                                         <td className="px-3 py-2.5">
-                                            <div className="font-medium text-on-surface truncate max-w-[200px]">{track.title}</div>
-                                            <div className="text-xs text-on-surface-variant truncate">{track.artists.join(', ')}</div>
+                                            <div className="font-medium text-on-surface truncate max-w-[200px]">
+                                                {track.title}
+                                            </div>
+                                            <div className="text-xs text-on-surface-variant truncate">
+                                                {track.artists.join(', ')}
+                                            </div>
                                         </td>
                                         <td className="px-3 py-2.5 text-on-surface-variant hidden sm:table-cell truncate max-w-[150px]">
                                             {track.album}
@@ -211,11 +259,17 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
                                         </td>
                                         <td className="px-3 py-2.5 text-center">
                                             {track.spotifyId ? (
-                                                <span title="Spotify" className="text-primary">
+                                                <span
+                                                    title="Spotify"
+                                                    className="text-primary"
+                                                >
                                                     <i className="fa-brands fa-spotify" />
                                                 </span>
                                             ) : (
-                                                <span title="Local" className="text-on-surface-variant">
+                                                <span
+                                                    title="Local"
+                                                    className="text-on-surface-variant"
+                                                >
                                                     <i className="fa-solid fa-hard-drive" />
                                                 </span>
                                             )}
@@ -246,8 +300,11 @@ export function TrackPickerModal({ existingTrackIds, onAdd, onClose }: TrackPick
                             disabled={selected.size === 0 || adding}
                             className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium bg-primary hover:bg-primary-dim disabled:opacity-40 disabled:cursor-not-allowed text-surface rounded-lg transition-colors"
                         >
-                            <i className={`fa-solid ${adding ? 'fa-spinner fa-spin' : 'fa-plus'}`} />
-                            Add {selected.size > 0 ? selected.size : ''} track{selected.size !== 1 ? 's' : ''}
+                            <i
+                                className={`fa-solid ${adding ? 'fa-spinner fa-spin' : 'fa-plus'}`}
+                            />
+                            Add {selected.size > 0 ? selected.size : ''} track
+                            {selected.size !== 1 ? 's' : ''}
                         </button>
                     </div>
                 </div>

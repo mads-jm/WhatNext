@@ -31,7 +31,9 @@ for (const arg of args) {
     } else if (arg === '--help' || arg === '-h') {
         console.log('Usage: node scripts/start-dev.mjs [OPTIONS]');
         console.log('');
-        console.log('Start WhatNext Electron app and/or test-peer for P2P development');
+        console.log(
+            'Start WhatNext Electron app and/or test-peer for P2P development',
+        );
         console.log('');
         console.log('Options:');
         console.log('  --app-only        Start only the Electron app');
@@ -74,9 +76,13 @@ if (startTestPeer) {
 
 // Banner
 console.log('');
-console.log(magenta('================================================================'));
+console.log(
+    magenta('================================================================'),
+);
 console.log(magenta('       WhatNext Development Environment Orchestrator'));
-console.log(magenta('================================================================'));
+console.log(
+    magenta('================================================================'),
+);
 console.log('');
 
 if (startApp) {

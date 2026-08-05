@@ -46,8 +46,17 @@ export interface CompanionServerInfo {
 export interface CompanionServerCallbacks {
     onClientJoined?: (client: CompanionClient) => void;
     onClientLeft?: (client: CompanionClient) => void;
-    onReaction?: (clientId: string, displayName: string, emoji: string, trackId: string | null) => void;
-    onTimeRequest?: (clientId: string, displayName: string, trackId: string | null) => void;
+    onReaction?: (
+        clientId: string,
+        displayName: string,
+        emoji: string,
+        trackId: string | null,
+    ) => void;
+    onTimeRequest?: (
+        clientId: string,
+        displayName: string,
+        trackId: string | null,
+    ) => void;
 }
 
 interface TrackedClient extends CompanionClient {
@@ -126,14 +135,20 @@ function secretMatches(presented: string, expected: string): boolean {
  * collapses and this needs a per-identity failed-PIN counter. See
  * `companion-client-spec.md` §Security Considerations.
  */
-function authorizeJoin(presentedPin: string, isReturning: boolean): JoinDenial | null {
+function authorizeJoin(
+    presentedPin: string,
+    isReturning: boolean,
+): JoinDenial | null {
     const now = Date.now();
 
     if (!isReturning && now < joinLockoutUntil) {
         return { reason: 'locked-out', retryAfterMs: joinLockoutUntil - now };
     }
 
-    if (joinPin !== null && secretMatches(normalizeJoinPin(presentedPin), joinPin)) {
+    if (
+        joinPin !== null &&
+        secretMatches(normalizeJoinPin(presentedPin), joinPin)
+    ) {
         failedJoinAttempts = 0;
         return null;
     }
@@ -142,7 +157,9 @@ function authorizeJoin(presentedPin: string, isReturning: boolean): JoinDenial |
     if (failedJoinAttempts >= MAX_FAILED_JOIN_ATTEMPTS) {
         joinLockoutUntil = now + JOIN_LOCKOUT_MS;
         failedJoinAttempts = 0;
-        console.warn('[Companion] Join attempts locked out after repeated bad PINs');
+        console.warn(
+            '[Companion] Join attempts locked out after repeated bad PINs',
+        );
         return { reason: 'locked-out', retryAfterMs: JOIN_LOCKOUT_MS };
     }
 
@@ -196,7 +213,7 @@ let retiredIdentities: RetiredIdentity[] = [];
 
 function pruneRetiredIdentities(): void {
     const now = Date.now();
-    retiredIdentities = retiredIdentities.filter(r => r.expiresAt > now);
+    retiredIdentities = retiredIdentities.filter((r) => r.expiresAt > now);
     if (retiredIdentities.length > MAX_RETIRED_IDENTITIES) {
         retiredIdentities = retiredIdentities.slice(-MAX_RETIRED_IDENTITIES);
     }
@@ -224,13 +241,14 @@ function findRetiredIdentity(
 ): RetiredIdentity | undefined {
     pruneRetiredIdentities();
     return retiredIdentities.find(
-        r => r.transport === transport && secretMatches(token, r.reconnectToken),
+        (r) =>
+            r.transport === transport && secretMatches(token, r.reconnectToken),
     );
 }
 
 /** Take a retired identity out of the holding area (single use). */
 function consumeRetiredIdentity(identity: RetiredIdentity): void {
-    retiredIdentities = retiredIdentities.filter(r => r !== identity);
+    retiredIdentities = retiredIdentities.filter((r) => r !== identity);
 }
 
 // ========================================
@@ -270,7 +288,10 @@ function resolveCompanionWebDir(): string {
     if (fs.existsSync(devPath)) return devPath;
 
     // In prod: resources/companion-web (packaged alongside asar)
-    const prodPath = path.resolve(process.resourcesPath ?? __dirname, 'companion-web');
+    const prodPath = path.resolve(
+        process.resourcesPath ?? __dirname,
+        'companion-web',
+    );
     if (fs.existsSync(prodPath)) return prodPath;
 
     // Fallback: sibling to dist
@@ -278,9 +299,15 @@ function resolveCompanionWebDir(): string {
     return distRelative;
 }
 
-function serveStaticFile(req: http.IncomingMessage, res: http.ServerResponse): void {
+function serveStaticFile(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+): void {
     const webDir = resolveCompanionWebDir();
-    let filePath = req.url === '/' || req.url === '/session' ? '/index.html' : req.url ?? '/index.html';
+    let filePath =
+        req.url === '/' || req.url === '/session'
+            ? '/index.html'
+            : (req.url ?? '/index.html');
 
     // Strip query params
     filePath = filePath.split('?')[0];
@@ -290,7 +317,10 @@ function serveStaticFile(req: http.IncomingMessage, res: http.ServerResponse): v
     // Security: prevent path traversal (normalize and ensure within webDir)
     const normalizedFull = path.resolve(fullPath);
     const normalizedDir = path.resolve(webDir) + path.sep;
-    if (!normalizedFull.startsWith(normalizedDir) && normalizedFull !== normalizedDir.slice(0, -1)) {
+    if (
+        !normalizedFull.startsWith(normalizedDir) &&
+        normalizedFull !== normalizedDir.slice(0, -1)
+    ) {
         res.writeHead(403);
         res.end('Forbidden');
         return;
@@ -308,7 +338,10 @@ function serveStaticFile(req: http.IncomingMessage, res: http.ServerResponse): v
         // Never cached: a phone holding a stale companion.js would be refused
         // at join (it sends no PIN) with no way to self-heal. Mirrored in
         // relay/companion-tunnel.mjs, which serves the same files.
-        res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store' });
+        res.writeHead(200, {
+            'Content-Type': contentType,
+            'Cache-Control': 'no-store',
+        });
         res.end(data);
     });
 }
@@ -321,7 +354,9 @@ function handleConnection(ws: WebSocket): void {
     const clientId = uuidv4();
 
     ws.on('message', (raw: Buffer | string) => {
-        const msg = parsePhoneMessage(typeof raw === 'string' ? raw : raw.toString('utf-8'));
+        const msg = parsePhoneMessage(
+            typeof raw === 'string' ? raw : raw.toString('utf-8'),
+        );
         if (!msg) return;
 
         switch (msg.type) {
@@ -335,11 +370,15 @@ function handleConnection(ws: WebSocket): void {
                 const existing = msg.reconnectToken
                     ? findClientByReconnectToken(msg.reconnectToken, 'lan')
                     : undefined;
-                const retired = !existing && msg.reconnectToken
-                    ? findRetiredIdentity(msg.reconnectToken, 'lan')
-                    : undefined;
+                const retired =
+                    !existing && msg.reconnectToken
+                        ? findRetiredIdentity(msg.reconnectToken, 'lan')
+                        : undefined;
 
-                const denial = authorizeJoin(msg.pin, Boolean(existing ?? retired));
+                const denial = authorizeJoin(
+                    msg.pin,
+                    Boolean(existing ?? retired),
+                );
                 if (denial) {
                     // Answer, then leave the socket open: the phone shows the
                     // reason and can retry with a corrected PIN.
@@ -349,7 +388,11 @@ function handleConnection(ws: WebSocket): void {
 
                 if (retired) consumeRetiredIdentity(retired);
 
-                if (existing?.ws && existing.ws !== ws && existing.ws.readyState === WebSocket.OPEN) {
+                if (
+                    existing?.ws &&
+                    existing.ws !== ws &&
+                    existing.ws.readyState === WebSocket.OPEN
+                ) {
                     // The previous socket is a zombie the server has not timed
                     // out yet; the token holder takes the identity back.
                     existing.ws.close();
@@ -362,18 +405,26 @@ function handleConnection(ws: WebSocket): void {
                     status: 'active',
                     ws,
                     reconnectToken:
-                        existing?.reconnectToken ?? retired?.reconnectToken ?? mintReconnectToken(),
+                        existing?.reconnectToken ??
+                        retired?.reconnectToken ??
+                        mintReconnectToken(),
                 };
 
                 clients.set(client.id, client);
 
                 callbacks.onClientJoined?.(toCompanionClient(client));
 
-                send(ws, { type: 'join:ack', data: { reconnectToken: client.reconnectToken } });
+                send(ws, {
+                    type: 'join:ack',
+                    data: { reconnectToken: client.reconnectToken },
+                });
 
                 // Send current snapshot to new client
                 if (cachedSnapshot) {
-                    send(ws, { type: 'session:snapshot', data: cachedSnapshot });
+                    send(ws, {
+                        type: 'session:snapshot',
+                        data: cachedSnapshot,
+                    });
                 }
                 break;
             }
@@ -383,7 +434,12 @@ function handleConnection(ws: WebSocket): void {
                 if (!client) return;
                 client.lastHeartbeat = Date.now();
 
-                callbacks.onReaction?.(client.id, client.displayName, msg.emoji, msg.trackId);
+                callbacks.onReaction?.(
+                    client.id,
+                    client.displayName,
+                    msg.emoji,
+                    msg.trackId,
+                );
 
                 // Broadcast to all other clients
                 broadcast({
@@ -403,7 +459,11 @@ function handleConnection(ws: WebSocket): void {
                 if (!client) return;
                 client.lastHeartbeat = Date.now();
 
-                callbacks.onTimeRequest?.(client.id, client.displayName, msg.trackId);
+                callbacks.onTimeRequest?.(
+                    client.id,
+                    client.displayName,
+                    msg.trackId,
+                );
                 break;
             }
 
@@ -435,7 +495,7 @@ function handleConnection(ws: WebSocket): void {
 }
 
 function findClientByWs(ws: WebSocket): TrackedClient | undefined {
-    return Array.from(clients.values()).find(c => c.ws === ws);
+    return Array.from(clients.values()).find((c) => c.ws === ws);
 }
 
 /** Strip the transport fields before handing a client to a callback. */
@@ -497,7 +557,10 @@ function startHeartbeatMonitor(): void {
                 if (client.ws && client.ws.readyState === WebSocket.OPEN) {
                     client.ws.close();
                 }
-            } else if (elapsed > AWAY_THRESHOLD_MS && client.status !== 'away') {
+            } else if (
+                elapsed > AWAY_THRESHOLD_MS &&
+                client.status !== 'away'
+            ) {
                 client.status = 'away';
             }
         }
@@ -509,8 +572,13 @@ function startHeartbeatMonitor(): void {
 // ========================================
 
 export function startCompanionServer(
-    cbs: CompanionServerCallbacks = {}
-): Promise<{ port: number; localIp: string; joinPin: string; stop: () => void }> {
+    cbs: CompanionServerCallbacks = {},
+): Promise<{
+    port: number;
+    localIp: string;
+    joinPin: string;
+    stop: () => void;
+}> {
     return new Promise((resolve, reject) => {
         if (httpServer) {
             reject(new Error('Companion server already running'));
@@ -534,7 +602,9 @@ export function startCompanionServer(
             const port = typeof addr === 'object' && addr ? addr.port : 0;
             const localIp = getLocalIp();
 
-            console.log(`[Companion] Server started on http://${localIp}:${port}`);
+            console.log(
+                `[Companion] Server started on http://${localIp}:${port}`,
+            );
 
             startHeartbeatMonitor();
 
@@ -627,7 +697,9 @@ export function pushTracksUpdate(tracks: CompanionTrack[]): void {
     broadcast({ type: 'tracks:update', data: { tracks } });
 }
 
-export function pushParticipantsUpdate(participants: CompanionParticipant[]): void {
+export function pushParticipantsUpdate(
+    participants: CompanionParticipant[],
+): void {
     if (cachedSnapshot) {
         cachedSnapshot.participants = participants;
     }
@@ -641,7 +713,10 @@ export function pushTurnUpdate(turn: CompanionTurnState): void {
     broadcast({ type: 'turn:update', data: turn });
 }
 
-export function sendTimeRequestAck(clientId: string, status: 'seen' | 'granted'): void {
+export function sendTimeRequestAck(
+    clientId: string,
+    status: 'seen' | 'granted',
+): void {
     const client = clients.get(clientId);
     if (client) {
         // Addressed to one client only — relay phones get a targeted envelope
@@ -683,7 +758,7 @@ function relayClientId(phoneId: string): string {
  * when the phone reconnects, so routing must key on it and not on the id.
  */
 function findClientByRelayPhoneId(phoneId: string): TrackedClient | undefined {
-    return Array.from(clients.values()).find(c => c.relayPhoneId === phoneId);
+    return Array.from(clients.values()).find((c) => c.relayPhoneId === phoneId);
 }
 
 export interface RelayTunnelInfo {
@@ -710,12 +785,16 @@ function withPinFragment(url: string): string {
  * Creates a session on the relay first, then connects as host.
  * Returns the public URL that phone clients should connect to.
  */
-export async function startRelayTunnel(relayHost: string): Promise<RelayTunnelInfo> {
+export async function startRelayTunnel(
+    relayHost: string,
+): Promise<RelayTunnelInfo> {
     if (relayWs && relayWs.readyState === WebSocket.OPEN) {
         if (relaySessionCode && relayBaseUrl) {
             return {
                 sessionCode: relaySessionCode,
-                relayUrl: withPinFragment(`${relayBaseUrl}/s/${relaySessionCode}`),
+                relayUrl: withPinFragment(
+                    `${relayBaseUrl}/s/${relaySessionCode}`,
+                ),
             };
         }
     }
@@ -728,7 +807,10 @@ export async function startRelayTunnel(relayHost: string): Promise<RelayTunnelIn
     if (!resp.ok) {
         throw new Error(`Relay returned ${resp.status}: ${await resp.text()}`);
     }
-    const { code, hostToken } = await resp.json() as { code?: string; hostToken?: string };
+    const { code, hostToken } = (await resp.json()) as {
+        code?: string;
+        hostToken?: string;
+    };
 
     if (typeof code !== 'string' || code.length === 0) {
         throw new Error(`Relay at ${baseUrl} returned no session code.`);
@@ -740,8 +822,8 @@ export async function startRelayTunnel(relayHost: string): Promise<RelayTunnelIn
     if (typeof hostToken !== 'string' || hostToken.length === 0) {
         throw new Error(
             `Relay at ${baseUrl} did not issue a host credential — it is running an older ` +
-            `companion tunnel than this version of WhatNext requires. Update and restart the relay ` +
-            `(relay/companion-tunnel.mjs); WhatNext will not open an unauthenticated tunnel.`
+                `companion tunnel than this version of WhatNext requires. Update and restart the relay ` +
+                `(relay/companion-tunnel.mjs); WhatNext will not open an unauthenticated tunnel.`,
         );
     }
 
@@ -755,27 +837,34 @@ export async function startRelayTunnel(relayHost: string): Promise<RelayTunnelIn
     const wsUrl = `${wsProtocol}//${wsHost}/host/${code}`;
 
     return new Promise((resolve, reject) => {
-        connectRelayWs(wsUrl, () => {
-            console.log(`[Companion] Relay tunnel open: session ${code}`);
-            relayReconnectAttempt = 0;
+        connectRelayWs(
+            wsUrl,
+            () => {
+                console.log(`[Companion] Relay tunnel open: session ${code}`);
+                relayReconnectAttempt = 0;
 
-            // Send cached snapshot so relay phones get current state
-            if (cachedSnapshot) {
-                sendToRelay({ type: 'session:snapshot', data: cachedSnapshot }, null);
-            }
+                // Send cached snapshot so relay phones get current state
+                if (cachedSnapshot) {
+                    sendToRelay(
+                        { type: 'session:snapshot', data: cachedSnapshot },
+                        null,
+                    );
+                }
 
-            resolve({
-                sessionCode: code,
-                relayUrl: withPinFragment(`${baseUrl}/s/${code}`),
-            });
-        }, reject);
+                resolve({
+                    sessionCode: code,
+                    relayUrl: withPinFragment(`${baseUrl}/s/${code}`),
+                });
+            },
+            reject,
+        );
     });
 }
 
 function connectRelayWs(
     wsUrl: string,
     onFirstOpen?: () => void,
-    onFirstError?: (err: Error) => void
+    onFirstError?: (err: Error) => void,
 ): void {
     // The host credential travels as a request header, never in the URL, so it
     // cannot leak into the phone-facing link, the QR payload, or access logs.
@@ -793,14 +882,18 @@ function connectRelayWs(
             onFirstOpen();
         } else if (cachedSnapshot) {
             // Reconnection — re-send snapshot
-            sendToRelay({ type: 'session:snapshot', data: cachedSnapshot }, null);
+            sendToRelay(
+                { type: 'session:snapshot', data: cachedSnapshot },
+                null,
+            );
         }
     };
 
     relayWs.onmessage = (event: { data: unknown }) => {
         // Relay → host frames are v1 tunnel envelopes. Anything else is a
         // protocol mismatch and is dropped rather than guessed at.
-        const raw = typeof event.data === 'string' ? event.data : String(event.data);
+        const raw =
+            typeof event.data === 'string' ? event.data : String(event.data);
         const envelope = parseRelayEnvelope(raw);
         if (!envelope) return;
 
@@ -822,15 +915,17 @@ function connectRelayWs(
             // session is gone. Tear down instead of spinning the backoff loop.
             console.error(
                 `[Companion] Relay refused the tunnel (code ${code}). ` +
-                'The session must be re-created against a matching relay.'
+                    'The session must be re-created against a matching relay.',
             );
             if (!resolved && onFirstError) {
                 resolved = true;
-                onFirstError(new Error(
-                    code === 4003
-                        ? 'Relay rejected the host credential — relay and app builds may not match.'
-                        : 'Relay has no such session — it may have restarted or the session expired.'
-                ));
+                onFirstError(
+                    new Error(
+                        code === 4003
+                            ? 'Relay rejected the host credential — relay and app builds may not match.'
+                            : 'Relay has no such session — it may have restarted or the session expired.',
+                    ),
+                );
             }
             stopRelayTunnel();
             return;
@@ -838,7 +933,9 @@ function connectRelayWs(
 
         if (!resolved && onFirstError) {
             resolved = true;
-            onFirstError(new Error('Relay closed the tunnel before it was established.'));
+            onFirstError(
+                new Error('Relay closed the tunnel before it was established.'),
+            );
             return;
         }
 
@@ -875,7 +972,10 @@ function scheduleRelayReconnect(wsUrl: string): void {
  * the relay-assigned phone id, so every per-client path (targeted acks, client
  * counts, leave events) works identically on both transports.
  */
-function handleRelayPhoneMessage(phoneId: string, msg: PhoneToServerMessage): void {
+function handleRelayPhoneMessage(
+    phoneId: string,
+    msg: PhoneToServerMessage,
+): void {
     if (msg.type === 'join') {
         // A relay reconnect arrives on a brand-new phone id. With a token the
         // phone reclaims its existing identity and we simply re-point routing
@@ -885,9 +985,10 @@ function handleRelayPhoneMessage(phoneId: string, msg: PhoneToServerMessage): vo
         const existing = msg.reconnectToken
             ? findClientByReconnectToken(msg.reconnectToken, 'relay')
             : undefined;
-        const retired = !existing && msg.reconnectToken
-            ? findRetiredIdentity(msg.reconnectToken, 'relay')
-            : undefined;
+        const retired =
+            !existing && msg.reconnectToken
+                ? findRetiredIdentity(msg.reconnectToken, 'relay')
+                : undefined;
 
         const denial = authorizeJoin(msg.pin, Boolean(existing ?? retired));
         if (denial) {
@@ -921,10 +1022,16 @@ function handleRelayPhoneMessage(phoneId: string, msg: PhoneToServerMessage): vo
 
         callbacks.onClientJoined?.(toCompanionClient(client));
 
-        sendToClient(client, { type: 'join:ack', data: { reconnectToken: client.reconnectToken } });
+        sendToClient(client, {
+            type: 'join:ack',
+            data: { reconnectToken: client.reconnectToken },
+        });
 
         if (cachedSnapshot) {
-            sendToClient(client, { type: 'session:snapshot', data: cachedSnapshot });
+            sendToClient(client, {
+                type: 'session:snapshot',
+                data: cachedSnapshot,
+            });
         }
         return;
     }
@@ -937,7 +1044,12 @@ function handleRelayPhoneMessage(phoneId: string, msg: PhoneToServerMessage): vo
     switch (msg.type) {
         case 'reaction':
             client.status = 'active';
-            callbacks.onReaction?.(client.id, client.displayName, msg.emoji, msg.trackId);
+            callbacks.onReaction?.(
+                client.id,
+                client.displayName,
+                msg.emoji,
+                msg.trackId,
+            );
             broadcast({
                 type: 'reaction:broadcast',
                 data: {
@@ -951,7 +1063,11 @@ function handleRelayPhoneMessage(phoneId: string, msg: PhoneToServerMessage): vo
 
         case 'time-request':
             client.status = 'active';
-            callbacks.onTimeRequest?.(client.id, client.displayName, msg.trackId);
+            callbacks.onTimeRequest?.(
+                client.id,
+                client.displayName,
+                msg.trackId,
+            );
             break;
 
         case 'heartbeat':

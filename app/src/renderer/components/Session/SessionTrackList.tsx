@@ -29,7 +29,9 @@ export function SessionTrackList({
     return (
         <div className="card" data-testid="session-queue">
             <div className="card-header flex items-center justify-between">
-                <span className="font-medium text-sm text-on-surface">Tracks ({tracks.length})</span>
+                <span className="font-medium text-sm text-on-surface">
+                    Tracks ({tracks.length})
+                </span>
                 {isLiveSync && (
                     <span className="text-xs text-on-surface-variant flex items-center gap-2">
                         <span>
@@ -43,7 +45,9 @@ export function SessionTrackList({
                                 title="Sync now"
                                 className="text-on-surface-variant hover:text-on-surface disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <i className={`fa-solid fa-rotate text-xs ${syncing ? 'fa-spin' : ''}`} />
+                                <i
+                                    className={`fa-solid fa-rotate text-xs ${syncing ? 'fa-spin' : ''}`}
+                                />
                             </button>
                         )}
                     </span>
@@ -57,8 +61,12 @@ export function SessionTrackList({
                     </div>
                 ) : (
                     tracks.map((track, index) => {
-                        const adder = participants.find((p) => p.id === track.addedBy);
-                        const adderAvatar = adder ? artSrc(adder.avatarLocalPath, adder.avatarUrl) : null;
+                        const adder = participants.find(
+                            (p) => p.id === track.addedBy,
+                        );
+                        const adderAvatar = adder
+                            ? artSrc(adder.avatarLocalPath, adder.avatarUrl)
+                            : null;
                         const isNowPlaying =
                             track.spotifyId != null &&
                             track.spotifyId === currentTrackExternalId;
@@ -71,21 +79,33 @@ export function SessionTrackList({
                                         ? 'bg-primary/10 border-l-4 border-primary'
                                         : 'hover:bg-surface-high'
                                 }`}
-                                data-testid={isNowPlaying ? 'current-track' : undefined}
+                                data-testid={
+                                    isNowPlaying ? 'current-track' : undefined
+                                }
                             >
                                 <div className="flex items-center gap-3">
                                     <span className="w-5 text-xs text-on-surface-variant text-right shrink-0">
-                                        {isNowPlaying
-                                            ? <i className="fa-solid fa-volume-high text-primary" />
-                                            : index + 1}
+                                        {isNowPlaying ? (
+                                            <i className="fa-solid fa-volume-high text-primary" />
+                                        ) : (
+                                            index + 1
+                                        )}
                                     </span>
-                                    {artSrc(track.albumArtLocalPath, track.albumArtUrl) ? (
+                                    {artSrc(
+                                        track.albumArtLocalPath,
+                                        track.albumArtUrl,
+                                    ) ? (
                                         <img
-                                            src={artSrc(track.albumArtLocalPath, track.albumArtUrl)}
+                                            src={artSrc(
+                                                track.albumArtLocalPath,
+                                                track.albumArtUrl,
+                                            )}
                                             alt=""
                                             className="w-8 h-8 rounded-md object-cover shrink-0 transition-transform hover:scale-110"
                                             onError={(e) => {
-                                                if (track.albumArtUrl) e.currentTarget.src = track.albumArtUrl;
+                                                if (track.albumArtUrl)
+                                                    e.currentTarget.src =
+                                                        track.albumArtUrl;
                                             }}
                                         />
                                     ) : (
@@ -94,7 +114,9 @@ export function SessionTrackList({
                                         </div>
                                     )}
                                     <div className="flex-1 min-w-0">
-                                        <p className={`text-sm font-medium truncate ${isNowPlaying ? 'text-primary' : 'text-on-surface'}`}>
+                                        <p
+                                            className={`text-sm font-medium truncate ${isNowPlaying ? 'text-primary' : 'text-on-surface'}`}
+                                        >
                                             {track.title}
                                         </p>
                                         <p className="text-xs text-on-surface-variant truncate">
@@ -103,11 +125,23 @@ export function SessionTrackList({
                                     </div>
                                     {track.durationMs != null && (
                                         <span className="font-mono text-xs text-on-surface-variant shrink-0">
-                                            {Math.floor(track.durationMs / 60000)}:{String(Math.floor((track.durationMs % 60000) / 1000)).padStart(2, '0')}
+                                            {Math.floor(
+                                                track.durationMs / 60000,
+                                            )}
+                                            :
+                                            {String(
+                                                Math.floor(
+                                                    (track.durationMs % 60000) /
+                                                        1000,
+                                                ),
+                                            ).padStart(2, '0')}
                                         </span>
                                     )}
                                     {adder && (
-                                        <span className="shrink-0" title={adder.displayName}>
+                                        <span
+                                            className="shrink-0"
+                                            title={adder.displayName}
+                                        >
                                             {adderAvatar ? (
                                                 <img
                                                     src={adderAvatar}
@@ -116,14 +150,19 @@ export function SessionTrackList({
                                                 />
                                             ) : (
                                                 <span className="w-5 h-5 rounded-full bg-surface-high flex items-center justify-center text-[10px] font-bold text-on-surface-variant">
-                                                    {adder.displayName.charAt(0).toUpperCase()}
+                                                    {adder.displayName
+                                                        .charAt(0)
+                                                        .toUpperCase()}
                                                 </span>
                                             )}
                                         </span>
                                     )}
                                 </div>
                                 <div className="pl-16">
-                                    <ReactionBar trackId={track.id} playlistId={playlistId} />
+                                    <ReactionBar
+                                        trackId={track.id}
+                                        playlistId={playlistId}
+                                    />
                                 </div>
                             </div>
                         );

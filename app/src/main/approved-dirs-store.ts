@@ -44,7 +44,8 @@ function readConfig(): ApprovedDirsConfig {
         if (!Array.isArray(parsed.directories)) return { directories: [] };
         return {
             directories: parsed.directories.filter(
-                (d): d is string => typeof d === 'string' && d.trim().length > 0,
+                (d): d is string =>
+                    typeof d === 'string' && d.trim().length > 0,
             ),
         };
     } catch {
@@ -54,7 +55,11 @@ function readConfig(): ApprovedDirsConfig {
 
 function writeConfig(config: ApprovedDirsConfig): void {
     try {
-        fs.writeFileSync(getConfigPath(), JSON.stringify(config, null, 2), 'utf-8');
+        fs.writeFileSync(
+            getConfigPath(),
+            JSON.stringify(config, null, 2),
+            'utf-8',
+        );
     } catch (err) {
         console.error('[ApprovedDirsStore] Failed to write config:', err);
     }
@@ -71,7 +76,8 @@ export function getApprovedDirectories(): string[] {
  */
 export function recordApprovedDirectory(dirPath: string): string[] {
     const resolved = typeof dirPath === 'string' ? dirPath.trim() : '';
-    if (!resolved || !path.isAbsolute(resolved)) return getApprovedDirectories();
+    if (!resolved || !path.isAbsolute(resolved))
+        return getApprovedDirectories();
 
     const config = readConfig();
     const normalised = path.resolve(resolved);

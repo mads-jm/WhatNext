@@ -30,7 +30,9 @@ function track(): ResolvedTrack {
     };
 }
 
-async function collect(gen: AsyncGenerator<DownloadEvent>): Promise<DownloadEvent[]> {
+async function collect(
+    gen: AsyncGenerator<DownloadEvent>,
+): Promise<DownloadEvent[]> {
     const out: DownloadEvent[] = [];
     for await (const e of gen) out.push(e);
     return out;
@@ -56,10 +58,17 @@ describe('SpytifyBackend on non-Windows', () => {
     it('download yields an error event and never spawns', async () => {
         setPlatform('linux');
         const events = await collect(
-            new SpytifyBackend().download([track()], { outputDir: OUT, preferredFormat: 'mp3' }),
+            new SpytifyBackend().download([track()], {
+                outputDir: OUT,
+                preferredFormat: 'mp3',
+            }),
         );
         expect(events).toEqual([
-            { type: 'error', sourceUrl: 'spotify:playback:current', error: 'Spytify is Windows-only' },
+            {
+                type: 'error',
+                sourceUrl: 'spotify:playback:current',
+                error: 'Spytify is Windows-only',
+            },
         ]);
         expect(vi.mocked(spawn)).not.toHaveBeenCalled();
     });
@@ -69,30 +78,45 @@ describe('SpytifyBackend on Windows (platform stubbed)', () => {
     it('captures "Saving to:" and "Recording... XX%" progress', async () => {
         setPlatform('win32');
         vi.mocked(spawn).mockReturnValue(
-            makeFakeChild(loadFixtureLines('spytify-success.stdout.txt'), { exitCode: 0 }) as ReturnType<typeof spawn>,
+            makeFakeChild(loadFixtureLines('spytify-success.stdout.txt'), {
+                exitCode: 0,
+            }) as ReturnType<typeof spawn>,
         );
 
         const events = await collect(
-            new SpytifyBackend().download([track()], { outputDir: OUT, preferredFormat: 'mp3' }),
+            new SpytifyBackend().download([track()], {
+                outputDir: OUT,
+                preferredFormat: 'mp3',
+            }),
         );
 
-        const percents = events.filter((e) => e.type === 'progress').map((e) => e.percent);
+        const percents = events
+            .filter((e) => e.type === 'progress')
+            .map((e) => e.percent);
         expect(percents).toEqual([0, 50, 100]);
 
         const complete = events.at(-1)!;
         expect(complete.type).toBe('complete');
-        expect(complete.localFilePath).toBe('C:\\Users\\u\\WhatNext\\audio\\Daft Punk - Around the World.mp3');
+        expect(complete.localFilePath).toBe(
+            'C:\\Users\\u\\WhatNext\\audio\\Daft Punk - Around the World.mp3',
+        );
         expect(complete.audioFormat).toBe('mp3');
     });
 
     it('emits an error event when the recorder exits non-zero', async () => {
         setPlatform('win32');
         vi.mocked(spawn).mockReturnValue(
-            makeFakeChild([], { stderr: 'Spotify not running', exitCode: 1 }) as ReturnType<typeof spawn>,
+            makeFakeChild([], {
+                stderr: 'Spotify not running',
+                exitCode: 1,
+            }) as ReturnType<typeof spawn>,
         );
 
         const events = await collect(
-            new SpytifyBackend().download([track()], { outputDir: OUT, preferredFormat: 'mp3' }),
+            new SpytifyBackend().download([track()], {
+                outputDir: OUT,
+                preferredFormat: 'mp3',
+            }),
         );
         expect(events).toHaveLength(1);
         expect(events[0].type).toBe('error');
@@ -101,14 +125,18 @@ describe('SpytifyBackend on Windows (platform stubbed)', () => {
 
     it('checkInstalled probes the binary and parses the version', async () => {
         setPlatform('win32');
-        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 0, stdout: '1.10.0' }));
+        vi.mocked(runCommand).mockResolvedValue(
+            makeRunResult({ code: 0, stdout: '1.10.0' }),
+        );
         const status = await new SpytifyBackend().checkInstalled();
         expect(status).toMatchObject({ installed: true, version: '1.10.0' });
     });
 
     it('checkInstalled reports not installed when spawn errors (binary absent)', async () => {
         setPlatform('win32');
-        vi.mocked(runCommand).mockRejectedValue(new Error('spawn spytify ENOENT'));
+        vi.mocked(runCommand).mockRejectedValue(
+            new Error('spawn spytify ENOENT'),
+        );
         const status = await new SpytifyBackend().checkInstalled();
         expect(status.installed).toBe(false);
         expect(status.error).toContain('ENOENT');
@@ -116,7 +144,9 @@ describe('SpytifyBackend on Windows (platform stubbed)', () => {
 
     it('checkInstalled reports not installed on a non-zero exit', async () => {
         setPlatform('win32');
-        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 1, stderr: 'bad' }));
+        vi.mocked(runCommand).mockResolvedValue(
+            makeRunResult({ code: 1, stderr: 'bad' }),
+        );
         const status = await new SpytifyBackend().checkInstalled();
         expect(status.installed).toBe(false);
         expect(status.error).toContain('code 1');
@@ -125,7 +155,9 @@ describe('SpytifyBackend on Windows (platform stubbed)', () => {
     it('uses a configured custom path for the recorder', async () => {
         setPlatform('win32');
         vi.mocked(spawn).mockReturnValue(
-            makeFakeChild(loadFixtureLines('spytify-success.stdout.txt'), { exitCode: 0 }) as ReturnType<typeof spawn>,
+            makeFakeChild(loadFixtureLines('spytify-success.stdout.txt'), {
+                exitCode: 0,
+            }) as ReturnType<typeof spawn>,
         );
         await collect(
             new SpytifyBackend('C:\\tools\\spytify.exe').download([track()], {
@@ -133,6 +165,8 @@ describe('SpytifyBackend on Windows (platform stubbed)', () => {
                 preferredFormat: 'mp3',
             }),
         );
-        expect(vi.mocked(spawn).mock.calls[0][0]).toBe('C:\\tools\\spytify.exe');
+        expect(vi.mocked(spawn).mock.calls[0][0]).toBe(
+            'C:\\tools\\spytify.exe',
+        );
     });
 });

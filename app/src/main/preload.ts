@@ -4,7 +4,13 @@ Expose a minimal, explicit API to the renderer via contextBridge.
 This adheres to Electron security guidance.
 */
 
-import { contextBridge, ipcRenderer, IpcRendererEvent, OpenDialogOptions, SaveDialogOptions } from 'electron';
+import {
+    contextBridge,
+    ipcRenderer,
+    IpcRendererEvent,
+    OpenDialogOptions,
+    SaveDialogOptions,
+} from 'electron';
 import {
     IPC_CHANNELS,
     type NodeStartedPayload,
@@ -48,7 +54,11 @@ import type {
 } from '../shared/core/ipc-protocol';
 // Download service types (service module — pure Node, no Electron)
 // Import only the types we need for the preload bridge signature.
-import type { ResolvedTrack, DownloadStartRequest, DownloadEvent } from '../../../service/downloader/types';
+import type {
+    ResolvedTrack,
+    DownloadStartRequest,
+    DownloadEvent,
+} from '../../../service/downloader/types';
 import type {
     FileEntry,
     FileManifest,
@@ -63,11 +73,12 @@ const electronHandler = {
     // Application Info
     // ========================================
     app: {
-        getVersion: (): Promise<string> => ipcRenderer.invoke('app:get-version'),
+        getVersion: (): Promise<string> =>
+            ipcRenderer.invoke('app:get-version'),
         getPlatform: (): Promise<NodeJS.Platform> =>
             ipcRenderer.invoke('app:get-platform'),
         getPath: (
-            name: 'home' | 'userData' | 'documents' | 'downloads' | 'temp'
+            name: 'home' | 'userData' | 'documents' | 'downloads' | 'temp',
         ): Promise<string> => ipcRenderer.invoke('app:get-path', name),
     },
 
@@ -76,14 +87,14 @@ const electronHandler = {
     // ========================================
     window: {
         minimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
-        maximize: (): Promise<boolean> =>
-            ipcRenderer.invoke('window:maximize'),
+        maximize: (): Promise<boolean> => ipcRenderer.invoke('window:maximize'),
         close: (): Promise<void> => ipcRenderer.invoke('window:close'),
         isMaximized: (): Promise<boolean> =>
             ipcRenderer.invoke('window:is-maximized'),
         onMaximized: (callback: () => void) => {
             ipcRenderer.on('window-maximized', callback);
-            return () => ipcRenderer.removeListener('window-maximized', callback);
+            return () =>
+                ipcRenderer.removeListener('window-maximized', callback);
         },
         onUnmaximized: (callback: () => void) => {
             ipcRenderer.on('window-unmaximized', callback);
@@ -97,15 +108,15 @@ const electronHandler = {
     // ========================================
     dialog: {
         openFile: (
-            options?: OpenDialogOptions
+            options?: OpenDialogOptions,
         ): Promise<{ canceled: boolean; filePaths: string[] }> =>
             ipcRenderer.invoke('dialog:open-file', options),
         openDirectory: (
-            options?: OpenDialogOptions
+            options?: OpenDialogOptions,
         ): Promise<{ canceled: boolean; filePaths: string[] }> =>
             ipcRenderer.invoke('dialog:open-directory', options),
         saveFile: (
-            options?: SaveDialogOptions
+            options?: SaveDialogOptions,
         ): Promise<{ canceled: boolean; filePath?: string }> =>
             ipcRenderer.invoke('dialog:save-file', options),
     },
@@ -116,7 +127,7 @@ const electronHandler = {
     file: {
         write: (
             filePath: string,
-            content: string
+            content: string,
         ): Promise<{ success: boolean }> =>
             ipcRenderer.invoke('file:write', filePath, content),
     },
@@ -125,8 +136,15 @@ const electronHandler = {
     // Artwork Caching
     // ========================================
     artwork: {
-        download: (url: string, meta?: { albumName?: string; artistName?: string }): Promise<{ success: boolean; localPath?: string; error?: string }> =>
-            ipcRenderer.invoke('artwork:download', { url, albumName: meta?.albumName, artistName: meta?.artistName }),
+        download: (
+            url: string,
+            meta?: { albumName?: string; artistName?: string },
+        ): Promise<{ success: boolean; localPath?: string; error?: string }> =>
+            ipcRenderer.invoke('artwork:download', {
+                url,
+                albumName: meta?.albumName,
+                artistName: meta?.artistName,
+            }),
     },
 
     // ========================================
@@ -134,11 +152,11 @@ const electronHandler = {
     // ========================================
     shell: {
         openExternal: (
-            url: string
+            url: string,
         ): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke('shell:open-external', url),
         openPath: (
-            dirPath: string
+            dirPath: string,
         ): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke('shell:open-path', dirPath),
     },
@@ -147,7 +165,11 @@ const electronHandler = {
     // User Identity
     // ========================================
     user: {
-        setIdentity: (identity: { displayName: string; avatarUrl?: string; userId: string }): Promise<{ success: boolean }> =>
+        setIdentity: (identity: {
+            displayName: string;
+            avatarUrl?: string;
+            userId: string;
+        }): Promise<{ success: boolean }> =>
             ipcRenderer.invoke('user:set-identity', identity),
     },
 
@@ -168,88 +190,190 @@ const electronHandler = {
             ipcRenderer.invoke('p2p:get-status'),
 
         // Session invite / join
-        getInviteUrl: (sessionId?: string): Promise<GetInviteUrlResult & { success: boolean; error?: string }> =>
+        getInviteUrl: (
+            sessionId?: string,
+        ): Promise<GetInviteUrlResult & { success: boolean; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.P2P_GET_INVITE_URL, sessionId),
 
-        joinSession: (urlOrCode: string): Promise<{ success: boolean; error?: string }> =>
+        joinSession: (
+            urlOrCode: string,
+        ): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.P2P_JOIN_SESSION, urlOrCode),
 
         // Relay configuration
         getRelays: (): Promise<{ addresses: string[] }> =>
             ipcRenderer.invoke(IPC_CHANNELS.P2P_RELAY_GET),
 
-        addRelay: (multiaddr: string): Promise<{ success: boolean; addresses: string[]; error?: string }> =>
+        addRelay: (
+            multiaddr: string,
+        ): Promise<{ success: boolean; addresses: string[]; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.P2P_RELAY_ADD, multiaddr),
 
-        removeRelay: (multiaddr: string): Promise<{ success: boolean; addresses: string[]; error?: string }> =>
+        removeRelay: (
+            multiaddr: string,
+        ): Promise<{ success: boolean; addresses: string[]; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.P2P_RELAY_REMOVE, multiaddr),
 
         onNodeStarted: (callback: (data: NodeStartedPayload) => void) => {
-            console.log('[Preload] Setting up listener for channel:', IPC_CHANNELS.P2P_NODE_STARTED);
-            const listener = (_event: IpcRendererEvent, data: NodeStartedPayload) => {
-                console.log('[Preload] ← Received on channel', IPC_CHANNELS.P2P_NODE_STARTED, data);
+            console.log(
+                '[Preload] Setting up listener for channel:',
+                IPC_CHANNELS.P2P_NODE_STARTED,
+            );
+            const listener = (
+                _event: IpcRendererEvent,
+                data: NodeStartedPayload,
+            ) => {
+                console.log(
+                    '[Preload] ← Received on channel',
+                    IPC_CHANNELS.P2P_NODE_STARTED,
+                    data,
+                );
                 callback(data);
             };
             ipcRenderer.on(IPC_CHANNELS.P2P_NODE_STARTED, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_NODE_STARTED, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_NODE_STARTED,
+                    listener,
+                );
         },
 
         onPeerDiscovered: (callback: (data: PeerDiscoveredPayload) => void) => {
-            console.log('[Preload] Setting up listener for channel:', IPC_CHANNELS.P2P_PEER_DISCOVERED);
-            const listener = (_event: IpcRendererEvent, data: PeerDiscoveredPayload) => {
-                console.log('[Preload] ← Received on channel', IPC_CHANNELS.P2P_PEER_DISCOVERED, data);
+            console.log(
+                '[Preload] Setting up listener for channel:',
+                IPC_CHANNELS.P2P_PEER_DISCOVERED,
+            );
+            const listener = (
+                _event: IpcRendererEvent,
+                data: PeerDiscoveredPayload,
+            ) => {
+                console.log(
+                    '[Preload] ← Received on channel',
+                    IPC_CHANNELS.P2P_PEER_DISCOVERED,
+                    data,
+                );
                 callback(data);
             };
             ipcRenderer.on(IPC_CHANNELS.P2P_PEER_DISCOVERED, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_PEER_DISCOVERED, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_PEER_DISCOVERED,
+                    listener,
+                );
         },
 
-        onConnectionRequest: (callback: (data: ConnectionRequestPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: ConnectionRequestPayload) => callback(data);
+        onConnectionRequest: (
+            callback: (data: ConnectionRequestPayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: ConnectionRequestPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_CONNECTION_REQUEST, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_CONNECTION_REQUEST, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_CONNECTION_REQUEST,
+                    listener,
+                );
         },
 
-        onConnectionEstablished: (callback: (data: ConnectionEstablishedPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: ConnectionEstablishedPayload) => callback(data);
+        onConnectionEstablished: (
+            callback: (data: ConnectionEstablishedPayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: ConnectionEstablishedPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED,
+                    listener,
+                );
         },
 
-        onConnectionFailed: (callback: (data: ConnectionFailedPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: ConnectionFailedPayload) => callback(data);
+        onConnectionFailed: (
+            callback: (data: ConnectionFailedPayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: ConnectionFailedPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_CONNECTION_FAILED, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_CONNECTION_FAILED, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_CONNECTION_FAILED,
+                    listener,
+                );
         },
 
-        onConnectionClosed: (callback: (data: ConnectionClosedPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: ConnectionClosedPayload) => callback(data);
+        onConnectionClosed: (
+            callback: (data: ConnectionClosedPayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: ConnectionClosedPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_CONNECTION_CLOSED, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_CONNECTION_CLOSED, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_CONNECTION_CLOSED,
+                    listener,
+                );
         },
 
-        onHandshakeComplete: (callback: (data: HandshakeCompletePayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: HandshakeCompletePayload) => callback(data);
+        onHandshakeComplete: (
+            callback: (data: HandshakeCompletePayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: HandshakeCompletePayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_HANDSHAKE_COMPLETE, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_HANDSHAKE_COMPLETE, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_HANDSHAKE_COMPLETE,
+                    listener,
+                );
         },
 
         onNodeError: (callback: (data: NodeErrorPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: NodeErrorPayload) => callback(data);
+            const listener = (
+                _event: IpcRendererEvent,
+                data: NodeErrorPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_NODE_ERROR, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_NODE_ERROR, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_NODE_ERROR,
+                    listener,
+                );
         },
 
         onRelayStatus: (callback: (data: RelayStatusPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: RelayStatusPayload) => callback(data);
+            const listener = (
+                _event: IpcRendererEvent,
+                data: RelayStatusPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_RELAY_STATUS, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_RELAY_STATUS, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_RELAY_STATUS,
+                    listener,
+                );
         },
 
         onPeerPresence: (callback: (data: PeerPresencePayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: PeerPresencePayload) => callback(data);
+            const listener = (
+                _event: IpcRendererEvent,
+                data: PeerPresencePayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.P2P_PEER_PRESENCE, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.P2P_PEER_PRESENCE, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.P2P_PEER_PRESENCE,
+                    listener,
+                );
         },
     },
 
@@ -257,33 +381,82 @@ const electronHandler = {
     // Replication
     // ========================================
     replication: {
-        pushChanges: (collection: string, documents: Array<{ id: string; data: Record<string, unknown>; updatedAt: string; deleted?: boolean }>): Promise<{ success: boolean }> =>
-            ipcRenderer.invoke(IPC_CHANNELS.REPLICATION_PUSH, { collection, documents }),
+        pushChanges: (
+            collection: string,
+            documents: Array<{
+                id: string;
+                data: Record<string, unknown>;
+                updatedAt: string;
+                deleted?: boolean;
+            }>,
+        ): Promise<{ success: boolean }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.REPLICATION_PUSH, {
+                collection,
+                documents,
+            }),
 
-        pullChanges: (collection: string, checkpoint: string | null): Promise<{ success: boolean }> =>
-            ipcRenderer.invoke(IPC_CHANNELS.REPLICATION_PULL, { collection, checkpoint }),
+        pullChanges: (
+            collection: string,
+            checkpoint: string | null,
+        ): Promise<{ success: boolean }> =>
+            ipcRenderer.invoke(IPC_CHANNELS.REPLICATION_PULL, {
+                collection,
+                checkpoint,
+            }),
 
         // Respond to a pull request from the utility process (renderer provides the data)
-        respondToPullRequest: (response: ReplicationPullResponsePayload): Promise<{ success: boolean }> =>
-            ipcRenderer.invoke(IPC_CHANNELS.REPLICATION_PULL_RESPONSE, response),
+        respondToPullRequest: (
+            response: ReplicationPullResponsePayload,
+        ): Promise<{ success: boolean }> =>
+            ipcRenderer.invoke(
+                IPC_CHANNELS.REPLICATION_PULL_RESPONSE,
+                response,
+            ),
 
-        onReplicationChanges: (callback: (data: ReplicationChangesPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: ReplicationChangesPayload) => callback(data);
+        onReplicationChanges: (
+            callback: (data: ReplicationChangesPayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: ReplicationChangesPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.REPLICATION_CHANGES, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.REPLICATION_CHANGES, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.REPLICATION_CHANGES,
+                    listener,
+                );
         },
 
-        onReplicationState: (callback: (data: ReplicationStatePayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: ReplicationStatePayload) => callback(data);
+        onReplicationState: (
+            callback: (data: ReplicationStatePayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: ReplicationStatePayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.REPLICATION_STATE, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.REPLICATION_STATE, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.REPLICATION_STATE,
+                    listener,
+                );
         },
 
         // Listen for pull requests from main (forwarded from utility when a remote peer requests data)
-        onPullRequest: (callback: (data: ReplicationPullRequestPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: ReplicationPullRequestPayload) => callback(data);
+        onPullRequest: (
+            callback: (data: ReplicationPullRequestPayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: ReplicationPullRequestPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.REPLICATION_PULL_REQUEST, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.REPLICATION_PULL_REQUEST, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.REPLICATION_PULL_REQUEST,
+                    listener,
+                );
         },
     },
 
@@ -294,73 +467,154 @@ const electronHandler = {
         startAuth: (): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke('spotify:auth-start'),
 
-        getAuthStatus: (): Promise<{ authenticated: boolean; hasStoredTokens: boolean }> =>
-            ipcRenderer.invoke('spotify:auth-status'),
+        getAuthStatus: (): Promise<{
+            authenticated: boolean;
+            hasStoredTokens: boolean;
+        }> => ipcRenderer.invoke('spotify:auth-status'),
 
-        getPlaylists: (): Promise<{ success: boolean; playlists?: SpotifyPlaylistItem[]; total?: number; error?: string }> =>
-            ipcRenderer.invoke('spotify:get-playlists'),
+        getPlaylists: (): Promise<{
+            success: boolean;
+            playlists?: SpotifyPlaylistItem[];
+            total?: number;
+            error?: string;
+        }> => ipcRenderer.invoke('spotify:get-playlists'),
 
-        getTracks: (playlistId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
-            ipcRenderer.invoke('spotify:get-tracks', playlistId),
+        getTracks: (
+            playlistId: string,
+        ): Promise<{
+            success: boolean;
+            tracks?: MappedTrack[];
+            total?: number;
+            error?: string;
+        }> => ipcRenderer.invoke('spotify:get-tracks', playlistId),
 
-        getProfile: (): Promise<{ success: boolean; userId?: string; displayName?: string; avatarUrl?: string; error?: string }> =>
-            ipcRenderer.invoke('spotify:get-profile'),
+        getProfile: (): Promise<{
+            success: boolean;
+            userId?: string;
+            displayName?: string;
+            avatarUrl?: string;
+            error?: string;
+        }> => ipcRenderer.invoke('spotify:get-profile'),
 
-        syncPlaylist: (linkedSpotifyId: string): Promise<{ success: boolean; tracks?: MappedTrack[]; total?: number; error?: string }> =>
-            ipcRenderer.invoke('spotify:sync-playlist', linkedSpotifyId),
+        syncPlaylist: (
+            linkedSpotifyId: string,
+        ): Promise<{
+            success: boolean;
+            tracks?: MappedTrack[];
+            total?: number;
+            error?: string;
+        }> => ipcRenderer.invoke('spotify:sync-playlist', linkedSpotifyId),
 
         onAuthComplete: (callback: (data: { success: boolean }) => void) => {
-            const listener = (_event: IpcRendererEvent, data: { success: boolean }) => callback(data);
+            const listener = (
+                _event: IpcRendererEvent,
+                data: { success: boolean },
+            ) => callback(data);
             ipcRenderer.on('spotify:auth-complete', listener);
-            return () => ipcRenderer.removeListener('spotify:auth-complete', listener);
+            return () =>
+                ipcRenderer.removeListener('spotify:auth-complete', listener);
         },
 
         onAuthError: (callback: (data: { error: string }) => void) => {
-            const listener = (_event: IpcRendererEvent, data: { error: string }) => callback(data);
+            const listener = (
+                _event: IpcRendererEvent,
+                data: { error: string },
+            ) => callback(data);
             ipcRenderer.on('spotify:auth-error', listener);
-            return () => ipcRenderer.removeListener('spotify:auth-error', listener);
+            return () =>
+                ipcRenderer.removeListener('spotify:auth-error', listener);
         },
 
-        onPlaybackDegraded: (callback: (data: { reason: 'premium-required'; status: number }) => void) => {
-            const listener = (_event: IpcRendererEvent, data: { reason: 'premium-required'; status: number }) => callback(data);
+        onPlaybackDegraded: (
+            callback: (data: {
+                reason: 'premium-required';
+                status: number;
+            }) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: { reason: 'premium-required'; status: number },
+            ) => callback(data);
             ipcRenderer.on('spotify:playback-degraded', listener);
-            return () => ipcRenderer.removeListener('spotify:playback-degraded', listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    'spotify:playback-degraded',
+                    listener,
+                );
         },
 
         // Playback control
-        getPlaybackState: (): Promise<{ success: boolean; state?: SpotifyPlaybackStateResult; error?: string }> =>
-            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYBACK_STATE),
+        getPlaybackState: (): Promise<{
+            success: boolean;
+            state?: SpotifyPlaybackStateResult;
+            error?: string;
+        }> => ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYBACK_STATE),
 
-        getDevices: (): Promise<{ success: boolean; devices?: SpotifyDevice[]; error?: string }> =>
-            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_DEVICES),
+        getDevices: (): Promise<{
+            success: boolean;
+            devices?: SpotifyDevice[];
+            error?: string;
+        }> => ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_DEVICES),
 
-        startPlayback: (params: SpotifyStartPlaybackParams): Promise<{ success: boolean; error?: string }> =>
+        startPlayback: (
+            params: SpotifyStartPlaybackParams,
+        ): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_START_PLAYBACK, params),
 
-        pausePlayback: (params?: { deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+        pausePlayback: (params?: {
+            deviceId?: string;
+        }): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_PAUSE_PLAYBACK, params),
 
-        resumePlayback: (params?: { deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+        resumePlayback: (params?: {
+            deviceId?: string;
+        }): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_RESUME_PLAYBACK, params),
 
-        skipNext: (params?: { deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+        skipNext: (params?: {
+            deviceId?: string;
+        }): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_SKIP_NEXT, params),
 
-        skipPrevious: (params?: { deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+        skipPrevious: (params?: {
+            deviceId?: string;
+        }): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_SKIP_PREVIOUS, params),
 
-        seekPlayback: (params: { positionMs: number; deviceId?: string }): Promise<{ success: boolean; error?: string }> =>
+        seekPlayback: (params: {
+            positionMs: number;
+            deviceId?: string;
+        }): Promise<{ success: boolean; error?: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_SEEK_PLAYBACK, params),
 
         // Enhanced playlist polling
-        getPlaylistTracksFull: (playlistId: string): Promise<SpotifyPlaylistTracksFullResult> =>
-            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FULL, playlistId),
+        getPlaylistTracksFull: (
+            playlistId: string,
+        ): Promise<SpotifyPlaylistTracksFullResult> =>
+            ipcRenderer.invoke(
+                IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FULL,
+                playlistId,
+            ),
 
-        getPlaylistSnapshot: (playlistId: string): Promise<SpotifyPlaylistSnapshotResult> =>
-            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_SNAPSHOT, playlistId),
+        getPlaylistSnapshot: (
+            playlistId: string,
+        ): Promise<SpotifyPlaylistSnapshotResult> =>
+            ipcRenderer.invoke(
+                IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_SNAPSHOT,
+                playlistId,
+            ),
 
-        getPlaylistTracksFrom: (playlistId: string, offset: number, knownSnapshotId?: string): Promise<SpotifyPlaylistTracksFullResult> =>
-            ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FROM, playlistId, offset, knownSnapshotId),
+        getPlaylistTracksFrom: (
+            playlistId: string,
+            offset: number,
+            knownSnapshotId?: string,
+        ): Promise<SpotifyPlaylistTracksFullResult> =>
+            ipcRenderer.invoke(
+                IPC_CHANNELS.SPOTIFY_GET_PLAYLIST_TRACKS_FROM,
+                playlistId,
+                offset,
+                knownSnapshotId,
+            ),
     },
 
     // ========================================
@@ -376,21 +630,31 @@ const electronHandler = {
         getInfo: (): Promise<CompanionInfoResult | null> =>
             ipcRenderer.invoke(IPC_CHANNELS.COMPANION_GET_INFO),
 
-        respondToTimeRequest: (clientId: string, action: 'seen' | 'granted'): Promise<void> =>
-            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_TIME_REQUEST_RESPOND, { clientId, action }),
+        respondToTimeRequest: (
+            clientId: string,
+            action: 'seen' | 'granted',
+        ): Promise<void> =>
+            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_TIME_REQUEST_RESPOND, {
+                clientId,
+                action,
+            }),
 
         generateQrCode: (url: string): Promise<string> =>
             ipcRenderer.invoke(IPC_CHANNELS.COMPANION_QR_CODE, url),
 
         // Relay tunnel
-        startRelayTunnel: (relayHost: string): Promise<{ sessionCode: string; relayUrl: string }> =>
+        startRelayTunnel: (
+            relayHost: string,
+        ): Promise<{ sessionCode: string; relayUrl: string }> =>
             ipcRenderer.invoke(IPC_CHANNELS.COMPANION_RELAY_START, relayHost),
 
         stopRelayTunnel: (): Promise<void> =>
             ipcRenderer.invoke(IPC_CHANNELS.COMPANION_RELAY_STOP),
 
-        getRelayTunnelInfo: (): Promise<{ sessionCode: string; relayUrl: string } | null> =>
-            ipcRenderer.invoke(IPC_CHANNELS.COMPANION_RELAY_INFO),
+        getRelayTunnelInfo: (): Promise<{
+            sessionCode: string;
+            relayUrl: string;
+        } | null> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_RELAY_INFO),
 
         // State push (renderer → main → phone clients)
         pushPlayback: (state: unknown): void => {
@@ -400,35 +664,75 @@ const electronHandler = {
             ipcRenderer.send(IPC_CHANNELS.COMPANION_PUSH_TRACKS, tracks);
         },
         pushParticipants: (participants: unknown): void => {
-            ipcRenderer.send(IPC_CHANNELS.COMPANION_PUSH_PARTICIPANTS, participants);
+            ipcRenderer.send(
+                IPC_CHANNELS.COMPANION_PUSH_PARTICIPANTS,
+                participants,
+            );
         },
         pushTurn: (turnState: unknown): void => {
             ipcRenderer.send(IPC_CHANNELS.COMPANION_PUSH_TURN, turnState);
         },
         pushSessionSnapshot: (snapshot: unknown): void => {
-            ipcRenderer.send(IPC_CHANNELS.COMPANION_PUSH_SESSION_SNAPSHOT, snapshot);
+            ipcRenderer.send(
+                IPC_CHANNELS.COMPANION_PUSH_SESSION_SNAPSHOT,
+                snapshot,
+            );
         },
 
         // Events (main → renderer)
-        onClientJoined: (callback: (data: CompanionClientEventPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: CompanionClientEventPayload) => callback(data);
+        onClientJoined: (
+            callback: (data: CompanionClientEventPayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: CompanionClientEventPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.COMPANION_CLIENT_JOINED, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_CLIENT_JOINED, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.COMPANION_CLIENT_JOINED,
+                    listener,
+                );
         },
-        onClientLeft: (callback: (data: CompanionClientEventPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: CompanionClientEventPayload) => callback(data);
+        onClientLeft: (
+            callback: (data: CompanionClientEventPayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: CompanionClientEventPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.COMPANION_CLIENT_LEFT, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_CLIENT_LEFT, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.COMPANION_CLIENT_LEFT,
+                    listener,
+                );
         },
         onReaction: (callback: (data: CompanionReactionPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: CompanionReactionPayload) => callback(data);
+            const listener = (
+                _event: IpcRendererEvent,
+                data: CompanionReactionPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.COMPANION_REACTION, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_REACTION, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.COMPANION_REACTION,
+                    listener,
+                );
         },
-        onTimeRequest: (callback: (data: CompanionTimeRequestPayload) => void) => {
-            const listener = (_event: IpcRendererEvent, data: CompanionTimeRequestPayload) => callback(data);
+        onTimeRequest: (
+            callback: (data: CompanionTimeRequestPayload) => void,
+        ) => {
+            const listener = (
+                _event: IpcRendererEvent,
+                data: CompanionTimeRequestPayload,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.COMPANION_TIME_REQUEST, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_TIME_REQUEST, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.COMPANION_TIME_REQUEST,
+                    listener,
+                );
         },
     },
 
@@ -462,25 +766,42 @@ const electronHandler = {
         getBackendPaths: (): Promise<BackendPathMap> =>
             ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_GET_BACKEND_PATHS),
 
-        setBackendPath: (payload: SetBackendPathPayload): Promise<SetBackendPathResult> =>
+        setBackendPath: (
+            payload: SetBackendPathPayload,
+        ): Promise<SetBackendPathResult> =>
             ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_SET_BACKEND_PATH, payload),
 
         onProgress: (cb: (event: DownloadEvent) => void) => {
-            const listener = (_e: IpcRendererEvent, ev: DownloadEvent) => cb(ev);
+            const listener = (_e: IpcRendererEvent, ev: DownloadEvent) =>
+                cb(ev);
             ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_PROGRESS, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_PROGRESS, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.DOWNLOAD_PROGRESS,
+                    listener,
+                );
         },
 
         onTrackComplete: (cb: (event: DownloadEvent) => void) => {
-            const listener = (_e: IpcRendererEvent, ev: DownloadEvent) => cb(ev);
+            const listener = (_e: IpcRendererEvent, ev: DownloadEvent) =>
+                cb(ev);
             ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE,
+                    listener,
+                );
         },
 
         onError: (cb: (event: DownloadEvent) => void) => {
-            const listener = (_e: IpcRendererEvent, ev: DownloadEvent) => cb(ev);
+            const listener = (_e: IpcRendererEvent, ev: DownloadEvent) =>
+                cb(ev);
             ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_ERROR, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_ERROR, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.DOWNLOAD_ERROR,
+                    listener,
+                );
         },
     },
 
@@ -488,11 +809,20 @@ const electronHandler = {
     // File Transfer
     // ========================================
     fileTransfer: {
-        requestManifest: (peerId: string, playlistId: string): Promise<unknown> =>
-            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_REQUEST_MANIFEST, { peerId, playlistId }),
+        requestManifest: (
+            peerId: string,
+            playlistId: string,
+        ): Promise<unknown> =>
+            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_REQUEST_MANIFEST, {
+                peerId,
+                playlistId,
+            }),
 
         requestFiles: (peerId: string, files: FileEntry[]): Promise<unknown> =>
-            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_REQUEST_FILES, { peerId, files }),
+            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_REQUEST_FILES, {
+                peerId,
+                files,
+            }),
 
         cancel: (sha256: string): Promise<unknown> =>
             ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_CANCEL, { sha256 }),
@@ -501,12 +831,19 @@ const electronHandler = {
             ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_GET_TRANSFERS),
 
         setSharing: (playlistId: string, enabled: boolean): Promise<unknown> =>
-            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_SET_SHARING, { playlistId, enabled }),
+            ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_SET_SHARING, {
+                playlistId,
+                enabled,
+            }),
 
         registerTracks: (
             playlistId: string,
             coverArtPath: string | undefined,
-            tracks: Array<{ trackId: string; audioPath?: string; artworkPath?: string }>,
+            tracks: Array<{
+                trackId: string;
+                audioPath?: string;
+                artworkPath?: string;
+            }>,
         ): Promise<unknown> =>
             ipcRenderer.invoke(IPC_CHANNELS.FILE_TRANSFER_REGISTER_TRACKS, {
                 playlistId,
@@ -515,27 +852,51 @@ const electronHandler = {
             }),
 
         onManifest: (callback: (manifest: FileManifest) => void) => {
-            const listener = (_event: IpcRendererEvent, data: FileManifest) => callback(data);
+            const listener = (_event: IpcRendererEvent, data: FileManifest) =>
+                callback(data);
             ipcRenderer.on(IPC_CHANNELS.FILE_TRANSFER_MANIFEST, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.FILE_TRANSFER_MANIFEST, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.FILE_TRANSFER_MANIFEST,
+                    listener,
+                );
         },
 
         onProgress: (callback: (progress: TransferProgress) => void) => {
-            const listener = (_event: IpcRendererEvent, data: TransferProgress) => callback(data);
+            const listener = (
+                _event: IpcRendererEvent,
+                data: TransferProgress,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.FILE_TRANSFER_PROGRESS, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.FILE_TRANSFER_PROGRESS, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.FILE_TRANSFER_PROGRESS,
+                    listener,
+                );
         },
 
         onComplete: (callback: (result: TransferComplete) => void) => {
-            const listener = (_event: IpcRendererEvent, data: TransferComplete) => callback(data);
+            const listener = (
+                _event: IpcRendererEvent,
+                data: TransferComplete,
+            ) => callback(data);
             ipcRenderer.on(IPC_CHANNELS.FILE_TRANSFER_COMPLETE, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.FILE_TRANSFER_COMPLETE, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.FILE_TRANSFER_COMPLETE,
+                    listener,
+                );
         },
 
         onError: (callback: (error: TransferError) => void) => {
-            const listener = (_event: IpcRendererEvent, data: TransferError) => callback(data);
+            const listener = (_event: IpcRendererEvent, data: TransferError) =>
+                callback(data);
             ipcRenderer.on(IPC_CHANNELS.FILE_TRANSFER_ERROR, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.FILE_TRANSFER_ERROR, listener);
+            return () =>
+                ipcRenderer.removeListener(
+                    IPC_CHANNELS.FILE_TRANSFER_ERROR,
+                    listener,
+                );
         },
     },
 
@@ -546,7 +907,9 @@ const electronHandler = {
         resolve: (req: PurchaseResolvePayload): Promise<PurchaseLinkResult[]> =>
             ipcRenderer.invoke(IPC_CHANNELS.PURCHASE_RESOLVE, req),
 
-        resolveBatch: (reqs: PurchaseResolvePayload[]): Promise<PurchaseLinkResult[][]> =>
+        resolveBatch: (
+            reqs: PurchaseResolvePayload[],
+        ): Promise<PurchaseLinkResult[][]> =>
             ipcRenderer.invoke(IPC_CHANNELS.PURCHASE_RESOLVE_BATCH, reqs),
     },
 
@@ -560,7 +923,10 @@ const electronHandler = {
         invoke<T = unknown>(channel: string, ...args: unknown[]): Promise<T> {
             return ipcRenderer.invoke(channel, ...args);
         },
-        on(channel: string, listener: (event: IpcRendererEvent, ...args: unknown[]) => void) {
+        on(
+            channel: string,
+            listener: (event: IpcRendererEvent, ...args: unknown[]) => void,
+        ) {
             ipcRenderer.on(channel, listener);
             return () => ipcRenderer.removeListener(channel, listener);
         },
@@ -572,7 +938,7 @@ if (typeof window.electron === 'undefined') {
     contextBridge.exposeInMainWorld('electron', electronHandler);
 } else {
     console.error(
-        'Cannot bind `electron` API: property already exists on the window object.'
+        'Cannot bind `electron` API: property already exists on the window object.',
     );
 }
 

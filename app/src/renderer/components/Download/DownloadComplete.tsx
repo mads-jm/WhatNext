@@ -11,7 +11,11 @@ interface DownloadCompleteProps {
     onReset: () => void;
 }
 
-export function DownloadComplete({ tracks, progress, onReset }: DownloadCompleteProps) {
+export function DownloadComplete({
+    tracks,
+    progress,
+    onReset,
+}: DownloadCompleteProps) {
     const completed = tracks.filter(
         (t) => progress.get(t.sourceUrl)?.status === 'complete',
     );
@@ -31,17 +35,20 @@ export function DownloadComplete({ tracks, progress, onReset }: DownloadComplete
 
             <div className="text-center">
                 <p className="text-lg font-bold font-headline text-on-surface">
-                    {completed.length} track{completed.length !== 1 ? 's' : ''} downloaded
+                    {completed.length} track{completed.length !== 1 ? 's' : ''}{' '}
+                    downloaded
                 </p>
                 {failed.length > 0 && (
                     <p className="text-sm text-error mt-1">
-                        {failed.length} track{failed.length !== 1 ? 's' : ''} failed
+                        {failed.length} track{failed.length !== 1 ? 's' : ''}{' '}
+                        failed
                     </p>
                 )}
                 {unimported.length > 0 && (
                     <p className="text-sm text-tertiary mt-1">
-                        {unimported.length} track{unimported.length !== 1 ? 's' : ''}{' '}
-                        downloaded but not imported
+                        {unimported.length} track
+                        {unimported.length !== 1 ? 's' : ''} downloaded but not
+                        imported
                     </p>
                 )}
                 <p className="text-sm text-on-surface-variant mt-1">
@@ -49,7 +56,8 @@ export function DownloadComplete({ tracks, progress, onReset }: DownloadComplete
                 </p>
                 <p className="text-xs text-on-surface-variant/70 mt-2 flex items-center justify-center gap-1.5">
                     <i className="fa-solid fa-circle-notch fa-spin text-[10px]" />
-                    Purchase links resolving in background — will appear on track rows shortly.
+                    Purchase links resolving in background — will appear on
+                    track rows shortly.
                 </p>
             </div>
 
@@ -59,15 +67,20 @@ export function DownloadComplete({ tracks, progress, onReset }: DownloadComplete
                         Downloaded, not imported
                     </p>
                     {unimported.map((t) => (
-                        <div key={t.sourceId} className="flex items-center gap-2 text-sm">
+                        <div
+                            key={t.sourceId}
+                            className="flex items-center gap-2 text-sm"
+                        >
                             <i className="fa-solid fa-triangle-exclamation text-tertiary text-xs w-3" />
-                            <span className="text-on-surface-variant truncate">{t.title}</span>
+                            <span className="text-on-surface-variant truncate">
+                                {t.title}
+                            </span>
                         </div>
                     ))}
                     <p className="text-xs text-on-surface-variant/70 pt-1">
-                        The downloader did not report a file location for these, so
-                        they were not added to your library. Try downloading them
-                        again.
+                        The downloader did not report a file location for these,
+                        so they were not added to your library. Try downloading
+                        them again.
                     </p>
                 </div>
             )}
@@ -78,9 +91,14 @@ export function DownloadComplete({ tracks, progress, onReset }: DownloadComplete
                         Failed tracks
                     </p>
                     {failed.map((t) => (
-                        <div key={t.sourceId} className="flex items-center gap-2 text-sm">
+                        <div
+                            key={t.sourceId}
+                            className="flex items-center gap-2 text-sm"
+                        >
                             <i className="fa-solid fa-xmark text-error text-xs w-3" />
-                            <span className="text-on-surface-variant truncate">{t.title}</span>
+                            <span className="text-on-surface-variant truncate">
+                                {t.title}
+                            </span>
                             <span className="text-xs text-error truncate">
                                 {progress.get(t.sourceUrl)?.error}
                             </span>

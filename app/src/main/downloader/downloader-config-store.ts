@@ -21,7 +21,11 @@ import { app } from 'electron';
 
 export type DownloaderBackendId = 'ytdlp' | 'spotdl' | 'spytify';
 
-const BACKEND_IDS: readonly DownloaderBackendId[] = ['ytdlp', 'spotdl', 'spytify'];
+const BACKEND_IDS: readonly DownloaderBackendId[] = [
+    'ytdlp',
+    'spotdl',
+    'spytify',
+];
 
 /** A path map keyed by backend id. Absent/blank entries mean "use PATH". */
 export type BackendPaths = Partial<Record<DownloaderBackendId, string>>;
@@ -44,7 +48,11 @@ function readConfig(): DownloaderConfig {
     try {
         const raw = fs.readFileSync(getConfigPath(), 'utf-8');
         const parsed = JSON.parse(raw) as DownloaderConfig;
-        if (!parsed || typeof parsed.paths !== 'object' || parsed.paths === null) {
+        if (
+            !parsed ||
+            typeof parsed.paths !== 'object' ||
+            parsed.paths === null
+        ) {
             return { paths: {} };
         }
         // Keep only known ids with non-empty string values.
@@ -63,7 +71,11 @@ function readConfig(): DownloaderConfig {
 
 function writeConfig(config: DownloaderConfig): void {
     try {
-        fs.writeFileSync(getConfigPath(), JSON.stringify(config, null, 2), 'utf-8');
+        fs.writeFileSync(
+            getConfigPath(),
+            JSON.stringify(config, null, 2),
+            'utf-8',
+        );
     } catch (err) {
         console.error('[DownloaderConfigStore] Failed to write config:', err);
     }
@@ -84,7 +96,10 @@ export function getBackendPath(id: string): string | undefined {
  * Set (or, with a blank/null value, clear) the custom executable path for a
  * backend. Returns the updated path map. Unknown ids are ignored.
  */
-export function setBackendPath(id: string, executablePath: string | null): BackendPaths {
+export function setBackendPath(
+    id: string,
+    executablePath: string | null,
+): BackendPaths {
     const config = readConfig();
     if (!isBackendId(id)) return config.paths;
 

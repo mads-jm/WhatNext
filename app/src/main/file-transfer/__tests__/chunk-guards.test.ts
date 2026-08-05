@@ -29,7 +29,10 @@ function transfer(overrides: Partial<ActiveTransfer> = {}): ActiveTransfer {
 }
 
 /** `n` bytes of base64-encoded payload. */
-function payload(n: number, overrides: Partial<InboundChunk> = {}): InboundChunk {
+function payload(
+    n: number,
+    overrides: Partial<InboundChunk> = {},
+): InboundChunk {
     return {
         peerId: PEER,
         sha256: SHA,
@@ -50,42 +53,57 @@ describe('evaluateInboundChunk — rejections', () => {
     });
 
     it('drops a malformed sha256 before it can be used as a filename', () => {
-        const verdict = evaluateInboundChunk(payload(10, { sha256: '../../.ssh/authorized_keys' }), transfer());
+        const verdict = evaluateInboundChunk(
+            payload(10, { sha256: '../../.ssh/authorized_keys' }),
+            transfer(),
+        );
         expect(verdict).toMatchObject({ ok: false, action: 'drop' });
     });
 
     it.each([['complete'], ['error'], ['cancelled'], ['verifying']] as const)(
         'drops a chunk for a transfer in status %s',
         (status) => {
-            const verdict = evaluateInboundChunk(payload(10), transfer({ status }));
+            const verdict = evaluateInboundChunk(
+                payload(10),
+                transfer({ status }),
+            );
             expect(verdict).toMatchObject({ ok: false, action: 'drop' });
-        }
+        },
     );
 
     it('drops — never fails — a chunk from a peer other than the one we asked', () => {
         // `drop`, deliberately: if a third peer could fail our transfers by spraying
         // chunks, the guard would hand it a denial-of-service instead of closing one.
-        const verdict = evaluateInboundChunk(payload(10, { peerId: 'someone-else' }), transfer());
+        const verdict = evaluateInboundChunk(
+            payload(10, { peerId: 'someone-else' }),
+            transfer(),
+        );
         expect(verdict).toMatchObject({ ok: false, action: 'drop' });
     });
 
     it('fails a chunk that would write past the declared total size', () => {
-        const verdict = evaluateInboundChunk(payload(10, { offset: 95 }), transfer({ totalBytes: 100 }));
+        const verdict = evaluateInboundChunk(
+            payload(10, { offset: 95 }),
+            transfer({ totalBytes: 100 }),
+        );
         expect(verdict).toMatchObject({ ok: false, action: 'fail' });
     });
 
     it.each([[-1], [1.5], [Number.NaN], [Number.MAX_SAFE_INTEGER + 2]])(
         'fails an invalid offset (%s) rather than letting it reach pwrite',
         (offset) => {
-            const verdict = evaluateInboundChunk(payload(1, { offset }), transfer());
+            const verdict = evaluateInboundChunk(
+                payload(1, { offset }),
+                transfer(),
+            );
             expect(verdict).toMatchObject({ ok: false, action: 'fail' });
-        }
+        },
     );
 
     it('fails when the chunk body is not a string', () => {
         const verdict = evaluateInboundChunk(
             payload(1, { data: { length: 1 } as unknown as string }),
-            transfer()
+            transfer(),
         );
         expect(verdict).toMatchObject({ ok: false, action: 'fail' });
     });
@@ -93,7 +111,10 @@ describe('evaluateInboundChunk — rejections', () => {
 
 describe('evaluateInboundChunk — acceptance and byte accounting', () => {
     it('accepts a chunk that fits and reports the decoded bytes', () => {
-        const verdict = evaluateInboundChunk(payload(10, { offset: 20 }), transfer({ bytesReceived: 20 }));
+        const verdict = evaluateInboundChunk(
+            payload(10, { offset: 20 }),
+            transfer({ bytesReceived: 20 }),
+        );
         expect(verdict.ok).toBe(true);
         if (!verdict.ok) return;
         expect(verdict.chunk.length).toBe(10);
@@ -101,15 +122,24 @@ describe('evaluateInboundChunk — acceptance and byte accounting', () => {
     });
 
     it('accepts a chunk that exactly fills the file', () => {
-        const verdict = evaluateInboundChunk(payload(40, { offset: 60 }), transfer({ totalBytes: 100 }));
+        const verdict = evaluateInboundChunk(
+            payload(40, { offset: 60 }),
+            transfer({ totalBytes: 100 }),
+        );
         expect(verdict).toMatchObject({ ok: true, bytesReceived: 100 });
     });
 
     it('never moves bytesReceived backwards on a duplicate or overlapping chunk', () => {
-        const duplicate = evaluateInboundChunk(payload(10), transfer({ bytesReceived: 50 }));
+        const duplicate = evaluateInboundChunk(
+            payload(10),
+            transfer({ bytesReceived: 50 }),
+        );
         expect(duplicate).toMatchObject({ ok: true, bytesReceived: 50 });
 
-        const overlapping = evaluateInboundChunk(payload(10, { offset: 45 }), transfer({ bytesReceived: 50 }));
+        const overlapping = evaluateInboundChunk(
+            payload(10, { offset: 45 }),
+            transfer({ bytesReceived: 50 }),
+        );
         expect(overlapping).toMatchObject({ ok: true, bytesReceived: 55 });
     });
 
@@ -118,7 +148,8 @@ describe('evaluateInboundChunk — acceptance and byte accounting', () => {
         for (const offset of [0, 50, 90]) {
             const verdict = evaluateInboundChunk(payload(10, { offset }), t);
             expect(verdict).toMatchObject({ ok: true });
-            if (verdict.ok) expect(verdict.bytesReceived).toBeLessThanOrEqual(t.totalBytes);
+            if (verdict.ok)
+                expect(verdict.bytesReceived).toBeLessThanOrEqual(t.totalBytes);
         }
     });
 });

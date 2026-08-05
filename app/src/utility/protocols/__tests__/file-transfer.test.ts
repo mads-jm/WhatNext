@@ -7,14 +7,30 @@ import {
     requestFile,
     type FileTransferCallbacks,
 } from '../file-transfer';
-import { FILE_TRANSFER_CONFIG, type FileTransferMessage } from '../../../shared/core/file-transfer-types';
-import { MockStream, MockConnection, MockLibp2p, encodeFrame, asLibp2p } from './harness';
+import {
+    FILE_TRANSFER_CONFIG,
+    type FileTransferMessage,
+} from '../../../shared/core/file-transfer-types';
+import {
+    MockStream,
+    MockConnection,
+    MockLibp2p,
+    encodeFrame,
+    asLibp2p,
+} from './harness';
 
 const PROTOCOL = FILE_TRANSFER_CONFIG.PROTOCOL_ID;
 
-function noopCallbacks(overrides: Partial<FileTransferCallbacks> = {}): FileTransferCallbacks {
+function noopCallbacks(
+    overrides: Partial<FileTransferCallbacks> = {},
+): FileTransferCallbacks {
     return {
-        onManifestRequest: vi.fn(async () => ({ peerId: 'p', playlistId: 'pl', files: [], generatedAt: '' })),
+        onManifestRequest: vi.fn(async () => ({
+            peerId: 'p',
+            playlistId: 'pl',
+            files: [],
+            generatedAt: '',
+        })),
         onFileRequest: vi.fn(),
         onFileChunkReceived: vi.fn(),
         onFileComplete: vi.fn(),
@@ -27,7 +43,9 @@ function noopCallbacks(overrides: Partial<FileTransferCallbacks> = {}): FileTran
 describe('sendWithBackpressure (#47)', () => {
     it('resolves immediately when the stream accepts the write', async () => {
         const stream = new MockStream();
-        await expect(sendWithBackpressure(stream as never, new Uint8Array([1, 2, 3]))).resolves.toBeUndefined();
+        await expect(
+            sendWithBackpressure(stream as never, new Uint8Array([1, 2, 3])),
+        ).resolves.toBeUndefined();
         expect(stream.sent).toHaveLength(1);
     });
 
@@ -36,7 +54,10 @@ describe('sendWithBackpressure (#47)', () => {
         stream.failSends = 1; // first send returns false + sets writableNeedsDrain
 
         let resolved = false;
-        const p = sendWithBackpressure(stream as never, new Uint8Array([9])).then(() => {
+        const p = sendWithBackpressure(
+            stream as never,
+            new Uint8Array([9]),
+        ).then(() => {
             resolved = true;
         });
 
@@ -54,9 +75,14 @@ describe('sendFileChunk', () => {
     it('drops a message when there is no active serve stream (no throw)', async () => {
         const node = new MockLibp2p();
         const peerId = { toString: () => 'peer-no-stream' };
-        const msg: FileTransferMessage = { type: 'file-chunk', sha256: 'abc', offset: 0, data: '' };
+        const msg: FileTransferMessage = {
+            type: 'file-chunk',
+            sha256: 'abc',
+            offset: 0,
+            data: '',
+        };
         await expect(
-            sendFileChunk(node as never, peerId as never, msg)
+            sendFileChunk(node as never, peerId as never, msg),
         ).resolves.toBeUndefined();
     });
 
@@ -70,26 +96,39 @@ describe('sendFileChunk', () => {
         const peerId = 'peer-serve';
         // Drive an inbound file-request so the serve stream gets registered.
         const serveStream = new MockStream([
-            encodeFrame({ type: 'file-request', sha256: sha, offsetBytes: 0 } satisfies FileTransferMessage),
+            encodeFrame({
+                type: 'file-request',
+                sha256: sha,
+                offsetBytes: 0,
+            } satisfies FileTransferMessage),
         ]);
         await handler(serveStream, new MockConnection(peerId));
         expect(callbacks.onFileRequest).toHaveBeenCalledWith(peerId, sha, 0);
 
         const peer = { toString: () => peerId };
         await sendFileChunk(node as never, peer as never, {
-            type: 'file-header', sha256: sha, totalBytes: 10, chunkSize: 5,
+            type: 'file-header',
+            sha256: sha,
+            totalBytes: 10,
+            chunkSize: 5,
         });
         await sendFileChunk(node as never, peer as never, {
-            type: 'file-chunk', sha256: sha, offset: 0, data: 'AAAA',
+            type: 'file-chunk',
+            sha256: sha,
+            offset: 0,
+            data: 'AAAA',
         });
 
         const frames = serveStream.sentFrames<FileTransferMessage>();
-        expect(frames.map((f) => f.type)).toEqual(['file-header', 'file-chunk']);
+        expect(frames.map((f) => f.type)).toEqual([
+            'file-header',
+            'file-chunk',
+        ]);
     });
 });
 
 describe('inbound stream guards', () => {
-    it('does not accept a file-chunk as an inbound stream\'s first message', async () => {
+    it("does not accept a file-chunk as an inbound stream's first message", async () => {
         // The branch that used to handle this was dead code with no producer in any
         // known peer, and it let an arbitrary peer push bytes straight at main.
         // A chunk-first stream is now just an unexpected first message: logged, closed.
@@ -127,10 +166,28 @@ describe('inbound stream guards', () => {
         const unwanted = 'c'.repeat(64);
 
         const providerStream = new MockStream([
-            encodeFrame({ type: 'file-header', sha256: wanted, totalBytes: 4, chunkSize: 4 } satisfies FileTransferMessage),
-            encodeFrame({ type: 'file-chunk', sha256: unwanted, offset: 0, data: 'AAAA' } satisfies FileTransferMessage),
-            encodeFrame({ type: 'file-chunk', sha256: wanted, offset: 0, data: 'BBBB' } satisfies FileTransferMessage),
-            encodeFrame({ type: 'file-complete', sha256: wanted } satisfies FileTransferMessage),
+            encodeFrame({
+                type: 'file-header',
+                sha256: wanted,
+                totalBytes: 4,
+                chunkSize: 4,
+            } satisfies FileTransferMessage),
+            encodeFrame({
+                type: 'file-chunk',
+                sha256: unwanted,
+                offset: 0,
+                data: 'AAAA',
+            } satisfies FileTransferMessage),
+            encodeFrame({
+                type: 'file-chunk',
+                sha256: wanted,
+                offset: 0,
+                data: 'BBBB',
+            } satisfies FileTransferMessage),
+            encodeFrame({
+                type: 'file-complete',
+                sha256: wanted,
+            } satisfies FileTransferMessage),
         ]);
 
         const seen: string[] = [];
@@ -142,7 +199,13 @@ describe('inbound stream guards', () => {
                 onFileComplete: () => resolve(),
             });
             const node = { dialProtocol: vi.fn(async () => providerStream) };
-            void requestFile(node as never, { toString: () => 'provider-peer' } as never, wanted, 0, callbacks);
+            void requestFile(
+                node as never,
+                { toString: () => 'provider-peer' } as never,
+                wanted,
+                0,
+                callbacks,
+            );
         });
 
         expect(seen).toEqual([wanted]);
@@ -159,7 +222,12 @@ describe('file-transfer integrity over the receive path (#47)', () => {
         const chunkSize = FILE_TRANSFER_CONFIG.CHUNK_SIZE;
         const frames: Uint8Array[] = [];
         frames.push(
-            encodeFrame({ type: 'file-header', sha256: sha, totalBytes: original.length, chunkSize } satisfies FileTransferMessage)
+            encodeFrame({
+                type: 'file-header',
+                sha256: sha,
+                totalBytes: original.length,
+                chunkSize,
+            } satisfies FileTransferMessage),
         );
         for (let offset = 0; offset < original.length; offset += chunkSize) {
             const slice = original.subarray(offset, offset + chunkSize);
@@ -169,10 +237,15 @@ describe('file-transfer integrity over the receive path (#47)', () => {
                     sha256: sha,
                     offset,
                     data: Buffer.from(slice).toString('base64'),
-                } satisfies FileTransferMessage)
+                } satisfies FileTransferMessage),
             );
         }
-        frames.push(encodeFrame({ type: 'file-complete', sha256: sha } satisfies FileTransferMessage));
+        frames.push(
+            encodeFrame({
+                type: 'file-complete',
+                sha256: sha,
+            } satisfies FileTransferMessage),
+        );
 
         // Collect received chunks via callbacks and reassemble. Drive the real
         // requester receive path (requestFile → handleIncomingFileStream).
@@ -198,13 +271,15 @@ describe('file-transfer integrity over the receive path (#47)', () => {
                 { toString: () => 'provider-peer' } as never,
                 sha,
                 0,
-                callbacks
+                callbacks,
             );
         });
 
         await done;
         const reassembled = Buffer.concat(received);
         expect(reassembled.length).toBe(original.length);
-        expect(createHash('sha256').update(reassembled).digest('hex')).toBe(sha);
+        expect(createHash('sha256').update(reassembled).digest('hex')).toBe(
+            sha,
+        );
     });
 });

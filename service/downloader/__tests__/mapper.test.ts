@@ -52,13 +52,21 @@ describe('mapYtdlpEntry', () => {
     });
 
     it('prefers artist field over uploader', () => {
-        const raw = { ...base, artist: 'Real Artist', uploader: 'Channel Name' };
+        const raw = {
+            ...base,
+            artist: 'Real Artist',
+            uploader: 'Channel Name',
+        };
         const result = mapYtdlpEntry(raw);
         expect(result.artists).toEqual(['Real Artist']);
     });
 
     it('uses webpage_url over url', () => {
-        const raw = { ...base, webpage_url: 'https://web.url', url: 'https://direct.url' };
+        const raw = {
+            ...base,
+            webpage_url: 'https://web.url',
+            url: 'https://direct.url',
+        };
         expect(mapYtdlpEntry(raw).sourceUrl).toBe('https://web.url');
     });
 
@@ -98,7 +106,12 @@ describe('mapYtdlpEntry', () => {
             const raw = {
                 ...base,
                 formats: [
-                    { format_id: 'f1', acodec: 'opus', vcodec: 'none', abr: 128 },
+                    {
+                        format_id: 'f1',
+                        acodec: 'opus',
+                        vcodec: 'none',
+                        abr: 128,
+                    },
                 ],
             };
             const result = mapYtdlpEntry(raw);
@@ -114,7 +127,12 @@ describe('mapYtdlpEntry', () => {
             const raw = {
                 ...base,
                 formats: [
-                    { format_id: 'v1', acodec: 'mp4a', vcodec: 'avc1', abr: 128 },
+                    {
+                        format_id: 'v1',
+                        acodec: 'mp4a',
+                        vcodec: 'avc1',
+                        abr: 128,
+                    },
                 ],
             };
             expect(mapYtdlpEntry(raw).availableFormats).toHaveLength(0);
@@ -123,9 +141,7 @@ describe('mapYtdlpEntry', () => {
         it('excludes formats with acodec=none', () => {
             const raw = {
                 ...base,
-                formats: [
-                    { format_id: 'v2', acodec: 'none', vcodec: 'none' },
-                ],
+                formats: [{ format_id: 'v2', acodec: 'none', vcodec: 'none' }],
             };
             expect(mapYtdlpEntry(raw).availableFormats).toHaveLength(0);
         });
@@ -134,7 +150,12 @@ describe('mapYtdlpEntry', () => {
             const raw = {
                 ...base,
                 formats: [
-                    { format_id: 'f2', acodec: 'opus', vcodec: 'none', filesize_approx: 4_096_000 },
+                    {
+                        format_id: 'f2',
+                        acodec: 'opus',
+                        vcodec: 'none',
+                        filesize_approx: 4_096_000,
+                    },
                 ],
             };
             const result = mapYtdlpEntry(raw);
@@ -142,11 +163,15 @@ describe('mapYtdlpEntry', () => {
         });
 
         it('handles empty formats array', () => {
-            expect(mapYtdlpEntry({ ...base, formats: [] }).availableFormats).toEqual([]);
+            expect(
+                mapYtdlpEntry({ ...base, formats: [] }).availableFormats,
+            ).toEqual([]);
         });
 
         it('handles non-array formats gracefully', () => {
-            expect(mapYtdlpEntry({ ...base, formats: null }).availableFormats).toEqual([]);
+            expect(
+                mapYtdlpEntry({ ...base, formats: null }).availableFormats,
+            ).toEqual([]);
         });
     });
 
@@ -166,8 +191,20 @@ describe('mapYtdlpEntry', () => {
 describe('mapYtdlpEntries', () => {
     it('maps an array of entries', () => {
         const raws = [
-            { id: '1', title: 'A', webpage_url: 'https://y.com/1', extractor: 'youtube', duration: 60 },
-            { id: '2', title: 'B', webpage_url: 'https://y.com/2', extractor: 'youtube', duration: 90 },
+            {
+                id: '1',
+                title: 'A',
+                webpage_url: 'https://y.com/1',
+                extractor: 'youtube',
+                duration: 60,
+            },
+            {
+                id: '2',
+                title: 'B',
+                webpage_url: 'https://y.com/2',
+                extractor: 'youtube',
+                duration: 90,
+            },
         ];
         const results = mapYtdlpEntries(raws);
         expect(results).toHaveLength(2);

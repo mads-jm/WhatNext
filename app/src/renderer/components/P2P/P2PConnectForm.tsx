@@ -8,7 +8,11 @@ interface P2PConnectFormProps {
     onConnect: () => void;
 }
 
-export function P2PConnectForm({ connectUrl, onUrlChange, onConnect }: P2PConnectFormProps) {
+export function P2PConnectForm({
+    connectUrl,
+    onUrlChange,
+    onConnect,
+}: P2PConnectFormProps) {
     return (
         <div className="space-y-2">
             <input
@@ -26,7 +30,9 @@ export function P2PConnectForm({ connectUrl, onUrlChange, onConnect }: P2PConnec
             >
                 Connect
             </button>
-            <p className="text-xs text-on-surface-variant">Paste a whtnxt:// connection URL from another peer</p>
+            <p className="text-xs text-on-surface-variant">
+                Paste a whtnxt:// connection URL from another peer
+            </p>
         </div>
     );
 }

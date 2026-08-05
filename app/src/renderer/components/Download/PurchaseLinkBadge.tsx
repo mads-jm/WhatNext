@@ -9,7 +9,10 @@
 import { useState } from 'react';
 import type { PurchaseLink } from '../../db/types';
 
-const PROVIDER_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
+const PROVIDER_CONFIG: Record<
+    string,
+    { label: string; icon: string; color: string }
+> = {
     bandcamp: {
         label: 'Bandcamp',
         icon: 'fa-brands fa-bandcamp',
@@ -81,7 +84,11 @@ interface PurchaseLinkBadgeProps {
     className?: string;
 }
 
-export function PurchaseLinkBadge({ links, maxVisible = 1, className = '' }: PurchaseLinkBadgeProps) {
+export function PurchaseLinkBadge({
+    links,
+    maxVisible = 1,
+    className = '',
+}: PurchaseLinkBadgeProps) {
     const [expanded, setExpanded] = useState(false);
 
     if (!links || links.length === 0) return null;
@@ -133,11 +140,14 @@ export function SupportArtistSection({
 
             <div className="flex flex-col gap-1">
                 {links.map((link) => {
-                    const cfg = PROVIDER_CONFIG[link.provider] ?? DEFAULT_CONFIG;
+                    const cfg =
+                        PROVIDER_CONFIG[link.provider] ?? DEFAULT_CONFIG;
                     return (
                         <button
                             key={link.url}
-                            onClick={() => window.electron?.shell.openExternal(link.url)}
+                            onClick={() =>
+                                window.electron?.shell.openExternal(link.url)
+                            }
                             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-on-surface hover:bg-surface-high transition-colors text-left"
                         >
                             <i className={`${cfg.icon} w-4 text-center`} />
@@ -156,8 +166,14 @@ export function SupportArtistSection({
                             : 'text-on-surface-variant hover:bg-surface-high'
                     }`}
                 >
-                    <i className={`fa-solid ${userPurchased ? 'fa-check-circle' : 'fa-circle'} w-4 text-center`} />
-                    <span>{userPurchased ? 'Marked as purchased' : 'I bought this'}</span>
+                    <i
+                        className={`fa-solid ${userPurchased ? 'fa-check-circle' : 'fa-circle'} w-4 text-center`}
+                    />
+                    <span>
+                        {userPurchased
+                            ? 'Marked as purchased'
+                            : 'I bought this'}
+                    </span>
                 </button>
             )}
         </div>

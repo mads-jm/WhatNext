@@ -1,6 +1,15 @@
-import type { DownloadBackend, BackendStatus, DownloadOptions } from '../backend';
+import type {
+    DownloadBackend,
+    BackendStatus,
+    DownloadOptions,
+} from '../backend';
 import type { DownloadInput, ResolvedTrack, DownloadEvent } from '../types';
-import { runCommand, spawnLines, killProcess, parseYtdlpProgress } from '../subprocess';
+import {
+    runCommand,
+    spawnLines,
+    killProcess,
+    parseYtdlpProgress,
+} from '../subprocess';
 import type { ChildProcess } from 'child_process';
 
 /** Bare command name resolved via PATH when no custom path is configured. */
@@ -21,7 +30,9 @@ const RAW_EXCERPT_CHARS = 200;
  */
 function assertSafeQueryArg(url: string): void {
     if (!/^https?:\/\//i.test(url)) {
-        throw new Error(`spotdl refused a non-http(s) query argument: "${url}"`);
+        throw new Error(
+            `spotdl refused a non-http(s) query argument: "${url}"`,
+        );
     }
 }
 
@@ -85,7 +96,11 @@ export class SpotdlBackend implements DownloadBackend {
         try {
             const result = await runCommand(this.exe, ['--version']);
             if (result.code === 0) {
-                return { installed: true, version: result.stdout.trim(), path: this.customPath };
+                return {
+                    installed: true,
+                    version: result.stdout.trim(),
+                    path: this.customPath,
+                };
             }
             return {
                 installed: false,
@@ -114,7 +129,12 @@ export class SpotdlBackend implements DownloadBackend {
 
         for (const url of urls) {
             // spotdl save --save-file - --output /dev/null prints JSON metadata to stdout
-            const result = await runCommand(this.exe, ['save', url, '--save-file', '-']);
+            const result = await runCommand(this.exe, [
+                'save',
+                url,
+                '--save-file',
+                '-',
+            ]);
             if (result.code !== 0) {
                 // Non-fatal per-track: skip and continue
                 continue;
@@ -141,8 +161,14 @@ export class SpotdlBackend implements DownloadBackend {
         return tracks;
     }
 
-    async *download(tracks: ResolvedTrack[], opts: DownloadOptions): AsyncGenerator<DownloadEvent> {
-        const fmt = opts.preferredFormat === 'best_audio' ? 'mp3' : opts.preferredFormat;
+    async *download(
+        tracks: ResolvedTrack[],
+        opts: DownloadOptions,
+    ): AsyncGenerator<DownloadEvent> {
+        const fmt =
+            opts.preferredFormat === 'best_audio'
+                ? 'mp3'
+                : opts.preferredFormat;
 
         for (const track of tracks) {
             let completedPath: string | undefined;
@@ -154,8 +180,10 @@ export class SpotdlBackend implements DownloadBackend {
                 const args = [
                     'download',
                     track.sourceUrl,
-                    '--output', opts.outputDir,
-                    '--format', fmt,
+                    '--output',
+                    opts.outputDir,
+                    '--format',
+                    fmt,
                     '--print-errors',
                 ];
 
@@ -182,7 +210,10 @@ export class SpotdlBackend implements DownloadBackend {
                     }
 
                     // Detect "Skipping" (already downloaded)
-                    if (line.includes('Skipping') && line.includes(opts.outputDir)) {
+                    if (
+                        line.includes('Skipping') &&
+                        line.includes(opts.outputDir)
+                    ) {
                         const skipMatch = line.match(/["'](.+?)["']/);
                         if (skipMatch) completedPath = skipMatch[1];
                     }
@@ -254,8 +285,14 @@ export class SpotdlBackend implements DownloadBackend {
     }
 
     /** Map a spotdl save-file entry to ResolvedTrack. */
-    private _mapEntry(entry: Record<string, unknown>, fallbackUrl: string): ResolvedTrack {
-        const url = (entry['url'] as string) || (entry['spotify_url'] as string) || fallbackUrl;
+    private _mapEntry(
+        entry: Record<string, unknown>,
+        fallbackUrl: string,
+    ): ResolvedTrack {
+        const url =
+            (entry['url'] as string) ||
+            (entry['spotify_url'] as string) ||
+            fallbackUrl;
         const spotifyId = this._extractSpotifyId(url) ?? undefined;
         const artists = Array.isArray(entry['artists'])
             ? (entry['artists'] as string[])
@@ -267,10 +304,17 @@ export class SpotdlBackend implements DownloadBackend {
             sourceId: spotifyId ?? url,
             sourceUrl: url,
             sourceProvider: 'spotify',
-            title: (entry['name'] as string) || (entry['title'] as string) || url,
+            title:
+                (entry['name'] as string) || (entry['title'] as string) || url,
             artists,
-            album: (entry['album_name'] as string) || (entry['album'] as string) || '',
-            durationMs: typeof entry['duration'] === 'number' ? (entry['duration'] as number) * 1000 : 0,
+            album:
+                (entry['album_name'] as string) ||
+                (entry['album'] as string) ||
+                '',
+            durationMs:
+                typeof entry['duration'] === 'number'
+                    ? (entry['duration'] as number) * 1000
+                    : 0,
             thumbnailUrl: (entry['cover_url'] as string) || undefined,
             availableFormats: [],
             spotifyId,

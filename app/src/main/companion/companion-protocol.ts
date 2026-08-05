@@ -38,7 +38,10 @@ export function generateJoinPin(): string {
  * compare megabytes.
  */
 export function normalizeJoinPin(value: string): string {
-    return value.trim().toUpperCase().slice(0, JOIN_PIN_LENGTH * 2);
+    return value
+        .trim()
+        .toUpperCase()
+        .slice(0, JOIN_PIN_LENGTH * 2);
 }
 
 // ========================================
@@ -92,9 +95,20 @@ export type ServerToPhoneMessage =
     | { type: 'session:snapshot'; data: CompanionSessionSnapshot }
     | { type: 'playback:update'; data: CompanionPlaybackState }
     | { type: 'tracks:update'; data: { tracks: CompanionTrack[] } }
-    | { type: 'participants:update'; data: { participants: CompanionParticipant[] } }
+    | {
+          type: 'participants:update';
+          data: { participants: CompanionParticipant[] };
+      }
     | { type: 'turn:update'; data: CompanionTurnState }
-    | { type: 'reaction:broadcast'; data: { clientId: string; displayName: string; emoji: string; trackId: string | null } }
+    | {
+          type: 'reaction:broadcast';
+          data: {
+              clientId: string;
+              displayName: string;
+              emoji: string;
+              trackId: string | null;
+          };
+      }
     | { type: 'time-request:ack'; data: { status: 'seen' | 'granted' } }
     | { type: 'join:ack'; data: { reconnectToken: string } }
     | { type: 'join:denied'; data: JoinDenial };
@@ -114,7 +128,12 @@ export interface JoinDenial {
 // ========================================
 
 export type PhoneToServerMessage =
-    | { type: 'join'; displayName: string; pin: string; reconnectToken: string | null }
+    | {
+          type: 'join';
+          displayName: string;
+          pin: string;
+          reconnectToken: string | null;
+      }
     | { type: 'reaction'; emoji: string; trackId: string | null }
     | { type: 'time-request'; trackId: string | null }
     | { type: 'heartbeat' };
@@ -148,7 +167,10 @@ export type RelayToHostEnvelope =
     | { v: number; type: 'phone:message'; from: string; payload: unknown }
     | { v: number; type: 'phone:disconnect'; from: string };
 
-export function serializeHostEnvelope(to: string | null, payload: ServerToPhoneMessage): string {
+export function serializeHostEnvelope(
+    to: string | null,
+    payload: ServerToPhoneMessage,
+): string {
     const envelope: HostToRelayEnvelope = {
         v: TUNNEL_PROTOCOL_VERSION,
         type: 'host:message',
@@ -171,13 +193,23 @@ export function parseRelayEnvelope(raw: string): RelayToHostEnvelope | null {
     const candidate = parsed as Record<string, unknown>;
 
     if (candidate.v !== TUNNEL_PROTOCOL_VERSION) return null;
-    if (typeof candidate.from !== 'string' || candidate.from.length === 0) return null;
+    if (typeof candidate.from !== 'string' || candidate.from.length === 0)
+        return null;
 
     if (candidate.type === 'phone:message') {
-        return { v: TUNNEL_PROTOCOL_VERSION, type: 'phone:message', from: candidate.from, payload: candidate.payload };
+        return {
+            v: TUNNEL_PROTOCOL_VERSION,
+            type: 'phone:message',
+            from: candidate.from,
+            payload: candidate.payload,
+        };
     }
     if (candidate.type === 'phone:disconnect') {
-        return { v: TUNNEL_PROTOCOL_VERSION, type: 'phone:disconnect', from: candidate.from };
+        return {
+            v: TUNNEL_PROTOCOL_VERSION,
+            type: 'phone:disconnect',
+            from: candidate.from,
+        };
     }
     return null;
 }
@@ -214,23 +246,33 @@ export function parsePhoneMessage(raw: string): PhoneToServerMessage | null {
  * arrive pre-parsed inside a tunnel envelope, and must pass exactly the same
  * validation (name trimming, emoji length caps) as LAN clients.
  */
-export function parsePhoneMessageValue(value: unknown): PhoneToServerMessage | null {
+export function parsePhoneMessageValue(
+    value: unknown,
+): PhoneToServerMessage | null {
     if (typeof value !== 'object' || value === null) return null;
     const parsed = value as Record<string, unknown>;
     if (typeof parsed.type !== 'string') return null;
 
     switch (parsed.type) {
         case 'join': {
-            if (typeof parsed.displayName !== 'string' || parsed.displayName.trim().length === 0) {
+            if (
+                typeof parsed.displayName !== 'string' ||
+                parsed.displayName.trim().length === 0
+            ) {
                 return null;
             }
             // A missing PIN parses as the empty string rather than failing the
             // whole message: the server must be able to answer with an explicit
             // `join:denied` instead of dropping the frame silently.
-            const pin = typeof parsed.pin === 'string' ? normalizeJoinPin(parsed.pin) : '';
-            const token = typeof parsed.reconnectToken === 'string' && parsed.reconnectToken.length > 0
-                ? parsed.reconnectToken.slice(0, 64)
-                : null;
+            const pin =
+                typeof parsed.pin === 'string'
+                    ? normalizeJoinPin(parsed.pin)
+                    : '';
+            const token =
+                typeof parsed.reconnectToken === 'string' &&
+                parsed.reconnectToken.length > 0
+                    ? parsed.reconnectToken.slice(0, 64)
+                    : null;
             return {
                 type: 'join',
                 displayName: parsed.displayName.trim().slice(0, 30),
@@ -240,19 +282,25 @@ export function parsePhoneMessageValue(value: unknown): PhoneToServerMessage | n
         }
 
         case 'reaction':
-            if (typeof parsed.emoji !== 'string' || parsed.emoji.length === 0 || parsed.emoji.length > 8) {
+            if (
+                typeof parsed.emoji !== 'string' ||
+                parsed.emoji.length === 0 ||
+                parsed.emoji.length > 8
+            ) {
                 return null;
             }
             return {
                 type: 'reaction',
                 emoji: parsed.emoji,
-                trackId: typeof parsed.trackId === 'string' ? parsed.trackId : null,
+                trackId:
+                    typeof parsed.trackId === 'string' ? parsed.trackId : null,
             };
 
         case 'time-request':
             return {
                 type: 'time-request',
-                trackId: typeof parsed.trackId === 'string' ? parsed.trackId : null,
+                trackId:
+                    typeof parsed.trackId === 'string' ? parsed.trackId : null,
             };
 
         case 'heartbeat':

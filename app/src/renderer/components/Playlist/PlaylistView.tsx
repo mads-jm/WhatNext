@@ -3,10 +3,17 @@ import { useDatabase } from '../../hooks/useDatabase';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useUserStore } from '../../stores/user-store';
 import { useRxDBDocument } from '../../hooks/useRxDBCollection';
-import { removeTrackFromPlaylist, updatePlaylist } from '../../db/services/playlist-service';
+import {
+    removeTrackFromPlaylist,
+    updatePlaylist,
+} from '../../db/services/playlist-service';
 import { updateTrack } from '../../db/services/track-service';
 import { toggleReaction } from '../../db/services/reaction-service';
-import { ALLOWED_REACTIONS, REACTION_DISPLAY, type ReactionEmoji } from '../../../shared/core/reactions';
+import {
+    ALLOWED_REACTIONS,
+    REACTION_DISPLAY,
+    type ReactionEmoji,
+} from '../../../shared/core/reactions';
 import { pushLocalChanges } from '../../db/replication-handler';
 import { ContextMenu, type ContextMenuItem } from '../shared/ContextMenu';
 import { useContextMenu } from '../../hooks/useContextMenu';
@@ -47,16 +54,30 @@ interface PlaylistHeaderProps {
     onAddTracks: () => void;
 }
 
-function PlaylistHeader({ playlist, trackCount, totalDuration, onAddTracks }: PlaylistHeaderProps) {
+function PlaylistHeader({
+    playlist,
+    trackCount,
+    totalDuration,
+    onAddTracks,
+}: PlaylistHeaderProps) {
     const openSession = useNavigationStore((s) => s.openSession);
-    const { syncState, lastSynced, syncSummary, error: syncError, syncNow } = useSpotifySync(playlist);
+    const {
+        syncState,
+        lastSynced,
+        syncSummary,
+        error: syncError,
+        syncNow,
+    } = useSpotifySync(playlist);
     const [exportOpen, setExportOpen] = useState(false);
     const exportRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!exportOpen) return;
         const handler = (e: MouseEvent) => {
-            if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+            if (
+                exportRef.current &&
+                !exportRef.current.contains(e.target as Node)
+            ) {
                 setExportOpen(false);
             }
         };
@@ -76,11 +97,16 @@ function PlaylistHeader({ playlist, trackCount, totalDuration, onAddTracks }: Pl
                     <div className="w-32 h-32 rounded-lg shrink-0 overflow-hidden bg-gradient-to-br from-primary-dim to-primary flex items-center justify-center">
                         {playlist.coverArtLocalPath || playlist.coverArtUrl ? (
                             <img
-                                src={artSrc(playlist.coverArtLocalPath, playlist.coverArtUrl)}
+                                src={artSrc(
+                                    playlist.coverArtLocalPath,
+                                    playlist.coverArtUrl,
+                                )}
                                 alt={playlist.playlistName}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                    if (playlist.coverArtUrl) e.currentTarget.src = playlist.coverArtUrl;
+                                    if (playlist.coverArtUrl)
+                                        e.currentTarget.src =
+                                            playlist.coverArtUrl;
                                 }}
                             />
                         ) : (
@@ -99,33 +125,51 @@ function PlaylistHeader({ playlist, trackCount, totalDuration, onAddTracks }: Pl
                                     Shared
                                 </span>
                             )}
-                            {playlist.queueMode === 'turn_taking' && !playlist.isComplete && (
-                                <span className="px-1.5 py-0.5 bg-secondary/15 text-secondary rounded text-[10px] font-semibold">
-                                    Turn-Taking
-                                </span>
-                            )}
+                            {playlist.queueMode === 'turn_taking' &&
+                                !playlist.isComplete && (
+                                    <span className="px-1.5 py-0.5 bg-secondary/15 text-secondary rounded text-[10px] font-semibold">
+                                        Turn-Taking
+                                    </span>
+                                )}
                             {playlist.isComplete && (
-                                <span className="px-1.5 py-0.5 bg-surface-high text-on-surface-variant rounded text-[10px] font-semibold" title={`Completed from: ${playlist.completedFromMode ?? 'collaborative'}`}>
+                                <span
+                                    className="px-1.5 py-0.5 bg-surface-high text-on-surface-variant rounded text-[10px] font-semibold"
+                                    title={`Completed from: ${playlist.completedFromMode ?? 'collaborative'}`}
+                                >
                                     Complete
                                 </span>
                             )}
                         </div>
-                        <h2 className="text-3xl font-bold mb-2">{playlist.playlistName}</h2>
+                        <h2 className="text-3xl font-bold mb-2">
+                            {playlist.playlistName}
+                        </h2>
                         {playlist.description && (
-                            <p className="text-sm text-on-surface-variant mb-2">{playlist.description}</p>
+                            <p className="text-sm text-on-surface-variant mb-2">
+                                {playlist.description}
+                            </p>
                         )}
                         <p className="text-sm text-on-surface-variant mb-4">
-                            {trackCount} tracks {totalDuration > 0 && <>• {formatTotalDuration(totalDuration)}</>}
+                            {trackCount} tracks{' '}
+                            {totalDuration > 0 && (
+                                <>• {formatTotalDuration(totalDuration)}</>
+                            )}
                         </p>
                         <div className="flex gap-2">
                             {playlist.isCollaborative ? (
-                                <button onClick={() => openSession(playlist.id)} className="btn-primary">
+                                <button
+                                    onClick={() => openSession(playlist.id)}
+                                    className="btn-primary"
+                                >
                                     <i className="fa-solid fa-satellite-dish mr-1" />
                                     Open Session
                                 </button>
                             ) : playlist.linkedSpotifyId ? (
                                 <button
-                                    onClick={() => updatePlaylist(playlist.id, { isCollaborative: true })}
+                                    onClick={() =>
+                                        updatePlaylist(playlist.id, {
+                                            isCollaborative: true,
+                                        })
+                                    }
                                     className="btn-ghost"
                                     title="Mark as collaborative to enable sessions"
                                 >
@@ -133,7 +177,10 @@ function PlaylistHeader({ playlist, trackCount, totalDuration, onAddTracks }: Pl
                                     Enable Collaborative
                                 </button>
                             ) : null}
-                            <button onClick={onAddTracks} className="btn-primary">
+                            <button
+                                onClick={onAddTracks}
+                                className="btn-primary"
+                            >
                                 <i className="fa-solid fa-plus mr-1" />
                                 Add tracks
                             </button>
@@ -142,7 +189,10 @@ function PlaylistHeader({ playlist, trackCount, totalDuration, onAddTracks }: Pl
                                 Share
                             </button>
                             <div className="relative" ref={exportRef}>
-                                <button className="btn-ghost" onClick={() => setExportOpen((o) => !o)}>
+                                <button
+                                    className="btn-ghost"
+                                    onClick={() => setExportOpen((o) => !o)}
+                                >
                                     <i className="fa-solid fa-download mr-1" />
                                     Export
                                     <i className="fa-solid fa-chevron-down ml-1.5 text-[10px] opacity-50" />
@@ -150,7 +200,9 @@ function PlaylistHeader({ playlist, trackCount, totalDuration, onAddTracks }: Pl
                                 {exportOpen && (
                                     <div className="absolute left-0 top-full mt-1.5 min-w-[152px] bg-surface-high rounded-xl ring-1 ring-white/10 shadow-2xl z-10 p-1">
                                         <button
-                                            onClick={() => handleExport('markdown')}
+                                            onClick={() =>
+                                                handleExport('markdown')
+                                            }
                                             className="w-full text-left px-3 py-1.5 text-sm text-on-surface-variant hover:bg-surface-high hover:text-on-surface transition-colors flex items-center gap-2 rounded-lg"
                                         >
                                             <i className="fa-solid fa-file-lines text-on-surface-variant" />
@@ -173,18 +225,26 @@ function PlaylistHeader({ playlist, trackCount, totalDuration, onAddTracks }: Pl
                                     className="btn-ghost"
                                     title="Pull latest changes from Spotify"
                                 >
-                                    <i className={`fa-brands fa-spotify mr-1${syncState === 'syncing' ? ' animate-spin' : ''}`} />
+                                    <i
+                                        className={`fa-brands fa-spotify mr-1${syncState === 'syncing' ? ' animate-spin' : ''}`}
+                                    />
                                     Sync
                                 </button>
                             )}
                         </div>
-                        {playlist.linkedSpotifyId && syncState === 'done' && syncSummary && (
-                            <p className="text-xs text-on-surface-variant mt-2">
-                                Synced {lastSynced?.toLocaleTimeString()} · +{syncSummary.added} added, {syncSummary.removed} removed
-                            </p>
-                        )}
+                        {playlist.linkedSpotifyId &&
+                            syncState === 'done' &&
+                            syncSummary && (
+                                <p className="text-xs text-on-surface-variant mt-2">
+                                    Synced {lastSynced?.toLocaleTimeString()} ·
+                                    +{syncSummary.added} added,{' '}
+                                    {syncSummary.removed} removed
+                                </p>
+                            )}
                         {playlist.linkedSpotifyId && syncState === 'error' && (
-                            <p className="text-xs text-error mt-2">Sync failed: {syncError}</p>
+                            <p className="text-xs text-error mt-2">
+                                Sync failed: {syncError}
+                            </p>
                         )}
                     </div>
                 </div>
@@ -217,7 +277,9 @@ function PlaylistTrackList({
             <div className="text-center py-12 text-outline-variant">
                 <i className="fa-solid fa-music text-4xl mb-4" />
                 <p>No tracks yet</p>
-                <p className="text-sm mt-2">Import tracks from Spotify or add them manually</p>
+                <p className="text-sm mt-2">
+                    Import tracks from Spotify or add them manually
+                </p>
             </div>
         );
     }
@@ -240,17 +302,29 @@ function PlaylistTrackList({
                     <React.Fragment key={track.id}>
                         <tr
                             className="border-b border-outline-variant/50 hover:bg-surface-high/30 transition-colors"
-                            onContextMenu={(e) => onContextMenu(e, buildMenuItems(track))}
+                            onContextMenu={(e) =>
+                                onContextMenu(e, buildMenuItems(track))
+                            }
                         >
-                            <td className="px-4 py-3 text-on-surface-variant text-sm">{index + 1}</td>
+                            <td className="px-4 py-3 text-on-surface-variant text-sm">
+                                {index + 1}
+                            </td>
                             <td className="p-0 w-14">
-                                {artSrc(track.albumArtLocalPath, track.albumArtUrl) ? (
+                                {artSrc(
+                                    track.albumArtLocalPath,
+                                    track.albumArtUrl,
+                                ) ? (
                                     <img
-                                        src={artSrc(track.albumArtLocalPath, track.albumArtUrl)}
+                                        src={artSrc(
+                                            track.albumArtLocalPath,
+                                            track.albumArtUrl,
+                                        )}
                                         alt=""
                                         className="w-14 h-14 object-cover block"
                                         onError={(e) => {
-                                            if (track.albumArtUrl) e.currentTarget.src = track.albumArtUrl;
+                                            if (track.albumArtUrl)
+                                                e.currentTarget.src =
+                                                    track.albumArtUrl;
                                         }}
                                     />
                                 ) : (
@@ -260,19 +334,32 @@ function PlaylistTrackList({
                                 )}
                             </td>
                             <td className="px-4 py-3">
-                                <div className="font-medium text-on-surface">{track.title}</div>
-                                <div className="text-sm text-on-surface-variant">{track.artists.join(', ')}</div>
-                                <ReactionBar trackId={track.id} playlistId={playlistId} />
+                                <div className="font-medium text-on-surface">
+                                    {track.title}
+                                </div>
+                                <div className="text-sm text-on-surface-variant">
+                                    {track.artists.join(', ')}
+                                </div>
+                                <ReactionBar
+                                    trackId={track.id}
+                                    playlistId={playlistId}
+                                />
                             </td>
-                            <td className="px-4 py-3 text-sm text-on-surface-variant">{track.album}</td>
-                            <td className="px-4 py-3 text-sm text-on-surface-variant">{track.addedByName ?? track.addedBy}</td>
+                            <td className="px-4 py-3 text-sm text-on-surface-variant">
+                                {track.album}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-on-surface-variant">
+                                {track.addedByName ?? track.addedBy}
+                            </td>
                             <td className="px-4 py-3 text-sm text-on-surface-variant text-right">
                                 {formatDuration(track.durationMs)}
                             </td>
                             <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => onToggleComments(track.id)}
+                                        onClick={() =>
+                                            onToggleComments(track.id)
+                                        }
                                         className={`transition-colors ${
                                             expandedTrackComments === track.id
                                                 ? 'text-primary'
@@ -283,7 +370,12 @@ function PlaylistTrackList({
                                         <i className="fa-solid fa-comment" />
                                     </button>
                                     <button
-                                        onClick={() => removeTrackFromPlaylist(playlistId, track.id)}
+                                        onClick={() =>
+                                            removeTrackFromPlaylist(
+                                                playlistId,
+                                                track.id,
+                                            )
+                                        }
                                         className="text-outline-variant hover:text-error transition-colors"
                                         title="Remove track"
                                     >
@@ -294,8 +386,14 @@ function PlaylistTrackList({
                         </tr>
                         {expandedTrackComments === track.id && (
                             <tr className="border-b border-outline-variant/50">
-                                <td colSpan={7} className="px-4 py-3 bg-surface/30">
-                                    <CommentThread playlistId={playlistId} trackId={track.id} />
+                                <td
+                                    colSpan={7}
+                                    className="px-4 py-3 bg-surface/30"
+                                >
+                                    <CommentThread
+                                        playlistId={playlistId}
+                                        trackId={track.id}
+                                    />
                                 </td>
                             </tr>
                         )}
@@ -312,22 +410,37 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
     const { db } = useDatabase();
     const userId = useUserStore((s) => s.userId);
 
-    const { doc: playlist, loading: playlistLoading } = useRxDBDocument<PlaylistDocType>(
-        () => db && playlistId ? db.playlists.findOne(playlistId).exec() : null,
-        [db, playlistId]
-    );
+    const { doc: playlist, loading: playlistLoading } =
+        useRxDBDocument<PlaylistDocType>(
+            () =>
+                db && playlistId
+                    ? db.playlists.findOne(playlistId).exec()
+                    : null,
+            [db, playlistId],
+        );
 
-    const { menuState: trackMenuState, openMenu: openTrackMenu, closeMenu: closeTrackMenu } =
-        useContextMenu();
+    const {
+        menuState: trackMenuState,
+        openMenu: openTrackMenu,
+        closeMenu: closeTrackMenu,
+    } = useContextMenu();
 
-    const [expandedTrackComments, setExpandedTrackComments] = useState<string | null>(null);
+    const [expandedTrackComments, setExpandedTrackComments] = useState<
+        string | null
+    >(null);
     const [showTrackPicker, setShowTrackPicker] = useState(false);
 
     const [tracks, setTracks] = useState<TrackViewModel[]>([]);
     useEffect(() => {
-        if (!db || !playlist) { setTracks([]); return; }
+        if (!db || !playlist) {
+            setTracks([]);
+            return;
+        }
         const trackIds = playlist.trackIds;
-        if (trackIds.length === 0) { setTracks([]); return; }
+        if (trackIds.length === 0) {
+            setTracks([]);
+            return;
+        }
         findTrackViewModels(db, trackIds).then(setTracks);
     }, [db, playlist?.trackIds]);
 
@@ -338,17 +451,30 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
             return;
         }
         const ids = [playlist.ownerId, ...playlist.collaboratorIds];
-        db.users.findByIds(ids).exec().then((map) => {
-            setParticipants(
-                ids
-                    .map((id) => map.get(id))
-                    .filter((u): u is NonNullable<typeof u> => u !== undefined)
-                    .map((u) => u.toJSON() as UserDocType)
-            );
-        });
-    }, [db, playlist?.ownerId, playlist?.collaboratorIds?.join(','), playlist?.isCollaborative]);
+        db.users
+            .findByIds(ids)
+            .exec()
+            .then((map) => {
+                setParticipants(
+                    ids
+                        .map((id) => map.get(id))
+                        .filter(
+                            (u): u is NonNullable<typeof u> => u !== undefined,
+                        )
+                        .map((u) => u.toJSON() as UserDocType),
+                );
+            });
+    }, [
+        db,
+        playlist?.ownerId,
+        playlist?.collaboratorIds?.join(','),
+        playlist?.isCollaborative,
+    ]);
 
-    const totalDuration = tracks.reduce((acc, t) => acc + (t.durationMs || 0), 0);
+    const totalDuration = tracks.reduce(
+        (acc, t) => acc + (t.durationMs || 0),
+        0,
+    );
 
     const buildTrackMenuItems = (track: {
         id: string;
@@ -365,7 +491,14 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                     id: `react-${emoji}`,
                     label: EMOJI_LABELS[emoji],
                     icon: REACTION_DISPLAY[emoji],
-                    action: () => toggleReaction(userId, track.id, playlistId!, emoji, pushLocalChanges),
+                    action: () =>
+                        toggleReaction(
+                            userId,
+                            track.id,
+                            playlistId!,
+                            emoji,
+                            pushLocalChanges,
+                        ),
                 })),
             },
         ];
@@ -381,13 +514,21 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                         id: `purchase-${link.provider}`,
                         label: link.label ?? `Buy on ${link.provider}`,
                         icon: 'fa-solid fa-arrow-up-right-from-square',
-                        action: () => window.electron?.shell.openExternal(link.url),
+                        action: () =>
+                            window.electron?.shell.openExternal(link.url),
                     })),
                     {
                         id: 'user-purchased',
-                        label: track.userPurchased ? '✓ I bought this' : 'I bought this',
-                        icon: track.userPurchased ? 'fa-solid fa-check' : 'fa-regular fa-circle',
-                        action: () => void updateTrack(track.id, { userPurchased: !track.userPurchased }),
+                        label: track.userPurchased
+                            ? '✓ I bought this'
+                            : 'I bought this',
+                        icon: track.userPurchased
+                            ? 'fa-solid fa-check'
+                            : 'fa-regular fa-circle',
+                        action: () =>
+                            void updateTrack(track.id, {
+                                userPurchased: !track.userPurchased,
+                            }),
                     },
                 ],
             });
@@ -419,11 +560,19 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
     }
 
     if (playlistLoading) {
-        return <div className="text-on-surface-variant text-center py-12">Loading...</div>;
+        return (
+            <div className="text-on-surface-variant text-center py-12">
+                Loading...
+            </div>
+        );
     }
 
     if (!playlist) {
-        return <div className="text-on-surface-variant text-center py-12">Playlist not found</div>;
+        return (
+            <div className="text-on-surface-variant text-center py-12">
+                Playlist not found
+            </div>
+        );
     }
 
     return (
@@ -435,25 +584,31 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                 onAddTracks={() => setShowTrackPicker(true)}
             />
 
-            {playlist.isCollaborative && playlist.queueMode === 'turn_taking' && (
-                <TurnManagementPanel
-                    playlist={playlist}
-                    participants={participants}
-                    tracks={tracks}
-                    totalDurationMs={totalDuration}
-                    currentUserId={userId}
-                />
-            )}
+            {playlist.isCollaborative &&
+                playlist.queueMode === 'turn_taking' && (
+                    <TurnManagementPanel
+                        playlist={playlist}
+                        participants={participants}
+                        tracks={tracks}
+                        totalDurationMs={totalDuration}
+                        currentUserId={userId}
+                    />
+                )}
 
             {playlist.isCollaborative && !playlist.queueMode && (
-                <TurnSetupModal playlist={playlist} participants={participants} />
+                <TurnSetupModal
+                    playlist={playlist}
+                    participants={participants}
+                />
             )}
 
             <PlaylistComments playlistId={playlistId} />
 
             <div className="card flex-1 overflow-hidden flex flex-col">
                 <div className="card-header flex items-center justify-between">
-                    <span className="font-medium">Tracks ({tracks.length})</span>
+                    <span className="font-medium">
+                        Tracks ({tracks.length})
+                    </span>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     <PlaylistTrackList
@@ -461,7 +616,9 @@ export function PlaylistView({ playlistId }: PlaylistViewProps) {
                         playlistId={playlistId}
                         expandedTrackComments={expandedTrackComments}
                         onToggleComments={(id) =>
-                            setExpandedTrackComments(expandedTrackComments === id ? null : id)
+                            setExpandedTrackComments(
+                                expandedTrackComments === id ? null : id,
+                            )
                         }
                         onContextMenu={openTrackMenu}
                         buildMenuItems={buildTrackMenuItems}

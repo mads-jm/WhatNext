@@ -29,12 +29,16 @@ let rxSubscription: Subscription | null = null;
 // TODO : Asset Transfer on consent / handshake
 //      : avatar image transfer and caching in P2P process
 //      : Consider sharing selected #1 track via P2P bundled with profile picture
-function syncIdentityToP2P(user: UserDocType): void{
-    window.electron?.user?.setIdentity({
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        userId: user.id,
-    }).catch((err) => console.warn('[UserStore] Failed to sync identity to P2P:', err));
+function syncIdentityToP2P(user: UserDocType): void {
+    window.electron?.user
+        ?.setIdentity({
+            displayName: user.displayName,
+            avatarUrl: user.avatarUrl,
+            userId: user.id,
+        })
+        .catch((err) =>
+            console.warn('[UserStore] Failed to sync identity to P2P:', err),
+        );
 }
 
 export const useUserStore = create<UserStore>((set, get) => ({

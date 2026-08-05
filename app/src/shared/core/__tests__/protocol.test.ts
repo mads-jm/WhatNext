@@ -16,11 +16,17 @@ describe('isValidPeerId', () => {
     });
 
     it('accepts a valid Qm peer ID', () => {
-        expect(isValidPeerId('QmYwAPJzv5CZsnAztSdYVctFh65bZ66Bk3QJ')).toBe(true);
+        expect(isValidPeerId('QmYwAPJzv5CZsnAztSdYVctFh65bZ66Bk3QJ')).toBe(
+            true,
+        );
     });
 
     it('accepts a valid bafz peer ID (base32)', () => {
-        expect(isValidPeerId('bafzbeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi')).toBe(true);
+        expect(
+            isValidPeerId(
+                'bafzbeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+            ),
+        ).toBe(true);
     });
 
     it('rejects a string that is too short', () => {
@@ -37,11 +43,15 @@ describe('isValidPeerId', () => {
 
     it('rejects base58 strings containing 0 (zero)', () => {
         // '0' is not in the base58btc alphabet
-        expect(isValidPeerId('12D3KooW0InvalidCharHere00000000000000000')).toBe(false);
+        expect(isValidPeerId('12D3KooW0InvalidCharHere00000000000000000')).toBe(
+            false,
+        );
     });
 
     it('rejects base58 strings containing O (uppercase O)', () => {
-        expect(isValidPeerId('12D3KooWOInvalidCharHereOOOOOOOOOOOOOOOO')).toBe(false);
+        expect(isValidPeerId('12D3KooWOInvalidCharHereOOOOOOOOOOOOOOOO')).toBe(
+            false,
+        );
     });
 });
 
@@ -77,11 +87,15 @@ describe('parseProtocolUrl', () => {
     });
 
     it('throws on wrong scheme', () => {
-        expect(() => parseProtocolUrl(`https://connect/${VALID_PEER_ID}`)).toThrow();
+        expect(() =>
+            parseProtocolUrl(`https://connect/${VALID_PEER_ID}`),
+        ).toThrow();
     });
 
     it('throws on unknown action', () => {
-        expect(() => parseProtocolUrl(`whtnxt://unknown/${VALID_PEER_ID}`)).toThrow();
+        expect(() =>
+            parseProtocolUrl(`whtnxt://unknown/${VALID_PEER_ID}`),
+        ).toThrow();
     });
 
     it('throws when peer ID is missing', () => {
@@ -89,7 +103,9 @@ describe('parseProtocolUrl', () => {
     });
 
     it('throws when peer ID has an invalid format', () => {
-        expect(() => parseProtocolUrl('whtnxt://connect/not-a-peer-id')).toThrow();
+        expect(() =>
+            parseProtocolUrl('whtnxt://connect/not-a-peer-id'),
+        ).toThrow();
     });
 });
 
@@ -108,7 +124,9 @@ describe('createConnectUrl', () => {
     });
 
     it('includes metadata as query params', () => {
-        const url = createConnectUrl(VALID_PEER_ID, { metadata: { session: 'xyz' } });
+        const url = createConnectUrl(VALID_PEER_ID, {
+            metadata: { session: 'xyz' },
+        });
         expect(url).toContain('session=xyz');
     });
 
@@ -141,7 +159,9 @@ describe('extractPeerIdFromMultiaddr', () => {
     });
 
     it('returns undefined when /p2p/ component is absent', () => {
-        expect(extractPeerIdFromMultiaddr('/ip4/127.0.0.1/tcp/4001')).toBeUndefined();
+        expect(
+            extractPeerIdFromMultiaddr('/ip4/127.0.0.1/tcp/4001'),
+        ).toBeUndefined();
     });
 
     it('returns undefined for a bare peer ID string (no multiaddr syntax)', () => {

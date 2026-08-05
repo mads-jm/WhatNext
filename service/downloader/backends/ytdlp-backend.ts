@@ -1,6 +1,15 @@
-import type { DownloadBackend, BackendStatus, DownloadOptions } from '../backend';
+import type {
+    DownloadBackend,
+    BackendStatus,
+    DownloadOptions,
+} from '../backend';
 import type { DownloadInput, ResolvedTrack, DownloadEvent } from '../types';
-import { runCommand, spawnLines, killProcess, parseYtdlpProgress } from '../subprocess';
+import {
+    runCommand,
+    spawnLines,
+    killProcess,
+    parseYtdlpProgress,
+} from '../subprocess';
 import type { ChildProcess } from 'child_process';
 import { mapYtdlpEntries } from '../mapper';
 
@@ -95,12 +104,17 @@ export class YtdlpBackend implements DownloadBackend {
                     return null;
                 }
             })
-            .filter((entry): entry is Record<string, unknown> => entry !== null);
+            .filter(
+                (entry): entry is Record<string, unknown> => entry !== null,
+            );
 
         return mapYtdlpEntries(entries);
     }
 
-    async *download(tracks: ResolvedTrack[], opts: DownloadOptions): AsyncGenerator<DownloadEvent> {
+    async *download(
+        tracks: ResolvedTrack[],
+        opts: DownloadOptions,
+    ): AsyncGenerator<DownloadEvent> {
         for (const track of tracks) {
             const outputTemplate = `${opts.outputDir}/%(uploader)s - %(title)s.%(ext)s`;
 
@@ -112,14 +126,20 @@ export class YtdlpBackend implements DownloadBackend {
             try {
                 const args = [
                     '-x',
-                    '--audio-format', opts.preferredFormat === 'best_audio' ? 'best' : opts.preferredFormat,
-                    '--audio-quality', '0',
+                    '--audio-format',
+                    opts.preferredFormat === 'best_audio'
+                        ? 'best'
+                        : opts.preferredFormat,
+                    '--audio-quality',
+                    '0',
                     '--embed-thumbnail',
                     '--embed-metadata',
-                    '--output', outputTemplate,
+                    '--output',
+                    outputTemplate,
                     '--progress',
                     '--newline',
-                    '--print', `after_move:${FILEPATH_MARKER}%(filepath)s`,
+                    '--print',
+                    `after_move:${FILEPATH_MARKER}%(filepath)s`,
                     // See resolve(): `--` forces the URL to be read as a positional.
                     '--',
                     track.sourceUrl,
@@ -133,7 +153,9 @@ export class YtdlpBackend implements DownloadBackend {
                     // (see FILEPATH_MARKER) so only this line — never a stray
                     // informational line — is taken as the completed path.
                     if (line.startsWith(FILEPATH_MARKER)) {
-                        completedPath = line.slice(FILEPATH_MARKER.length).trim();
+                        completedPath = line
+                            .slice(FILEPATH_MARKER.length)
+                            .trim();
                         continue;
                     }
 

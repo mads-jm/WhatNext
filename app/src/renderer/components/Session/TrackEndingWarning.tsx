@@ -13,7 +13,10 @@ interface TrackEndingWarningProps {
     hasNextTrack: boolean;
 }
 
-export function TrackEndingWarning({ playbackState, hasNextTrack }: TrackEndingWarningProps) {
+export function TrackEndingWarning({
+    playbackState,
+    hasNextTrack,
+}: TrackEndingWarningProps) {
     if (!playbackState || !playbackState.isPlaying || hasNextTrack) return null;
 
     const remainingMs = playbackState.durationMs - playbackState.progressMs;

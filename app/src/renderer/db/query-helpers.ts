@@ -14,9 +14,11 @@ import type { TrackViewModel } from './types';
  */
 export async function findTracksByIds(
     db: WhatNextDatabase,
-    ids: string[]
+    ids: string[],
 ): Promise<TrackDocument[]> {
-    const map: Map<string, TrackDocument> = await db.tracks.findByIds(ids).exec();
+    const map: Map<string, TrackDocument> = await db.tracks
+        .findByIds(ids)
+        .exec();
     return ids
         .map((id) => map.get(id))
         .filter((doc): doc is TrackDocument => doc !== undefined);
@@ -28,12 +30,14 @@ export async function findTracksByIds(
  */
 export async function findTrackViewModels(
     db: WhatNextDatabase,
-    ids: string[]
+    ids: string[],
 ): Promise<TrackViewModel[]> {
     const docs = await findTracksByIds(db, ids);
 
     const userIds = [...new Set(docs.map((d) => d.addedBy).filter(Boolean))];
-    const userMap: Map<string, UserDocument> = await db.users.findByIds(userIds).exec();
+    const userMap: Map<string, UserDocument> = await db.users
+        .findByIds(userIds)
+        .exec();
 
     return docs.map((doc) => ({
         id: doc.id,

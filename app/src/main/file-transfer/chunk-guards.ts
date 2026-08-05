@@ -20,32 +20,32 @@
  *               it violates what that peer itself declared. The partial is discarded.
  */
 
-import type { ActiveTransfer } from '../../shared/core/file-transfer-types'
-import { isValidSha256 } from '../utils/path-safety'
+import type { ActiveTransfer } from '../../shared/core/file-transfer-types';
+import { isValidSha256 } from '../utils/path-safety';
 
 /** Statuses for which we are still willing to accept bytes. */
 const ACCEPTING_STATUSES: ReadonlySet<ActiveTransfer['status']> = new Set([
     'pending',
     'transferring',
-])
+]);
 
 export interface InboundChunk {
-    peerId: string
-    sha256: string
-    offset: number
+    peerId: string;
+    sha256: string;
+    offset: number;
     /** base64-encoded chunk body (JSON transport) */
-    data: string
+    data: string;
 }
 
 export type ChunkVerdict =
     | {
-          ok: true
+          ok: true;
           /** Decoded bytes to write at `offset`. */
-          chunk: Buffer
+          chunk: Buffer;
           /** New high-water mark for `transfer.bytesReceived`, never above `totalBytes`. */
-          bytesReceived: number
+          bytesReceived: number;
       }
-    | { ok: false; action: 'drop' | 'fail'; reason: string }
+    | { ok: false; action: 'drop' | 'fail'; reason: string };
 
 /**
  * Decide whether a chunk that arrived from the P2P layer may touch the disk.
@@ -57,16 +57,20 @@ export function evaluateInboundChunk(
     payload: InboundChunk,
     transfer: ActiveTransfer | undefined,
 ): ChunkVerdict {
-    const { peerId, sha256, offset, data } = payload
+    const { peerId, sha256, offset, data } = payload;
 
     // Cheap, allocation-free checks first — a chunk we never asked for must not be
     // able to make us decode a multi-megabyte base64 body.
     if (!isValidSha256(sha256)) {
-        return { ok: false, action: 'drop', reason: 'invalid sha256 format' }
+        return { ok: false, action: 'drop', reason: 'invalid sha256 format' };
     }
 
     if (!transfer) {
-        return { ok: false, action: 'drop', reason: 'no transfer was requested for this hash' }
+        return {
+            ok: false,
+            action: 'drop',
+            reason: 'no transfer was requested for this hash',
+        };
     }
 
     if (!ACCEPTING_STATUSES.has(transfer.status)) {
@@ -74,7 +78,7 @@ export function evaluateInboundChunk(
             ok: false,
             action: 'drop',
             reason: `transfer is not accepting bytes (status: ${transfer.status})`,
-        }
+        };
     }
 
     if (peerId !== transfer.peerId) {
@@ -83,21 +87,29 @@ export function evaluateInboundChunk(
             ok: false,
             action: 'drop',
             reason: `chunk came from ${peerId} but the transfer belongs to ${transfer.peerId}`,
-        }
+        };
     }
 
     // From here on the sender *is* the peer we asked, so a malformed chunk is that
     // peer overstepping what it declared — fail the transfer rather than silently
     // accumulating a corrupt partial.
     if (!Number.isSafeInteger(offset) || offset < 0) {
-        return { ok: false, action: 'fail', reason: `invalid chunk offset: ${String(offset)}` }
+        return {
+            ok: false,
+            action: 'fail',
+            reason: `invalid chunk offset: ${String(offset)}`,
+        };
     }
 
     if (typeof data !== 'string') {
-        return { ok: false, action: 'fail', reason: 'chunk data is not a string' }
+        return {
+            ok: false,
+            action: 'fail',
+            reason: 'chunk data is not a string',
+        };
     }
 
-    const chunk = Buffer.from(data, 'base64')
+    const chunk = Buffer.from(data, 'base64');
 
     if (offset + chunk.length > transfer.totalBytes) {
         return {
@@ -106,12 +118,15 @@ export function evaluateInboundChunk(
             reason:
                 `chunk exceeds declared size: offset ${offset} + ${chunk.length} bytes ` +
                 `> totalBytes ${transfer.totalBytes}`,
-        }
+        };
     }
 
     // High-water mark, not "last write wins": duplicate and overlapping chunks must
     // never push the counter backwards, and the bound above keeps it <= totalBytes.
-    const bytesReceived = Math.max(transfer.bytesReceived, offset + chunk.length)
+    const bytesReceived = Math.max(
+        transfer.bytesReceived,
+        offset + chunk.length,
+    );
 
-    return { ok: true, chunk, bytesReceived }
+    return { ok: true, chunk, bytesReceived };
 }

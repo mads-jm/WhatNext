@@ -47,13 +47,11 @@ export async function getOrCreateLocalUser(): Promise<UserDocument> {
  */
 export async function getLocalUser(): Promise<UserDocument> {
     const db = await getDatabase();
-    const user = await db.users
-        .findOne({ selector: { isLocal: true } })
-        .exec();
+    const user = await db.users.findOne({ selector: { isLocal: true } }).exec();
 
     if (!user) {
         throw new Error(
-            'Local user not initialized. Call getOrCreateLocalUser() first.'
+            'Local user not initialized. Call getOrCreateLocalUser() first.',
         );
     }
     return user;
@@ -95,7 +93,7 @@ export async function linkServiceAccount(account: {
 
     // Remove existing link for this provider (replace, don't duplicate)
     const filtered = user.linkedAccounts.filter(
-        (a) => a.provider !== account.provider
+        (a) => a.provider !== account.provider,
     );
 
     await user.update({
@@ -111,13 +109,13 @@ export async function linkServiceAccount(account: {
  * Unlink a service account by provider name.
  */
 export async function unlinkServiceAccount(
-    provider: string
+    provider: string,
 ): Promise<UserDocument> {
     const user = await getLocalUser();
     await user.update({
         $set: {
             linkedAccounts: user.linkedAccounts.filter(
-                (a) => a.provider !== provider
+                (a) => a.provider !== provider,
             ),
             updatedAt: new Date().toISOString(),
         },
@@ -143,19 +141,21 @@ export async function createSessionParticipant(
     displayName: string,
     spotifyUserId?: string,
     spotifyDisplayName?: string,
-    avatarUrl?: string
+    avatarUrl?: string,
 ): Promise<UserDocument> {
     const db = await getDatabase();
     const now = new Date().toISOString();
 
     const linkedAccounts = spotifyUserId
-        ? [{
-            provider: 'spotify',
-            providerUserId: spotifyUserId,
-            displayName: spotifyDisplayName,
-            avatarUrl,
-            linkedAt: now,
-        }]
+        ? [
+              {
+                  provider: 'spotify',
+                  providerUserId: spotifyUserId,
+                  displayName: spotifyDisplayName,
+                  avatarUrl,
+                  linkedAt: now,
+              },
+          ]
         : [];
 
     return db.users.insert({
@@ -178,7 +178,7 @@ export async function createSessionParticipant(
  */
 export async function updateParticipantDisplayName(
     userId: string,
-    displayName: string
+    displayName: string,
 ): Promise<UserDocument | null> {
     const db = await getDatabase();
     const user = await db.users.findOne(userId).exec();
@@ -203,14 +203,15 @@ export async function updateParticipantDisplayName(
  */
 export async function resolveSpotifyUser(
     spotifyUserId: string,
-    displayName?: string
+    displayName?: string,
 ): Promise<UserDocType | null> {
     const db = await getDatabase();
     const all = await db.users.find().exec();
     const matches = all.filter((u) =>
         u.linkedAccounts.some(
-            (a) => a.provider === 'spotify' && a.providerUserId === spotifyUserId
-        )
+            (a) =>
+                a.provider === 'spotify' && a.providerUserId === spotifyUserId,
+        ),
     );
     if (matches.length === 0) return null;
 

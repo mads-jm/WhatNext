@@ -119,7 +119,9 @@ export function PlaybackBar({ contextUri }: PlaybackBarProps) {
                         </p>
                         <div className="flex items-center gap-2 text-xs text-on-surface-variant">
                             {state.trackArtists && (
-                                <span className="truncate">{state.trackArtists.join(', ')}</span>
+                                <span className="truncate">
+                                    {state.trackArtists.join(', ')}
+                                </span>
                             )}
                             {state.deviceName && (
                                 <span className="shrink-0">
@@ -130,13 +132,19 @@ export function PlaybackBar({ contextUri }: PlaybackBarProps) {
                         </div>
                     </div>
                 ) : (
-                    <p className="text-sm text-on-surface-variant">Nothing playing</p>
+                    <p className="text-sm text-on-surface-variant">
+                        Nothing playing
+                    </p>
                 )}
             </div>
 
             {/* Transport controls */}
             <div className="flex items-center gap-2">
-                <button className="btn-ghost p-2" onClick={handleSkipPrevious} title="Previous">
+                <button
+                    className="btn-ghost p-2"
+                    onClick={handleSkipPrevious}
+                    title="Previous"
+                >
                     <i className="fa-solid fa-backward-step" />
                 </button>
                 <button
@@ -145,16 +153,24 @@ export function PlaybackBar({ contextUri }: PlaybackBarProps) {
                     title="Rewind 30 seconds"
                 >
                     <i className="fa-solid fa-rotate-left text-sm" />
-                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[8px] font-bold leading-none">30</span>
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[8px] font-bold leading-none">
+                        30
+                    </span>
                 </button>
                 <button
                     className="btn-primary p-2 rounded-full w-9 h-9 flex items-center justify-center"
                     onClick={handlePlayPause}
                     title={state.isPlaying ? 'Pause' : 'Play'}
                 >
-                    <i className={`fa-solid ${state.isPlaying ? 'fa-pause' : 'fa-play'} text-sm`} />
+                    <i
+                        className={`fa-solid ${state.isPlaying ? 'fa-pause' : 'fa-play'} text-sm`}
+                    />
                 </button>
-                <button className="btn-ghost p-2" onClick={handleSkipNext} title="Next">
+                <button
+                    className="btn-ghost p-2"
+                    onClick={handleSkipNext}
+                    title="Next"
+                >
                     <i className="fa-solid fa-forward-step" />
                 </button>
             </div>

@@ -23,11 +23,31 @@ const MB_BASE = 'https://musicbrainz.org/ws/2';
 const MB_USER_AGENT = 'WhatNext/0.1 (https://github.com/mads-whatnext)';
 
 // Provider detection by URL prefix
-const PROVIDER_PATTERNS: Array<{ pattern: RegExp; provider: string; labelPrefix: string }> = [
-    { pattern: /bandcamp\.com/, provider: 'bandcamp', labelPrefix: 'Buy on Bandcamp' },
-    { pattern: /beatport\.com/, provider: 'beatport', labelPrefix: 'Buy on Beatport' },
-    { pattern: /music\.apple\.com|itunes\.apple\.com/, provider: 'itunes', labelPrefix: 'Buy on iTunes' },
-    { pattern: /amazon\.com|amazon\.co/, provider: 'amazon', labelPrefix: 'Buy on Amazon' },
+const PROVIDER_PATTERNS: Array<{
+    pattern: RegExp;
+    provider: string;
+    labelPrefix: string;
+}> = [
+    {
+        pattern: /bandcamp\.com/,
+        provider: 'bandcamp',
+        labelPrefix: 'Buy on Bandcamp',
+    },
+    {
+        pattern: /beatport\.com/,
+        provider: 'beatport',
+        labelPrefix: 'Buy on Beatport',
+    },
+    {
+        pattern: /music\.apple\.com|itunes\.apple\.com/,
+        provider: 'itunes',
+        labelPrefix: 'Buy on iTunes',
+    },
+    {
+        pattern: /amazon\.com|amazon\.co/,
+        provider: 'amazon',
+        labelPrefix: 'Buy on Amazon',
+    },
 ];
 
 type CacheStore = Record<string, PurchaseLink[]>;
@@ -39,7 +59,9 @@ export class PurchaseResolver {
     private bcLastRequest = 0;
 
     constructor(cacheDir?: string) {
-        const dir = cacheDir ?? path.join(os.homedir(), 'Documents', 'WhatNext', 'cache');
+        const dir =
+            cacheDir ??
+            path.join(os.homedir(), 'Documents', 'WhatNext', 'cache');
         this.cachePath = path.join(dir, 'purchase-links.json');
     }
 
@@ -81,7 +103,9 @@ export class PurchaseResolver {
         return links;
     }
 
-    async resolveBatch(reqs: PurchaseResolveRequest[]): Promise<PurchaseLink[][]> {
+    async resolveBatch(
+        reqs: PurchaseResolveRequest[],
+    ): Promise<PurchaseLink[][]> {
         const results: PurchaseLink[][] = [];
         for (const req of reqs) {
             results.push(await this.resolve(req));
@@ -99,12 +123,16 @@ export class PurchaseResolver {
         return `${artist}|${title}`;
     }
 
-    private async _mbSearch(req: PurchaseResolveRequest): Promise<PurchaseLink[]> {
+    private async _mbSearch(
+        req: PurchaseResolveRequest,
+    ): Promise<PurchaseLink[]> {
         const artist = req.artists[0] ?? '';
         if (!artist || !req.title) return [];
 
         // Step 1: search for recording
-        const query = encodeURIComponent(`recording:"${req.title}" AND artist:"${artist}"`);
+        const query = encodeURIComponent(
+            `recording:"${req.title}" AND artist:"${artist}"`,
+        );
         const searchUrl = `${MB_BASE}/recording/?query=${query}&fmt=json&limit=1`;
 
         await this._mbThrottle();
@@ -113,7 +141,9 @@ export class PurchaseResolver {
         });
         if (!searchRes.ok) return [];
 
-        const searchData = await searchRes.json() as { recordings?: Array<{ id: string }> };
+        const searchData = (await searchRes.json()) as {
+            recordings?: Array<{ id: string }>;
+        };
         const mbid = searchData.recordings?.[0]?.id;
         if (!mbid) return [];
 
@@ -125,32 +155,41 @@ export class PurchaseResolver {
         });
         if (!relRes.ok) return [];
 
-        const relData = await relRes.json() as {
+        const relData = (await relRes.json()) as {
             relations?: Array<{
                 type: string;
                 url?: { resource: string };
             }>;
         };
 
-        const purchaseTypes = new Set(['purchase for download', 'download for free', 'free streaming']);
+        const purchaseTypes = new Set([
+            'purchase for download',
+            'download for free',
+            'free streaming',
+        ]);
         const now = new Date().toISOString();
         const links: PurchaseLink[] = [];
 
-        const relations = Array.isArray(relData.relations) ? relData.relations : [];
+        const relations = Array.isArray(relData.relations)
+            ? relData.relations
+            : [];
         for (const rel of relations) {
             if (!purchaseTypes.has(rel.type)) continue;
             const url = rel.url?.resource;
             if (!url) continue;
 
-            const providerInfo = PROVIDER_PATTERNS.find((p) => p.pattern.test(url));
+            const providerInfo = PROVIDER_PATTERNS.find((p) =>
+                p.pattern.test(url),
+            );
             if (!providerInfo) continue;
 
             links.push({
                 provider: providerInfo.provider,
                 url,
-                label: rel.type === 'download for free'
-                    ? `Free on ${providerInfo.labelPrefix.replace('Buy on ', '')}`
-                    : providerInfo.labelPrefix,
+                label:
+                    rel.type === 'download for free'
+                        ? `Free on ${providerInfo.labelPrefix.replace('Buy on ', '')}`
+                        : providerInfo.labelPrefix,
                 resolvedAt: now,
             });
         }
@@ -158,7 +197,9 @@ export class PurchaseResolver {
         return links;
     }
 
-    private async _bandcampSearch(req: PurchaseResolveRequest): Promise<PurchaseLink[]> {
+    private async _bandcampSearch(
+        req: PurchaseResolveRequest,
+    ): Promise<PurchaseLink[]> {
         const artist = req.artists[0] ?? '';
         if (!artist || !req.title) return [];
 
@@ -175,7 +216,8 @@ export class PurchaseResolver {
 
         // Extract track URLs from search results
         // Bandcamp search results contain links like: https://artist.bandcamp.com/track/track-slug
-        const trackUrlPattern = /href="(https?:\/\/[a-z0-9-]+\.bandcamp\.com\/track\/[^"?#]+)"/gi;
+        const trackUrlPattern =
+            /href="(https?:\/\/[a-z0-9-]+\.bandcamp\.com\/track\/[^"?#]+)"/gi;
         const matches = [...html.matchAll(trackUrlPattern)];
 
         // Take the first result whose Bandcamp subdomain contains the full artist slug.
@@ -186,15 +228,19 @@ export class PurchaseResolver {
             const url = match[1];
             if (!url) continue;
             const urlLower = url.toLowerCase();
-            const subdomain = urlLower.match(/https?:\/\/([^.]+)\.bandcamp/)?.[1] ?? '';
-            if (artistSlug.length > 3 && !subdomain.includes(artistSlug)) continue;
+            const subdomain =
+                urlLower.match(/https?:\/\/([^.]+)\.bandcamp/)?.[1] ?? '';
+            if (artistSlug.length > 3 && !subdomain.includes(artistSlug))
+                continue;
 
-            return [{
-                provider: 'bandcamp',
-                url,
-                label: 'Buy on Bandcamp',
-                resolvedAt: new Date().toISOString(),
-            }];
+            return [
+                {
+                    provider: 'bandcamp',
+                    url,
+                    label: 'Buy on Bandcamp',
+                    resolvedAt: new Date().toISOString(),
+                },
+            ];
         }
 
         return [];

@@ -4,12 +4,7 @@
  * Per spec section 2.4
  */
 
-import type {
-    RxJsonSchema,
-    RxDocument,
-    RxCollection,
-    RxDatabase,
-} from 'rxdb';
+import type { RxJsonSchema, RxDocument, RxCollection, RxDatabase } from 'rxdb';
 import type { PurchaseLink } from '../../shared/core/download-types';
 
 // ========================================
@@ -106,7 +101,11 @@ export const userSchema: RxJsonSchema<UserDocType> = {
                     providerUserId: { type: 'string', maxLength: 200 },
                     displayName: { type: 'string' },
                     avatarUrl: { type: 'string' },
-                    linkedAt: { type: 'string', format: 'date-time', maxLength: 30 },
+                    linkedAt: {
+                        type: 'string',
+                        format: 'date-time',
+                        maxLength: 30,
+                    },
                 },
                 required: ['provider', 'providerUserId', 'linkedAt'],
             },
@@ -130,7 +129,16 @@ export const userSchema: RxJsonSchema<UserDocType> = {
             maxLength: 30,
         },
     },
-    required: ['id', 'displayName', 'avatarSource', 'isLocal', 'linkedAccounts', 'lastSeenAt', 'createdAt', 'updatedAt'],
+    required: [
+        'id',
+        'displayName',
+        'avatarSource',
+        'isLocal',
+        'linkedAccounts',
+        'lastSeenAt',
+        'createdAt',
+        'updatedAt',
+    ],
     indexes: ['isLocal', 'lastSeenAt'],
 };
 
@@ -260,7 +268,16 @@ export const trackSchema: RxJsonSchema<TrackDocType> = {
             type: 'boolean',
         },
     },
-    required: ['id', 'title', 'artists', 'album', 'durationMs', 'addedAt', 'addedBy', 'updatedAt'],
+    required: [
+        'id',
+        'title',
+        'artists',
+        'album',
+        'durationMs',
+        'addedAt',
+        'addedBy',
+        'updatedAt',
+    ],
     indexes: ['addedAt', 'addedBy', 'updatedAt'],
 };
 
@@ -331,7 +348,14 @@ export const trackInteractionSchema: RxJsonSchema<TrackInteractionDocType> = {
             type: 'string',
         },
     },
-    required: ['id', 'userId', 'trackId', 'interactionType', 'createdAt', 'updatedAt'],
+    required: [
+        'id',
+        'userId',
+        'trackId',
+        'interactionType',
+        'createdAt',
+        'updatedAt',
+    ],
     indexes: ['userId', 'trackId', 'interactionType', 'updatedAt'], // Removed 'playlistId' - optional fields can't be indexed with Dexie
 };
 
@@ -576,7 +600,16 @@ export const commentSchema: RxJsonSchema<CommentDocType> = {
             type: 'boolean',
         },
     },
-    required: ['id', 'playlistId', 'userId', 'userDisplayName', 'body', 'createdAt', 'updatedAt', 'isDeleted'],
+    required: [
+        'id',
+        'playlistId',
+        'userId',
+        'userDisplayName',
+        'body',
+        'createdAt',
+        'updatedAt',
+        'isDeleted',
+    ],
     indexes: ['playlistId', 'updatedAt'],
 };
 

@@ -13,8 +13,12 @@ export function WindowControls() {
         window.electron?.window.isMaximized().then(setIsMaximized);
 
         // Track changes from main process
-        const removeMax = window.electron?.window.onMaximized(() => setIsMaximized(true));
-        const removeUnmax = window.electron?.window.onUnmaximized(() => setIsMaximized(false));
+        const removeMax = window.electron?.window.onMaximized(() =>
+            setIsMaximized(true),
+        );
+        const removeUnmax = window.electron?.window.onUnmaximized(() =>
+            setIsMaximized(false),
+        );
 
         return () => {
             removeMax?.();
@@ -36,7 +40,12 @@ export function WindowControls() {
                 onClick={() => window.electron?.window.minimize()}
                 title="Minimize"
             >
-                <svg width="10" height="1" viewBox="0 0 10 1" fill="currentColor">
+                <svg
+                    width="10"
+                    height="1"
+                    viewBox="0 0 10 1"
+                    fill="currentColor"
+                >
                     <rect width="10" height="1" />
                 </svg>
             </button>
@@ -49,13 +58,27 @@ export function WindowControls() {
             >
                 {isMaximized ? (
                     // Restore icon (two overlapping squares)
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1">
+                    <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1"
+                    >
                         <rect x="2" y="0" width="8" height="8" />
                         <polyline points="0,2 0,10 8,10" />
                     </svg>
                 ) : (
                     // Maximize icon (single square)
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1">
+                    <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1"
+                    >
                         <rect x="0" y="0" width="10" height="10" />
                     </svg>
                 )}
@@ -67,7 +90,15 @@ export function WindowControls() {
                 onClick={() => window.electron?.window.close()}
                 title="Close"
             >
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+                <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                >
                     <line x1="0" y1="0" x2="10" y2="10" />
                     <line x1="10" y1="0" x2="0" y2="10" />
                 </svg>

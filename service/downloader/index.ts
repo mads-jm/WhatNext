@@ -1,7 +1,11 @@
 export { YtdlpBackend } from './backends/ytdlp-backend';
 export { SpotdlBackend } from './backends/spotdl-backend';
 export { SpytifyBackend } from './backends/spytify-backend';
-export type { DownloadBackend, BackendStatus, DownloadOptions } from './backend';
+export type {
+    DownloadBackend,
+    BackendStatus,
+    DownloadOptions,
+} from './backend';
 export type {
     ResolvedTrack,
     AudioFormatOption,

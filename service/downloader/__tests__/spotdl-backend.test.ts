@@ -13,7 +13,11 @@ vi.mock('../subprocess', async (orig) => {
 import { runCommand, spawnLines, killProcess } from '../subprocess';
 import { SpotdlBackend, SpotdlResolveError } from '../backends/spotdl-backend';
 import type { DownloadEvent, ResolvedTrack } from '../types';
-import { makeRunResult, makeSpawnLines, makeBlockingSpawnLines } from './helpers/fixture-process';
+import {
+    makeRunResult,
+    makeSpawnLines,
+    makeBlockingSpawnLines,
+} from './helpers/fixture-process';
 import { loadFixtureLines, loadFixtureText } from './helpers/load-fixture';
 
 const OUT = '/home/u/WhatNext/audio';
@@ -32,7 +36,9 @@ function spotifyTrack(): ResolvedTrack {
     };
 }
 
-async function collect(gen: AsyncGenerator<DownloadEvent>): Promise<DownloadEvent[]> {
+async function collect(
+    gen: AsyncGenerator<DownloadEvent>,
+): Promise<DownloadEvent[]> {
     const out: DownloadEvent[] = [];
     for await (const e of gen) out.push(e);
     return out;
@@ -49,7 +55,10 @@ describe('SpotdlBackend capability declaration', () => {
 
     it('resolves spotify-ids input into Spotify track URLs', async () => {
         vi.mocked(runCommand).mockResolvedValue(
-            makeRunResult({ code: 0, stdout: loadFixtureText('spotdl-save.json') }),
+            makeRunResult({
+                code: 0,
+                stdout: loadFixtureText('spotdl-save.json'),
+            }),
         );
         const tracks = await new SpotdlBackend().resolve({
             type: 'spotify-ids',
@@ -68,9 +77,15 @@ describe('SpotdlBackend capability declaration', () => {
 describe('SpotdlBackend.resolve', () => {
     it('maps the save-file JSON into a ResolvedTrack', async () => {
         vi.mocked(runCommand).mockResolvedValue(
-            makeRunResult({ code: 0, stdout: loadFixtureText('spotdl-save.json') }),
+            makeRunResult({
+                code: 0,
+                stdout: loadFixtureText('spotdl-save.json'),
+            }),
         );
-        const [t] = await new SpotdlBackend().resolve({ type: 'url', url: SPOTIFY_URL });
+        const [t] = await new SpotdlBackend().resolve({
+            type: 'url',
+            url: SPOTIFY_URL,
+        });
         expect(t).toMatchObject({
             title: 'Strobe',
             artists: ['deadmau5'],
@@ -85,14 +100,21 @@ describe('SpotdlBackend.resolve', () => {
     // title was the URL — a junk library entry that looked like a real import.
     it('fails the resolve when stdout is not parseable JSON (captured bad output)', async () => {
         const raw = loadFixtureText('spotdl-save-unreadable.stdout.txt');
-        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 0, stdout: raw }));
+        vi.mocked(runCommand).mockResolvedValue(
+            makeRunResult({ code: 0, stdout: raw }),
+        );
 
-        const resolving = new SpotdlBackend().resolve({ type: 'url', url: SPOTIFY_URL });
+        const resolving = new SpotdlBackend().resolve({
+            type: 'url',
+            url: SPOTIFY_URL,
+        });
 
         await expect(resolving).rejects.toBeInstanceOf(SpotdlResolveError);
         // The instanceof assertion above proves the cast; `.catch` alone would
         // type `err` as `ResolvedTrack[] | SpotdlResolveError`.
-        const err = (await resolving.catch((e: unknown) => e)) as SpotdlResolveError;
+        const err = (await resolving.catch(
+            (e: unknown) => e,
+        )) as SpotdlResolveError;
         // Raw output is retained for debugging, and excerpted into the message
         // (the only part that survives the IPC rejection boundary).
         expect(err.rawOutput).toBe(raw);
@@ -110,7 +132,9 @@ describe('SpotdlBackend.resolve', () => {
     });
 
     it('reports empty output rather than an empty excerpt', async () => {
-        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 0, stdout: '   ' }));
+        vi.mocked(runCommand).mockResolvedValue(
+            makeRunResult({ code: 0, stdout: '   ' }),
+        );
         await expect(
             new SpotdlBackend().resolve({ type: 'url', url: SPOTIFY_URL }),
         ).rejects.toThrow('(no output)');
@@ -124,7 +148,10 @@ describe('SpotdlBackend argv hygiene', () => {
     // shape check on the query argument instead. These tests pin both halves.
     it('keeps the argv shape spotDL actually accepts (no -- separator)', async () => {
         vi.mocked(runCommand).mockResolvedValue(
-            makeRunResult({ code: 0, stdout: loadFixtureText('spotdl-save.json') }),
+            makeRunResult({
+                code: 0,
+                stdout: loadFixtureText('spotdl-save.json'),
+            }),
         );
 
         await new SpotdlBackend().resolve({ type: 'url', url: SPOTIFY_URL });
@@ -136,17 +163,26 @@ describe('SpotdlBackend argv hygiene', () => {
 
     it('refuses an option-looking query argument before spawning (resolve)', async () => {
         await expect(
-            new SpotdlBackend().resolve({ type: 'url', url: '--exec=touch /tmp/pwned' }),
+            new SpotdlBackend().resolve({
+                type: 'url',
+                url: '--exec=touch /tmp/pwned',
+            }),
         ).rejects.toThrow('non-http(s) query argument');
         // Nothing was spawned: the batch is refused up front, not half-resolved.
         expect(vi.mocked(runCommand)).not.toHaveBeenCalled();
     });
 
     it('refuses an option-looking query argument before spawning (download)', async () => {
-        const hostile = { ...spotifyTrack(), sourceUrl: '--config-location=/tmp/evil.conf' };
+        const hostile = {
+            ...spotifyTrack(),
+            sourceUrl: '--config-location=/tmp/evil.conf',
+        };
 
         const events = await collect(
-            new SpotdlBackend().download([hostile], { outputDir: OUT, preferredFormat: 'mp3' }),
+            new SpotdlBackend().download([hostile], {
+                outputDir: OUT,
+                preferredFormat: 'mp3',
+            }),
         );
 
         expect(events).toHaveLength(1);
@@ -159,12 +195,19 @@ describe('SpotdlBackend argv hygiene', () => {
 describe('SpotdlBackend.download', () => {
     it('parses progress and the Downloaded path on success', async () => {
         vi.mocked(spawnLines).mockReturnValue(
-            makeSpawnLines(loadFixtureLines('spotdl-success.stdout.txt'), { exitCode: 0 }),
+            makeSpawnLines(loadFixtureLines('spotdl-success.stdout.txt'), {
+                exitCode: 0,
+            }),
         );
         const events = await collect(
-            new SpotdlBackend().download([spotifyTrack()], { outputDir: OUT, preferredFormat: 'mp3' }),
+            new SpotdlBackend().download([spotifyTrack()], {
+                outputDir: OUT,
+                preferredFormat: 'mp3',
+            }),
         );
-        expect(events.some((e) => e.type === 'progress' && e.percent === 37)).toBe(true);
+        expect(
+            events.some((e) => e.type === 'progress' && e.percent === 37),
+        ).toBe(true);
         const complete = events.at(-1)!;
         expect(complete.type).toBe('complete');
         expect(complete.localFilePath).toBe(`${OUT}/deadmau5 - Strobe.mp3`);
@@ -172,10 +215,15 @@ describe('SpotdlBackend.download', () => {
 
     it('maps a cache-skip line to a complete event with the existing path', async () => {
         vi.mocked(spawnLines).mockReturnValue(
-            makeSpawnLines(loadFixtureLines('spotdl-skip.stdout.txt'), { exitCode: 0 }),
+            makeSpawnLines(loadFixtureLines('spotdl-skip.stdout.txt'), {
+                exitCode: 0,
+            }),
         );
         const events = await collect(
-            new SpotdlBackend().download([spotifyTrack()], { outputDir: OUT, preferredFormat: 'mp3' }),
+            new SpotdlBackend().download([spotifyTrack()], {
+                outputDir: OUT,
+                preferredFormat: 'mp3',
+            }),
         );
         const complete = events.at(-1)!;
         expect(complete.type).toBe('complete');
@@ -190,17 +238,26 @@ describe('SpotdlBackend.download', () => {
             }),
         );
         const events = await collect(
-            new SpotdlBackend().download([spotifyTrack()], { outputDir: OUT, preferredFormat: 'mp3' }),
+            new SpotdlBackend().download([spotifyTrack()], {
+                outputDir: OUT,
+                preferredFormat: 'mp3',
+            }),
         );
         expect(events.at(-1)!.type).toBe('complete');
     });
 
     it('fails on a non-zero exit code', async () => {
         vi.mocked(spawnLines).mockReturnValue(
-            makeSpawnLines([], { stderr: 'AudioProviderError: no match', exitCode: 1 }),
+            makeSpawnLines([], {
+                stderr: 'AudioProviderError: no match',
+                exitCode: 1,
+            }),
         );
         const events = await collect(
-            new SpotdlBackend().download([spotifyTrack()], { outputDir: OUT, preferredFormat: 'mp3' }),
+            new SpotdlBackend().download([spotifyTrack()], {
+                outputDir: OUT,
+                preferredFormat: 'mp3',
+            }),
         );
         expect(events).toHaveLength(1);
         expect(events[0].type).toBe('error');
@@ -210,7 +267,9 @@ describe('SpotdlBackend.download', () => {
 
 describe('SpotdlBackend.checkInstalled', () => {
     it('reports installed/version on clean exit', async () => {
-        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 0, stdout: '4.2.5' }));
+        vi.mocked(runCommand).mockResolvedValue(
+            makeRunResult({ code: 0, stdout: '4.2.5' }),
+        );
         expect(await new SpotdlBackend().checkInstalled()).toMatchObject({
             installed: true,
             version: '4.2.5',
@@ -218,18 +277,30 @@ describe('SpotdlBackend.checkInstalled', () => {
     });
 
     it('reports not installed on spawn error', async () => {
-        vi.mocked(runCommand).mockRejectedValue(new Error('spawn spotdl ENOENT'));
-        expect((await new SpotdlBackend().checkInstalled()).installed).toBe(false);
+        vi.mocked(runCommand).mockRejectedValue(
+            new Error('spawn spotdl ENOENT'),
+        );
+        expect((await new SpotdlBackend().checkInstalled()).installed).toBe(
+            false,
+        );
     });
 
     it('reports not installed on non-zero exit', async () => {
-        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 1, stderr: 'bad' }));
-        expect((await new SpotdlBackend().checkInstalled()).installed).toBe(false);
+        vi.mocked(runCommand).mockResolvedValue(
+            makeRunResult({ code: 1, stderr: 'bad' }),
+        );
+        expect((await new SpotdlBackend().checkInstalled()).installed).toBe(
+            false,
+        );
     });
 
     it('uses a configured custom path', async () => {
-        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 0, stdout: '4.2.5' }));
-        const status = await new SpotdlBackend('/opt/pipx/spotdl').checkInstalled();
+        vi.mocked(runCommand).mockResolvedValue(
+            makeRunResult({ code: 0, stdout: '4.2.5' }),
+        );
+        const status = await new SpotdlBackend(
+            '/opt/pipx/spotdl',
+        ).checkInstalled();
         expect(status.path).toBe('/opt/pipx/spotdl');
         expect(vi.mocked(runCommand).mock.calls[0][0]).toBe('/opt/pipx/spotdl');
     });
@@ -243,7 +314,10 @@ describe('SpotdlBackend.cancel', () => {
         vi.mocked(spawnLines).mockReturnValue(result);
 
         const backend = new SpotdlBackend();
-        const gen = backend.download([spotifyTrack()], { outputDir: OUT, preferredFormat: 'mp3' });
+        const gen = backend.download([spotifyTrack()], {
+            outputDir: OUT,
+            preferredFormat: 'mp3',
+        });
         await gen.next();
         await backend.cancel();
         expect(vi.mocked(killProcess)).toHaveBeenCalledTimes(1);

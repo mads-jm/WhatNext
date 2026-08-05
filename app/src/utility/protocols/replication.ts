@@ -19,7 +19,8 @@ import { P2P_CONFIG } from '../../shared/p2p-config';
 // 5MB accommodates a large full-sync response without being exploitable.
 const MAX_MESSAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export type ReplicationMessageType = 'pull-request' | 'pull-response' | 'push' | 'push-ack';
+export type ReplicationMessageType =
+    'pull-request' | 'pull-response' | 'push' | 'push-ack';
 
 export interface ReplicationMessage {
     type: ReplicationMessageType;
@@ -47,7 +48,7 @@ export interface ReplicationDocument {
  */
 export function newestCheckpoint(
     documents: ReplicationDocument[],
-    incoming: string | null
+    incoming: string | null,
 ): string {
     let newestMs = -1;
     let newest = incoming;
@@ -80,7 +81,7 @@ function encodeFramed(data: unknown): Uint8Array {
 async function accumulateBytes(
     iter: AsyncIterator<Uint8Array | { subarray(): Uint8Array }>,
     needed: number,
-    carry: Uint8Array
+    carry: Uint8Array,
 ): Promise<{ buf: Uint8Array; rest: Uint8Array } | null> {
     let buf = carry;
     while (buf.length < needed) {
@@ -100,15 +101,24 @@ async function accumulateBytes(
  * Throws if the declared message length exceeds MAX_MESSAGE_SIZE.
  */
 async function readStreamMessage<T>(stream: Stream): Promise<T> {
-    const iter = (stream as unknown as AsyncIterable<Uint8Array | { subarray(): Uint8Array }>)[Symbol.asyncIterator]();
+    const iter = (
+        stream as unknown as AsyncIterable<
+            Uint8Array | { subarray(): Uint8Array }
+        >
+    )[Symbol.asyncIterator]();
 
     // Read 4-byte length prefix
     const headerResult = await accumulateBytes(iter, 4, new Uint8Array(0));
     if (!headerResult) {
-        throw new Error('[Replication] Stream ended before length prefix was received');
+        throw new Error(
+            '[Replication] Stream ended before length prefix was received',
+        );
     }
 
-    const view = new DataView(headerResult.buf.buffer, headerResult.buf.byteOffset);
+    const view = new DataView(
+        headerResult.buf.buffer,
+        headerResult.buf.byteOffset,
+    );
     const length = view.getUint32(0, false); // big-endian
 
     if (length === 0) {
@@ -116,14 +126,16 @@ async function readStreamMessage<T>(stream: Stream): Promise<T> {
     }
     if (length > MAX_MESSAGE_SIZE) {
         throw new Error(
-            `[Replication] Rejected oversized message (length=${length}, max=${MAX_MESSAGE_SIZE})`
+            `[Replication] Rejected oversized message (length=${length}, max=${MAX_MESSAGE_SIZE})`,
         );
     }
 
     // Read the JSON body
     const bodyResult = await accumulateBytes(iter, length, headerResult.rest);
     if (!bodyResult) {
-        throw new Error('[Replication] Stream ended before message body was complete');
+        throw new Error(
+            '[Replication] Stream ended before message body was complete',
+        );
     }
 
     return JSON.parse(new TextDecoder().decode(bodyResult.buf)) as T;
@@ -132,7 +144,10 @@ async function readStreamMessage<T>(stream: Stream): Promise<T> {
 /**
  * Write a length-prefixed JSON message to a stream and half-close the write side.
  */
-async function writeStreamMessage(stream: Stream, data: unknown): Promise<void> {
+async function writeStreamMessage(
+    stream: Stream,
+    data: unknown,
+): Promise<void> {
     stream.send(encodeFramed(data));
     await stream.close();
 }
@@ -140,12 +155,12 @@ async function writeStreamMessage(stream: Stream, data: unknown): Promise<void> 
 export type OnPullRequest = (
     collection: string,
     checkpoint: string | null,
-    limit: number
+    limit: number,
 ) => Promise<{ documents: ReplicationDocument[]; checkpoint: string }>;
 
 export type OnPushReceived = (
     collection: string,
-    documents: ReplicationDocument[]
+    documents: ReplicationDocument[],
 ) => Promise<void>;
 
 /**
@@ -159,7 +174,7 @@ export type OnPullResponse = (
     remotePeerId: string,
     collection: string,
     documents: ReplicationDocument[],
-    checkpoint: string | null
+    checkpoint: string | null,
 ) => void;
 
 /**
@@ -171,66 +186,85 @@ export function registerReplicationProtocol(
     onPushReceived: OnPushReceived,
     onPullResponse?: OnPullResponse,
 ): void {
-    node.handle(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION, async (stream: Stream, connection: Connection) => {
-        try {
-            const message = await readStreamMessage<ReplicationMessage>(stream);
-            const remotePeer = connection.remotePeer.toString().slice(0, 12);
+    node.handle(
+        P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+        async (stream: Stream, connection: Connection) => {
+            try {
+                const message =
+                    await readStreamMessage<ReplicationMessage>(stream);
+                const remotePeer = connection.remotePeer
+                    .toString()
+                    .slice(0, 12);
 
-            console.log(`[Replication] Received ${message.type} for ${message.collection} from ${remotePeer}`);
+                console.log(
+                    `[Replication] Received ${message.type} for ${message.collection} from ${remotePeer}`,
+                );
 
-            switch (message.type) {
-                case 'pull-request': {
-                    const result = await onPullRequest(
-                        message.collection,
-                        message.checkpoint ?? null,
-                        message.limit ?? 100
-                    );
-                    // Send response on new stream
-                    const responseStream = await connection.newStream(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION);
-                    await writeStreamMessage(responseStream, {
-                        type: 'pull-response',
-                        collection: message.collection,
-                        documents: result.documents,
-                        checkpoint: result.checkpoint,
-                    } satisfies ReplicationMessage);
-                    break;
-                }
-
-                case 'push': {
-                    if (message.documents && message.documents.length > 0) {
-                        await onPushReceived(message.collection, message.documents);
+                switch (message.type) {
+                    case 'pull-request': {
+                        const result = await onPullRequest(
+                            message.collection,
+                            message.checkpoint ?? null,
+                            message.limit ?? 100,
+                        );
+                        // Send response on new stream
+                        const responseStream = await connection.newStream(
+                            P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+                        );
+                        await writeStreamMessage(responseStream, {
+                            type: 'pull-response',
+                            collection: message.collection,
+                            documents: result.documents,
+                            checkpoint: result.checkpoint,
+                        } satisfies ReplicationMessage);
+                        break;
                     }
-                    // Send ack
-                    const ackStream = await connection.newStream(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION);
-                    await writeStreamMessage(ackStream, {
-                        type: 'push-ack',
-                        collection: message.collection,
-                    } satisfies ReplicationMessage);
-                    break;
-                }
 
-                case 'pull-response': {
-                    // Requester side: forward pulled docs to the renderer and
-                    // advance the persisted checkpoint. Without this, pulls are no-ops.
-                    console.log(`[Replication] Got pull-response with ${message.documents?.length ?? 0} docs`);
-                    onPullResponse?.(
-                        connection.remotePeer.toString(),
-                        message.collection,
-                        message.documents ?? [],
-                        message.checkpoint ?? null
-                    );
-                    break;
-                }
+                    case 'push': {
+                        if (message.documents && message.documents.length > 0) {
+                            await onPushReceived(
+                                message.collection,
+                                message.documents,
+                            );
+                        }
+                        // Send ack
+                        const ackStream = await connection.newStream(
+                            P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+                        );
+                        await writeStreamMessage(ackStream, {
+                            type: 'push-ack',
+                            collection: message.collection,
+                        } satisfies ReplicationMessage);
+                        break;
+                    }
 
-                case 'push-ack': {
-                    console.log(`[Replication] Push acknowledged for ${message.collection}`);
-                    break;
+                    case 'pull-response': {
+                        // Requester side: forward pulled docs to the renderer and
+                        // advance the persisted checkpoint. Without this, pulls are no-ops.
+                        console.log(
+                            `[Replication] Got pull-response with ${message.documents?.length ?? 0} docs`,
+                        );
+                        onPullResponse?.(
+                            connection.remotePeer.toString(),
+                            message.collection,
+                            message.documents ?? [],
+                            message.checkpoint ?? null,
+                        );
+                        break;
+                    }
+
+                    case 'push-ack': {
+                        console.log(
+                            `[Replication] Push acknowledged for ${message.collection}`,
+                        );
+                        break;
+                    }
                 }
+            } catch (error) {
+                console.error('[Replication] Error handling stream:', error);
             }
-        } catch (error) {
-            console.error('[Replication] Error handling stream:', error);
-        }
-    });
+        },
+    );
 }
 
 /**
@@ -245,9 +279,14 @@ export async function pushToRemotePeer(
     const { peerIdFromString } = await import('@libp2p/peer-id');
     const peerId = peerIdFromString(remotePeerId);
 
-    console.log(`[Replication] Pushing ${documents.length} docs to ${remotePeerId.slice(0, 12)}...`);
+    console.log(
+        `[Replication] Pushing ${documents.length} docs to ${remotePeerId.slice(0, 12)}...`,
+    );
 
-    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION);
+    const stream = await node.dialProtocol(
+        peerId,
+        P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+    );
     await writeStreamMessage(stream, {
         type: 'push',
         collection,
@@ -268,9 +307,14 @@ export async function pullFromRemotePeer(
     const { peerIdFromString } = await import('@libp2p/peer-id');
     const peerId = peerIdFromString(remotePeerId);
 
-    console.log(`[Replication] Pulling ${collection} from ${remotePeerId.slice(0, 12)}... (checkpoint: ${checkpoint ?? 'null'})`);
+    console.log(
+        `[Replication] Pulling ${collection} from ${remotePeerId.slice(0, 12)}... (checkpoint: ${checkpoint ?? 'null'})`,
+    );
 
-    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION);
+    const stream = await node.dialProtocol(
+        peerId,
+        P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+    );
     await writeStreamMessage(stream, {
         type: 'pull-request',
         collection,

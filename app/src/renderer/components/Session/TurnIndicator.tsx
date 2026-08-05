@@ -29,12 +29,17 @@ export function TurnIndicator({
     maxTurns,
 }: TurnIndicatorProps) {
     const tracksRemaining = tracksPerTurn - turnTracksAdded;
-    const avatarSrc = artSrc(currentTurnAvatarLocalPath ?? undefined, currentTurnAvatarUrl ?? undefined);
+    const avatarSrc = artSrc(
+        currentTurnAvatarLocalPath ?? undefined,
+        currentTurnAvatarUrl ?? undefined,
+    );
 
     return (
         <div
             className={`card card-body flex items-center gap-3 ${
-                isMyTurn ? 'border-primary bg-primary/20 animate-pulse' : 'bg-surface-high border-outline-variant/20'
+                isMyTurn
+                    ? 'border-primary bg-primary/20 animate-pulse'
+                    : 'bg-surface-high border-outline-variant/20'
             }`}
             data-testid="turn-indicator"
         >
@@ -54,7 +59,11 @@ export function TurnIndicator({
             ) : (
                 <>
                     {avatarSrc ? (
-                        <img src={avatarSrc} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                        <img
+                            src={avatarSrc}
+                            alt=""
+                            className="w-6 h-6 rounded-full object-cover shrink-0"
+                        />
                     ) : (
                         <i className="fa-solid fa-hourglass-half text-on-surface-variant text-sm shrink-0" />
                     )}
@@ -64,7 +73,10 @@ export function TurnIndicator({
                             {currentTurnDisplayName ?? 'someone'}
                         </span>
                         {tracksPerTurn > 1 && (
-                            <span className="text-on-surface-variant"> · {turnTracksAdded}/{tracksPerTurn} tracks</span>
+                            <span className="text-on-surface-variant">
+                                {' '}
+                                · {turnTracksAdded}/{tracksPerTurn} tracks
+                            </span>
                         )}
                         ...
                     </span>

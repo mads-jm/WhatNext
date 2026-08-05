@@ -24,16 +24,24 @@ describe('isPathContained', () => {
     it('accepts the root itself and files beneath it', () => {
         expect(isPathContained(root, root)).toBe(true);
         expect(isPathContained(path.join(root, 'cover.jpg'), root)).toBe(true);
-        expect(isPathContained(path.join(root, 'sub', 'cover.jpg'), root)).toBe(true);
+        expect(isPathContained(path.join(root, 'sub', 'cover.jpg'), root)).toBe(
+            true,
+        );
     });
 
     it('rejects traversal that escapes the root', () => {
-        expect(isPathContained(path.join(root, '..', 'secrets.jpg'), root)).toBe(false);
-        expect(isPathContained(path.join(root, 'a', '..', '..', 'x.jpg'), root)).toBe(false);
+        expect(
+            isPathContained(path.join(root, '..', 'secrets.jpg'), root),
+        ).toBe(false);
+        expect(
+            isPathContained(path.join(root, 'a', '..', '..', 'x.jpg'), root),
+        ).toBe(false);
     });
 
     it('rejects a sibling directory that shares the root prefix', () => {
-        expect(isPathContained(`${root}Extra${path.sep}cover.jpg`, root)).toBe(false);
+        expect(isPathContained(`${root}Extra${path.sep}cover.jpg`, root)).toBe(
+            false,
+        );
         expect(isPathContained(`${root}-backup`, root)).toBe(false);
     });
 
@@ -46,12 +54,17 @@ describe('assertPathContained', () => {
     const root = path.resolve('/srv/whatnext/audio');
 
     it('is silent for a contained path', () => {
-        expect(() => assertPathContained(path.join(root, 'song.mp3'), root)).not.toThrow();
+        expect(() =>
+            assertPathContained(path.join(root, 'song.mp3'), root),
+        ).not.toThrow();
     });
 
     it('throws for an escaping path', () => {
         expect(() =>
-            assertPathContained(path.join(root, '..', '..', 'authorized_keys'), root),
+            assertPathContained(
+                path.join(root, '..', '..', 'authorized_keys'),
+                root,
+            ),
         ).toThrow(/Path traversal rejected/);
     });
 });
@@ -77,7 +90,9 @@ describe('sanitizeFilename', () => {
     });
 
     it('keeps an ordinary filename intact', () => {
-        expect(sanitizeFilename('Artist - Album.jpg', HASH)).toBe('Artist - Album.jpg');
+        expect(sanitizeFilename('Artist - Album.jpg', HASH)).toBe(
+            'Artist - Album.jpg',
+        );
     });
 
     it('falls back to the hash prefix when nothing usable remains', () => {

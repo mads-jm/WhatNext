@@ -23,10 +23,16 @@ if (process.env.NODE_ENV !== 'production') {
         try {
             await resetDatabase();
         } catch (err) {
-            console.warn('[Dev] Failed to reset via API, clearing IndexedDB directly...', err);
+            console.warn(
+                '[Dev] Failed to reset via API, clearing IndexedDB directly...',
+                err,
+            );
             const dbs = await indexedDB.databases();
             for (const db of dbs) {
-                if (db.name?.startsWith('whatnext_db') || db.name?.includes('rxdb')) {
+                if (
+                    db.name?.startsWith('whatnext_db') ||
+                    db.name?.includes('rxdb')
+                ) {
                     console.log(`[Dev] Deleting database: ${db.name}`);
                     indexedDB.deleteDatabase(db.name);
                 }
@@ -40,7 +46,10 @@ if (process.env.NODE_ENV !== 'production') {
         console.log('[Dev] Nuking all RxDB databases from IndexedDB...');
         const dbs = await indexedDB.databases();
         for (const db of dbs) {
-            if (db.name?.startsWith('whatnext_db') || db.name?.includes('rxdb')) {
+            if (
+                db.name?.startsWith('whatnext_db') ||
+                db.name?.includes('rxdb')
+            ) {
                 console.log(`[Dev] Deleting database: ${db.name}`);
                 indexedDB.deleteDatabase(db.name);
             }

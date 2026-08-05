@@ -48,14 +48,21 @@ export function groupTracksByArtwork(
  */
 export async function downloadArtworkBatch(
     groups: Map<string, { trackIds: string[]; meta: ArtworkMeta }>,
-    download: (url: string, meta?: ArtworkMeta) => Promise<{ success: boolean; localPath?: string }>,
+    download: (
+        url: string,
+        meta?: ArtworkMeta,
+    ) => Promise<{ success: boolean; localPath?: string }>,
     updateTrackPath: (trackId: string, localPath: string) => Promise<void>,
 ): Promise<void> {
     for (const [url, { trackIds, meta }] of groups) {
         try {
             const result = await download(url, meta);
             if (result?.success && result.localPath) {
-                await Promise.all(trackIds.map((id) => updateTrackPath(id, result.localPath!)));
+                await Promise.all(
+                    trackIds.map((id) =>
+                        updateTrackPath(id, result.localPath!),
+                    ),
+                );
             }
         } catch (err) {
             console.warn('[Artwork] Download failed for', url, err);

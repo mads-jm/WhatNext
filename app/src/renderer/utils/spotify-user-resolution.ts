@@ -20,16 +20,31 @@ interface TrackWithSpotifyUser {
  */
 export async function resolveSpotifyUsers(
     tracks: TrackWithSpotifyUser[],
-    findBySpotifyId: (spotifyId: string, displayName?: string) => Promise<{ id: string } | null>,
-    createStub: (displayName: string, spotifyId: string, spotifyDisplayName?: string) => Promise<{ id: string }>,
+    findBySpotifyId: (
+        spotifyId: string,
+        displayName?: string,
+    ) => Promise<{ id: string } | null>,
+    createStub: (
+        displayName: string,
+        spotifyId: string,
+        spotifyDisplayName?: string,
+    ) => Promise<{ id: string }>,
 ): Promise<Map<string, string>> {
-    const uniqueSpotifyIds = [...new Set(tracks.map((t) => t.addedBySpotifyId).filter(Boolean))];
+    const uniqueSpotifyIds = [
+        ...new Set(tracks.map((t) => t.addedBySpotifyId).filter(Boolean)),
+    ];
 
     // Build a display name lookup from the first track we see for each Spotify user
     const displayNameBySpotifyId = new Map<string, string>();
     for (const t of tracks) {
-        if (t.addedByDisplayName && !displayNameBySpotifyId.has(t.addedBySpotifyId)) {
-            displayNameBySpotifyId.set(t.addedBySpotifyId, t.addedByDisplayName);
+        if (
+            t.addedByDisplayName &&
+            !displayNameBySpotifyId.has(t.addedBySpotifyId)
+        ) {
+            displayNameBySpotifyId.set(
+                t.addedBySpotifyId,
+                t.addedByDisplayName,
+            );
         }
     }
 

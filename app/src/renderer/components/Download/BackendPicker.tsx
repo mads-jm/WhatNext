@@ -11,7 +11,11 @@ interface BackendPickerProps {
     onChange: (id: string) => void;
 }
 
-export function BackendPicker({ backends, selected, onChange }: BackendPickerProps) {
+export function BackendPicker({
+    backends,
+    selected,
+    onChange,
+}: BackendPickerProps) {
     const installed = backends.filter((b) => b.installed);
     if (installed.length <= 1) return null;
 
@@ -32,7 +36,9 @@ export function BackendPicker({ backends, selected, onChange }: BackendPickerPro
                 >
                     {b.name}
                     {b.version && (
-                        <span className="ml-1 text-[10px] opacity-60">{b.version}</span>
+                        <span className="ml-1 text-[10px] opacity-60">
+                            {b.version}
+                        </span>
                     )}
                 </button>
             ))}

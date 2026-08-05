@@ -28,7 +28,11 @@ import { Readable } from 'stream';
 import type { SpawnResult, SpawnLinesResult } from '../../subprocess';
 
 /** Build a `runCommand` result (used for `checkInstalled` / `resolve`). */
-export function makeRunResult(p: { code: number | null; stdout?: string; stderr?: string }): SpawnResult {
+export function makeRunResult(p: {
+    code: number | null;
+    stdout?: string;
+    stderr?: string;
+}): SpawnResult {
     return { code: p.code, stdout: p.stdout ?? '', stderr: p.stderr ?? '' };
 }
 

@@ -20,30 +20,32 @@ export function ProfileSettings() {
     const [linking, setLinking] = useState(false);
 
     useEffect(() => {
-        const cleanupComplete = window.electron?.spotify.onAuthComplete(async () => {
-            try {
-                const profile = await window.electron?.spotify.getProfile();
-                if (profile?.success && profile.userId) {
-                    await linkServiceAccount({
-                        provider: 'spotify',
-                        providerUserId: profile.userId,
-                        displayName: profile.displayName,
-                        avatarUrl: profile.avatarUrl,
-                    });
-                    const u = useUserStore.getState().user;
-                    if (u?.avatarSource === 'none' && profile.avatarUrl) {
-                        await updateLocalUserProfile({
-                            avatarSource: 'spotify',
+        const cleanupComplete = window.electron?.spotify.onAuthComplete(
+            async () => {
+                try {
+                    const profile = await window.electron?.spotify.getProfile();
+                    if (profile?.success && profile.userId) {
+                        await linkServiceAccount({
+                            provider: 'spotify',
+                            providerUserId: profile.userId,
+                            displayName: profile.displayName,
                             avatarUrl: profile.avatarUrl,
                         });
+                        const u = useUserStore.getState().user;
+                        if (u?.avatarSource === 'none' && profile.avatarUrl) {
+                            await updateLocalUserProfile({
+                                avatarSource: 'spotify',
+                                avatarUrl: profile.avatarUrl,
+                            });
+                        }
                     }
+                } catch (err) {
+                    console.error('Failed to link Spotify profile:', err);
+                } finally {
+                    setLinking(false);
                 }
-            } catch (err) {
-                console.error('Failed to link Spotify profile:', err);
-            } finally {
-                setLinking(false);
-            }
-        });
+            },
+        );
 
         const cleanupError = window.electron?.spotify.onAuthError(() => {
             setLinking(false);
@@ -76,7 +78,7 @@ export function ProfileSettings() {
     };
 
     const spotifyLink = user.linkedAccounts.find(
-        (a) => a.provider === 'spotify'
+        (a) => a.provider === 'spotify',
     );
 
     const handleSpotifyConnect = async () => {

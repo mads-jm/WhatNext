@@ -52,7 +52,7 @@ describe('addIncomingTrack', () => {
         const result = await addIncomingTrack(
             baseIncoming({ externalSource: 'manual' }),
             PLAYLIST_ID,
-            ADDER
+            ADDER,
         );
 
         expect(createTrack).toHaveBeenCalledTimes(1);
@@ -79,7 +79,7 @@ describe('addIncomingTrack', () => {
         await addIncomingTrack(
             baseIncoming({ externalSource: 'spotify', externalId: 'spfy-99' }),
             PLAYLIST_ID,
-            ADDER
+            ADDER,
         );
         const input = createTrack.mock.calls[0][0] as CreateTrackInput;
         expect(input.spotifyId).toBe('spfy-99');
@@ -90,7 +90,7 @@ describe('addIncomingTrack', () => {
         await addIncomingTrack(
             baseIncoming({ externalSource: 'musicbrainz', externalId: 'mb-1' }),
             PLAYLIST_ID,
-            ADDER
+            ADDER,
         );
         const input = createTrack.mock.calls[0][0] as CreateTrackInput;
         expect(input.spotifyId).toBeUndefined();
@@ -105,7 +105,7 @@ describe('addIncomingTrack', () => {
                 albumArtUrl: 'file:///art.jpg',
             }),
             PLAYLIST_ID,
-            ADDER
+            ADDER,
         );
         const input = createTrack.mock.calls[0][0] as CreateTrackInput;
         expect(input.source).toBe('local');
@@ -128,7 +128,7 @@ describe('addIncomingTrack', () => {
         await addIncomingTrack(
             baseIncoming({ externalSource: 'manual' }),
             PLAYLIST_ID,
-            ADDER
+            ADDER,
         );
         expect(order).toEqual(['create', 'append']);
     });

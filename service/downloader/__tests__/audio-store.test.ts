@@ -8,7 +8,9 @@ import { AudioStore } from '../audio-store';
 let tmpDir: string;
 
 beforeEach(async () => {
-    tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'whatnext-store-test-'));
+    tmpDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'whatnext-store-test-'),
+    );
 });
 
 afterEach(async () => {
@@ -42,7 +44,9 @@ describe('AudioStore', () => {
 
             const store = new AudioStore(tmpDir);
             await store.init();
-            expect(store.getExisting('https://example.com/track')).toBe(existingFile);
+            expect(store.getExisting('https://example.com/track')).toBe(
+                existingFile,
+            );
         });
     });
 
@@ -86,7 +90,10 @@ describe('AudioStore', () => {
             await store.init();
             await store.record('https://example.com/b', filePath);
 
-            const raw = await fs.promises.readFile(path.join(tmpDir, 'index.json'), 'utf8');
+            const raw = await fs.promises.readFile(
+                path.join(tmpDir, 'index.json'),
+                'utf8',
+            );
             const index = JSON.parse(raw) as Record<string, string>;
             expect(index['https://example.com/b']).toBe(filePath);
         });
@@ -101,7 +108,9 @@ describe('AudioStore', () => {
 
             const store2 = new AudioStore(tmpDir);
             await store2.init();
-            expect(store2.getExisting('https://example.com/persist')).toBe(filePath);
+            expect(store2.getExisting('https://example.com/persist')).toBe(
+                filePath,
+            );
         });
 
         it('does not create duplicate entries for the same URL', async () => {
@@ -112,32 +121,43 @@ describe('AudioStore', () => {
             await store.record('https://example.com/dedup', filePath);
             await store.record('https://example.com/dedup', filePath);
 
-            const raw = await fs.promises.readFile(path.join(tmpDir, 'index.json'), 'utf8');
+            const raw = await fs.promises.readFile(
+                path.join(tmpDir, 'index.json'),
+                'utf8',
+            );
             const index = JSON.parse(raw) as Record<string, string>;
-            const keys = Object.keys(index).filter((k) => k === 'https://example.com/dedup');
+            const keys = Object.keys(index).filter(
+                (k) => k === 'https://example.com/dedup',
+            );
             expect(keys).toHaveLength(1);
         });
     });
 
     describe('buildFilename', () => {
         it('produces artist - title.ext format', () => {
-            expect(AudioStore.buildFilename('Burial', 'Archangel', 'mp3')).toBe('Burial - Archangel.mp3');
+            expect(AudioStore.buildFilename('Burial', 'Archangel', 'mp3')).toBe(
+                'Burial - Archangel.mp3',
+            );
         });
 
         it('adds a dot to ext if missing', () => {
-            expect(AudioStore.buildFilename('Four Tet', 'Angel Echoes', 'flac')).toBe(
-                'Four Tet - Angel Echoes.flac',
-            );
+            expect(
+                AudioStore.buildFilename('Four Tet', 'Angel Echoes', 'flac'),
+            ).toBe('Four Tet - Angel Echoes.flac');
         });
 
         it('does not double the dot when ext already starts with one', () => {
-            expect(AudioStore.buildFilename('Boards of Canada', 'Roygbiv', '.wav')).toBe(
-                'Boards of Canada - Roygbiv.wav',
-            );
+            expect(
+                AudioStore.buildFilename('Boards of Canada', 'Roygbiv', '.wav'),
+            ).toBe('Boards of Canada - Roygbiv.wav');
         });
 
         it('sanitises forbidden characters', () => {
-            const name = AudioStore.buildFilename('Artist: A/B', 'Title*?', 'mp3');
+            const name = AudioStore.buildFilename(
+                'Artist: A/B',
+                'Title*?',
+                'mp3',
+            );
             expect(name).not.toMatch(/[/\\:*?"<>|]/);
         });
 

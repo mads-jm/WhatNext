@@ -56,7 +56,7 @@ function readConfig(): RelayConfig {
         }
         // Filter out placeholder comments or blank entries
         parsed.addresses = parsed.addresses.filter(
-            (a) => typeof a === 'string' && a.trim() && !a.startsWith('#')
+            (a) => typeof a === 'string' && a.trim() && !a.startsWith('#'),
         );
         return parsed;
     } catch {

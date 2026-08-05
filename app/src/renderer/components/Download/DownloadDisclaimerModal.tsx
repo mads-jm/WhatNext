@@ -18,7 +18,10 @@ interface DownloadDisclaimerModalProps {
     onAccept: () => void;
 }
 
-export function DownloadDisclaimerModal({ open, onAccept }: DownloadDisclaimerModalProps) {
+export function DownloadDisclaimerModal({
+    open,
+    onAccept,
+}: DownloadDisclaimerModalProps) {
     const handleAccept = () => {
         acceptDisclaimer();
         onAccept();
@@ -47,23 +50,25 @@ export function DownloadDisclaimerModal({ open, onAccept }: DownloadDisclaimerMo
                         WhatNext provides a convenient interface for{' '}
                         <strong className="text-on-surface">yt-dlp</strong>,{' '}
                         <strong className="text-on-surface">spotDL</strong>, and{' '}
-                        <strong className="text-on-surface">Spytify</strong> — external tools
-                        that you install independently. WhatNext never bundles or distributes
-                        them.
+                        <strong className="text-on-surface">Spytify</strong> —
+                        external tools that you install independently. WhatNext
+                        never bundles or distributes them.
                     </p>
 
                     <p>
-                        You are responsible for ensuring that your use of these tools complies
-                        with the terms of service of the platforms you access and the copyright
-                        laws applicable in your jurisdiction.
+                        You are responsible for ensuring that your use of these
+                        tools complies with the terms of service of the
+                        platforms you access and the copyright laws applicable
+                        in your jurisdiction.
                     </p>
 
                     <div className="flex items-start gap-3 p-3 rounded-lg bg-[#1da0c3]/10 border border-[#1da0c3]/20">
                         <i className="fa-brands fa-bandcamp text-[#1da0c3] mt-0.5 shrink-0" />
                         <p className="text-[#1da0c3]">
-                            <strong>Bandcamp note:</strong> Downloading from Bandcamp is a
-                            purchase — you're paying the artist directly. WhatNext highlights
-                            this as the preferred way to support independent musicians.
+                            <strong>Bandcamp note:</strong> Downloading from
+                            Bandcamp is a purchase — you're paying the artist
+                            directly. WhatNext highlights this as the preferred
+                            way to support independent musicians.
                         </p>
                     </div>
                 </div>

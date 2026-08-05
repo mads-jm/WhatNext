@@ -330,8 +330,8 @@ export interface SpotifyDevice {
 
 export interface SpotifyStartPlaybackParams {
     deviceId?: string;
-    contextUri?: string;     // e.g. 'spotify:playlist:abc123'
-    offsetIndex?: number;    // track position in context
+    contextUri?: string; // e.g. 'spotify:playlist:abc123'
+    offsetIndex?: number; // track position in context
 }
 
 export interface SpotifySkipParams {
@@ -350,7 +350,7 @@ export interface SpotifyFullTrackItem {
     durationMs: number;
     albumArtUrl?: string;
     addedAt: string;
-    addedBySpotifyId: string;   // Spotify user ID for attribution
+    addedBySpotifyId: string; // Spotify user ID for attribution
     addedByDisplayName?: string; // Spotify display name (when available)
 }
 
@@ -365,7 +365,7 @@ export interface SpotifyPlaylistTracksFullResult {
     success: boolean;
     tracks?: SpotifyFullTrackItem[];
     total?: number;
-    snapshotId?: string;   // Spotify playlist version — skip re-parse if unchanged
+    snapshotId?: string; // Spotify playlist version — skip re-parse if unchanged
     error?: string;
 }
 
@@ -406,10 +406,13 @@ export interface ReplicationChangesPayload {
 export interface ReplicationStatePayload {
     peerId: string;
     state: 'idle' | 'pulling' | 'pushing' | 'error';
-    collections: Record<string, {
-        lastCheckpoint: string | null;
-        documentCount: number;
-    }>;
+    collections: Record<
+        string,
+        {
+            lastCheckpoint: string | null;
+            documentCount: number;
+        }
+    >;
     error?: string;
 }
 
@@ -453,8 +456,8 @@ export interface GetInviteUrlRequest {
 }
 
 export interface GetInviteUrlResult {
-    url: string;        // Full whtnxt:// URL
-    shortCode: string;  // Human-readable short code (e.g. "3K7X")
+    url: string; // Full whtnxt:// URL
+    shortCode: string; // Human-readable short code (e.g. "3K7X")
     peerId: string;
     relayAddr: string | null;
 }
@@ -474,14 +477,14 @@ export interface PeerPresencePayload {
 // ========================================
 
 export interface ReplicationPullRequestPayload {
-    requestId: string;      // Correlation ID
+    requestId: string; // Correlation ID
     collection: string;
     checkpoint: string | null;
     limit?: number;
 }
 
 export interface ReplicationPullResponsePayload {
-    requestId: string;      // Must match request
+    requestId: string; // Must match request
     collection: string;
     documents: Array<{
         id: string;
@@ -628,7 +631,7 @@ export type { PurchaseLink as PurchaseLinkResult } from './download-types';
 export function createIPCMessage<T>(
     type: string,
     payload: T,
-    requestId?: string
+    requestId?: string,
 ): IPCMessage<T> {
     return {
         type,

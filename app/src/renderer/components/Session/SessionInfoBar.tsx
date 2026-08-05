@@ -25,7 +25,10 @@ export function SessionInfoBar({
     const imgSrc = artSrc(coverArtLocalPath, coverArtUrl);
 
     return (
-        <div className="card card-body flex items-center justify-between" data-testid="session-info-bar">
+        <div
+            className="card card-body flex items-center justify-between"
+            data-testid="session-info-bar"
+        >
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-dim to-primary flex items-center justify-center overflow-hidden shrink-0">
                     {imgSrc ? (
@@ -34,7 +37,8 @@ export function SessionInfoBar({
                             alt=""
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                                if (coverArtUrl) e.currentTarget.src = coverArtUrl;
+                                if (coverArtUrl)
+                                    e.currentTarget.src = coverArtUrl;
                             }}
                         />
                     ) : (
@@ -42,9 +46,12 @@ export function SessionInfoBar({
                     )}
                 </div>
                 <div>
-                    <p className="font-semibold text-on-surface">{playlistName ?? 'Loading...'}</p>
+                    <p className="font-semibold text-on-surface">
+                        {playlistName ?? 'Loading...'}
+                    </p>
                     <p className="text-xs text-on-surface-variant">
-                        {trackCount} tracks &middot; {participantCount} participant{participantCount !== 1 ? 's' : ''}
+                        {trackCount} tracks &middot; {participantCount}{' '}
+                        participant{participantCount !== 1 ? 's' : ''}
                     </p>
                 </div>
             </div>

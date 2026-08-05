@@ -61,11 +61,15 @@ export function ParticipantRoster({
     return (
         <div className="card" data-testid="participant-list">
             <div className="card-header">
-                <span className="font-medium text-sm text-on-surface">Participants</span>
+                <span className="font-medium text-sm text-on-surface">
+                    Participants
+                </span>
             </div>
             <div className="card-body space-y-3">
                 {ordered.map((p, idx) => {
-                    const trackCount = tracks.filter((t) => t.addedBy === p.id).length;
+                    const trackCount = tracks.filter(
+                        (t) => t.addedBy === p.id,
+                    ).length;
                     const isTurn = currentTurnUserId === p.id;
                     const isMe = p.id === currentUserId;
                     const canRename = !p.isLocal && !isMe;
@@ -82,26 +86,42 @@ export function ParticipantRoster({
                         ringClass = 'ring-2 ring-secondary';
                     }
 
-                    const opacityClass = isTurnTaking && currentTurnUserId && !isTurn ? 'opacity-60' : '';
+                    const opacityClass =
+                        isTurnTaking && currentTurnUserId && !isTurn
+                            ? 'opacity-60'
+                            : '';
 
                     return (
-                        <div key={p.id} className={`flex items-center gap-2 group ${opacityClass}`}>
+                        <div
+                            key={p.id}
+                            className={`flex items-center gap-2 group ${opacityClass}`}
+                        >
                             {isTurnTaking && (
-                                <span className="text-xs text-on-surface-variant w-4 text-right shrink-0">{idx + 1}</span>
+                                <span className="text-xs text-on-surface-variant w-4 text-right shrink-0">
+                                    {idx + 1}
+                                </span>
                             )}
                             <div className="relative shrink-0">
                                 {artSrc(p.avatarLocalPath, p.avatarUrl) ? (
                                     <img
-                                        src={artSrc(p.avatarLocalPath, p.avatarUrl)}
+                                        src={artSrc(
+                                            p.avatarLocalPath,
+                                            p.avatarUrl,
+                                        )}
                                         alt=""
                                         className={`w-8 h-8 rounded-full object-cover ${ringClass}`}
                                         onError={(e) => {
-                                            e.currentTarget.style.display = 'none';
-                                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                            e.currentTarget.style.display =
+                                                'none';
+                                            e.currentTarget.nextElementSibling?.classList.remove(
+                                                'hidden',
+                                            );
                                         }}
                                     />
                                 ) : null}
-                                <div className={`w-8 h-8 rounded-full bg-surface-high flex items-center justify-center text-sm font-bold text-on-surface-variant ${ringClass} ${artSrc(p.avatarLocalPath, p.avatarUrl) ? 'hidden' : ''}`}>
+                                <div
+                                    className={`w-8 h-8 rounded-full bg-surface-high flex items-center justify-center text-sm font-bold text-on-surface-variant ${ringClass} ${artSrc(p.avatarLocalPath, p.avatarUrl) ? 'hidden' : ''}`}
+                                >
                                     {p.displayName.charAt(0).toUpperCase()}
                                 </div>
                                 {isTurn && (
@@ -114,18 +134,24 @@ export function ParticipantRoster({
                                         ref={editInputRef}
                                         className="bg-surface-high text-sm text-on-surface rounded px-1.5 py-0.5 w-full outline-none border border-outline-variant focus:border-primary"
                                         value={editValue}
-                                        onChange={(e) => setEditValue(e.target.value)}
+                                        onChange={(e) =>
+                                            setEditValue(e.target.value)
+                                        }
                                         onBlur={commitRename}
                                         onKeyDown={(e) => {
-                                            if (e.key === 'Enter') commitRename();
-                                            if (e.key === 'Escape') setEditingId(null);
+                                            if (e.key === 'Enter')
+                                                commitRename();
+                                            if (e.key === 'Escape')
+                                                setEditingId(null);
                                         }}
                                     />
                                 ) : (
                                     <p className="text-sm font-medium text-on-surface truncate">
                                         {p.displayName}
                                         {isMe && (
-                                            <span className="ml-1 text-xs text-on-surface-variant">(you)</span>
+                                            <span className="ml-1 text-xs text-on-surface-variant">
+                                                (you)
+                                            </span>
                                         )}
                                         {canRename && (
                                             <button
@@ -140,7 +166,9 @@ export function ParticipantRoster({
                                 )}
                             </div>
                             {trackCount > 0 && (
-                                <span className="text-xs text-on-surface-variant shrink-0">{trackCount}</span>
+                                <span className="text-xs text-on-surface-variant shrink-0">
+                                    {trackCount}
+                                </span>
                             )}
                         </div>
                     );

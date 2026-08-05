@@ -9,7 +9,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { hasLocalPlaybackSurface, normalizePlaybackState } from '../playback-helpers';
+import {
+    hasLocalPlaybackSurface,
+    normalizePlaybackState,
+} from '../playback-helpers';
 import type { SessionState } from '../../../shared/session-interfaces';
 
 function session(overrides: Partial<SessionState> = {}): SessionState {
@@ -33,7 +36,11 @@ describe('hasLocalPlaybackSurface', () => {
     it('shows NO playback surface at all when the provider is none', () => {
         // Absent, not disabled: a participant running metadata-only gets no
         // greyed control and no "playback owned by ..." placeholder.
-        expect(hasLocalPlaybackSurface(session({ playbackProvider: { type: 'none' } }))).toBe(false);
+        expect(
+            hasLocalPlaybackSurface(
+                session({ playbackProvider: { type: 'none' } }),
+            ),
+        ).toBe(false);
     });
 
     it('shows no playback surface with no active session', () => {
@@ -46,7 +53,9 @@ describe('hasLocalPlaybackSurface', () => {
         // If this ever diverges, an ownership notion has crept back in.
         const asHost = session({ hostId: 'user-host' });
         const asGuest = session({ hostId: 'someone-else' });
-        expect(hasLocalPlaybackSurface(asGuest)).toBe(hasLocalPlaybackSurface(asHost));
+        expect(hasLocalPlaybackSurface(asGuest)).toBe(
+            hasLocalPlaybackSurface(asHost),
+        );
     });
 
     it('takes no identity argument — visibility cannot be identity-derived', () => {
@@ -67,7 +76,12 @@ describe('normalizePlaybackState', () => {
                 isPlaying: true,
                 progressMs: 1000,
                 deviceName: 'Kitchen',
-                track: { spotifyId: 'track-1', title: 'Song', artists: ['A'], durationMs: 5000 },
+                track: {
+                    spotifyId: 'track-1',
+                    title: 'Song',
+                    artists: ['A'],
+                    durationMs: 5000,
+                },
             }),
         ).toEqual({
             isPlaying: true,

@@ -5,8 +5,16 @@
 
 import { getDatabase } from '../../db/database';
 import { findTracksByIds } from '../../db/query-helpers';
-import { ALLOWED_REACTIONS, type ReactionEmoji } from '../../../shared/core/reactions';
-import type { ExportPlaylist, ExportTrack, ExportComment, ExportFormat } from './export-types';
+import {
+    ALLOWED_REACTIONS,
+    type ReactionEmoji,
+} from '../../../shared/core/reactions';
+import type {
+    ExportPlaylist,
+    ExportTrack,
+    ExportComment,
+    ExportFormat,
+} from './export-types';
 import { formatAsMarkdown } from './markdown-formatter';
 import { formatAsHtml } from './html-formatter';
 import type { CommentDocType } from '../../db/schemas';
@@ -15,7 +23,10 @@ import type { CommentDocType } from '../../db/schemas';
  * Export a playlist: generate content, open save dialog, write to disk.
  * Encapsulates the full export pipeline so components don't need IPC details.
  */
-export async function exportAndSave(playlistId: string, format: ExportFormat): Promise<void> {
+export async function exportAndSave(
+    playlistId: string,
+    format: ExportFormat,
+): Promise<void> {
     const content = await exportPlaylist(playlistId, format);
     const ext = format === 'markdown' ? 'md' : 'html';
     const defaultDir = localStorage.getItem('whatnext:defaultExportDir');
@@ -24,7 +35,12 @@ export async function exportAndSave(playlistId: string, format: ExportFormat): P
         : `playlist-export.${ext}`;
     const result = await window.electron?.dialog.saveFile({
         defaultPath,
-        filters: [{ name: format === 'markdown' ? 'Markdown' : 'HTML', extensions: [ext] }],
+        filters: [
+            {
+                name: format === 'markdown' ? 'Markdown' : 'HTML',
+                extensions: [ext],
+            },
+        ],
     });
     if (result && !result.canceled && result.filePath) {
         await window.electron?.file.write(result.filePath, content);
@@ -37,7 +53,7 @@ export async function exportAndSave(playlistId: string, format: ExportFormat): P
  */
 export async function exportPlaylist(
     playlistId: string,
-    format: ExportFormat
+    format: ExportFormat,
 ): Promise<string> {
     const data = await gatherExportData(playlistId);
 
@@ -59,15 +75,19 @@ async function gatherExportData(playlistId: string): Promise<ExportPlaylist> {
     const tracks = await findTracksByIds(db, playlist.trackIds);
 
     // Get all non-deleted comments for this playlist
-    const allCommentDocs = await db.comments.find({
-        selector: { playlistId, isDeleted: false },
-    }).exec();
+    const allCommentDocs = await db.comments
+        .find({
+            selector: { playlistId, isDeleted: false },
+        })
+        .exec();
     const allComments = allCommentDocs.map((d) => d.toJSON() as CommentDocType);
 
     // Get all reactions for tracks
-    const allReactionDocs = await db.trackInteractions.find({
-        selector: { interactionType: 'reaction' },
-    }).exec();
+    const allReactionDocs = await db.trackInteractions
+        .find({
+            selector: { interactionType: 'reaction' },
+        })
+        .exec();
 
     // Get user display names
     const allUsers = await db.users.find().exec();
@@ -75,7 +95,10 @@ async function gatherExportData(playlistId: string): Promise<ExportPlaylist> {
     const resolveUser = (id: string) => userMap.get(id) || id;
 
     // Build comment tree
-    const buildCommentTree = (comments: CommentDocType[], parentId?: string): ExportComment[] => {
+    const buildCommentTree = (
+        comments: CommentDocType[],
+        parentId?: string,
+    ): ExportComment[] => {
         return comments
             .filter((c) => (c.parentId || undefined) === parentId)
             .map((c) => ({
@@ -93,7 +116,7 @@ async function gatherExportData(playlistId: string): Promise<ExportPlaylist> {
     const exportTracks: ExportTrack[] = tracks.map((track) => {
         const trackComments = allComments.filter((c) => c.trackId === track.id);
         const trackReactions = allReactionDocs.filter(
-            (r) => r.trackId === track.id && r.value === 1
+            (r) => r.trackId === track.id && r.value === 1,
         );
 
         const reactionCounts = {} as Record<ReactionEmoji, number>;

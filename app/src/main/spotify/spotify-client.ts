@@ -9,7 +9,11 @@ import { saveTokens, loadTokens } from './token-store';
 import { resilientFetch } from './spotify-resilience';
 import { SpotifyApiError } from './spotify-errors';
 import { emitSpotifyEvent } from './spotify-events';
-import type { SpotifyTokens, SpotifyPlaylistItem, SpotifyTrackItem } from '../types';
+import type {
+    SpotifyTokens,
+    SpotifyPlaylistItem,
+    SpotifyTrackItem,
+} from '../types';
 import type {
     SpotifyPlaybackStateResult,
     SpotifyDevice,
@@ -90,7 +94,10 @@ async function getValidToken(): Promise<string> {
         );
     }
 
-    if (Date.now() >= currentTokens.expiresAt - SPOTIFY_CONFIG.REFRESH_BUFFER_MS) {
+    if (
+        Date.now() >=
+        currentTokens.expiresAt - SPOTIFY_CONFIG.REFRESH_BUFFER_MS
+    ) {
         console.log('[Spotify] Token within refresh buffer, refreshing...');
         return forceRefreshToken();
     }
@@ -153,7 +160,10 @@ async function authedFetch(
 /**
  * Make authenticated API request, parsing the JSON body.
  */
-async function spotifyFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function spotifyFetch<T>(
+    endpoint: string,
+    options: RequestInit = {},
+): Promise<T> {
     const response = await authedFetch(endpoint, options);
     return response.json() as Promise<T>;
 }
@@ -164,7 +174,10 @@ export type { SpotifyPlaylistItem, SpotifyTrackItem } from '../types';
 /**
  * Get current user's playlists
  */
-export async function getUserPlaylists(limit = 50, offset = 0): Promise<{
+export async function getUserPlaylists(
+    limit = 50,
+    offset = 0,
+): Promise<{
     items: SpotifyPlaylistItem[];
     total: number;
 }> {
@@ -174,11 +187,17 @@ export async function getUserPlaylists(limit = 50, offset = 0): Promise<{
 /**
  * Get tracks from a playlist
  */
-export async function getPlaylistTracks(playlistId: string, limit = 100, offset = 0): Promise<{
+export async function getPlaylistTracks(
+    playlistId: string,
+    limit = 100,
+    offset = 0,
+): Promise<{
     items: SpotifyTrackItem[];
     total: number;
 }> {
-    return spotifyFetch(`/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}`);
+    return spotifyFetch(
+        `/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}`,
+    );
 }
 
 /**
@@ -210,7 +229,7 @@ export async function getUserProfile(userId: string): Promise<{
  * Failures are silently skipped — the caller falls back to the raw ID.
  */
 export async function resolveSpotifyDisplayNames(
-    userIds: string[]
+    userIds: string[],
 ): Promise<Map<string, string>> {
     const results = new Map<string, string>();
     await Promise.all(
@@ -223,7 +242,7 @@ export async function resolveSpotifyDisplayNames(
             } catch {
                 // Skip — caller will use the raw Spotify ID as fallback
             }
-        })
+        }),
     );
     return results;
 }
@@ -239,7 +258,10 @@ export function isAuthenticated(): boolean {
  * Authenticated fetch returning the raw Response.
  * Use this when you need to inspect the status code before parsing (e.g. 204 No Content).
  */
-async function spotifyFetchRaw(endpoint: string, options: RequestInit = {}): Promise<Response> {
+async function spotifyFetchRaw(
+    endpoint: string,
+    options: RequestInit = {},
+): Promise<Response> {
     // `resilientFetch` resolves on any 2xx including 204, so the No-Content
     // playback path is preserved without a special-case status guard here.
     return authedFetch(endpoint, options);
@@ -266,10 +288,13 @@ export async function getPlaybackState(): Promise<SpotifyPlaybackStateResult | n
         ? {
               spotifyId: data.item.id as string,
               title: data.item.name as string,
-              artists: (data.item.artists as Array<{ name: string }>).map((a) => a.name),
+              artists: (data.item.artists as Array<{ name: string }>).map(
+                  (a) => a.name,
+              ),
               album: data.item.album.name as string,
               durationMs: data.item.duration_ms as number,
-              albumArtUrl: (data.item.album.images as Array<{ url: string }>)[0]?.url,
+              albumArtUrl: (data.item.album.images as Array<{ url: string }>)[0]
+                  ?.url,
           }
         : null;
 
@@ -286,7 +311,14 @@ export async function getPlaybackState(): Promise<SpotifyPlaybackStateResult | n
  * Get the user's available Spotify playback devices.
  */
 export async function getDevices(): Promise<SpotifyDevice[]> {
-    const data = await spotifyFetch<{ devices: Array<{ id: string; name: string; type: string; is_active: boolean }> }>('/me/player/devices');
+    const data = await spotifyFetch<{
+        devices: Array<{
+            id: string;
+            name: string;
+            type: string;
+            is_active: boolean;
+        }>;
+    }>('/me/player/devices');
     return data.devices.map((d) => ({
         id: d.id,
         name: d.name,
@@ -298,7 +330,9 @@ export async function getDevices(): Promise<SpotifyDevice[]> {
 /**
  * Start or resume playback. Optionally targets a context (playlist/album) at a given offset.
  */
-export async function startPlayback(params: SpotifyStartPlaybackParams): Promise<void> {
+export async function startPlayback(
+    params: SpotifyStartPlaybackParams,
+): Promise<void> {
     const query = params.deviceId ? `?device_id=${params.deviceId}` : '';
     let body: Record<string, unknown> | undefined;
 
@@ -350,7 +384,10 @@ export async function skipToPrevious(deviceId?: string): Promise<void> {
 /**
  * Seek to a position in the currently playing track.
  */
-export async function seekToPosition(positionMs: number, deviceId?: string): Promise<void> {
+export async function seekToPosition(
+    positionMs: number,
+    deviceId?: string,
+): Promise<void> {
     const params = new URLSearchParams({ position_ms: String(positionMs) });
     if (deviceId) params.set('device_id', deviceId);
     await spotifyFetchRaw(`/me/player/seek?${params}`, { method: 'PUT' });
@@ -374,12 +411,20 @@ export async function getPlaylistSnapshot(playlistId: string): Promise<{
     const data = await spotifyFetch<{
         snapshot_id: string;
         tracks: { total: number };
-    }>(`/playlists/${playlistId}?fields=${encodeURIComponent('snapshot_id,tracks.total')}`);
+    }>(
+        `/playlists/${playlistId}?fields=${encodeURIComponent('snapshot_id,tracks.total')}`,
+    );
     return { snapshotId: data.snapshot_id, total: data.tracks.total };
 }
 
 type RawPlaylistTrackItem = {
-    track: { id: string; name: string; artists: Array<{ name: string }>; album: { name: string; images: Array<{ url: string }> }; duration_ms: number } | null;
+    track: {
+        id: string;
+        name: string;
+        artists: Array<{ name: string }>;
+        album: { name: string; images: Array<{ url: string }> };
+        duration_ms: number;
+    } | null;
     added_at: string;
     added_by: { id: string };
 };
@@ -388,16 +433,26 @@ type RawPlaylistTrackItem = {
  * Fetch tracks from a playlist starting at a given offset.
  * Paginates automatically from `offset` to end. Uses field filtering.
  */
-export async function getPlaylistTracksFrom(playlistId: string, offset: number, knownSnapshotId?: string): Promise<{
+export async function getPlaylistTracksFrom(
+    playlistId: string,
+    offset: number,
+    knownSnapshotId?: string,
+): Promise<{
     tracks: SpotifyFullTrackItem[];
     total: number;
     snapshotId: string;
 }> {
-    const fields = 'items(track(id,name,artists(name),album(name,images),duration_ms),added_at,added_by(id)),total,next,offset,limit';
+    const fields =
+        'items(track(id,name,artists(name),album(name,images),duration_ms),added_at,added_by(id)),total,next,offset,limit';
     const allItems: RawPlaylistTrackItem[] = [];
 
-    type PageResponse = { items: RawPlaylistTrackItem[]; total: number; next: string | null };
-    let url: string | null = `/playlists/${playlistId}/tracks?offset=${offset}&limit=100&fields=${encodeURIComponent(fields)}`;
+    type PageResponse = {
+        items: RawPlaylistTrackItem[];
+        total: number;
+        next: string | null;
+    };
+    let url: string | null =
+        `/playlists/${playlistId}/tracks?offset=${offset}&limit=100&fields=${encodeURIComponent(fields)}`;
     let total = 0;
 
     while (url) {
@@ -413,7 +468,7 @@ export async function getPlaylistTracksFrom(playlistId: string, offset: number, 
         snapshotId = knownSnapshotId;
     } else {
         const snapshotData = await spotifyFetch<{ snapshot_id: string }>(
-            `/playlists/${playlistId}?fields=snapshot_id`
+            `/playlists/${playlistId}?fields=snapshot_id`,
         );
         snapshotId = snapshotData.snapshot_id;
     }
@@ -421,8 +476,9 @@ export async function getPlaylistTracksFrom(playlistId: string, offset: number, 
     const tracks = mapRawItems(allItems);
 
     // Resolve only unknown display names
-    const unknownUserIds = [...new Set(tracks.map((t) => t.addedBySpotifyId))]
-        .filter((id) => !displayNameCache.has(id));
+    const unknownUserIds = [
+        ...new Set(tracks.map((t) => t.addedBySpotifyId)),
+    ].filter((id) => !displayNameCache.has(id));
     if (unknownUserIds.length > 0) {
         const resolved = await resolveSpotifyDisplayNames(unknownUserIds);
         for (const [id, name] of resolved) displayNameCache.set(id, name);

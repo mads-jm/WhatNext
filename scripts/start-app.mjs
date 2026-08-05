@@ -23,7 +23,9 @@ if (!existsSync(join(appDir, 'package.json'))) {
 }
 
 if (!existsSync(join(appDir, 'node_modules'))) {
-    console.error(yellow('node_modules not found. Run ./scripts/dev-init.sh first or:'));
+    console.error(
+        yellow('node_modules not found. Run ./scripts/dev-init.sh first or:'),
+    );
     console.error('   cd app && npm install');
     process.exit(1);
 }

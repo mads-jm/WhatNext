@@ -11,7 +11,17 @@ export class ReactionBarPage {
     }
 
     /** Click a specific reaction emoji button. */
-    async react(emoji: 'fire' | 'heart' | 'thumbsdown' | 'mindblown' | 'sleeping' | 'party') {
-        await this.page.getByRole('button', { name: new RegExp(emoji, 'i') }).click();
+    async react(
+        emoji:
+            | 'fire'
+            | 'heart'
+            | 'thumbsdown'
+            | 'mindblown'
+            | 'sleeping'
+            | 'party',
+    ) {
+        await this.page
+            .getByRole('button', { name: new RegExp(emoji, 'i') })
+            .click();
     }
 }

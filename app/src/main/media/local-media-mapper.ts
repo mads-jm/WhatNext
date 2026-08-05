@@ -38,7 +38,10 @@ async function readAudioTags(filePath: string) {
     try {
         return await mm.parseFile(filePath, { skipCovers: true });
     } catch (err) {
-        console.warn(`[LocalMediaMapper] Failed to read tags from: ${filePath}`, err);
+        console.warn(
+            `[LocalMediaMapper] Failed to read tags from: ${filePath}`,
+            err,
+        );
         return null;
     }
 }
@@ -47,7 +50,9 @@ async function readAudioTags(filePath: string) {
  * Map a single scanned file to a MappedLocalTrack.
  * Reads embedded audio tags; falls back to filename parsing for missing fields.
  */
-export async function mapLocalFile(file: ScannedFile): Promise<MappedLocalTrack> {
+export async function mapLocalFile(
+    file: ScannedFile,
+): Promise<MappedLocalTrack> {
     const filename = path.basename(file.filePath);
     const parentDir = path.basename(path.dirname(file.filePath));
     const parsed = parseFilename(filename);
@@ -64,17 +69,24 @@ export async function mapLocalFile(file: ScannedFile): Promise<MappedLocalTrack>
     if (common?.artists && common.artists.length > 0) {
         artists = common.artists;
     } else if (common?.artist) {
-        artists = common.artist.split(/[,;&]/).map((a) => a.trim()).filter(Boolean);
+        artists = common.artist
+            .split(/[,;&]/)
+            .map((a) => a.trim())
+            .filter(Boolean);
     } else {
         artists = parsed.artists;
     }
 
     const album = common?.album || parentDir || 'Unknown Album';
-    const durationMs = format?.duration ? Math.round(format.duration * 1000) : 0;
+    const durationMs = format?.duration
+        ? Math.round(format.duration * 1000)
+        : 0;
 
     // Audio format info
     const audioFormat = file.ext.replace('.', '') || undefined;
-    const audioBitrate = format?.bitrate ? Math.round(format.bitrate / 1000) : undefined;
+    const audioBitrate = format?.bitrate
+        ? Math.round(format.bitrate / 1000)
+        : undefined;
 
     return {
         id: uuidv4(),
@@ -95,14 +107,18 @@ export async function mapLocalFile(file: ScannedFile): Promise<MappedLocalTrack>
  * Map an array of scanned files to MappedLocalTrack records.
  * Reads tags concurrently with bounded parallelism.
  */
-export async function mapLocalFiles(files: ScannedFile[]): Promise<MappedLocalTrack[]> {
+export async function mapLocalFiles(
+    files: ScannedFile[],
+): Promise<MappedLocalTrack[]> {
     // Process in batches of 10 to avoid overwhelming the filesystem
     const BATCH_SIZE = 10;
     const results: MappedLocalTrack[] = [];
 
     for (let i = 0; i < files.length; i += BATCH_SIZE) {
         const batch = files.slice(i, i + BATCH_SIZE);
-        const mapped = await Promise.all(batch.map((file) => mapLocalFile(file)));
+        const mapped = await Promise.all(
+            batch.map((file) => mapLocalFile(file)),
+        );
         results.push(...mapped);
     }
 

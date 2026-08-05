@@ -42,7 +42,9 @@ export class SessionPage {
         this.heading = page.getByRole('heading', { name: /session/i });
 
         this.header = page.locator('[data-testid="session-header"]');
-        this.endSessionButton = page.getByRole('button', { name: /end session/i });
+        this.endSessionButton = page.getByRole('button', {
+            name: /end session/i,
+        });
 
         this.turnIndicator = page.locator('[data-testid="turn-indicator"]');
 

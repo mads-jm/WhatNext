@@ -44,7 +44,11 @@ describe('fuzzyRank', () => {
     }
     const lib: Track[] = [
         { title: 'Darkside', artist: 'Bring Me The Horizon', album: 'amo' },
-        { title: 'Roygbiv', artist: 'Boards of Canada', album: 'Music Has the Right' },
+        {
+            title: 'Roygbiv',
+            artist: 'Boards of Canada',
+            album: 'Music Has the Right',
+        },
         { title: 'Teardrop', artist: 'Massive Attack', album: 'Mezzanine' },
     ];
     const fields = (t: Track) => [t.title, t.artist, t.album];

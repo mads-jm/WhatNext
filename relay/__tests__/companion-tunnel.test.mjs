@@ -9,7 +9,10 @@
 
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { WebSocket } from 'ws';
-import { startCompanionTunnel, stopCompanionTunnel } from '../companion-tunnel.mjs';
+import {
+    startCompanionTunnel,
+    stopCompanionTunnel,
+} from '../companion-tunnel.mjs';
 
 const TUNNEL_PROTOCOL_VERSION = 1;
 
@@ -52,7 +55,10 @@ function waitOpen(ws) {
 
 function waitClose(ws, timeoutMs = 2000) {
     return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('timed out waiting for close')), timeoutMs);
+        const timer = setTimeout(
+            () => reject(new Error('timed out waiting for close')),
+            timeoutMs,
+        );
         ws.once('close', (code, reason) => {
             clearTimeout(timer);
             resolve({ code, reason: reason.toString('utf-8') });
@@ -79,7 +85,9 @@ function nextMessage(ws, timeoutMs = 2000) {
 function expectSilence(ws, windowMs = 250) {
     return new Promise((resolve) => {
         let quiet = true;
-        const onMessage = () => { quiet = false; };
+        const onMessage = () => {
+            quiet = false;
+        };
         ws.on('message', onMessage);
         setTimeout(() => {
             ws.off('message', onMessage);
@@ -89,9 +97,11 @@ function expectSilence(ws, windowMs = 250) {
 }
 
 async function connectHost(code, token) {
-    const ws = track(new WebSocket(`${wsBase}/host/${code}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-    }));
+    const ws = track(
+        new WebSocket(`${wsBase}/host/${code}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }),
+    );
     await waitOpen(ws);
     return ws;
 }
@@ -103,7 +113,12 @@ async function connectPhone(code) {
 }
 
 function hostFrame(to, payload) {
-    return JSON.stringify({ v: TUNNEL_PROTOCOL_VERSION, type: 'host:message', to, payload });
+    return JSON.stringify({
+        v: TUNNEL_PROTOCOL_VERSION,
+        type: 'host:message',
+        to,
+        payload,
+    });
 }
 
 /** Have a phone speak so the host learns its relay-assigned id. */
@@ -116,7 +131,10 @@ async function introducePhone(host, phone, displayName) {
 
 afterEach(() => {
     for (const ws of openSockets) {
-        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        if (
+            ws.readyState === WebSocket.OPEN ||
+            ws.readyState === WebSocket.CONNECTING
+        ) {
             ws.close();
         }
     }
@@ -140,7 +158,10 @@ describe('companion tunnel — session creation', () => {
         const text = await res.text();
 
         expect(text).not.toContain(hostToken);
-        expect(JSON.parse(text)).toMatchObject({ exists: true, hostConnected: false });
+        expect(JSON.parse(text)).toMatchObject({
+            exists: true,
+            hostConnected: false,
+        });
     });
 
     it('issues a different token per session', async () => {
@@ -187,9 +208,11 @@ describe('companion tunnel — host authentication', () => {
 
     it('rejects a host presenting the session code as the credential', async () => {
         const { code } = await createSession();
-        const impostor = track(new WebSocket(`${wsBase}/host/${code}`, {
-            headers: { Authorization: `Bearer ${code}` },
-        }));
+        const impostor = track(
+            new WebSocket(`${wsBase}/host/${code}`, {
+                headers: { Authorization: `Bearer ${code}` },
+            }),
+        );
 
         const closed = await waitClose(impostor);
         expect(closed.code).toBe(4003);
@@ -276,7 +299,12 @@ describe('companion tunnel — per-phone addressing', () => {
         const phone = await connectPhone(code);
 
         const got = nextMessage(phone);
-        host.send(hostFrame(null, { type: 'playback:update', data: { isPlaying: true } }));
+        host.send(
+            hostFrame(null, {
+                type: 'playback:update',
+                data: { isPlaying: true },
+            }),
+        );
 
         const received = await got;
         expect(received.v).toBeUndefined();
@@ -307,7 +335,9 @@ describe('companion tunnel — per-phone addressing', () => {
 
         const silent = expectSilence(phone, 300);
         // Pre-v1 wire format: a bare ServerToPhoneMessage with no envelope.
-        host.send(JSON.stringify({ type: 'turn:update', data: { currentTurn: 1 } }));
+        host.send(
+            JSON.stringify({ type: 'turn:update', data: { currentTurn: 1 } }),
+        );
 
         expect(await silent).toBe(true);
     });

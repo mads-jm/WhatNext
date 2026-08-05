@@ -38,8 +38,18 @@ import {
 } from '../shared/core';
 import { P2P_CONFIG } from '../shared/p2p-config';
 import { FILE_TRANSFER_CAPABILITY } from '../shared/core/file-transfer-types';
-import { registerHandshakeProtocol, initiateHandshake, type HandshakeData } from './protocols/handshake';
-import { registerReplicationProtocol, pushToRemotePeer, pullFromRemotePeer, newestCheckpoint, type ReplicationDocument } from './protocols/replication';
+import {
+    registerHandshakeProtocol,
+    initiateHandshake,
+    type HandshakeData,
+} from './protocols/handshake';
+import {
+    registerReplicationProtocol,
+    pushToRemotePeer,
+    pullFromRemotePeer,
+    newestCheckpoint,
+    type ReplicationDocument,
+} from './protocols/replication';
 import { registerPingProtocol, startPresenceTracking } from './protocols/ping';
 import {
     registerFileTransferProtocol,
@@ -72,7 +82,9 @@ class P2PService {
     private connectedPeerNames: Map<string, string> = new Map();
     // Durable per-peer/per-collection checkpoints ("peerId:collection" -> checkpoint).
     // Persisted to disk so a relaunch resumes incrementally instead of full-resyncing (#40).
-    private checkpointStore: CheckpointStore = new CheckpointStore(resolveCheckpointPath());
+    private checkpointStore: CheckpointStore = new CheckpointStore(
+        resolveCheckpointPath(),
+    );
     // One replication bootstrap per (peer, connection); released on peer:disconnect (#58).
     private bootstrapTracker: BootstrapTracker = new BootstrapTracker();
 
@@ -89,10 +101,19 @@ class P2PService {
     private stopPresenceTracking: (() => void) | null = null;
 
     // Pending pull request promises: requestId -> { resolve, reject }
-    private pendingPullRequests: Map<string, { resolve: (val: ReplicationDocument[]) => void; reject: (err: Error) => void }> = new Map();
+    private pendingPullRequests: Map<
+        string,
+        {
+            resolve: (val: ReplicationDocument[]) => void;
+            reject: (err: Error) => void;
+        }
+    > = new Map();
 
     // Pending file-transfer request promises (manifest requests): requestId -> { resolve, reject }
-    private pendingFileTransferRequests: Map<string, { resolve: (val: unknown) => void; reject: (err: Error) => void }> = new Map();
+    private pendingFileTransferRequests: Map<
+        string,
+        { resolve: (val: unknown) => void; reject: (err: Error) => void }
+    > = new Map();
 
     // Relay addresses loaded from settings (passed via START_NODE or UPDATE_RELAY_ADDRESSES)
     private relayAddresses: string[] = [];
@@ -114,7 +135,10 @@ class P2PService {
         const parentPort = process.parentPort;
 
         if (!parentPort) {
-            this.log('error', 'parentPort not available - not running as utility process?');
+            this.log(
+                'error',
+                'parentPort not available - not running as utility process?',
+            );
             process.exit(1);
         }
 
@@ -127,7 +151,8 @@ class P2PService {
             } catch (error) {
                 this.log('error', `Failed to handle message: ${error}`);
                 this.sendToMain(UtilityToMainMessageType.NODE_ERROR, {
-                    error: error instanceof Error ? error.message : String(error),
+                    error:
+                        error instanceof Error ? error.message : String(error),
                 });
             }
         });
@@ -148,7 +173,9 @@ class P2PService {
             switch (message.type) {
                 case MainToUtilityMessageType.START_NODE: {
                     this.log('info', '🚀 Handling START_NODE command...');
-                    const startPayload = message.payload as { relayAddresses?: string[] };
+                    const startPayload = message.payload as {
+                        relayAddresses?: string[];
+                    };
                     if (startPayload.relayAddresses) {
                         this.relayAddresses = startPayload.relayAddresses;
                     }
@@ -162,17 +189,22 @@ class P2PService {
                     break;
 
                 case MainToUtilityMessageType.CONNECT_TO_PEER:
-                    await this.connectToPeer(message.payload as ConnectToPeerPayload);
+                    await this.connectToPeer(
+                        message.payload as ConnectToPeerPayload,
+                    );
                     break;
 
                 case MainToUtilityMessageType.DISCONNECT_FROM_PEER:
                     await this.disconnectFromPeer(
-                        message.payload as DisconnectFromPeerPayload
+                        message.payload as DisconnectFromPeerPayload,
                     );
                     break;
 
                 case MainToUtilityMessageType.REPLICATION_PUSH: {
-                    const pushPayload = message.payload as { collection: string; documents: ReplicationDocument[] };
+                    const pushPayload = message.payload as {
+                        collection: string;
+                        documents: ReplicationDocument[];
+                    };
                     if (this.libp2pNode) {
                         const connections = this.libp2pNode.getConnections();
                         for (const conn of connections) {
@@ -181,10 +213,13 @@ class P2PService {
                                     this.libp2pNode,
                                     conn.remotePeer.toString(),
                                     pushPayload.collection,
-                                    pushPayload.documents
+                                    pushPayload.documents,
                                 );
                             } catch (error) {
-                                this.log('error', `Failed to push to ${conn.remotePeer.toString()}: ${error}`);
+                                this.log(
+                                    'error',
+                                    `Failed to push to ${conn.remotePeer.toString()}: ${error}`,
+                                );
                             }
                         }
                     }
@@ -192,7 +227,10 @@ class P2PService {
                 }
 
                 case MainToUtilityMessageType.REPLICATION_PULL: {
-                    const pullPayload = message.payload as { collection: string; checkpoint: string | null };
+                    const pullPayload = message.payload as {
+                        collection: string;
+                        checkpoint: string | null;
+                    };
                     if (this.libp2pNode) {
                         const connections = this.libp2pNode.getConnections();
                         for (const conn of connections) {
@@ -201,10 +239,13 @@ class P2PService {
                                     this.libp2pNode,
                                     conn.remotePeer.toString(),
                                     pullPayload.collection,
-                                    pullPayload.checkpoint
+                                    pullPayload.checkpoint,
                                 );
                             } catch (error) {
-                                this.log('error', `Failed to pull from ${conn.remotePeer.toString()}: ${error}`);
+                                this.log(
+                                    'error',
+                                    `Failed to pull from ${conn.remotePeer.toString()}: ${error}`,
+                                );
                             }
                         }
                     }
@@ -220,144 +261,194 @@ class P2PService {
                     break;
 
                 case MainToUtilityMessageType.SET_USER_IDENTITY: {
-                    const identity = message.payload as { displayName: string; avatarUrl?: string; userId: string };
+                    const identity = message.payload as {
+                        displayName: string;
+                        avatarUrl?: string;
+                        userId: string;
+                    };
                     this.userDisplayName = identity.displayName;
                     this.userAvatarUrl = identity.avatarUrl;
                     this.userIdentityId = identity.userId;
-                    this.log('info', `User identity set: ${identity.displayName} (${identity.userId.slice(0, 8)}...)`);
+                    this.log(
+                        'info',
+                        `User identity set: ${identity.displayName} (${identity.userId.slice(0, 8)}...)`,
+                    );
                     break;
                 }
 
                 case MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES: {
-                    const { addresses } = message.payload as { addresses: string[] };
+                    const { addresses } = message.payload as {
+                        addresses: string[];
+                    };
                     this.relayAddresses = addresses;
                     if (this.relayManager) {
                         await this.relayManager.updateAddresses(addresses);
                     }
-                    this.log('info', `Relay addresses updated: ${addresses.length} address(es)`);
+                    this.log(
+                        'info',
+                        `Relay addresses updated: ${addresses.length} address(es)`,
+                    );
                     break;
                 }
 
                 case MainToUtilityMessageType.REPLICATION_PULL_RESPONSE: {
-                    const resp = message.payload as ReplicationPullResponsePayload;
-                    const pending = this.pendingPullRequests.get(resp.requestId);
+                    const resp =
+                        message.payload as ReplicationPullResponsePayload;
+                    const pending = this.pendingPullRequests.get(
+                        resp.requestId,
+                    );
                     if (pending) {
                         this.pendingPullRequests.delete(resp.requestId);
-                        pending.resolve(resp.documents as ReplicationDocument[]);
+                        pending.resolve(
+                            resp.documents as ReplicationDocument[],
+                        );
                     }
                     break;
                 }
 
                 case MainToUtilityMessageType.FILE_TRANSFER_REQUEST_MANIFEST: {
-                    if (!this.libp2pNode) break
-                    const { peerId: targetPeerId, playlistId, requestId: manifestReqId } = message.payload as {
-                        peerId: string
-                        playlistId: string
-                        requestId: string
-                    }
+                    if (!this.libp2pNode) break;
+                    const {
+                        peerId: targetPeerId,
+                        playlistId,
+                        requestId: manifestReqId,
+                    } = message.payload as {
+                        peerId: string;
+                        playlistId: string;
+                        requestId: string;
+                    };
                     try {
                         const manifest = await requestManifest(
                             this.libp2pNode,
                             peerIdFromString(targetPeerId),
-                            playlistId
-                        )
-                        this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_MANIFEST_RECEIVED, {
-                            requestId: manifestReqId,
-                            peerId: targetPeerId,
-                            manifest,
-                        })
+                            playlistId,
+                        );
+                        this.sendToMain(
+                            UtilityToMainMessageType.FILE_TRANSFER_MANIFEST_RECEIVED,
+                            {
+                                requestId: manifestReqId,
+                                peerId: targetPeerId,
+                                manifest,
+                            },
+                        );
                     } catch (err) {
-                        this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_ERROR, {
-                            requestId: manifestReqId,
-                            peerId: targetPeerId,
-                            sha256: '',
-                            error: err instanceof Error ? err.message : String(err),
-                        })
+                        this.sendToMain(
+                            UtilityToMainMessageType.FILE_TRANSFER_ERROR,
+                            {
+                                requestId: manifestReqId,
+                                peerId: targetPeerId,
+                                sha256: '',
+                                error:
+                                    err instanceof Error
+                                        ? err.message
+                                        : String(err),
+                            },
+                        );
                     }
-                    break
+                    break;
                 }
 
                 case MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE: {
-                    if (!this.libp2pNode || !this.fileTransferCallbacks) break
-                    const { peerId: filePeerId, sha256: fileHash, offsetBytes } = message.payload as {
-                        peerId: string
-                        sha256: string
-                        offsetBytes: number
-                    }
+                    if (!this.libp2pNode || !this.fileTransferCallbacks) break;
+                    const {
+                        peerId: filePeerId,
+                        sha256: fileHash,
+                        offsetBytes,
+                    } = message.payload as {
+                        peerId: string;
+                        sha256: string;
+                        offsetBytes: number;
+                    };
                     try {
                         await requestFile(
                             this.libp2pNode,
                             peerIdFromString(filePeerId),
                             fileHash,
                             offsetBytes,
-                            this.fileTransferCallbacks
-                        )
+                            this.fileTransferCallbacks,
+                        );
                     } catch (err) {
-                        this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_ERROR, {
-                            peerId: filePeerId,
-                            sha256: fileHash,
-                            error: err instanceof Error ? err.message : String(err),
-                        })
+                        this.sendToMain(
+                            UtilityToMainMessageType.FILE_TRANSFER_ERROR,
+                            {
+                                peerId: filePeerId,
+                                sha256: fileHash,
+                                error:
+                                    err instanceof Error
+                                        ? err.message
+                                        : String(err),
+                            },
+                        );
                     }
-                    break
+                    break;
                 }
 
                 case MainToUtilityMessageType.FILE_TRANSFER_CANCEL: {
-                    if (!this.libp2pNode) break
-                    const { peerId: cancelPeerId, sha256: cancelHash } = message.payload as {
-                        peerId: string
-                        sha256: string
-                    }
+                    if (!this.libp2pNode) break;
+                    const { peerId: cancelPeerId, sha256: cancelHash } =
+                        message.payload as {
+                            peerId: string;
+                            sha256: string;
+                        };
                     try {
                         await cancelTransfer(
                             this.libp2pNode,
                             peerIdFromString(cancelPeerId),
-                            cancelHash
-                        )
+                            cancelHash,
+                        );
                     } catch (err) {
-                        this.log('warn', `cancelTransfer failed: ${err}`)
+                        this.log('warn', `cancelTransfer failed: ${err}`);
                     }
-                    break
+                    break;
                 }
 
                 case MainToUtilityMessageType.FILE_TRANSFER_SERVE_CHUNK: {
-                    if (!this.libp2pNode) break
-                    const { peerId: chunkPeerId, message: chunkMsg } = message.payload as {
-                        peerId: string
-                        message: FileTransferMessage
-                    }
+                    if (!this.libp2pNode) break;
+                    const { peerId: chunkPeerId, message: chunkMsg } =
+                        message.payload as {
+                            peerId: string;
+                            message: FileTransferMessage;
+                        };
                     try {
                         await sendFileChunk(
                             this.libp2pNode,
                             peerIdFromString(chunkPeerId),
-                            chunkMsg
-                        )
+                            chunkMsg,
+                        );
                     } catch (err) {
-                        this.log('error', `sendFileChunk failed: ${err}`)
+                        this.log('error', `sendFileChunk failed: ${err}`);
                     }
-                    break
+                    break;
                 }
 
                 // File-transfer manifest response from main process (resolves pending promise)
                 case MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE: {
-                    const { requestId: ftReqId, manifest: ftManifest } = message.payload as {
-                        requestId: string
-                        manifest: unknown
-                    }
-                    const pending = this.pendingFileTransferRequests.get(ftReqId)
+                    const { requestId: ftReqId, manifest: ftManifest } =
+                        message.payload as {
+                            requestId: string;
+                            manifest: unknown;
+                        };
+                    const pending =
+                        this.pendingFileTransferRequests.get(ftReqId);
                     if (pending) {
-                        this.pendingFileTransferRequests.delete(ftReqId)
-                        pending.resolve(ftManifest)
+                        this.pendingFileTransferRequests.delete(ftReqId);
+                        pending.resolve(ftManifest);
                     }
-                    break
+                    break;
                 }
 
                 default:
                     this.log('warn', `Unknown message type: ${message.type}`);
             }
         } catch (error) {
-            this.log('error', `Error handling message ${message.type}: ${error}`);
-            this.log('error', `Stack trace: ${error instanceof Error ? error.stack : 'N/A'}`);
+            this.log(
+                'error',
+                `Error handling message ${message.type}: ${error}`,
+            );
+            this.log(
+                'error',
+                `Stack trace: ${error instanceof Error ? error.stack : 'N/A'}`,
+            );
         }
     }
 
@@ -377,7 +468,10 @@ class P2PService {
             // first pull resumes from the saved checkpoint (incremental, not full resync).
             if (!this.checkpointStore.isLoaded) {
                 await this.checkpointStore.load();
-                this.log('info', `Loaded ${this.checkpointStore.entries().length} persisted checkpoint(s)`);
+                this.log(
+                    'info',
+                    `Loaded ${this.checkpointStore.entries().length} persisted checkpoint(s)`,
+                );
             }
 
             // LEARNING: Minimal libp2p configuration for desktop-to-desktop connections
@@ -418,10 +512,10 @@ class P2PService {
                 // LEARNING: WebRTC for browser-to-browser and NAT traversal
                 // LEARNING: circuitRelayTransport is REQUIRED for WebRTC
                 transports: [
-                    tcp(),                      // Desktop-to-desktop, local testing
-                    webSockets(),               // Web browser compatibility
-                    webRTC(),                   // Browser-to-browser, WebRTC peers
-                    circuitRelayTransport(),    // Required for WebRTC
+                    tcp(), // Desktop-to-desktop, local testing
+                    webSockets(), // Web browser compatibility
+                    webRTC(), // Browser-to-browser, WebRTC peers
+                    circuitRelayTransport(), // Required for WebRTC
                 ],
 
                 // Peer discovery: mDNS for local network auto-discovery
@@ -531,11 +625,17 @@ class P2PService {
         if (!this.libp2pNode) return;
 
         const localHandshakeData: HandshakeData = {
-            displayName: this.userDisplayName || `WhatNext User ${Math.random().toString(36).slice(2, 6)}`,
+            displayName:
+                this.userDisplayName ||
+                `WhatNext User ${Math.random().toString(36).slice(2, 6)}`,
             avatarUrl: this.userAvatarUrl,
             userId: this.userIdentityId || this.libp2pNode.peerId.toString(),
             version: P2P_CONFIG.APP_INFO.protocolVersion,
-            capabilities: ['playlist-sync', 'rxdb-replication', FILE_TRANSFER_CAPABILITY],
+            capabilities: [
+                'playlist-sync',
+                'rxdb-replication',
+                FILE_TRANSFER_CAPABILITY,
+            ],
             peerId: this.libp2pNode.peerId.toString(),
         };
 
@@ -544,7 +644,8 @@ class P2PService {
         registerHandshakeProtocol(
             this.libp2pNode,
             localHandshakeData,
-            (remotePeerId, data) => this.onHandshakeComplete(remotePeerId, data)
+            (remotePeerId, data) =>
+                this.onHandshakeComplete(remotePeerId, data),
         );
 
         // Register replication handler
@@ -552,48 +653,78 @@ class P2PService {
             this.libp2pNode,
             // onPullRequest (responder): request our data from the renderer via main.
             async (collection, checkpoint, limit) => {
-                this.log('info', `Pull request for ${collection} (checkpoint: ${checkpoint})`);
+                this.log(
+                    'info',
+                    `Pull request for ${collection} (checkpoint: ${checkpoint})`,
+                );
 
                 // Generate a correlation ID and wait for main to relay back renderer's data.
                 const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
                 try {
-                    const documents = await new Promise<ReplicationDocument[]>((resolve, reject) => {
-                        // On timeout REJECT (don't resolve empty). Resolving empty +
-                        // a fresh checkpoint made a slow peer look like it had no
-                        // changes, silently advancing the requester past unsent data (#41).
-                        const timer = setTimeout(() => {
-                            this.pendingPullRequests.delete(requestId);
-                            reject(new Error(`Pull request for ${collection} timed out after ${P2P_CONFIG.REPLICATION.PULL_TIMEOUT}ms`));
-                        }, P2P_CONFIG.REPLICATION.PULL_TIMEOUT);
+                    const documents = await new Promise<ReplicationDocument[]>(
+                        (resolve, reject) => {
+                            // On timeout REJECT (don't resolve empty). Resolving empty +
+                            // a fresh checkpoint made a slow peer look like it had no
+                            // changes, silently advancing the requester past unsent data (#41).
+                            const timer = setTimeout(() => {
+                                this.pendingPullRequests.delete(requestId);
+                                reject(
+                                    new Error(
+                                        `Pull request for ${collection} timed out after ${P2P_CONFIG.REPLICATION.PULL_TIMEOUT}ms`,
+                                    ),
+                                );
+                            }, P2P_CONFIG.REPLICATION.PULL_TIMEOUT);
 
-                        this.pendingPullRequests.set(requestId, {
-                            resolve: (docs) => { clearTimeout(timer); resolve(docs); },
-                            reject: (err) => { clearTimeout(timer); reject(err); },
-                        });
+                            this.pendingPullRequests.set(requestId, {
+                                resolve: (docs) => {
+                                    clearTimeout(timer);
+                                    resolve(docs);
+                                },
+                                reject: (err) => {
+                                    clearTimeout(timer);
+                                    reject(err);
+                                },
+                            });
 
-                        this.sendToMain(UtilityToMainMessageType.REPLICATION_PULL_REQUEST, {
-                            requestId,
-                            collection,
-                            checkpoint,
-                            limit,
-                        });
-                    });
+                            this.sendToMain(
+                                UtilityToMainMessageType.REPLICATION_PULL_REQUEST,
+                                {
+                                    requestId,
+                                    collection,
+                                    checkpoint,
+                                    limit,
+                                },
+                            );
+                        },
+                    );
 
                     // Advance the checkpoint to the newest doc we're actually sending,
                     // not to "now" — "now" would skip docs written between the newest
                     // returned doc and wall-clock time.
-                    return { documents, checkpoint: newestCheckpoint(documents, checkpoint) };
+                    return {
+                        documents,
+                        checkpoint: newestCheckpoint(documents, checkpoint),
+                    };
                 } catch (err) {
                     // Surface the timeout/failure and DO NOT advance the requester's
                     // checkpoint: echo back the checkpoint they sent so the missed
                     // changes are re-pulled next time rather than silently dropped.
-                    this.log('warn', `Pull for ${collection} failed, not advancing checkpoint: ${err}`);
-                    return { documents: [], checkpoint: checkpoint ?? new Date(0).toISOString() };
+                    this.log(
+                        'warn',
+                        `Pull for ${collection} failed, not advancing checkpoint: ${err}`,
+                    );
+                    return {
+                        documents: [],
+                        checkpoint: checkpoint ?? new Date(0).toISOString(),
+                    };
                 }
             },
             // onPushReceived: forward changes to main -> renderer.
             async (collection, documents) => {
-                this.log('info', `Received ${documents.length} docs for ${collection}`);
+                this.log(
+                    'info',
+                    `Received ${documents.length} docs for ${collection}`,
+                );
                 this.sendToMain(UtilityToMainMessageType.REPLICATION_CHANGES, {
                     collection,
                     documents,
@@ -602,18 +733,27 @@ class P2PService {
             },
             // onPullResponse (requester): apply pulled docs and persist the checkpoint (#40).
             (remotePeerId, collection, documents, checkpoint) => {
-                this.log('info', `Pull-response from ${remotePeerId.slice(0, 12)}: ${documents.length} docs for ${collection}`);
+                this.log(
+                    'info',
+                    `Pull-response from ${remotePeerId.slice(0, 12)}: ${documents.length} docs for ${collection}`,
+                );
                 if (documents.length > 0) {
-                    this.sendToMain(UtilityToMainMessageType.REPLICATION_CHANGES, {
-                        collection,
-                        documents,
-                        checkpoint: checkpoint ?? new Date().toISOString(),
-                    });
+                    this.sendToMain(
+                        UtilityToMainMessageType.REPLICATION_CHANGES,
+                        {
+                            collection,
+                            documents,
+                            checkpoint: checkpoint ?? new Date().toISOString(),
+                        },
+                    );
                 }
                 if (checkpoint) {
-                    this.checkpointStore.set(`${remotePeerId}:${collection}`, checkpoint);
+                    this.checkpointStore.set(
+                        `${remotePeerId}:${collection}`,
+                        checkpoint,
+                    );
                 }
-            }
+            },
         );
 
         // Register ping/presence protocol
@@ -628,7 +768,7 @@ class P2PService {
                     online,
                     lastSeenAt,
                 });
-            }
+            },
         );
 
         // Register file-transfer protocol
@@ -636,66 +776,92 @@ class P2PService {
             onManifestRequest: async (peerId, playlistId) => {
                 // This is a synchronous bridge: we need the manifest from the main process.
                 // Use the same pending-promise pattern as replication pull requests.
-                const requestId = `ft-manifest-${Date.now()}-${Math.random().toString(36).slice(2)}`
+                const requestId = `ft-manifest-${Date.now()}-${Math.random().toString(36).slice(2)}`;
                 return new Promise((resolve, reject) => {
                     const timer = setTimeout(() => {
-                        this.pendingFileTransferRequests.delete(requestId)
-                        reject(new Error('Manifest request timed out'))
-                    }, 10_000)
+                        this.pendingFileTransferRequests.delete(requestId);
+                        reject(new Error('Manifest request timed out'));
+                    }, 10_000);
 
                     this.pendingFileTransferRequests.set(requestId, {
-                        resolve: (val: unknown) => { clearTimeout(timer); resolve(val as import('../shared/core/file-transfer-types').FileManifest) },
-                        reject: (err: Error) => { clearTimeout(timer); reject(err) },
-                    })
+                        resolve: (val: unknown) => {
+                            clearTimeout(timer);
+                            resolve(
+                                val as import('../shared/core/file-transfer-types').FileManifest,
+                            );
+                        },
+                        reject: (err: Error) => {
+                            clearTimeout(timer);
+                            reject(err);
+                        },
+                    });
 
-                    this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST, {
-                        requestId,
-                        subtype: 'manifest-request',
-                        peerId,
-                        playlistId,
-                    })
-                })
+                    this.sendToMain(
+                        UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST,
+                        {
+                            requestId,
+                            subtype: 'manifest-request',
+                            peerId,
+                            playlistId,
+                        },
+                    );
+                });
             },
             onFileRequest: (peerId, sha256, offsetBytes) => {
-                this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST, {
-                    subtype: 'file-request',
-                    peerId,
-                    sha256,
-                    offsetBytes,
-                })
+                this.sendToMain(
+                    UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST,
+                    {
+                        subtype: 'file-request',
+                        peerId,
+                        sha256,
+                        offsetBytes,
+                    },
+                );
             },
             onFileChunkReceived: (peerId, sha256, offset, data) => {
-                this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_CHUNK_RECEIVED, {
-                    peerId,
-                    sha256,
-                    offset,
-                    data,
-                })
+                this.sendToMain(
+                    UtilityToMainMessageType.FILE_TRANSFER_CHUNK_RECEIVED,
+                    {
+                        peerId,
+                        sha256,
+                        offset,
+                        data,
+                    },
+                );
             },
             onFileComplete: (peerId, sha256) => {
-                this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_COMPLETE, {
-                    peerId,
-                    sha256,
-                })
+                this.sendToMain(
+                    UtilityToMainMessageType.FILE_TRANSFER_COMPLETE,
+                    {
+                        peerId,
+                        sha256,
+                    },
+                );
             },
             onFileError: (peerId, sha256, error) => {
                 this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_ERROR, {
                     peerId,
                     sha256,
                     error,
-                })
+                });
             },
             onTransferCancel: (peerId, sha256) => {
                 this.sendToMain(UtilityToMainMessageType.FILE_TRANSFER_ERROR, {
                     peerId,
                     sha256,
                     error: 'transfer-cancel',
-                })
+                });
             },
-        }
-        registerFileTransferProtocol(this.libp2pNode, this.fileTransferCallbacks)
+        };
+        registerFileTransferProtocol(
+            this.libp2pNode,
+            this.fileTransferCallbacks,
+        );
 
-        this.log('info', 'Protocols registered: handshake, replication, ping, file-transfer');
+        this.log(
+            'info',
+            'Protocols registered: handshake, replication, ping, file-transfer',
+        );
     }
 
     /**
@@ -715,11 +881,13 @@ class P2PService {
                     relayMultiaddr,
                     relayPeerId,
                 });
-                this.log('info', connected
-                    ? `Relay connected: ${relayMultiaddr}`
-                    : 'Relay disconnected'
+                this.log(
+                    'info',
+                    connected
+                        ? `Relay connected: ${relayMultiaddr}`
+                        : 'Relay disconnected',
                 );
-            }
+            },
         );
 
         if (P2P_CONFIG.RELAY.AUTO_CONNECT) {
@@ -737,64 +905,81 @@ class P2PService {
         // See: https://docs.libp2p.io/concepts/fundamentals/protocols-and-streams/
 
         // Peer discovered via mDNS
-        this.libp2pNode.addEventListener('peer:discovery', (evt: PeerDiscoveryEvent) => {
-            const peerId = evt.detail.id.toString();
-            const multiaddrs = evt.detail.multiaddrs.map((ma: MultiaddrLike) => ma.toString());
+        this.libp2pNode.addEventListener(
+            'peer:discovery',
+            (evt: PeerDiscoveryEvent) => {
+                const peerId = evt.detail.id.toString();
+                const multiaddrs = evt.detail.multiaddrs.map(
+                    (ma: MultiaddrLike) => ma.toString(),
+                );
 
-            this.log('info', `Discovered peer: ${peerId}`);
+                this.log('info', `Discovered peer: ${peerId}`);
 
-            // LEARNING: We only notify main process about WhatNext peers
-            // In future, we'll add a protocol prefix to filter peers
-            this.sendToMain(UtilityToMainMessageType.PEER_DISCOVERED, {
-                peer: {
-                    peerId,
-                    displayName: `WhatNext Peer ${peerId.slice(0, 8)}...`,
+                // LEARNING: We only notify main process about WhatNext peers
+                // In future, we'll add a protocol prefix to filter peers
+                this.sendToMain(UtilityToMainMessageType.PEER_DISCOVERED, {
+                    peer: {
+                        peerId,
+                        displayName: `WhatNext Peer ${peerId.slice(0, 8)}...`,
+                        multiaddrs,
+                        protocols: [],
+                        discovered: 'mdns' as const,
+                        discoveredAt: new Date().toISOString(),
+                        lastSeenAt: new Date().toISOString(),
+                    },
                     multiaddrs,
-                    protocols: [],
-                    discovered: 'mdns' as const,
-                    discoveredAt: new Date().toISOString(),
-                    lastSeenAt: new Date().toISOString(),
-                },
-                multiaddrs,
-            });
-        });
+                });
+            },
+        );
 
         // Peer connection established
-        this.libp2pNode.addEventListener('peer:connect', (evt: PeerConnectionEvent) => {
-            const peerId = evt.detail.toString();
-            this.log('info', `Connected to peer: ${peerId}`);
+        this.libp2pNode.addEventListener(
+            'peer:connect',
+            (evt: PeerConnectionEvent) => {
+                const peerId = evt.detail.toString();
+                this.log('info', `Connected to peer: ${peerId}`);
 
-            // LEARNING: At this point, we have a connection but haven't done
-            // the WhatNext handshake yet. We'll send a handshake message next.
-            this.sendToMain(UtilityToMainMessageType.CONNECTION_ESTABLISHED, {
-                peerId,
-                connection: {
-                    peerId,
-                    state: 'connected' as const,
-                    connectedAt: new Date().toISOString(),
-                    multiaddrs: [], // TODO: Get actual multiaddrs from connection
-                },
-            });
-        });
+                // LEARNING: At this point, we have a connection but haven't done
+                // the WhatNext handshake yet. We'll send a handshake message next.
+                this.sendToMain(
+                    UtilityToMainMessageType.CONNECTION_ESTABLISHED,
+                    {
+                        peerId,
+                        connection: {
+                            peerId,
+                            state: 'connected' as const,
+                            connectedAt: new Date().toISOString(),
+                            multiaddrs: [], // TODO: Get actual multiaddrs from connection
+                        },
+                    },
+                );
+            },
+        );
 
         // Peer disconnected
-        this.libp2pNode.addEventListener('peer:disconnect', (evt: PeerConnectionEvent) => {
-            const peerId = evt.detail.toString();
-            this.log('info', `Disconnected from peer: ${peerId}`);
+        this.libp2pNode.addEventListener(
+            'peer:disconnect',
+            (evt: PeerConnectionEvent) => {
+                const peerId = evt.detail.toString();
+                this.log('info', `Disconnected from peer: ${peerId}`);
 
-            cleanupPeerStreams(peerId).catch((err) => {
-                this.log('warn', `Error cleaning up streams for ${peerId}: ${err}`);
-            });
+                cleanupPeerStreams(peerId).catch((err) => {
+                    this.log(
+                        'warn',
+                        `Error cleaning up streams for ${peerId}: ${err}`,
+                    );
+                });
 
-            // Re-arm the replication bootstrap so a reconnect pulls again. Keeping
-            // the claim past the connection would make the peer look
-            // already-handshaked forever — silent no-sync (#58).
-            this.bootstrapTracker.release(peerId);
+                // Re-arm the replication bootstrap so a reconnect pulls again. Keeping
+                // the claim past the connection would make the peer look
+                // already-handshaked forever — silent no-sync (#58).
+                this.bootstrapTracker.release(peerId);
 
-            this.sendToMain(UtilityToMainMessageType.CONNECTION_CLOSED, {
-                peerId,
-            });
-        });
+                this.sendToMain(UtilityToMainMessageType.CONNECTION_CLOSED, {
+                    peerId,
+                });
+            },
+        );
     }
 
     /**
@@ -814,7 +999,10 @@ class P2PService {
             // LEARNING: Check if peer is already connected
             const connections = this.libp2pNode.getConnections(targetPeerId);
             if (connections.length > 0) {
-                this.log('info', `Already connected to peer: ${payload.peerId}`);
+                this.log(
+                    'info',
+                    `Already connected to peer: ${payload.peerId}`,
+                );
                 return;
             }
 
@@ -822,7 +1010,10 @@ class P2PService {
             let peer;
             try {
                 peer = await this.libp2pNode.peerStore.get(targetPeerId);
-                this.log('info', `Found peer in peerStore with ${peer.addresses.length} address(es)`);
+                this.log(
+                    'info',
+                    `Found peer in peerStore with ${peer.addresses.length} address(es)`,
+                );
             } catch {
                 this.log('info', 'Peer not found in peerStore');
                 // Will try relay hint below if available
@@ -833,7 +1024,7 @@ class P2PService {
                 this.log('info', `Using relay hint: ${payload.relay}`);
                 const { multiaddr } = await import('@multiformats/multiaddr');
                 const relayAddr = multiaddr(
-                    `${payload.relay}/p2p-circuit/p2p/${payload.peerId}`
+                    `${payload.relay}/p2p-circuit/p2p/${payload.peerId}`,
                 );
                 await this.libp2pNode.peerStore.merge(targetPeerId, {
                     multiaddrs: [relayAddr],
@@ -844,15 +1035,20 @@ class P2PService {
 
             if (!peer || peer.addresses.length === 0) {
                 throw new Error(
-                    'Peer has no known addresses. Cannot dial without multiaddrs.'
+                    'Peer has no known addresses. Cannot dial without multiaddrs.',
                 );
             }
 
             // Log multiaddrs we're trying to dial
-            this.log('info', `Attempting to dial ${peer.addresses.length} address(es):`);
-            peer.addresses.forEach((addr: PeerStoreEntry['addresses'][number], i: number) => {
-                this.log('info', `  [${i}] ${addr.multiaddr.toString()}`);
-            });
+            this.log(
+                'info',
+                `Attempting to dial ${peer.addresses.length} address(es):`,
+            );
+            peer.addresses.forEach(
+                (addr: PeerStoreEntry['addresses'][number], i: number) => {
+                    this.log('info', `  [${i}] ${addr.multiaddr.toString()}`);
+                },
+            );
 
             // LEARNING: libp2p.dial() will try all known multiaddrs for the peer
             // and return when the first one succeeds
@@ -860,22 +1056,37 @@ class P2PService {
             const connection = await this.libp2pNode.dial(targetPeerId);
 
             this.log('info', `✓ Successfully dialed peer: ${payload.peerId}`);
-            this.log('info', `  Remote address: ${connection.remoteAddr.toString()}`);
+            this.log(
+                'info',
+                `  Remote address: ${connection.remoteAddr.toString()}`,
+            );
 
             // Initiate handshake after connection
             try {
                 const localData: HandshakeData = {
-                    displayName: this.userDisplayName || `WhatNext User ${this.libp2pNode.peerId.toString().slice(-4)}`,
+                    displayName:
+                        this.userDisplayName ||
+                        `WhatNext User ${this.libp2pNode.peerId.toString().slice(-4)}`,
                     avatarUrl: this.userAvatarUrl,
-                    userId: this.userIdentityId || this.libp2pNode.peerId.toString(),
+                    userId:
+                        this.userIdentityId ||
+                        this.libp2pNode.peerId.toString(),
                     version: P2P_CONFIG.APP_INFO.protocolVersion,
-                    capabilities: ['playlist-sync', 'rxdb-replication', FILE_TRANSFER_CAPABILITY],
+                    capabilities: [
+                        'playlist-sync',
+                        'rxdb-replication',
+                        FILE_TRANSFER_CAPABILITY,
+                    ],
                     peerId: this.libp2pNode.peerId.toString(),
                 };
                 // Dialer completion path: initiateHandshake now resolves with the
                 // REMOTE's data (it used to return a placeholder and rely on the
                 // handshake loop re-entering our responder — see handshake.ts).
-                const remoteData = await initiateHandshake(this.libp2pNode, payload.peerId, localData);
+                const remoteData = await initiateHandshake(
+                    this.libp2pNode,
+                    payload.peerId,
+                    localData,
+                );
                 this.onHandshakeComplete(payload.peerId, remoteData);
             } catch (err) {
                 this.log('warn', `Handshake failed (non-fatal): ${err}`);
@@ -884,7 +1095,10 @@ class P2PService {
             // Connection established event will be emitted by libp2p's peer:connect listener
         } catch (error) {
             this.log('error', `✗ Failed to connect to peer: ${error}`);
-            this.log('error', `  Stack: ${error instanceof Error ? error.stack : 'N/A'}`);
+            this.log(
+                'error',
+                `  Stack: ${error instanceof Error ? error.stack : 'N/A'}`,
+            );
 
             this.sendToMain(UtilityToMainMessageType.CONNECTION_FAILED, {
                 peerId: payload.peerId,
@@ -905,7 +1119,10 @@ class P2PService {
      * Replication bootstrap is claimed once per (peer, connection): a connection
      * can complete the handshake twice locally when both ends dial each other.
      */
-    private onHandshakeComplete(remotePeerId: string, data: HandshakeData): void {
+    private onHandshakeComplete(
+        remotePeerId: string,
+        data: HandshakeData,
+    ): void {
         this.connectedPeerNames.set(remotePeerId, data.displayName);
         this.sendToMain(UtilityToMainMessageType.HANDSHAKE_COMPLETE, {
             peerId: remotePeerId,
@@ -917,7 +1134,10 @@ class P2PService {
         });
 
         if (!this.bootstrapTracker.claim(remotePeerId)) {
-            this.log('info', `Replication already bootstrapped for ${remotePeerId}, skipping`);
+            this.log(
+                'info',
+                `Replication already bootstrapped for ${remotePeerId}, skipping`,
+            );
             return;
         }
 
@@ -932,7 +1152,13 @@ class P2PService {
     private triggerInitialReplication(peerId: string): void {
         if (!this.libp2pNode) return;
 
-        const SESSION_COLLECTIONS = ['playlists', 'tracks', 'trackInteractions', 'comments', 'users'];
+        const SESSION_COLLECTIONS = [
+            'playlists',
+            'tracks',
+            'trackInteractions',
+            'comments',
+            'users',
+        ];
 
         for (const collection of SESSION_COLLECTIONS) {
             const checkpointKey = `${peerId}:${collection}`;
@@ -940,10 +1166,17 @@ class P2PService {
 
             // pullFromRemotePeer sends a pull-request; the response arrives via
             // the replication protocol handler (pull-response case in replication.ts).
-            pullFromRemotePeer(this.libp2pNode, peerId, collection, checkpoint)
-                .catch((err) => {
-                    this.log('warn', `Initial pull failed for ${collection} from ${peerId}: ${err}`);
-                });
+            pullFromRemotePeer(
+                this.libp2pNode,
+                peerId,
+                collection,
+                checkpoint,
+            ).catch((err) => {
+                this.log(
+                    'warn',
+                    `Initial pull failed for ${collection} from ${peerId}: ${err}`,
+                );
+            });
         }
     }
 
@@ -951,7 +1184,7 @@ class P2PService {
      * Disconnect from a peer
      */
     private async disconnectFromPeer(
-        payload: DisconnectFromPeerPayload
+        payload: DisconnectFromPeerPayload,
     ): Promise<void> {
         if (!this.libp2pNode) {
             throw new Error('Node not started');
@@ -959,7 +1192,8 @@ class P2PService {
 
         try {
             this.log('info', `Disconnecting from peer: ${payload.peerId}`);
-            const { peerIdFromString: fromStr } = await import('@libp2p/peer-id');
+            const { peerIdFromString: fromStr } =
+                await import('@libp2p/peer-id');
             await this.libp2pNode.hangUp(fromStr(payload.peerId));
         } catch (error) {
             this.log('error', `Failed to disconnect from peer: ${error}`);
@@ -978,7 +1212,10 @@ class P2PService {
         for (const peer of allPeers) {
             peers.push({
                 peerId: peer.id.toString(),
-                multiaddrs: peer.addresses.map((a: { multiaddr: { toString(): string } }) => a.multiaddr.toString()),
+                multiaddrs: peer.addresses.map(
+                    (a: { multiaddr: { toString(): string } }) =>
+                        a.multiaddr.toString(),
+                ),
             });
         }
         this.sendToMain(UtilityToMainMessageType.PEER_DISCOVERED, { peers });
@@ -996,7 +1233,9 @@ class P2PService {
         const connections = this.libp2pNode.getConnections();
         const peers = connections.map((conn) => ({
             peerId: conn.remotePeer.toString(),
-            displayName: this.connectedPeerNames.get(conn.remotePeer.toString()),
+            displayName: this.connectedPeerNames.get(
+                conn.remotePeer.toString(),
+            ),
             remoteAddr: conn.remoteAddr.toString(),
         }));
 
@@ -1021,7 +1260,10 @@ class P2PService {
      * Send message to main process
      * Electron utility processes use process.parentPort.postMessage()
      */
-    private sendToMain(type: UtilityToMainMessageType, payload: Record<string, unknown>): void {
+    private sendToMain(
+        type: UtilityToMainMessageType,
+        payload: Record<string, unknown>,
+    ): void {
         const parentPort = process.parentPort;
 
         if (!parentPort) {
@@ -1037,7 +1279,10 @@ class P2PService {
      * Logging utility
      * LEARNING: In production, we'd use a proper logger (pino, winston)
      */
-    private log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void {
+    private log(
+        level: 'debug' | 'info' | 'warn' | 'error',
+        message: string,
+    ): void {
         const timestamp = new Date().toISOString();
         const prefix = `[P2P Service ${timestamp}] [${level.toUpperCase()}]`;
         console.log(`${prefix} ${message}`);

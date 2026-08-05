@@ -8,17 +8,25 @@ import { getDatabase } from '../db/database';
 /**
  * Check if it's the local user's turn
  */
-export async function isMyTurn(playlistId: string, localUserId: string): Promise<boolean> {
+export async function isMyTurn(
+    playlistId: string,
+    localUserId: string,
+): Promise<boolean> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
     if (!playlist || playlist.queueMode !== 'turn_taking') return true;
-    return playlist.currentTurnUserId === localUserId || !playlist.currentTurnUserId;
+    return (
+        playlist.currentTurnUserId === localUserId ||
+        !playlist.currentTurnUserId
+    );
 }
 
 /**
  * Get current turn user ID for a playlist
  */
-export async function getCurrentTurnUser(playlistId: string): Promise<string | null> {
+export async function getCurrentTurnUser(
+    playlistId: string,
+): Promise<string | null> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
     if (!playlist) return null;

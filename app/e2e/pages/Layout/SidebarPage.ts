@@ -27,22 +27,39 @@ export class SidebarPage {
     readonly copyConnectionLink: Locator;
 
     constructor(private readonly page: Page) {
-        this.appTitle = page.getByRole('heading', { name: 'WhatNext', level: 1 });
+        this.appTitle = page.getByRole('heading', {
+            name: 'WhatNext',
+            level: 1,
+        });
 
         this.navPlaylists = page.getByRole('button', { name: /^Playlists$/i });
         this.navLibrary = page.getByRole('button', { name: /^Library$/i });
         this.navSessions = page.getByRole('button', { name: /^Sessions$/i });
-        this.navSpotifyImport = page.getByRole('button', { name: /^Spotify Import$/i });
+        this.navSpotifyImport = page.getByRole('button', {
+            name: /^Spotify Import$/i,
+        });
 
-        this.navNetworkStatus = page.getByRole('button', { name: /^Network Status$/i });
+        this.navNetworkStatus = page.getByRole('button', {
+            name: /^Network Status$/i,
+        });
 
-        this.navSettingsGeneral = page.getByRole('button', { name: /^General$/i });
+        this.navSettingsGeneral = page.getByRole('button', {
+            name: /^General$/i,
+        });
 
         this.identityBar = page.locator('.sidebar').getByRole('button').last();
         this.copyConnectionLink = page.getByTitle('Copy connection link');
     }
 
-    async navigateTo(section: 'playlists' | 'library' | 'sessions' | 'spotify' | 'network' | 'settings') {
+    async navigateTo(
+        section:
+            | 'playlists'
+            | 'library'
+            | 'sessions'
+            | 'spotify'
+            | 'network'
+            | 'settings',
+    ) {
         const map: Record<string, Locator> = {
             playlists: this.navPlaylists,
             library: this.navLibrary,

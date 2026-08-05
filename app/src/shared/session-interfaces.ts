@@ -10,12 +10,12 @@ export interface IncomingTrack {
     artists: string[];
     album: string;
     durationMs: number;
-    externalId?: string;          // e.g. Spotify track ID, MusicBrainz ID
-    externalSource?: string;      // 'spotify' | 'musicbrainz' | 'manual' | 'local'
+    externalId?: string; // e.g. Spotify track ID, MusicBrainz ID
+    externalSource?: string; // 'spotify' | 'musicbrainz' | 'manual' | 'local'
     albumArtUrl?: string;
-    localFilePath?: string;       // Absolute path when backed by a scanned local file
-    addedAt: string;              // ISO timestamp
-    addedByExternalId?: string;   // external user ID for attribution mapping
+    localFilePath?: string; // Absolute path when backed by a scanned local file
+    addedAt: string; // ISO timestamp
+    addedByExternalId?: string; // external user ID for attribution mapping
 }
 
 /** Playback state returned by any playback provider */
@@ -45,9 +45,7 @@ export type TrackSourceConfig =
  * and no UI may imply mutual exclusion between peers.
  * See [[epic-session-liveness-fixes]] §WB5.
  */
-export type PlaybackProviderConfig =
-    | { type: 'spotify' }
-    | { type: 'none' };
+export type PlaybackProviderConfig = { type: 'spotify' } | { type: 'none' };
 
 /**
  * Active session state stored in the navigation store.
@@ -62,9 +60,9 @@ export interface SessionState {
     playlistId: string;
     trackSource: TrackSourceConfig;
     playbackProvider: PlaybackProviderConfig;
-    participantIds: string[];   // WhatNext user IDs
-    hostId: string;             // WhatNext user ID of the session host
-    startedAt: string;          // ISO timestamp
+    participantIds: string[]; // WhatNext user IDs
+    hostId: string; // WhatNext user ID of the session host
+    startedAt: string; // ISO timestamp
 }
 
 /** Input for starting a new session */

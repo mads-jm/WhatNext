@@ -7,13 +7,16 @@ import { useState, useEffect, useMemo } from 'react';
 import { useDatabase } from './useDatabase';
 import type { CommentDocType } from '../db/schemas';
 import type { RxDocument } from 'rxdb';
-import { buildCommentTree, type CommentWithReplies } from '../utils/comment-helpers';
+import {
+    buildCommentTree,
+    type CommentWithReplies,
+} from '../utils/comment-helpers';
 
 export type { CommentWithReplies };
 
 export function useComments(
     playlistId: string | undefined,
-    trackId?: string
+    trackId?: string,
 ): { comments: CommentWithReplies[]; loading: boolean } {
     const { db } = useDatabase();
     const [allComments, setAllComments] = useState<CommentDocType[]>([]);

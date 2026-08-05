@@ -10,14 +10,18 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, cleanup, renderHook } from '@testing-library/react';
-import type { DownloadEvent, ResolvedTrack } from '../../../../../service/downloader/types';
+import type {
+    DownloadEvent,
+    ResolvedTrack,
+} from '../../../../../service/downloader/types';
 
 vi.mock('../../db/services/track-service', () => ({
     bulkImportTracks: vi.fn(async () => ['track-id-1']),
     updateTrack: vi.fn(async () => undefined),
 }));
 vi.mock('../../stores/user-store', () => ({
-    useUserStore: (selector: (s: { userId: string }) => unknown) => selector({ userId: 'user-1' }),
+    useUserStore: (selector: (s: { userId: string }) => unknown) =>
+        selector({ userId: 'user-1' }),
 }));
 
 import { bulkImportTracks } from '../../db/services/track-service';
@@ -77,7 +81,9 @@ async function startTwoTrackDownload() {
     await act(async () => {
         await Promise.resolve();
     });
-    act(() => view.result.current.setUrl('https://youtube.com/playlist?list=x'));
+    act(() =>
+        view.result.current.setUrl('https://youtube.com/playlist?list=x'),
+    );
     await act(async () => {
         await view.result.current.resolveUrl();
     });
@@ -92,14 +98,20 @@ describe('usePlaylistDownload completion handling', () => {
         const { result } = await startTwoTrackDownload();
 
         await act(async () => {
-            onComplete?.({ type: 'complete', sourceUrl: WITH_PATH, localFilePath: '/audio/a.mp3' });
+            onComplete?.({
+                type: 'complete',
+                sourceUrl: WITH_PATH,
+                localFilePath: '/audio/a.mp3',
+            });
         });
         await act(async () => {
             onComplete?.({ type: 'complete', sourceUrl: WITHOUT_PATH });
         });
 
         expect(result.current.progress.get(WITH_PATH)?.status).toBe('complete');
-        expect(result.current.progress.get(WITHOUT_PATH)?.status).toBe('unimported');
+        expect(result.current.progress.get(WITHOUT_PATH)?.status).toBe(
+            'unimported',
+        );
         expect(result.current.state).toBe('done');
     });
 
@@ -107,7 +119,11 @@ describe('usePlaylistDownload completion handling', () => {
         const { result } = await startTwoTrackDownload();
 
         await act(async () => {
-            onComplete?.({ type: 'complete', sourceUrl: WITH_PATH, localFilePath: '/audio/a.mp3' });
+            onComplete?.({
+                type: 'complete',
+                sourceUrl: WITH_PATH,
+                localFilePath: '/audio/a.mp3',
+            });
             onComplete?.({ type: 'complete', sourceUrl: WITHOUT_PATH });
         });
 
@@ -119,19 +135,31 @@ describe('usePlaylistDownload completion handling', () => {
             localFilePath: '/audio/a.mp3',
         });
         // The dropped track is still accounted for in the UI state, not silent.
-        expect(result.current.progress.get(WITHOUT_PATH)?.status).toBe('unimported');
+        expect(result.current.progress.get(WITHOUT_PATH)?.status).toBe(
+            'unimported',
+        );
     });
 
     it('leaves the path-present flow unchanged', async () => {
         const { result } = await startTwoTrackDownload();
 
         await act(async () => {
-            onComplete?.({ type: 'complete', sourceUrl: WITH_PATH, localFilePath: '/audio/a.mp3' });
-            onComplete?.({ type: 'complete', sourceUrl: WITHOUT_PATH, localFilePath: '/audio/b.mp3' });
+            onComplete?.({
+                type: 'complete',
+                sourceUrl: WITH_PATH,
+                localFilePath: '/audio/a.mp3',
+            });
+            onComplete?.({
+                type: 'complete',
+                sourceUrl: WITHOUT_PATH,
+                localFilePath: '/audio/b.mp3',
+            });
         });
 
         expect(result.current.progress.get(WITH_PATH)?.status).toBe('complete');
-        expect(result.current.progress.get(WITHOUT_PATH)?.status).toBe('complete');
+        expect(result.current.progress.get(WITHOUT_PATH)?.status).toBe(
+            'complete',
+        );
         expect(vi.mocked(bulkImportTracks).mock.calls[0][0]).toHaveLength(2);
         expect(result.current.state).toBe('done');
     });

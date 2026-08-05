@@ -14,7 +14,9 @@ import * as path from 'path';
 // Real temp dirs stand in for the two Electron path roots the guards consult.
 // The factory runs when the guards first import 'electron', by which time these
 // are initialised.
-const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wn-guard-userdata-'));
+const userDataDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'wn-guard-userdata-'),
+);
 const documentsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wn-guard-docs-'));
 vi.mock('electron', () => ({
     app: {
@@ -55,7 +57,9 @@ afterAll(() => {
 
 describe('validateExternalUrl', () => {
     it('accepts http and https links and hands back the normalised href', () => {
-        expect(validateExternalUrl('https://open.spotify.com/playlist/abc')).toEqual({
+        expect(
+            validateExternalUrl('https://open.spotify.com/playlist/abc'),
+        ).toEqual({
             ok: true,
             url: 'https://open.spotify.com/playlist/abc',
         });
@@ -66,11 +70,16 @@ describe('validateExternalUrl', () => {
     });
 
     it('accepts a bare spotify: URI and a well-formed context URI', () => {
-        expect(validateExternalUrl('spotify:')).toEqual({ ok: true, url: 'spotify:' });
+        expect(validateExternalUrl('spotify:')).toEqual({
+            ok: true,
+            url: 'spotify:',
+        });
         expect(
             validateExternalUrl('spotify:playlist:37i9dQZF1DXcBWIGoYBM5M'),
         ).toEqual({ ok: true, url: 'spotify:playlist:37i9dQZF1DXcBWIGoYBM5M' });
-        expect(validateExternalUrl('spotify:user:mads:playlist:abc123')).toEqual({
+        expect(
+            validateExternalUrl('spotify:user:mads:playlist:abc123'),
+        ).toEqual({
             ok: true,
             url: 'spotify:user:mads:playlist:abc123',
         });
@@ -109,15 +118,31 @@ describe('validateExternalUrl', () => {
     });
 
     it('rejects non-strings, blanks, control characters and absurd lengths', () => {
-        expect(validateExternalUrl(undefined)).toEqual({ ok: false, error: 'Invalid URL' });
-        expect(validateExternalUrl(42)).toEqual({ ok: false, error: 'Invalid URL' });
-        expect(validateExternalUrl('')).toEqual({ ok: false, error: 'Invalid URL' });
-        expect(validateExternalUrl('not a url')).toEqual({ ok: false, error: 'Invalid URL' });
-        expect(validateExternalUrl('https://example.com/\n\rSet-Cookie: x')).toEqual({
+        expect(validateExternalUrl(undefined)).toEqual({
             ok: false,
             error: 'Invalid URL',
         });
-        expect(validateExternalUrl(`https://example.com/${'a'.repeat(4000)}`)).toEqual({
+        expect(validateExternalUrl(42)).toEqual({
+            ok: false,
+            error: 'Invalid URL',
+        });
+        expect(validateExternalUrl('')).toEqual({
+            ok: false,
+            error: 'Invalid URL',
+        });
+        expect(validateExternalUrl('not a url')).toEqual({
+            ok: false,
+            error: 'Invalid URL',
+        });
+        expect(
+            validateExternalUrl('https://example.com/\n\rSet-Cookie: x'),
+        ).toEqual({
+            ok: false,
+            error: 'Invalid URL',
+        });
+        expect(
+            validateExternalUrl(`https://example.com/${'a'.repeat(4000)}`),
+        ).toEqual({
             ok: false,
             error: 'Invalid URL',
         });
@@ -132,7 +157,9 @@ describe('validateExternalUrl', () => {
         expect(fs.existsSync(mainPath)).toBe(true);
         const mainSource = fs.readFileSync(mainPath, 'utf-8');
         expect(mainSource).not.toMatch(/child_process/);
-        expect(mainSource).not.toMatch(/\bexec\(|execSync|execFileSync|execFile\(/);
+        expect(mainSource).not.toMatch(
+            /\bexec\(|execSync|execFileSync|execFile\(/,
+        );
     });
 });
 
@@ -157,7 +184,9 @@ describe('resolveArtworkPath', () => {
 
     it('rejects relative traversal out of the artwork root', () => {
         expect(
-            resolveArtworkPath(path.join(artworkDir, '..', '..', '..', 'secrets.jpg')),
+            resolveArtworkPath(
+                path.join(artworkDir, '..', '..', '..', 'secrets.jpg'),
+            ),
         ).toBeNull();
         expect(
             resolveArtworkPath(`${artworkDir}/../../../../etc/shadow.png`),
@@ -167,26 +196,36 @@ describe('resolveArtworkPath', () => {
     it('rejects absolute paths that were never under an artwork root', () => {
         expect(resolveArtworkPath('/etc/passwd')).toBeNull();
         expect(resolveArtworkPath('/etc/passwd.jpg')).toBeNull();
-        expect(resolveArtworkPath(path.join(os.homedir(), '.ssh', 'id_rsa.png'))).toBeNull();
+        expect(
+            resolveArtworkPath(path.join(os.homedir(), '.ssh', 'id_rsa.png')),
+        ).toBeNull();
         // A peer-replicated doc carrying *their* local path must not read *our* disk.
         expect(resolveArtworkPath('/home/peer/art/song.jpg')).toBeNull();
     });
 
     it('rejects a sibling directory that merely shares the root prefix', () => {
-        expect(resolveArtworkPath(`${artworkDir}-backup${path.sep}cover.jpg`)).toBeNull();
+        expect(
+            resolveArtworkPath(`${artworkDir}-backup${path.sep}cover.jpg`),
+        ).toBeNull();
     });
 
     it('rejects non-image files even inside the artwork root', () => {
         // index.json lives here; the protocol is for images only.
-        expect(resolveArtworkPath(path.join(artworkDir, 'index.json'))).toBeNull();
-        expect(resolveArtworkPath(path.join(artworkDir, 'payload.html'))).toBeNull();
+        expect(
+            resolveArtworkPath(path.join(artworkDir, 'index.json')),
+        ).toBeNull();
+        expect(
+            resolveArtworkPath(path.join(artworkDir, 'payload.html')),
+        ).toBeNull();
     });
 
     it('rejects relative paths, blanks, non-strings and NUL injection', () => {
         expect(resolveArtworkPath('artwork/cover.jpg')).toBeNull();
         expect(resolveArtworkPath('')).toBeNull();
         expect(resolveArtworkPath(undefined)).toBeNull();
-        expect(resolveArtworkPath(path.join(artworkDir, 'cover.jpg\0.txt'))).toBeNull();
+        expect(
+            resolveArtworkPath(path.join(artworkDir, 'cover.jpg\0.txt')),
+        ).toBeNull();
     });
 });
 
@@ -214,7 +253,9 @@ describe('save-target approval (file:write)', () => {
         const target = path.join(documentsDir, 'theme.json');
         recordApprovedSaveTarget(target);
         expect(
-            consumeApprovedSaveTarget(path.join(documentsDir, '.', 'theme.json')),
+            consumeApprovedSaveTarget(
+                path.join(documentsDir, '.', 'theme.json'),
+            ),
         ).toBe(true);
     });
 
@@ -222,7 +263,9 @@ describe('save-target approval (file:write)', () => {
         const target = path.join(documentsDir, 'theme.json');
         recordApprovedSaveTarget(target);
         expect(
-            consumeApprovedSaveTarget(path.join(documentsDir, 'sub', '..', 'other.json')),
+            consumeApprovedSaveTarget(
+                path.join(documentsDir, 'sub', '..', 'other.json'),
+            ),
         ).toBe(false);
         // The genuine approval is untouched by the failed attempt.
         expect(consumeApprovedSaveTarget(target)).toBe(true);
@@ -260,10 +303,15 @@ describe('validateOpenPathRequest', () => {
     });
 
     it('allows a directory only after the user picked it in a main-process dialog', async () => {
-        const exportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wn-guard-export-'));
+        const exportDir = fs.mkdtempSync(
+            path.join(os.tmpdir(), 'wn-guard-export-'),
+        );
         try {
             const before = await validateOpenPathRequest(exportDir);
-            expect(before).toEqual({ ok: false, error: 'Directory not permitted' });
+            expect(before).toEqual({
+                ok: false,
+                error: 'Directory not permitted',
+            });
 
             recordApprovedDirectory(exportDir);
 

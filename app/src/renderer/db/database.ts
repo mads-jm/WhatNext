@@ -95,8 +95,12 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                             ...oldDoc,
                             avatarSource: oldDoc.avatarSource ?? 'none',
                             linkedAccounts: oldDoc.linkedAccounts ?? [],
-                            updatedAt: oldDoc.updatedAt ?? oldDoc.createdAt ?? new Date().toISOString(),
-                            avatarLocalPath: oldDoc.avatarLocalPath ?? undefined,
+                            updatedAt:
+                                oldDoc.updatedAt ??
+                                oldDoc.createdAt ??
+                                new Date().toISOString(),
+                            avatarLocalPath:
+                                oldDoc.avatarLocalPath ?? undefined,
                             avatarUrl: oldDoc.avatarUrl ?? undefined,
                             bio: oldDoc.bio ?? undefined,
                         };
@@ -111,7 +115,8 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                         return {
                             ...oldDoc,
                             albumArtUrl: oldDoc.albumArtUrl ?? undefined,
-                            albumArtLocalPath: oldDoc.albumArtLocalPath ?? undefined,
+                            albumArtLocalPath:
+                                oldDoc.albumArtLocalPath ?? undefined,
                         };
                     },
                     // v1 → v2: Added Audio Acquisition Service fields
@@ -133,7 +138,8 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                     3(oldDoc) {
                         return {
                             ...oldDoc,
-                            updatedAt: oldDoc.addedAt ?? new Date().toISOString(),
+                            updatedAt:
+                                oldDoc.addedAt ?? new Date().toISOString(),
                         };
                     },
                 },
@@ -149,7 +155,8 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
                         return {
                             ...oldDoc,
                             coverArtUrl: oldDoc.coverArtUrl ?? undefined,
-                            coverArtLocalPath: oldDoc.coverArtLocalPath ?? undefined,
+                            coverArtLocalPath:
+                                oldDoc.coverArtLocalPath ?? undefined,
                         };
                     },
                     // v1 → v2: Added turn management fields
@@ -198,7 +205,7 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
         const playlistCount = await db.playlists.count().exec();
         const commentCount = await db.comments.count().exec();
         console.log(
-            `[RxDB] Database ready - ${userCount} users, ${trackCount} tracks, ${interactionCount} interactions, ${playlistCount} playlists, ${commentCount} comments`
+            `[RxDB] Database ready - ${userCount} users, ${trackCount} tracks, ${interactionCount} interactions, ${playlistCount} playlists, ${commentCount} comments`,
         );
 
         return db;
@@ -212,9 +219,7 @@ export async function initDatabase(): Promise<WhatNextDatabase> {
  */
 export async function getDatabase(): Promise<WhatNextDatabase> {
     if (!dbPromise) {
-        throw new Error(
-            'Database not initialized. Call initDatabase() first.'
-        );
+        throw new Error('Database not initialized. Call initDatabase() first.');
     }
     return dbPromise;
 }

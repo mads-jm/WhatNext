@@ -18,7 +18,7 @@ interface TrackWithAddedBy {
 export function inferTurnTracksAdded(
     tracks: TrackWithAddedBy[],
     currentTurnUserId: string | undefined,
-    tracksPerTurn: number
+    tracksPerTurn: number,
 ): number {
     if (!currentTurnUserId || tracks.length === 0) return 0;
     let count = 0;
@@ -44,7 +44,7 @@ export function resolvedTurnOrder(playlist: PlaylistDocType): string[] {
  */
 export function computeEffectiveTurn(
     playlist: PlaylistDocType,
-    tracks: TrackWithAddedBy[]
+    tracks: TrackWithAddedBy[],
 ): {
     effectiveTurnUserId: string | undefined;
     turnTracksAdded: number;
@@ -56,7 +56,11 @@ export function computeEffectiveTurn(
     const storedTurnUserId = playlist.currentTurnUserId ?? order[0];
     const storedTurnIndex = order.indexOf(storedTurnUserId);
 
-    const turnTracksAdded = inferTurnTracksAdded(tracks, storedTurnUserId, tracksPerTurn);
+    const turnTracksAdded = inferTurnTracksAdded(
+        tracks,
+        storedTurnUserId,
+        tracksPerTurn,
+    );
     const turnQuotaFull = !isComplete && turnTracksAdded >= tracksPerTurn;
 
     const effectiveTurnIndex = turnQuotaFull
@@ -64,5 +68,9 @@ export function computeEffectiveTurn(
         : storedTurnIndex;
     const effectiveTurnUserId = order[effectiveTurnIndex] ?? storedTurnUserId;
 
-    return { effectiveTurnUserId, turnTracksAdded: turnQuotaFull ? 0 : turnTracksAdded, turnQuotaFull };
+    return {
+        effectiveTurnUserId,
+        turnTracksAdded: turnQuotaFull ? 0 : turnTracksAdded,
+        turnQuotaFull,
+    };
 }

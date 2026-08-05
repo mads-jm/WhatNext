@@ -17,15 +17,38 @@ const COVER = 'c'.repeat(64);
 const PLAYLIST = 'playlist-1';
 
 const entries: FileEntry[] = [
-    { trackId: 't1', type: 'audio', sha256: AUDIO, sizeBytes: 10, mimeType: 'audio/mpeg', filename: 'song.mp3' },
-    { trackId: 't1', type: 'artwork', sha256: ARTWORK, sizeBytes: 10, mimeType: 'image/jpeg', filename: 'art.jpg' },
-    { trackId: PLAYLIST, type: 'cover-art', sha256: COVER, sizeBytes: 10, mimeType: 'image/jpeg', filename: 'cover.jpg' },
+    {
+        trackId: 't1',
+        type: 'audio',
+        sha256: AUDIO,
+        sizeBytes: 10,
+        mimeType: 'audio/mpeg',
+        filename: 'song.mp3',
+    },
+    {
+        trackId: 't1',
+        type: 'artwork',
+        sha256: ARTWORK,
+        sizeBytes: 10,
+        mimeType: 'image/jpeg',
+        filename: 'art.jpg',
+    },
+    {
+        trackId: PLAYLIST,
+        type: 'cover-art',
+        sha256: COVER,
+        sizeBytes: 10,
+        mimeType: 'image/jpeg',
+        filename: 'cover.jpg',
+    },
 ];
 
 /** A hash cache that holds every file in `entries` plus one we never published. */
 const HELD_BUT_UNPUBLISHED = 'd'.repeat(64);
 const held = (sha256: string): string | null =>
-    [AUDIO, ARTWORK, COVER, HELD_BUT_UNPUBLISHED].includes(sha256) ? `/files/${sha256}` : null;
+    [AUDIO, ARTWORK, COVER, HELD_BUT_UNPUBLISHED].includes(sha256)
+        ? `/files/${sha256}`
+        : null;
 
 describe('ServedHashRegistry', () => {
     it('allowlists every entry type a manifest published — no cover-art gap', () => {
@@ -41,7 +64,7 @@ describe('ServedHashRegistry', () => {
         expect(new ServedHashRegistry().isServable(AUDIO)).toBe(false);
     });
 
-    it('withdraws a playlist\'s hashes when sharing is revoked', () => {
+    it("withdraws a playlist's hashes when sharing is revoked", () => {
         const registry = new ServedHashRegistry();
         registry.record(PLAYLIST, entries);
         registry.revoke(PLAYLIST);
@@ -94,7 +117,11 @@ describe('evaluateServeRequest', () => {
     });
 
     it('refuses a hash we hold but never published — knowing the hash is not consent', () => {
-        const verdict = evaluateServeRequest(HELD_BUT_UNPUBLISHED, shared(), held);
+        const verdict = evaluateServeRequest(
+            HELD_BUT_UNPUBLISHED,
+            shared(),
+            held,
+        );
         expect(verdict.ok).toBe(false);
     });
 
@@ -105,7 +132,9 @@ describe('evaluateServeRequest', () => {
             return held(sha256);
         };
 
-        expect(evaluateServeRequest(HELD_BUT_UNPUBLISHED, shared(), counting).ok).toBe(false);
+        expect(
+            evaluateServeRequest(HELD_BUT_UNPUBLISHED, shared(), counting).ok,
+        ).toBe(false);
         expect(lookups).toBe(0);
     });
 
@@ -122,7 +151,9 @@ describe('evaluateServeRequest', () => {
         registry.revoke(PLAYLIST);
 
         for (const entry of entries) {
-            expect(evaluateServeRequest(entry.sha256, registry, held).ok).toBe(false);
+            expect(evaluateServeRequest(entry.sha256, registry, held).ok).toBe(
+                false,
+            );
         }
     });
 });

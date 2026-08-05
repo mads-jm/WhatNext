@@ -7,11 +7,25 @@
 
 import { useState, useCallback } from 'react';
 import { useUserStore } from '../stores/user-store';
-import { getTracksByIds, bulkImportTracks, updateTrack } from '../db/services/track-service';
-import { bulkAddTracksToPlaylist, removeTrackFromPlaylist, updatePlaylist } from '../db/services/playlist-service';
-import { resolveSpotifyUser, createSessionParticipant } from '../db/services/user-service';
+import {
+    getTracksByIds,
+    bulkImportTracks,
+    updateTrack,
+} from '../db/services/track-service';
+import {
+    bulkAddTracksToPlaylist,
+    removeTrackFromPlaylist,
+    updatePlaylist,
+} from '../db/services/playlist-service';
+import {
+    resolveSpotifyUser,
+    createSessionParticipant,
+} from '../db/services/user-service';
 import { resolveSpotifyUsers } from '../utils/spotify-user-resolution';
-import { groupTracksByArtwork, downloadArtworkBatch } from '../utils/artwork-download';
+import {
+    groupTracksByArtwork,
+    downloadArtworkBatch,
+} from '../utils/artwork-download';
 import type { PlaylistDocType } from '../db/schemas';
 import type { MappedTrack } from './useSpotifyImport';
 
@@ -43,7 +57,9 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
             );
 
             if (!result?.success || !result.tracks) {
-                throw new Error(result?.error ?? 'Sync failed: no tracks returned');
+                throw new Error(
+                    result?.error ?? 'Sync failed: no tracks returned',
+                );
             }
 
             // 2. Load local tracks and build spotifyId → localId map
@@ -56,7 +72,9 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
 
             // 3. Build set of current Spotify track spotifyIds
             const spotifyIdSet = new Set(
-                result.tracks.filter((t) => t.spotifyId).map((t) => t.spotifyId!),
+                result.tracks
+                    .filter((t) => t.spotifyId)
+                    .map((t) => t.spotifyId!),
             );
 
             // 4. Compute diff
@@ -87,7 +105,10 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
                             durationMs: t.durationMs,
                             spotifyId: t.spotifyId,
                             albumArtUrl: mapped.albumArtUrl,
-                            addedBy: (spotifyId && spotifyToWhatNext.get(spotifyId)) ?? userId,
+                            addedBy:
+                                (spotifyId &&
+                                    spotifyToWhatNext.get(spotifyId)) ??
+                                userId,
                             addedAt: mapped.addedAt,
                         };
                     }),
@@ -95,11 +116,18 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
                 await bulkAddTracksToPlaylist(playlist.id, newLocalIds);
 
                 // Add newly resolved users as playlist collaborators
-                const newCollaboratorIds = [...spotifyToWhatNext.values()]
-                    .filter((id) => id !== userId && !playlist.collaboratorIds.includes(id));
+                const newCollaboratorIds = [
+                    ...spotifyToWhatNext.values(),
+                ].filter(
+                    (id) =>
+                        id !== userId && !playlist.collaboratorIds.includes(id),
+                );
                 if (newCollaboratorIds.length > 0) {
                     await updatePlaylist(playlist.id, {
-                        collaboratorIds: [...playlist.collaboratorIds, ...newCollaboratorIds],
+                        collaboratorIds: [
+                            ...playlist.collaboratorIds,
+                            ...newCollaboratorIds,
+                        ],
                     });
                 }
 
@@ -111,7 +139,10 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
                 await removeTrackFromPlaylist(playlist.id, localId);
             }
 
-            setSyncSummary({ added: toAdd.length, removed: toRemoveIds.length });
+            setSyncSummary({
+                added: toAdd.length,
+                removed: toRemoveIds.length,
+            });
             setLastSynced(new Date());
             setSyncState('done');
         } catch (err) {
@@ -123,10 +154,17 @@ export function useSpotifySync(playlist: PlaylistDocType | null) {
     return { syncState, lastSynced, syncSummary, error, syncNow };
 }
 
-async function downloadArtworkForTracks(tracks: MappedTrack[], trackIds: string[]) {
+async function downloadArtworkForTracks(
+    tracks: MappedTrack[],
+    trackIds: string[],
+) {
     const groups = groupTracksByArtwork(tracks, trackIds);
-    const download = (url: string, meta?: { albumName: string; artistName: string }) =>
-        window.electron?.artwork.download(url, meta) ?? Promise.resolve({ success: false });
+    const download = (
+        url: string,
+        meta?: { albumName: string; artistName: string },
+    ) =>
+        window.electron?.artwork.download(url, meta) ??
+        Promise.resolve({ success: false });
     const updatePath = (id: string, localPath: string) =>
         updateTrack(id, { albumArtLocalPath: localPath }).then(() => {});
 

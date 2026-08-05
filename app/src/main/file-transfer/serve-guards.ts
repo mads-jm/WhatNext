@@ -27,7 +27,7 @@
  * `ipc-guards.ts` / `downloader-guards.ts` / `chunk-guards.ts` established.
  */
 
-import type { FileEntry } from '../../shared/core/file-transfer-types'
+import type { FileEntry } from '../../shared/core/file-transfer-types';
 
 /**
  * The hashes we have published in manifests, per playlist.
@@ -37,7 +37,7 @@ import type { FileEntry } from '../../shared/core/file-transfer-types'
  * file can appear in several playlists).
  */
 export class ServedHashRegistry {
-    private readonly byPlaylist = new Map<string, Set<string>>()
+    private readonly byPlaylist = new Map<string, Set<string>>();
 
     /**
      * Record everything a manifest we just handed to a peer contains.
@@ -51,26 +51,25 @@ export class ServedHashRegistry {
      * has gone out.
      */
     record(playlistId: string, files: readonly FileEntry[]): void {
-        this.byPlaylist.set(playlistId, new Set(files.map((f) => f.sha256)))
+        this.byPlaylist.set(playlistId, new Set(files.map((f) => f.sha256)));
     }
 
     /** Withdraw everything this playlist's manifests published (sharing turned off). */
     revoke(playlistId: string): void {
-        this.byPlaylist.delete(playlistId)
+        this.byPlaylist.delete(playlistId);
     }
 
     /** True when some sharing-enabled playlist has published this hash to a peer. */
     isServable(sha256: string): boolean {
         for (const hashes of this.byPlaylist.values()) {
-            if (hashes.has(sha256)) return true
+            if (hashes.has(sha256)) return true;
         }
-        return false
+        return false;
     }
 }
 
 export type ServeVerdict =
-    | { ok: true; filePath: string }
-    | { ok: false; reason: string }
+    { ok: true; filePath: string } | { ok: false; reason: string };
 
 /**
  * Decide whether a peer's `file-request` may be answered with bytes.
@@ -95,13 +94,13 @@ export function evaluateServeRequest(
         return {
             ok: false,
             reason: 'hash was not published in a manifest under active sharing',
-        }
+        };
     }
 
-    const filePath = lookupPath(sha256)
+    const filePath = lookupPath(sha256);
     if (!filePath) {
-        return { ok: false, reason: 'no local file for this hash' }
+        return { ok: false, reason: 'no local file for this hash' };
     }
 
-    return { ok: true, filePath }
+    return { ok: true, filePath };
 }

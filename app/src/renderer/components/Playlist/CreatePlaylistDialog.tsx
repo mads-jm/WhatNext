@@ -88,30 +88,52 @@ export function CreatePlaylistDialog() {
             <div
                 className="bg-surface border border-outline-variant rounded-xl p-6 w-full max-w-md shadow-2xl"
                 role="presentation"
-                onClick={e => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
             >
-                <h2 className="text-xl font-bold text-on-surface mb-4">Create Playlist</h2>
+                <h2 className="text-xl font-bold text-on-surface mb-4">
+                    Create Playlist
+                </h2>
 
                 <div className="space-y-4">
                     <div>
-                        <label htmlFor="playlist-name" className="block text-sm font-medium text-on-surface-variant mb-1">Name</label>
+                        <label
+                            htmlFor="playlist-name"
+                            className="block text-sm font-medium text-on-surface-variant mb-1"
+                        >
+                            Name
+                        </label>
                         <input
                             id="playlist-name"
                             type="text"
                             value={form.name}
-                            onChange={e => dispatch({ type: 'SET_NAME', value: e.target.value })}
+                            onChange={(e) =>
+                                dispatch({
+                                    type: 'SET_NAME',
+                                    value: e.target.value,
+                                })
+                            }
                             placeholder="My Awesome Playlist"
                             className="input w-full"
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="playlist-description" className="block text-sm font-medium text-on-surface-variant mb-1">Description</label>
+                        <label
+                            htmlFor="playlist-description"
+                            className="block text-sm font-medium text-on-surface-variant mb-1"
+                        >
+                            Description
+                        </label>
                         <input
                             id="playlist-description"
                             type="text"
                             value={form.description}
-                            onChange={e => dispatch({ type: 'SET_DESCRIPTION', value: e.target.value })}
+                            onChange={(e) =>
+                                dispatch({
+                                    type: 'SET_DESCRIPTION',
+                                    value: e.target.value,
+                                })
+                            }
                             placeholder="Optional description..."
                             className="input w-full"
                         />
@@ -119,55 +141,104 @@ export function CreatePlaylistDialog() {
 
                     <div className="flex items-center justify-between">
                         <div>
-                            <div className="text-sm font-medium text-on-surface">Collaborative</div>
-                            <div className="text-xs text-on-surface-variant">Allow others to add tracks via P2P</div>
+                            <div className="text-sm font-medium text-on-surface">
+                                Collaborative
+                            </div>
+                            <div className="text-xs text-on-surface-variant">
+                                Allow others to add tracks via P2P
+                            </div>
                         </div>
                         <button
-                            onClick={() => dispatch({ type: 'SET_COLLABORATIVE', value: !form.isCollaborative })}
+                            onClick={() =>
+                                dispatch({
+                                    type: 'SET_COLLABORATIVE',
+                                    value: !form.isCollaborative,
+                                })
+                            }
                             className={`w-12 h-6 rounded-full transition-colors ${
-                                form.isCollaborative ? 'bg-primary' : 'bg-surface-high'
+                                form.isCollaborative
+                                    ? 'bg-primary'
+                                    : 'bg-surface-high'
                             } relative`}
                         >
-                            <div className={`w-5 h-5 bg-on-surface rounded-full absolute top-0.5 transition-transform ${
-                                form.isCollaborative ? 'translate-x-6' : 'translate-x-0.5'
-                            }`} />
+                            <div
+                                className={`w-5 h-5 bg-on-surface rounded-full absolute top-0.5 transition-transform ${
+                                    form.isCollaborative
+                                        ? 'translate-x-6'
+                                        : 'translate-x-0.5'
+                                }`}
+                            />
                         </button>
                     </div>
 
                     {form.isCollaborative && (
                         <div>
-                            <p className="block text-sm font-medium text-on-surface-variant mb-2">Queue Mode</p>
+                            <p className="block text-sm font-medium text-on-surface-variant mb-2">
+                                Queue Mode
+                            </p>
                             <div className="space-y-2">
-                                <label aria-label="Free for All" className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                                    form.queueMode === 'free_for_all' ? 'border-primary bg-primary/10' : 'border-outline-variant hover:border-on-surface-variant'
-                                }`}>
+                                <label
+                                    aria-label="Free for All"
+                                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                        form.queueMode === 'free_for_all'
+                                            ? 'border-primary bg-primary/10'
+                                            : 'border-outline-variant hover:border-on-surface-variant'
+                                    }`}
+                                >
                                     <input
                                         id="queue-mode-free"
                                         type="radio"
                                         name="queueMode"
-                                        checked={form.queueMode === 'free_for_all'}
-                                        onChange={() => dispatch({ type: 'SET_QUEUE_MODE', value: 'free_for_all' })}
+                                        checked={
+                                            form.queueMode === 'free_for_all'
+                                        }
+                                        onChange={() =>
+                                            dispatch({
+                                                type: 'SET_QUEUE_MODE',
+                                                value: 'free_for_all',
+                                            })
+                                        }
                                         className="accent-primary"
                                     />
                                     <div>
-                                        <div className="text-sm font-medium text-on-surface">Free for All</div>
-                                        <div className="text-xs text-on-surface-variant">Anyone can add tracks anytime</div>
+                                        <div className="text-sm font-medium text-on-surface">
+                                            Free for All
+                                        </div>
+                                        <div className="text-xs text-on-surface-variant">
+                                            Anyone can add tracks anytime
+                                        </div>
                                     </div>
                                 </label>
-                                <label aria-label="Turn Taking" className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                                    form.queueMode === 'turn_taking' ? 'border-primary bg-primary/10' : 'border-outline-variant hover:border-on-surface-variant'
-                                }`}>
+                                <label
+                                    aria-label="Turn Taking"
+                                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                        form.queueMode === 'turn_taking'
+                                            ? 'border-primary bg-primary/10'
+                                            : 'border-outline-variant hover:border-on-surface-variant'
+                                    }`}
+                                >
                                     <input
                                         id="queue-mode-turn"
                                         type="radio"
                                         name="queueMode"
-                                        checked={form.queueMode === 'turn_taking'}
-                                        onChange={() => dispatch({ type: 'SET_QUEUE_MODE', value: 'turn_taking' })}
+                                        checked={
+                                            form.queueMode === 'turn_taking'
+                                        }
+                                        onChange={() =>
+                                            dispatch({
+                                                type: 'SET_QUEUE_MODE',
+                                                value: 'turn_taking',
+                                            })
+                                        }
                                         className="accent-primary"
                                     />
                                     <div>
-                                        <div className="text-sm font-medium text-on-surface">Turn Taking</div>
-                                        <div className="text-xs text-on-surface-variant">Users take turns adding tracks</div>
+                                        <div className="text-sm font-medium text-on-surface">
+                                            Turn Taking
+                                        </div>
+                                        <div className="text-xs text-on-surface-variant">
+                                            Users take turns adding tracks
+                                        </div>
                                     </div>
                                 </label>
                             </div>
@@ -176,7 +247,9 @@ export function CreatePlaylistDialog() {
                 </div>
 
                 <div className="flex justify-end gap-3 mt-6">
-                    <button onClick={closeCreateDialog} className="btn-ghost">Cancel</button>
+                    <button onClick={closeCreateDialog} className="btn-ghost">
+                        Cancel
+                    </button>
                     <button
                         onClick={handleCreate}
                         disabled={!form.name.trim() || form.creating}

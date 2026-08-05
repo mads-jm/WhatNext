@@ -105,7 +105,11 @@ export function validateResolveInput(raw: unknown): ResolveInputCheck {
     if (typeof raw !== 'object' || raw === null) {
         return { ok: false, error: 'no input was supplied' };
     }
-    const input = raw as { type?: unknown; url?: unknown; spotifyIds?: unknown };
+    const input = raw as {
+        type?: unknown;
+        url?: unknown;
+        spotifyIds?: unknown;
+    };
 
     if (input.type === 'url') {
         const check = validateSourceUrl(input.url);
@@ -118,13 +122,19 @@ export function validateResolveInput(raw: unknown): ResolveInputCheck {
         }
         for (const id of input.spotifyIds) {
             if (typeof id !== 'string' || !SPOTIFY_ID_PATTERN.test(id)) {
-                return { ok: false, error: `"${String(id)}" is not a Spotify track id` };
+                return {
+                    ok: false,
+                    error: `"${String(id)}" is not a Spotify track id`,
+                };
             }
         }
         return { ok: true };
     }
 
-    return { ok: false, error: `unsupported input type "${String(input.type)}"` };
+    return {
+        ok: false,
+        error: `unsupported input type "${String(input.type)}"`,
+    };
 }
 
 // ========================================
@@ -135,7 +145,11 @@ export function validateResolveInput(raw: unknown): ResolveInputCheck {
  * Local copy of the backend id list. `downloader-config-store` has its own; importing
  * it here would drag Electron's `app` into this module for three string literals.
  */
-const BACKEND_IDS: readonly DownloaderBackendId[] = ['ytdlp', 'spotdl', 'spytify'];
+const BACKEND_IDS: readonly DownloaderBackendId[] = [
+    'ytdlp',
+    'spotdl',
+    'spytify',
+];
 
 export type BackendPathDecision =
     | { ok: true; id: DownloaderBackendId; path: string | null }
@@ -165,8 +179,15 @@ export async function validateBackendPathRequest(
     const payload = raw as { id?: unknown; path?: unknown };
 
     const id = payload.id;
-    if (typeof id !== 'string' || !(BACKEND_IDS as readonly string[]).includes(id)) {
-        return { ok: false, reason: 'invalid', error: `Unknown download backend: "${String(id)}"` };
+    if (
+        typeof id !== 'string' ||
+        !(BACKEND_IDS as readonly string[]).includes(id)
+    ) {
+        return {
+            ok: false,
+            reason: 'invalid',
+            error: `Unknown download backend: "${String(id)}"`,
+        };
     }
     const backendId = id as DownloaderBackendId;
 
@@ -183,7 +204,11 @@ export async function validateBackendPathRequest(
     }
 
     if (candidate.includes('\0')) {
-        return { ok: false, reason: 'invalid', error: 'Path contains an invalid character' };
+        return {
+            ok: false,
+            reason: 'invalid',
+            error: 'Path contains an invalid character',
+        };
     }
     if (!path.isAbsolute(candidate)) {
         return {
@@ -201,10 +226,18 @@ export async function validateBackendPathRequest(
     try {
         stats = await fs.promises.stat(resolved);
     } catch {
-        return { ok: false, reason: 'invalid', error: `No such file: ${resolved}` };
+        return {
+            ok: false,
+            reason: 'invalid',
+            error: `No such file: ${resolved}`,
+        };
     }
     if (!stats.isFile()) {
-        return { ok: false, reason: 'invalid', error: `Not a program file: ${resolved}` };
+        return {
+            ok: false,
+            reason: 'invalid',
+            error: `Not a program file: ${resolved}`,
+        };
     }
 
     // The only thing that skips the prompt is main's own record of what a file dialog

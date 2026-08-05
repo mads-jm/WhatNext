@@ -5,7 +5,10 @@
  */
 
 import { create } from 'zustand';
-import type { SessionState, StartSessionConfig } from '../../shared/session-interfaces';
+import type {
+    SessionState,
+    StartSessionConfig,
+} from '../../shared/session-interfaces';
 
 export type ViewId =
     | 'playlists'
@@ -65,25 +68,28 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
 
     navigate: (view) => set({ activeView: view }),
     selectPlaylist: (id) => set({ selectedPlaylistId: id }),
-    openSession: (playlistId) => set({ sessionPlaylistId: playlistId, activeView: 'session' }),
-    startSession: (config) => set({
-        sessionPlaylistId: config.playlistId,
-        activeView: 'session',
-        sessionState: {
-            status: 'active',
-            playlistId: config.playlistId,
-            trackSource: config.trackSource,
-            playbackProvider: config.playbackProvider,
-            participantIds: config.participantIds,
-            hostId: config.hostId,
-            startedAt: new Date().toISOString(),
-        },
-    }),
-    endSession: () => set((state) => ({
-        sessionState: state.sessionState
-            ? { ...state.sessionState, status: 'ended' }
-            : null,
-    })),
+    openSession: (playlistId) =>
+        set({ sessionPlaylistId: playlistId, activeView: 'session' }),
+    startSession: (config) =>
+        set({
+            sessionPlaylistId: config.playlistId,
+            activeView: 'session',
+            sessionState: {
+                status: 'active',
+                playlistId: config.playlistId,
+                trackSource: config.trackSource,
+                playbackProvider: config.playbackProvider,
+                participantIds: config.participantIds,
+                hostId: config.hostId,
+                startedAt: new Date().toISOString(),
+            },
+        }),
+    endSession: () =>
+        set((state) => ({
+            sessionState: state.sessionState
+                ? { ...state.sessionState, status: 'ended' }
+                : null,
+        })),
     openCreateDialog: () => set({ showCreateDialog: true }),
     closeCreateDialog: () => set({ showCreateDialog: false }),
 }));

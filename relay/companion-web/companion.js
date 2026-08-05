@@ -84,7 +84,11 @@ function getWsUrl() {
 }
 
 function connect() {
-    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    if (
+        ws &&
+        (ws.readyState === WebSocket.OPEN ||
+            ws.readyState === WebSocket.CONNECTING)
+    ) {
         return;
     }
 
@@ -106,7 +110,9 @@ function connect() {
         try {
             const msg = JSON.parse(event.data);
             handleMessage(msg);
-        } catch { /* ignore malformed */ }
+        } catch {
+            /* ignore malformed */
+        }
     };
 
     ws.onclose = () => {
@@ -162,7 +168,9 @@ function armJoinTimeout() {
     clearTimeout(joinTimeoutTimer);
     joinTimeoutTimer = setTimeout(() => {
         if (!joined) {
-            showJoinScreen('No answer from the session host. Check the link and try again.');
+            showJoinScreen(
+                'No answer from the session host. Check the link and try again.',
+            );
         }
     }, JOIN_TIMEOUT_MS);
 }
@@ -238,7 +246,9 @@ function handleJoinAck(data) {
         reconnectToken = data.reconnectToken;
         try {
             localStorage.setItem(TOKEN_STORAGE_KEY, reconnectToken);
-        } catch { /* private mode: identity just won't survive a reload */ }
+        } catch {
+            /* private mode: identity just won't survive a reload */
+        }
     }
 
     showSessionScreen();
@@ -253,8 +263,13 @@ function handleJoinDenied(data) {
         // session-wide, so whoever sees this may not be who typed the bad PINs.
         // (A phone holding a valid reconnect token is exempt server-side, so a
         // mid-session reconnect never lands here.)
-        const seconds = Math.max(1, Math.ceil((data.retryAfterMs ?? 60000) / 1000));
-        showJoinScreen(`This session paused new joins after too many wrong PINs. Try again in about ${seconds}s.`);
+        const seconds = Math.max(
+            1,
+            Math.ceil((data.retryAfterMs ?? 60000) / 1000),
+        );
+        showJoinScreen(
+            `This session paused new joins after too many wrong PINs. Try again in about ${seconds}s.`,
+        );
     } else {
         showJoinScreen('That PIN is not right for this session.');
     }
@@ -297,7 +312,10 @@ function renderPlayback(pb) {
 
     // Highlight current track in queue
     document.querySelectorAll('.track-item').forEach((el) => {
-        el.classList.toggle('track-item--current', el.dataset.trackId === currentTrackId);
+        el.classList.toggle(
+            'track-item--current',
+            el.dataset.trackId === currentTrackId,
+        );
     });
 }
 
@@ -309,13 +327,14 @@ function renderTracks(tracks) {
     }
 
     trackListEmpty.classList.add('hidden');
-    trackList.innerHTML = tracks.map((t) => {
-        const isCurrent = t.id === currentTrackId;
-        const artHtml = t.albumArtUrl
-            ? `<img src="${escapeAttr(t.albumArtUrl)}" alt="" class="track-item-art">`
-            : `<div class="track-item-art flex items-center justify-center text-gray-600"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>`;
+    trackList.innerHTML = tracks
+        .map((t) => {
+            const isCurrent = t.id === currentTrackId;
+            const artHtml = t.albumArtUrl
+                ? `<img src="${escapeAttr(t.albumArtUrl)}" alt="" class="track-item-art">`
+                : `<div class="track-item-art flex items-center justify-center text-gray-600"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>`;
 
-        return `<div class="track-item ${isCurrent ? 'track-item--current' : ''}" data-track-id="${escapeAttr(t.id)}">
+            return `<div class="track-item ${isCurrent ? 'track-item--current' : ''}" data-track-id="${escapeAttr(t.id)}">
             ${artHtml}
             <div class="flex-1 min-w-0">
                 <p class="text-sm text-gray-200 truncate">${escape(t.title)}</p>
@@ -323,20 +342,24 @@ function renderTracks(tracks) {
             </div>
             <span class="text-xs text-gray-600 flex-shrink-0">${formatTime(t.durationMs)}</span>
         </div>`;
-    }).join('');
+        })
+        .join('');
 }
 
 function renderParticipants(participants) {
     if (!participants || participants.length === 0) {
-        participantList.innerHTML = '<span class="text-xs text-gray-600">No participants</span>';
+        participantList.innerHTML =
+            '<span class="text-xs text-gray-600">No participants</span>';
         return;
     }
 
-    participantList.innerHTML = participants.map((p) => {
-        const hostClass = p.isHost ? 'participant-chip--host' : '';
-        const label = p.isHost ? ' (host)' : p.isCoHost ? ' (co-host)' : '';
-        return `<span class="participant-chip ${hostClass}">${escape(p.displayName)}${label}</span>`;
-    }).join('');
+    participantList.innerHTML = participants
+        .map((p) => {
+            const hostClass = p.isHost ? 'participant-chip--host' : '';
+            const label = p.isHost ? ' (host)' : p.isCoHost ? ' (co-host)' : '';
+            return `<span class="participant-chip ${hostClass}">${escape(p.displayName)}${label}</span>`;
+        })
+        .join('');
 
     updateClientCount();
 }
@@ -532,5 +555,10 @@ function escape(str) {
 
 function escapeAttr(str) {
     if (!str) return '';
-    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }

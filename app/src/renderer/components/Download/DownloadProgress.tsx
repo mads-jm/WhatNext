@@ -25,8 +25,10 @@ export function DownloadProgress({
             {/* Overall progress */}
             <div className="flex items-center justify-between">
                 <span className="text-sm text-on-surface-variant">
-                    <span className="font-semibold text-on-surface">{completedCount}</span> /{' '}
-                    {total} downloaded
+                    <span className="font-semibold text-on-surface">
+                        {completedCount}
+                    </span>{' '}
+                    / {total} downloaded
                 </span>
                 <button
                     onClick={onCancel}
@@ -45,7 +47,11 @@ export function DownloadProgress({
                         status: 'pending' as const,
                     };
                     return (
-                        <TrackProgressRow key={track.sourceId} track={track} progress={p} />
+                        <TrackProgressRow
+                            key={track.sourceId}
+                            track={track}
+                            progress={p}
+                        />
                     );
                 })}
             </div>
@@ -73,12 +79,15 @@ function TrackProgressRow({ track, progress }: TrackProgressRowProps) {
                   : 'fa-clock text-on-surface-variant';
 
     // Terminal states have no meaningful bar left to fill.
-    const isTerminal = status === 'complete' || status === 'error' || status === 'unimported';
+    const isTerminal =
+        status === 'complete' || status === 'error' || status === 'unimported';
 
     return (
         <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
-                <i className={`fa-solid ${statusIcon} w-3.5 text-center text-xs`} />
+                <i
+                    className={`fa-solid ${statusIcon} w-3.5 text-center text-xs`}
+                />
                 <span className="text-sm text-on-surface truncate flex-1">
                     {track.title || track.sourceId}
                 </span>
@@ -92,7 +101,9 @@ function TrackProgressRow({ track, progress }: TrackProgressRowProps) {
                     <span className="text-xs text-primary shrink-0">Done</span>
                 )}
                 {status === 'unimported' && (
-                    <span className="text-xs text-tertiary shrink-0">Not imported</span>
+                    <span className="text-xs text-tertiary shrink-0">
+                        Not imported
+                    </span>
                 )}
                 {status === 'error' && (
                     <span className="text-xs text-error shrink-0">Failed</span>
@@ -110,8 +121,8 @@ function TrackProgressRow({ track, progress }: TrackProgressRowProps) {
 
             {status === 'unimported' && (
                 <p className="text-xs text-tertiary ml-5">
-                    Downloaded, but the downloader did not report where the file was
-                    saved — not added to your library.
+                    Downloaded, but the downloader did not report where the file
+                    was saved — not added to your library.
                 </p>
             )}
 

@@ -11,7 +11,9 @@ interface CompanionSharePanelProps {
     sessionActive: boolean;
 }
 
-export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps) {
+export function CompanionSharePanel({
+    sessionActive,
+}: CompanionSharePanelProps) {
     const serverInfo = useCompanionStore((s) => s.serverInfo);
     const relayUrl = useCompanionStore((s) => s.relayUrl);
     const setServerInfo = useCompanionStore((s) => s.setServerInfo);
@@ -29,7 +31,7 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
     const [relayError, setRelayError] = useState<string | null>(null);
     const [relayCopied, setRelayCopied] = useState(false);
     const [relayHost, setRelayHost] = useState(
-        () => localStorage.getItem('wn-companion-relay-host') ?? ''
+        () => localStorage.getItem('wn-companion-relay-host') ?? '',
     );
 
     const companion = window.electron?.companion;
@@ -51,7 +53,11 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
             const info = await companion.start();
             setServerInfo(info);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to start companion server');
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to start companion server',
+            );
         } finally {
             setStarting(false);
         }
@@ -80,12 +86,18 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
 
     useEffect(() => {
         if (!localUrl || !companion) return;
-        companion.generateQrCode(localUrl).then(setLocalQr).catch(() => setLocalQr(null));
+        companion
+            .generateQrCode(localUrl)
+            .then(setLocalQr)
+            .catch(() => setLocalQr(null));
     }, [localUrl, companion]);
 
     useEffect(() => {
         if (!relayUrl || !companion) return;
-        companion.generateQrCode(relayUrl).then(setRelayQr).catch(() => setRelayQr(null));
+        companion
+            .generateQrCode(relayUrl)
+            .then(setRelayQr)
+            .catch(() => setRelayQr(null));
     }, [relayUrl, companion]);
 
     // ---- Relay tunnel ----
@@ -99,7 +111,11 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
             const info = await companion.startRelayTunnel(relayHost.trim());
             setRelayUrl(info.relayUrl);
         } catch (err) {
-            setRelayError(err instanceof Error ? err.message : 'Failed to connect to relay');
+            setRelayError(
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to connect to relay',
+            );
         } finally {
             setRelayConnecting(false);
         }
@@ -137,7 +153,9 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
     return (
         <div className="card card-body space-y-3">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-on-surface">Phone Companion</h3>
+                <h3 className="text-sm font-semibold text-on-surface">
+                    Phone Companion
+                </h3>
                 {serverInfo && (
                     <button
                         onClick={stopServer}
@@ -151,7 +169,8 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
             {!serverInfo ? (
                 <div className="space-y-2">
                     <p className="text-xs text-on-surface-variant">
-                        Let guests follow along on their phones — see the queue, react, and request more time.
+                        Let guests follow along on their phones — see the queue,
+                        react, and request more time.
                     </p>
                     <button
                         onClick={startServer}
@@ -177,14 +196,23 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
                     {/* === Local LAN === */}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-on-surface">Local Network</span>
-                            <span className="text-[10px] text-on-surface-variant bg-surface-high rounded px-1.5 py-0.5">Same Wi-Fi</span>
+                            <span className="text-xs font-medium text-on-surface">
+                                Local Network
+                            </span>
+                            <span className="text-[10px] text-on-surface-variant bg-surface-high rounded px-1.5 py-0.5">
+                                Same Wi-Fi
+                            </span>
                         </div>
 
                         {localQr && (
                             <div className="flex justify-center">
                                 <div className="bg-surface-high rounded-xl p-3">
-                                    <img src={localQr} alt="Local QR" className="w-40 h-40" draggable={false} />
+                                    <img
+                                        src={localQr}
+                                        alt="Local QR"
+                                        className="w-40 h-40"
+                                        draggable={false}
+                                    />
                                 </div>
                             </div>
                         )}
@@ -207,39 +235,59 @@ export function CompanionSharePanel({ sessionActive }: CompanionSharePanelProps)
                     {/* === Relay Tunnel === */}
                     <div className="space-y-2 pt-3 border-t border-outline-variant">
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-on-surface">Remote Access</span>
-                            <span className="text-[10px] text-on-surface-variant bg-surface-high rounded px-1.5 py-0.5">Via Relay</span>
+                            <span className="text-xs font-medium text-on-surface">
+                                Remote Access
+                            </span>
+                            <span className="text-[10px] text-on-surface-variant bg-surface-high rounded px-1.5 py-0.5">
+                                Via Relay
+                            </span>
                         </div>
 
                         {!relayUrl ? (
                             <>
                                 <p className="text-xs text-on-surface-variant">
-                                    Can't reach from phone? Route through your relay server.
+                                    Can't reach from phone? Route through your
+                                    relay server.
                                 </p>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
                                         value={relayHost}
-                                        onChange={(e) => setRelayHost(e.target.value)}
+                                        onChange={(e) =>
+                                            setRelayHost(e.target.value)
+                                        }
                                         placeholder="http://your-relay:4003"
                                         className="flex-1 bg-surface-high text-on-surface text-xs font-mono rounded-lg px-3 py-2 border border-outline-variant focus:border-primary focus:outline-none"
                                     />
                                     <button
                                         onClick={startRelay}
-                                        disabled={relayConnecting || !relayHost.trim()}
+                                        disabled={
+                                            relayConnecting || !relayHost.trim()
+                                        }
                                         className="px-3 py-2 bg-primary hover:bg-primary-dim disabled:bg-surface-high disabled:text-on-surface-variant text-on-surface text-xs rounded-lg transition-colors whitespace-nowrap"
                                     >
-                                        {relayConnecting ? 'Connecting...' : 'Connect'}
+                                        {relayConnecting
+                                            ? 'Connecting...'
+                                            : 'Connect'}
                                     </button>
                                 </div>
-                                {relayError && <p className="text-xs text-error">{relayError}</p>}
+                                {relayError && (
+                                    <p className="text-xs text-error">
+                                        {relayError}
+                                    </p>
+                                )}
                             </>
                         ) : (
                             <>
                                 {relayQr && (
                                     <div className="flex justify-center">
                                         <div className="bg-surface-high rounded-xl p-3">
-                                            <img src={relayQr} alt="Relay QR" className="w-40 h-40" draggable={false} />
+                                            <img
+                                                src={relayQr}
+                                                alt="Relay QR"
+                                                className="w-40 h-40"
+                                                draggable={false}
+                                            />
                                         </div>
                                     </div>
                                 )}

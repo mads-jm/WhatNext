@@ -387,12 +387,18 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
             if (discoveredPeer) {
                 discoveredPeer.displayName = payload.displayName;
             }
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_HANDSHAKE_COMPLETE, payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_HANDSHAKE_COMPLETE,
+                payload,
+            );
 
             // Resume incomplete file transfers if peer supports it
             if (payload.capabilities?.includes(FILE_TRANSFER_CAPABILITY)) {
                 _fileTransferResume?.(payload.peerId).catch((err) =>
-                    console.warn('[Main] Failed to resume transfers for peer:', err),
+                    console.warn(
+                        '[Main] Failed to resume transfers for peer:',
+                        err,
+                    ),
                 );
             }
             break;
@@ -449,7 +455,10 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
                 _fileTransferHandler = ftIpc.handleFileTransferUtilityMessage;
             }
             if (!_fileTransferHandler?.(message)) {
-                console.warn('[Main] Unknown utility message type:', message.type);
+                console.warn(
+                    '[Main] Unknown utility message type:',
+                    message.type,
+                );
             }
         }
     }
@@ -660,20 +669,26 @@ app.whenReady().then(async () => {
 
     // Register download IPC handlers (requires mainWindow for renderer event forwarding)
     if (mainWindow) {
-        const { registerDownloadHandlers } = await import('./downloader/downloader-ipc');
+        const { registerDownloadHandlers } =
+            await import('./downloader/downloader-ipc');
         await registerDownloadHandlers(mainWindow);
     }
 
     // Register file-transfer IPC handlers (P2P file serving/receiving)
     if (mainWindow) {
-        const { registerFileTransferHandlers, setOwnPeerId, resumeIncompleteTransfers } = await import('./file-transfer/file-transfer-ipc');
+        const {
+            registerFileTransferHandlers,
+            setOwnPeerId,
+            resumeIncompleteTransfers,
+        } = await import('./file-transfer/file-transfer-ipc');
         await registerFileTransferHandlers(mainWindow, () => p2pUtilityProcess);
         _fileTransferSetOwnPeerId = setOwnPeerId;
         _fileTransferResume = resumeIncompleteTransfers;
     }
 
     // Register purchase link resolution handlers (background enrichment, no window needed)
-    const { registerPurchaseHandlers } = await import('./downloader/purchase-ipc');
+    const { registerPurchaseHandlers } =
+        await import('./downloader/purchase-ipc');
     await registerPurchaseHandlers();
 
     // Hydrate Spotify client with stored tokens so auth persists across restarts
@@ -842,16 +857,18 @@ ipcMain.handle(
 
 /** Strip filesystem-illegal characters and trim to a safe length. */
 function sanitizePathSegment(str: string): string {
-    return str
-        // Matching C0 control characters is the entire point of the class:
-        // they are illegal in filenames on every platform we ship to. The rule
-        // guards against *accidental* control characters, so there is no real
-        // fix here — same deliberate exception as `path-safety.ts` and the two
-        // URL guards; rewriting the range in \u escape form does not silence it.
-        // eslint-disable-next-line no-control-regex
-        .replace(/[<>:"/\\|?*\x00-\x1f]/g, '')
-        .trim()
-        .slice(0, 80);
+    return (
+        str
+            // Matching C0 control characters is the entire point of the class:
+            // they are illegal in filenames on every platform we ship to. The rule
+            // guards against *accidental* control characters, so there is no real
+            // fix here — same deliberate exception as `path-safety.ts` and the two
+            // URL guards; rewriting the range in \u escape form does not silence it.
+            // eslint-disable-next-line no-control-regex
+            .replace(/[<>:"/\\|?*\x00-\x1f]/g, '')
+            .trim()
+            .slice(0, 80)
+    );
 }
 
 /**
@@ -1547,7 +1564,11 @@ ipcMain.handle(IPC_CHANNELS.COMPANION_STOP, async () => {
 
 ipcMain.handle(IPC_CHANNELS.COMPANION_QR_CODE, async (_event, url: string) => {
     const QRCode = await import('qrcode');
-    return QRCode.toDataURL(url, { width: 256, margin: 2, color: { dark: '#e5e7ebff', light: '#11182700' } });
+    return QRCode.toDataURL(url, {
+        width: 256,
+        margin: 2,
+        color: { dark: '#e5e7ebff', light: '#11182700' },
+    });
 });
 
 ipcMain.handle(IPC_CHANNELS.COMPANION_GET_INFO, async () => {
@@ -1556,10 +1577,14 @@ ipcMain.handle(IPC_CHANNELS.COMPANION_GET_INFO, async () => {
     return getCompanionServerInfo();
 });
 
-ipcMain.handle(IPC_CHANNELS.COMPANION_RELAY_START, async (_event, relayHost: string) => {
-    const { startRelayTunnel } = await import('./companion/companion-server');
-    return startRelayTunnel(relayHost);
-});
+ipcMain.handle(
+    IPC_CHANNELS.COMPANION_RELAY_START,
+    async (_event, relayHost: string) => {
+        const { startRelayTunnel } =
+            await import('./companion/companion-server');
+        return startRelayTunnel(relayHost);
+    },
+);
 
 ipcMain.handle(IPC_CHANNELS.COMPANION_RELAY_STOP, async () => {
     const { stopRelayTunnel } = await import('./companion/companion-server');
@@ -1626,7 +1651,8 @@ ipcMain.handle(
     async (_event, dirPath: string) => {
         try {
             const { scanDirectory } = await import('./media/scanner');
-            const { mapLocalFiles } = await import('./media/local-media-mapper');
+            const { mapLocalFiles } =
+                await import('./media/local-media-mapper');
 
             const scanResult = await scanDirectory(dirPath);
             const tracks = await mapLocalFiles(scanResult.files);

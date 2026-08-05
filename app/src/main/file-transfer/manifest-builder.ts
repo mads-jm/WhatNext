@@ -1,7 +1,10 @@
-import * as fs from 'fs'
-import * as path from 'path'
-import type { FileManifest, FileEntry } from '../../shared/core/file-transfer-types'
-import { HashCache } from './hash-cache'
+import * as fs from 'fs';
+import * as path from 'path';
+import type {
+    FileManifest,
+    FileEntry,
+} from '../../shared/core/file-transfer-types';
+import { HashCache } from './hash-cache';
 
 // ========================================
 // MIME helpers
@@ -17,8 +20,8 @@ function audioMime(ext: string): string {
         flac: 'audio/flac',
         wav: 'audio/wav',
         webm: 'audio/webm',
-    }
-    return table[ext.toLowerCase().replace(/^\./, '')] ?? 'audio/mpeg'
+    };
+    return table[ext.toLowerCase().replace(/^\./, '')] ?? 'audio/mpeg';
 }
 
 function imageMime(ext: string): string {
@@ -27,8 +30,8 @@ function imageMime(ext: string): string {
         jpeg: 'image/jpeg',
         png: 'image/png',
         webp: 'image/webp',
-    }
-    return table[ext.toLowerCase().replace(/^\./, '')] ?? 'image/jpeg'
+    };
+    return table[ext.toLowerCase().replace(/^\./, '')] ?? 'image/jpeg';
 }
 
 // ========================================
@@ -55,30 +58,40 @@ export async function buildManifest(
     lookupCoverArtPath: () => string | null,
     hashCache: HashCache,
 ): Promise<FileManifest> {
-    const files: FileEntry[] = []
+    const files: FileEntry[] = [];
 
     // Process each track
     for (const trackId of trackIds) {
         // Audio
-        const audioPath = lookupAudioPath(trackId)
+        const audioPath = lookupAudioPath(trackId);
         if (audioPath) {
-            const entry = await buildAudioEntry(trackId, audioPath, hashCache)
-            if (entry) files.push(entry)
+            const entry = await buildAudioEntry(trackId, audioPath, hashCache);
+            if (entry) files.push(entry);
         }
 
         // Per-track artwork
-        const artworkPath = lookupArtworkPath(trackId)
+        const artworkPath = lookupArtworkPath(trackId);
         if (artworkPath) {
-            const entry = await buildImageEntry(trackId, 'artwork', artworkPath, hashCache)
-            if (entry) files.push(entry)
+            const entry = await buildImageEntry(
+                trackId,
+                'artwork',
+                artworkPath,
+                hashCache,
+            );
+            if (entry) files.push(entry);
         }
     }
 
     // Playlist cover art
-    const coverPath = lookupCoverArtPath()
+    const coverPath = lookupCoverArtPath();
     if (coverPath) {
-        const entry = await buildImageEntry(playlistId, 'cover-art', coverPath, hashCache)
-        if (entry) files.push(entry)
+        const entry = await buildImageEntry(
+            playlistId,
+            'cover-art',
+            coverPath,
+            hashCache,
+        );
+        if (entry) files.push(entry);
     }
 
     return {
@@ -86,7 +99,7 @@ export async function buildManifest(
         playlistId,
         files,
         generatedAt: new Date().toISOString(),
-    }
+    };
 }
 
 // ========================================
@@ -98,22 +111,22 @@ async function buildAudioEntry(
     filePath: string,
     hashCache: HashCache,
 ): Promise<FileEntry | null> {
-    let stat: fs.Stats
+    let stat: fs.Stats;
     try {
-        stat = await fs.promises.stat(filePath)
+        stat = await fs.promises.stat(filePath);
     } catch {
-        return null
+        return null;
     }
 
-    let sha256: string
+    let sha256: string;
     try {
-        sha256 = await hashCache.hashFile(filePath)
+        sha256 = await hashCache.hashFile(filePath);
     } catch {
-        return null
+        return null;
     }
 
-    const ext = path.extname(filePath).replace(/^\./, '')
-    const filename = path.basename(filePath)
+    const ext = path.extname(filePath).replace(/^\./, '');
+    const filename = path.basename(filePath);
 
     return {
         trackId,
@@ -123,7 +136,7 @@ async function buildAudioEntry(
         mimeType: audioMime(ext),
         filename,
         audioFormat: ext || undefined,
-    }
+    };
 }
 
 async function buildImageEntry(
@@ -132,22 +145,22 @@ async function buildImageEntry(
     filePath: string,
     hashCache: HashCache,
 ): Promise<FileEntry | null> {
-    let stat: fs.Stats
+    let stat: fs.Stats;
     try {
-        stat = await fs.promises.stat(filePath)
+        stat = await fs.promises.stat(filePath);
     } catch {
-        return null
+        return null;
     }
 
-    let sha256: string
+    let sha256: string;
     try {
-        sha256 = await hashCache.hashFile(filePath)
+        sha256 = await hashCache.hashFile(filePath);
     } catch {
-        return null
+        return null;
     }
 
-    const ext = path.extname(filePath).replace(/^\./, '')
-    const filename = path.basename(filePath)
+    const ext = path.extname(filePath).replace(/^\./, '');
+    const filename = path.basename(filePath);
 
     return {
         trackId: id,
@@ -156,5 +169,5 @@ async function buildImageEntry(
         sizeBytes: stat.size,
         mimeType: imageMime(ext),
         filename,
-    }
+    };
 }

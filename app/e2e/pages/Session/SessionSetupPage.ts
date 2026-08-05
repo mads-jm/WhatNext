@@ -28,7 +28,9 @@ export class SessionSetupPage {
     constructor(private readonly page: Page) {
         this.heading = page.getByRole('heading', { name: /session/i });
 
-        this.spotifyRadio = page.getByRole('radio', { name: /spotify collaborative/i });
+        this.spotifyRadio = page.getByRole('radio', {
+            name: /spotify collaborative/i,
+        });
         this.manualRadio = page.getByRole('radio', { name: /manual/i });
 
         this.participantNameInput = page.getByLabel(/display name/i);
@@ -36,7 +38,9 @@ export class SessionSetupPage {
         this.addParticipantButton = page.getByRole('button', { name: /add/i });
         this.participantCheckboxes = page.getByRole('checkbox');
 
-        this.startSessionButton = page.getByRole('button', { name: /start session/i });
+        this.startSessionButton = page.getByRole('button', {
+            name: /start session/i,
+        });
         this.cancelButton = page.getByRole('button', { name: /cancel/i });
     }
 

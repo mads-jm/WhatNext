@@ -57,7 +57,8 @@ async function loadOrCreateKey() {
                 // when available (written by newer relay versions) and fall
                 // back to re-generating if the format is unrecognised.
                 if (saved.marshalled) {
-                    const { unmarshalPrivateKey } = await import('@libp2p/crypto/keys');
+                    const { unmarshalPrivateKey } =
+                        await import('@libp2p/crypto/keys');
                     const bytes = Buffer.from(saved.marshalled, 'base64');
                     return unmarshalPrivateKey(bytes);
                 }
@@ -67,28 +68,40 @@ async function loadOrCreateKey() {
                 // generate a fresh key (losing identity on this upgrade path).
                 try {
                     const { keys } = await import('@libp2p/crypto');
-                    return keys.supportedKeys.ed25519.unmarshalEd25519PrivateKey(raw);
+                    return keys.supportedKeys.ed25519.unmarshalEd25519PrivateKey(
+                        raw,
+                    );
                 } catch {
-                    console.warn('[Relay] Could not reconstruct key from raw bytes, generating new key');
+                    console.warn(
+                        '[Relay] Could not reconstruct key from raw bytes, generating new key',
+                    );
                 }
                 void key; // suppress unused warning
             }
         } catch (err) {
-            console.warn('[Relay] Could not load key file, generating new key:', err.message);
+            console.warn(
+                '[Relay] Could not load key file, generating new key:',
+                err.message,
+            );
         }
     }
 
     // Generate a fresh Ed25519 key and save it
     const key = await generateKeyPair('Ed25519');
 
-    const keyData = { type: 'Ed25519', raw: Buffer.from(key.raw).toString('base64') };
+    const keyData = {
+        type: 'Ed25519',
+        raw: Buffer.from(key.raw).toString('base64'),
+    };
 
     // Also save marshalled bytes when the API supports it (for reliable reload)
     try {
         if (typeof key.marshal === 'function') {
             keyData.marshalled = Buffer.from(key.marshal()).toString('base64');
         }
-    } catch { /* marshal not available in this build */ }
+    } catch {
+        /* marshal not available in this build */
+    }
 
     writeFileSync(KEY_PATH, JSON.stringify(keyData, null, 2), 'utf-8');
     console.log(`[Relay] Generated new key, saved to ${KEY_PATH}`);
@@ -111,10 +124,7 @@ async function main() {
         connectionEncrypters: [noise()],
         streamMuxers: [yamux()],
 
-        transports: [
-            tcp(),
-            webSockets(),
-        ],
+        transports: [tcp(), webSockets()],
 
         services: {
             identify: identify(),
@@ -148,13 +158,21 @@ async function main() {
         }
     }
     console.log('');
-    console.log('Key file:', KEY_PATH, '(keep this to preserve peer ID across restarts)');
+    console.log(
+        'Key file:',
+        KEY_PATH,
+        '(keep this to preserve peer ID across restarts)',
+    );
 
     // Start companion tunnel
     try {
         const { port: companionPort } = await startCompanionTunnel();
         console.log(`\nCompanion tunnel available on port ${companionPort}`);
-        console.log('Phone viewers connect to: http://<relay-ip>:' + companionPort + '/s/<SESSION_CODE>');
+        console.log(
+            'Phone viewers connect to: http://<relay-ip>:' +
+                companionPort +
+                '/s/<SESSION_CODE>',
+        );
     } catch (err) {
         console.warn('[Relay] Companion tunnel failed to start:', err.message);
     }

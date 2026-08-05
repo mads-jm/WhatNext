@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import url('/node_modules/@fortawesome/fontawesome-free/css/all.min.css');
 
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /*
  * WhatNext Theme System
@@ -115,7 +115,7 @@ body {
 /* ── Button base ─────────────────────────────────────────────────────── */
 
 @layer base {
-    [class*="btn-"] {
+    [class*='btn-'] {
         display: inline-flex;
         align-items: center;
         gap: 0.375rem;
@@ -136,19 +136,25 @@ body {
 @utility btn-primary {
     background-color: var(--wn-primary);
     color: var(--wn-surface);
-    &:hover { background-color: var(--wn-primary-dim); }
+    &:hover {
+        background-color: var(--wn-primary-dim);
+    }
 }
 
 @utility btn-accent {
     background-color: var(--wn-tertiary);
     color: var(--wn-surface);
-    &:hover { opacity: 0.85; }
+    &:hover {
+        opacity: 0.85;
+    }
 }
 
 @utility btn-ghost {
     background-color: transparent;
     color: var(--wn-on-surface);
-    &:hover { background-color: var(--wn-surface-high); }
+    &:hover {
+        background-color: var(--wn-surface-high);
+    }
 }
 
 /* ── Input ───────────────────────────────────────────────────────────── */
@@ -159,7 +165,8 @@ body {
     border-radius: var(--wn-radius-lg);
     background-color: var(--wn-surface-high);
     color: var(--wn-on-surface);
-    border: 1px solid color-mix(in srgb, var(--wn-outline-variant) 30%, transparent);
+    border: 1px solid
+        color-mix(in srgb, var(--wn-outline-variant) 30%, transparent);
 
     &::placeholder {
         color: var(--wn-on-surface-variant);
@@ -175,13 +182,15 @@ body {
 @utility card {
     border-radius: var(--wn-radius-lg);
     background-color: var(--wn-surface);
-    border: 1px solid color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
+    border: 1px solid
+        color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
     box-shadow: var(--wn-card-shadow);
 }
 
 @utility card-header {
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
+    border-bottom: 1px solid
+        color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
     color: var(--wn-on-surface);
 }
 
@@ -192,7 +201,7 @@ body {
 /* ── Badges ──────────────────────────────────────────────────────────── */
 
 @layer base {
-    [class*="badge-"] {
+    [class*='badge-'] {
         display: inline-flex;
         align-items: center;
         padding: 0.125rem 0.5rem;
@@ -213,7 +222,11 @@ body {
 }
 
 @utility badge-muted {
-    background-color: color-mix(in srgb, var(--wn-on-surface-variant) 15%, transparent);
+    background-color: color-mix(
+        in srgb,
+        var(--wn-on-surface-variant) 15%,
+        transparent
+    );
     color: var(--wn-on-surface-variant);
 }
 
@@ -229,7 +242,8 @@ body {
     padding: 0.5rem 0.75rem;
     background-color: color-mix(in srgb, var(--wn-surface) 80%, transparent);
     backdrop-filter: var(--wn-toolbar-blur);
-    border-bottom: 1px solid color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
+    border-bottom: 1px solid
+        color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────── */
@@ -238,7 +252,8 @@ body {
     height: 100%;
     width: 16rem;
     background-color: var(--wn-surface-lowest);
-    border-right: 1px solid color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
+    border-right: 1px solid
+        color-mix(in srgb, var(--wn-outline-variant) 20%, transparent);
 }
 
 /* ── Link ────────────────────────────────────────────────────────────── */
@@ -246,5 +261,7 @@ body {
 @utility link {
     color: var(--wn-primary);
     text-underline-offset: 4px;
-    &:hover { color: var(--wn-primary-dim); }
+    &:hover {
+        color: var(--wn-primary-dim);
+    }
 }

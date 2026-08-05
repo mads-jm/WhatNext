@@ -12,7 +12,9 @@ export class PlaybackBarPage {
 
     constructor(private readonly page: Page) {
         this.root = page.locator('[data-testid="playback-bar"]');
-        this.playPauseButton = this.root.getByRole('button', { name: /play|pause/i });
+        this.playPauseButton = this.root.getByRole('button', {
+            name: /play|pause/i,
+        });
         this.trackTitle = this.root.locator('[data-testid="track-title"]');
         this.artistName = this.root.locator('[data-testid="artist-name"]');
         this.progressBar = this.root.getByRole('progressbar');

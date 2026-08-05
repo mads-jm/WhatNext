@@ -14,7 +14,7 @@ import type { RxQuery, RxDocument } from 'rxdb';
  */
 export function useRxDBQuery<T>(
     queryFactory: () => RxQuery<T, RxDocument<T>[]> | null,
-    deps: unknown[] = []
+    deps: unknown[] = [],
 ): { data: RxDocument<T>[]; loading: boolean; error: Error | null } {
     const [data, setData] = useState<RxDocument<T>[]>([]);
     const [loading, setLoading] = useState(true);
@@ -52,7 +52,7 @@ export function useRxDBQuery<T>(
  */
 export function useRxDBDocument<T>(
     getDoc: () => Promise<RxDocument<T> | null> | null,
-    deps: unknown[] = []
+    deps: unknown[] = [],
 ): { doc: RxDocument<T> | null; loading: boolean } {
     const [doc, setDoc] = useState<RxDocument<T> | null>(null);
     const [loading, setLoading] = useState(true);

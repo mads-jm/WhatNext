@@ -12,15 +12,26 @@ interface P2PPeerCardProps {
     onSelectDetails: () => void;
 }
 
-export function P2PPeerCard({ peer, isConnected, onConnect, onDisconnect, onSelectDetails }: P2PPeerCardProps) {
+export function P2PPeerCard({
+    peer,
+    isConnected,
+    onConnect,
+    onDisconnect,
+    onSelectDetails,
+}: P2PPeerCardProps) {
     return (
         <div className="bg-surface-high border border-outline-variant/20 rounded p-3 space-y-2">
             <div className="flex items-start justify-between">
                 <div className="flex-1">
-                    <div className="font-bold text-sm text-on-surface">{peer.displayName}</div>
-                    <div className="text-xs text-on-surface-variant font-mono">{peer.peerId.slice(0, 20)}...</div>
+                    <div className="font-bold text-sm text-on-surface">
+                        {peer.displayName}
+                    </div>
+                    <div className="text-xs text-on-surface-variant font-mono">
+                        {peer.peerId.slice(0, 20)}...
+                    </div>
                     <div className="text-xs text-on-surface-variant mt-1">
-                        via {peer.discovered} &middot; {peer.multiaddrs?.length ?? 0} addr(s)
+                        via {peer.discovered} &middot;{' '}
+                        {peer.multiaddrs?.length ?? 0} addr(s)
                     </div>
                 </div>
                 <div className="flex gap-1">

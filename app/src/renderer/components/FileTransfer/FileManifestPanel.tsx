@@ -5,19 +5,22 @@
  * with checkbox selection and a "Download Selected" action.
  */
 
-import { useState, useMemo } from 'react'
-import type { FileEntry, FileManifest } from '../../../shared/core/file-transfer-types'
+import { useState, useMemo } from 'react';
+import type {
+    FileEntry,
+    FileManifest,
+} from '../../../shared/core/file-transfer-types';
 
 // ----------------------------------------------------------------
 // Utility
 // ----------------------------------------------------------------
 
 function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B'
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
-    if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)} MB`
-    return `${(bytes / 1073741824).toFixed(1)} GB`
+    if (bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)} MB`;
+    return `${(bytes / 1073741824).toFixed(1)} GB`;
 }
 
 // ----------------------------------------------------------------
@@ -25,10 +28,10 @@ function formatBytes(bytes: number): string {
 // ----------------------------------------------------------------
 
 interface FileRowProps {
-    entry: FileEntry
-    checked: boolean
-    alreadyHave: boolean
-    onChange: (sha256: string, checked: boolean) => void
+    entry: FileEntry;
+    checked: boolean;
+    alreadyHave: boolean;
+    onChange: (sha256: string, checked: boolean) => void;
 }
 
 function FileRow({ entry, checked, alreadyHave, onChange }: FileRowProps) {
@@ -39,7 +42,7 @@ function FileRow({ entry, checked, alreadyHave, onChange }: FileRowProps) {
                 : 'Audio'
             : entry.type === 'artwork'
               ? 'Art'
-              : 'Cover'
+              : 'Cover';
 
     return (
         <label
@@ -53,7 +56,10 @@ function FileRow({ entry, checked, alreadyHave, onChange }: FileRowProps) {
                 disabled={alreadyHave}
                 onChange={(e) => onChange(entry.sha256, e.target.checked)}
             />
-            <span className="flex-1 text-xs text-on-surface truncate" title={entry.filename}>
+            <span
+                className="flex-1 text-xs text-on-surface truncate"
+                title={entry.filename}
+            >
                 {entry.filename}
             </span>
             {entry.audioBitrate && (
@@ -68,7 +74,7 @@ function FileRow({ entry, checked, alreadyHave, onChange }: FileRowProps) {
                 {alreadyHave ? 'Have it' : formatBytes(entry.sizeBytes)}
             </span>
         </label>
-    )
+    );
 }
 
 // ----------------------------------------------------------------
@@ -76,16 +82,22 @@ function FileRow({ entry, checked, alreadyHave, onChange }: FileRowProps) {
 // ----------------------------------------------------------------
 
 interface FileGroupProps {
-    label: string
-    entries: FileEntry[]
-    selected: Set<string>
-    existingHashes: Set<string>
-    onToggle: (sha256: string, checked: boolean) => void
+    label: string;
+    entries: FileEntry[];
+    selected: Set<string>;
+    existingHashes: Set<string>;
+    onToggle: (sha256: string, checked: boolean) => void;
 }
 
-function FileGroup({ label, entries, selected, existingHashes, onToggle }: FileGroupProps) {
-    const [open, setOpen] = useState(true)
-    if (entries.length === 0) return null
+function FileGroup({
+    label,
+    entries,
+    selected,
+    existingHashes,
+    onToggle,
+}: FileGroupProps) {
+    const [open, setOpen] = useState(true);
+    if (entries.length === 0) return null;
 
     return (
         <div className="space-y-1">
@@ -93,9 +105,15 @@ function FileGroup({ label, entries, selected, existingHashes, onToggle }: FileG
                 onClick={() => setOpen((v) => !v)}
                 className="flex items-center gap-2 w-full text-left px-1 py-1 text-xs font-semibold text-on-surface-variant hover:text-on-surface transition-colors"
             >
-                <span className={`transition-transform ${open ? 'rotate-90' : ''}`}>›</span>
+                <span
+                    className={`transition-transform ${open ? 'rotate-90' : ''}`}
+                >
+                    ›
+                </span>
                 {label}
-                <span className="font-normal text-[10px]">({entries.length})</span>
+                <span className="font-normal text-[10px]">
+                    ({entries.length})
+                </span>
             </button>
             {open && (
                 <div className="space-y-0.5">
@@ -111,7 +129,7 @@ function FileGroup({ label, entries, selected, existingHashes, onToggle }: FileG
                 </div>
             )}
         </div>
-    )
+    );
 }
 
 // ----------------------------------------------------------------
@@ -119,9 +137,9 @@ function FileGroup({ label, entries, selected, existingHashes, onToggle }: FileG
 // ----------------------------------------------------------------
 
 export interface FileManifestPanelProps {
-    manifest: FileManifest
-    onRequestFiles: (files: FileEntry[]) => void
-    existingHashes?: Set<string>
+    manifest: FileManifest;
+    onRequestFiles: (files: FileEntry[]) => void;
+    existingHashes?: Set<string>;
 }
 
 export function FileManifestPanel({
@@ -129,60 +147,61 @@ export function FileManifestPanel({
     onRequestFiles,
     existingHashes = new Set(),
 }: FileManifestPanelProps) {
-    const [selected, setSelected] = useState<Set<string>>(new Set())
+    const [selected, setSelected] = useState<Set<string>>(new Set());
 
     const audioFiles = useMemo(
         () => manifest.files.filter((f) => f.type === 'audio'),
         [manifest.files],
-    )
+    );
     const artworkFiles = useMemo(
         () => manifest.files.filter((f) => f.type === 'artwork'),
         [manifest.files],
-    )
+    );
     const coverFiles = useMemo(
         () => manifest.files.filter((f) => f.type === 'cover-art'),
         [manifest.files],
-    )
+    );
 
     const availableFiles = useMemo(
         () => manifest.files.filter((f) => !existingHashes.has(f.sha256)),
         [manifest.files, existingHashes],
-    )
+    );
 
     const allAvailableSelected =
-        availableFiles.length > 0 && availableFiles.every((f) => selected.has(f.sha256))
+        availableFiles.length > 0 &&
+        availableFiles.every((f) => selected.has(f.sha256));
 
     const toggleAll = () => {
         if (allAvailableSelected) {
-            setSelected(new Set())
+            setSelected(new Set());
         } else {
-            setSelected(new Set(availableFiles.map((f) => f.sha256)))
+            setSelected(new Set(availableFiles.map((f) => f.sha256)));
         }
-    }
+    };
 
     const handleToggle = (sha256: string, checked: boolean) => {
         setSelected((prev) => {
-            const next = new Set(prev)
+            const next = new Set(prev);
             if (checked) {
-                next.add(sha256)
+                next.add(sha256);
             } else {
-                next.delete(sha256)
+                next.delete(sha256);
             }
-            return next
-        })
-    }
+            return next;
+        });
+    };
 
     const handleDownload = () => {
-        const toDownload = manifest.files.filter((f) => selected.has(f.sha256))
-        if (toDownload.length === 0) return
-        onRequestFiles(toDownload)
-    }
+        const toDownload = manifest.files.filter((f) => selected.has(f.sha256));
+        if (toDownload.length === 0) return;
+        onRequestFiles(toDownload);
+    };
 
     const selectedBytes = useMemo(() => {
         return manifest.files
             .filter((f) => selected.has(f.sha256))
-            .reduce((sum, f) => sum + f.sizeBytes, 0)
-    }, [manifest.files, selected])
+            .reduce((sum, f) => sum + f.sizeBytes, 0);
+    }, [manifest.files, selected]);
 
     if (manifest.files.length === 0) {
         return (
@@ -191,13 +210,15 @@ export function FileManifestPanel({
                     This peer has no files available for this playlist.
                 </p>
             </div>
-        )
+        );
     }
 
     return (
         <div className="card card-body space-y-3">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-on-surface">Peer Files</h3>
+                <h3 className="text-sm font-semibold text-on-surface">
+                    Peer Files
+                </h3>
                 <span className="text-[10px] text-on-surface-variant">
                     from {manifest.peerId.slice(0, 12)}…
                 </span>
@@ -260,5 +281,5 @@ export function FileManifestPanel({
                 </button>
             </div>
         </div>
-    )
+    );
 }

@@ -7,14 +7,23 @@
 import React, { useState, useEffect } from 'react';
 import type { PlaylistDocType, UserDocType } from '../../db/schemas';
 import type { TrackViewModel } from '../../db/types';
-import { setTurnOrder, setTurnConfig, markPlaylistComplete, reopenPlaylist, advanceTurn } from '../../db/services/playlist-service';
-import { inferTurnTracksAdded, resolvedTurnOrder } from '../../utils/turn-helpers';
+import {
+    setTurnOrder,
+    setTurnConfig,
+    markPlaylistComplete,
+    reopenPlaylist,
+    advanceTurn,
+} from '../../db/services/playlist-service';
+import {
+    inferTurnTracksAdded,
+    resolvedTurnOrder,
+} from '../../utils/turn-helpers';
 
 interface TurnManagementPanelProps {
     playlist: PlaylistDocType;
     participants: UserDocType[]; // All known participants (owner + collaborators)
-    tracks: TrackViewModel[];    // Current track list — used to derive turn progress from history
-    totalDurationMs: number;     // Total current playlist playtime in ms
+    tracks: TrackViewModel[]; // Current track list — used to derive turn progress from history
+    totalDurationMs: number; // Total current playlist playtime in ms
     currentUserId: string | null;
 }
 
@@ -36,23 +45,40 @@ function parseHoursInput(raw: string): number | null {
     return Math.round(num * 3_600_000);
 }
 
-
 // ─── Small reusable controls ──────────────────────────────────────────────────
 
-function ConfigField({ label, children }: { label: string; children: React.ReactNode }) {
+function ConfigField({
+    label,
+    children,
+}: {
+    label: string;
+    children: React.ReactNode;
+}) {
     return (
         <div className="flex items-center gap-2">
-            <span className="text-xs text-on-surface-variant w-20 shrink-0">{label}</span>
+            <span className="text-xs text-on-surface-variant w-20 shrink-0">
+                {label}
+            </span>
             {children}
         </div>
     );
 }
 
-function NumberInput({ value, min = 1, onChange }: { value: number; min?: number; onChange: (n: number) => void }) {
+function NumberInput({
+    value,
+    min = 1,
+    onChange,
+}: {
+    value: number;
+    min?: number;
+    onChange: (n: number) => void;
+}) {
     const [raw, setRaw] = useState(String(value));
 
     // Keep raw in sync when value changes externally
-    useEffect(() => { setRaw(String(value)); }, [value]);
+    useEffect(() => {
+        setRaw(String(value));
+    }, [value]);
 
     const commit = () => {
         const n = parseInt(raw, 10);
@@ -73,14 +99,22 @@ function NumberInput({ value, min = 1, onChange }: { value: number; min?: number
     );
 }
 
-function DurationInput({ valueMs, onChange }: { valueMs: number; onChange: (ms: number) => void }) {
+function DurationInput({
+    valueMs,
+    onChange,
+}: {
+    valueMs: number;
+    onChange: (ms: number) => void;
+}) {
     const toDisplay = (ms: number) => {
         const h = ms / 3_600_000;
         return Number.isInteger(h) ? String(h) : h.toFixed(1);
     };
     const [raw, setRaw] = useState(() => toDisplay(valueMs));
 
-    useEffect(() => { setRaw(toDisplay(valueMs)); }, [valueMs]);
+    useEffect(() => {
+        setRaw(toDisplay(valueMs));
+    }, [valueMs]);
 
     const commit = () => {
         const ms = parseHoursInput(raw);
@@ -106,7 +140,10 @@ function DurationInput({ valueMs, onChange }: { valueMs: number; onChange: (ms: 
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function resolvedOrder(playlist: PlaylistDocType, participants: UserDocType[]): string[] {
+function resolvedOrder(
+    playlist: PlaylistDocType,
+    participants: UserDocType[],
+): string[] {
     const order = resolvedTurnOrder(playlist);
     // Keep only ids that exist in participants, preserve order
     return order.filter((id) => participants.some((p) => p.id === id));
@@ -116,7 +153,13 @@ function displayName(userId: string, participants: UserDocType[]): string {
     return participants.find((p) => p.id === userId)?.displayName ?? userId;
 }
 
-export function TurnManagementPanel({ playlist, participants, tracks, totalDurationMs, currentUserId }: TurnManagementPanelProps) {
+export function TurnManagementPanel({
+    playlist,
+    participants,
+    tracks,
+    totalDurationMs,
+    currentUserId,
+}: TurnManagementPanelProps) {
     const tracksPerTurn = playlist.tracksPerTurn ?? 1;
     const maxTurns = playlist.maxTurns;
     const maxDurationMs = playlist.maxDurationMs;
@@ -124,10 +167,16 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
     const isComplete = playlist.isComplete ?? false;
 
     // Derive from track history rather than trusting the stored counter
-    const turnTracksAdded = inferTurnTracksAdded(tracks, playlist.currentTurnUserId, tracksPerTurn);
+    const turnTracksAdded = inferTurnTracksAdded(
+        tracks,
+        playlist.currentTurnUserId,
+        tracksPerTurn,
+    );
 
     const order = resolvedOrder(playlist, participants);
-    const storedTurnIndex = order.indexOf(playlist.currentTurnUserId ?? order[0]);
+    const storedTurnIndex = order.indexOf(
+        playlist.currentTurnUserId ?? order[0],
+    );
 
     // When the derived count hits the quota, the stored currentTurnUserId hasn't advanced yet
     // (e.g. tracks added via Spotify sync bypass the service). Treat the turn as belonging to
@@ -136,16 +185,22 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
     const effectiveTurnIndex = turnQuotaFull
         ? (storedTurnIndex + 1) % order.length
         : storedTurnIndex;
-    const effectiveTurnUserId = order[effectiveTurnIndex] ?? playlist.currentTurnUserId;
-    const isMyTurn = !turnQuotaFull && playlist.currentTurnUserId === currentUserId;
+    const effectiveTurnUserId =
+        order[effectiveTurnIndex] ?? playlist.currentTurnUserId;
+    const isMyTurn =
+        !turnQuotaFull && playlist.currentTurnUserId === currentUserId;
 
     // The next person is "unknown" when: solo playlist (loops back to me), the effective user ID
     // isn't resolved in participants, or there are no other collaborators at all.
-    const nextParticipant = participants.find((p) => p.id === effectiveTurnUserId);
+    const nextParticipant = participants.find(
+        (p) => p.id === effectiveTurnUserId,
+    );
     const awaitingContributor =
         !isMyTurn &&
         !isComplete &&
-        (!nextParticipant || effectiveTurnUserId === currentUserId || order.length <= 1);
+        (!nextParticipant ||
+            effectiveTurnUserId === currentUserId ||
+            order.length <= 1);
 
     // Auto-advance when track history shows the quota is full but the DB hasn't caught up
     useEffect(() => {
@@ -183,7 +238,10 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                 {isComplete ? (
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-on-surface-variant">
-                            {playlist.completedFromMode === 'turn_taking' ? 'Turn-taking' : playlist.completedFromMode ?? 'Collaborative'}
+                            {playlist.completedFromMode === 'turn_taking'
+                                ? 'Turn-taking'
+                                : (playlist.completedFromMode ??
+                                  'Collaborative')}
                         </span>
                         <button
                             onClick={() => reopenPlaylist(playlist.id)}
@@ -196,7 +254,9 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                 ) : (
                     <div className="flex items-center gap-2 text-xs text-on-surface-variant">
                         {maxTurns !== undefined && (
-                            <span>{turnsCompleted} / {maxTurns} turns</span>
+                            <span>
+                                {turnsCompleted} / {maxTurns} turns
+                            </span>
                         )}
                         {!confirmComplete ? (
                             <button
@@ -208,9 +268,14 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                             </button>
                         ) : (
                             <span className="flex items-center gap-1">
-                                <span className="text-secondary">Complete?</span>
+                                <span className="text-secondary">
+                                    Complete?
+                                </span>
                                 <button
-                                    onClick={() => { markPlaylistComplete(playlist.id); setConfirmComplete(false); }}
+                                    onClick={() => {
+                                        markPlaylistComplete(playlist.id);
+                                        setConfirmComplete(false);
+                                    }}
                                     className="text-primary hover:text-primary-dim font-medium"
                                 >
                                     Yes
@@ -232,7 +297,9 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                 {!isComplete && (
                     <div
                         className={`flex items-center gap-3 p-2 rounded-lg ${
-                            isMyTurn ? 'bg-primary/10 border border-primary/30' : 'bg-surface-high/40'
+                            isMyTurn
+                                ? 'bg-primary/10 border border-primary/30'
+                                : 'bg-surface-high/40'
                         }`}
                     >
                         {isMyTurn ? (
@@ -251,7 +318,8 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                             <>
                                 <i className="fa-solid fa-ellipsis text-outline-variant text-xs shrink-0" />
                                 <span className="text-sm text-on-surface-variant italic">
-                                    What's next? Waiting for a collaborator to join.
+                                    What's next? Waiting for a collaborator to
+                                    join.
                                 </span>
                             </>
                         ) : (
@@ -264,7 +332,9 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                                     </span>
                                     {!turnQuotaFull && tracksPerTurn > 1 && (
                                         <span className="text-outline-variant">
-                                            {' '}· {turnTracksAdded}/{tracksPerTurn} tracks
+                                            {' '}
+                                            · {turnTracksAdded}/{tracksPerTurn}{' '}
+                                            tracks
                                         </span>
                                     )}
                                 </span>
@@ -285,7 +355,8 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                 {/* Turn order list */}
                 <div className="space-y-1">
                     {order.map((userId, idx) => {
-                        const isCurrent = idx === effectiveTurnIndex && !isComplete;
+                        const isCurrent =
+                            idx === effectiveTurnIndex && !isComplete;
                         return (
                             <div
                                 key={userId}
@@ -293,17 +364,29 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                                     isCurrent ? 'bg-surface-high/60' : ''
                                 }`}
                             >
-                                <span className="text-xs text-outline-variant w-4 text-right shrink-0">{idx + 1}</span>
-                                <div className="w-6 h-6 rounded-full bg-surface-high flex items-center justify-center text-xs font-bold text-on-surface shrink-0">
-                                    {displayName(userId, participants).charAt(0).toUpperCase()}
-                                </div>
-                                <span className={`text-sm flex-1 truncate ${isCurrent ? 'text-on-surface font-medium' : 'text-on-surface-variant'}`}>
-                                    {displayName(userId, participants)}
-                                    {userId === currentUserId && <span className="ml-1 text-xs text-outline-variant">(you)</span>}
+                                <span className="text-xs text-outline-variant w-4 text-right shrink-0">
+                                    {idx + 1}
                                 </span>
-                                {isCurrent && !isComplete && !awaitingContributor && (
-                                    <i className="fa-solid fa-chevron-right text-primary text-xs shrink-0" />
-                                )}
+                                <div className="w-6 h-6 rounded-full bg-surface-high flex items-center justify-center text-xs font-bold text-on-surface shrink-0">
+                                    {displayName(userId, participants)
+                                        .charAt(0)
+                                        .toUpperCase()}
+                                </div>
+                                <span
+                                    className={`text-sm flex-1 truncate ${isCurrent ? 'text-on-surface font-medium' : 'text-on-surface-variant'}`}
+                                >
+                                    {displayName(userId, participants)}
+                                    {userId === currentUserId && (
+                                        <span className="ml-1 text-xs text-outline-variant">
+                                            (you)
+                                        </span>
+                                    )}
+                                </span>
+                                {isCurrent &&
+                                    !isComplete &&
+                                    !awaitingContributor && (
+                                        <i className="fa-solid fa-chevron-right text-primary text-xs shrink-0" />
+                                    )}
                                 {!isComplete && (
                                     <div className="flex gap-0.5 shrink-0">
                                         <button
@@ -338,7 +421,11 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                                 <NumberInput
                                     value={tracksPerTurn}
                                     min={1}
-                                    onChange={(n) => setTurnConfig(playlist.id, { tracksPerTurn: n })}
+                                    onChange={(n) =>
+                                        setTurnConfig(playlist.id, {
+                                            tracksPerTurn: n,
+                                        })
+                                    }
                                 />
                             </ConfigField>
 
@@ -348,20 +435,36 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                                         <NumberInput
                                             value={maxTurns}
                                             min={turnsCompleted + 1}
-                                            onChange={(n) => setTurnConfig(playlist.id, { maxTurns: n })}
+                                            onChange={(n) =>
+                                                setTurnConfig(playlist.id, {
+                                                    maxTurns: n,
+                                                })
+                                            }
                                         />
                                         <button
-                                            onClick={() => setTurnConfig(playlist.id, { maxTurns: null })}
+                                            onClick={() =>
+                                                setTurnConfig(playlist.id, {
+                                                    maxTurns: null,
+                                                })
+                                            }
                                             className="text-outline-variant hover:text-on-surface-variant transition-colors text-xs"
                                             title="Remove cap"
                                         >
                                             ✕
                                         </button>
-                                        <span className="text-xs text-outline-variant">({turnsCompleted} done)</span>
+                                        <span className="text-xs text-outline-variant">
+                                            ({turnsCompleted} done)
+                                        </span>
                                     </div>
                                 ) : (
                                     <button
-                                        onClick={() => setTurnConfig(playlist.id, { maxTurns: turnsCompleted + order.length })}
+                                        onClick={() =>
+                                            setTurnConfig(playlist.id, {
+                                                maxTurns:
+                                                    turnsCompleted +
+                                                    order.length,
+                                            })
+                                        }
                                         className="text-xs text-outline-variant hover:text-on-surface-variant transition-colors"
                                     >
                                         + set limit
@@ -377,22 +480,38 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
                                     <div className="flex items-center gap-1.5">
                                         <DurationInput
                                             valueMs={maxDurationMs}
-                                            onChange={(ms) => setTurnConfig(playlist.id, { maxDurationMs: ms })}
+                                            onChange={(ms) =>
+                                                setTurnConfig(playlist.id, {
+                                                    maxDurationMs: ms,
+                                                })
+                                            }
                                         />
                                         <button
-                                            onClick={() => setTurnConfig(playlist.id, { maxDurationMs: null })}
+                                            onClick={() =>
+                                                setTurnConfig(playlist.id, {
+                                                    maxDurationMs: null,
+                                                })
+                                            }
                                             className="text-outline-variant hover:text-on-surface-variant transition-colors text-xs"
                                             title="Remove limit"
                                         >
                                             ✕
                                         </button>
                                         <span className="text-xs text-outline-variant">
-                                            ({formatDurationHuman(totalDurationMs)} now)
+                                            (
+                                            {formatDurationHuman(
+                                                totalDurationMs,
+                                            )}{' '}
+                                            now)
                                         </span>
                                     </div>
                                 ) : (
                                     <button
-                                        onClick={() => setTurnConfig(playlist.id, { maxDurationMs: 8 * 3_600_000 })}
+                                        onClick={() =>
+                                            setTurnConfig(playlist.id, {
+                                                maxDurationMs: 8 * 3_600_000,
+                                            })
+                                        }
                                         className="text-xs text-outline-variant hover:text-on-surface-variant transition-colors"
                                     >
                                         + set limit

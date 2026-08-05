@@ -94,8 +94,8 @@ export const P2P_CONFIG = {
      * Remote peers connect via WebRTC/relay, not direct TCP.
      */
     LISTEN_ADDRESSES: [
-        '/ip4/127.0.0.1/tcp/0',         // TCP transport (localhost only; remote peers use WebRTC/relay)
-        '/ip4/127.0.0.1/tcp/0/ws',      // WebSocket transport (localhost only)
+        '/ip4/127.0.0.1/tcp/0', // TCP transport (localhost only; remote peers use WebRTC/relay)
+        '/ip4/127.0.0.1/tcp/0/ws', // WebSocket transport (localhost only)
     ],
 
     /**

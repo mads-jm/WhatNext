@@ -96,7 +96,9 @@ import {
 } from '../spotify/spotify-client';
 
 /** Minimal valid SpotifyTrackItem fixture */
-function makeTrackItem(overrides: Partial<SpotifyTrackItem> = {}): SpotifyTrackItem {
+function makeTrackItem(
+    overrides: Partial<SpotifyTrackItem> = {},
+): SpotifyTrackItem {
     return {
         track: {
             id: 'spotify-track-id-1',
@@ -104,7 +106,9 @@ function makeTrackItem(overrides: Partial<SpotifyTrackItem> = {}): SpotifyTrackI
             artists: [{ name: 'Artist A', id: 'artist-a' }],
             album: {
                 name: 'Test Album',
-                images: [{ url: 'https://cdn/image.jpg', height: 300, width: 300 }],
+                images: [
+                    { url: 'https://cdn/image.jpg', height: 300, width: 300 },
+                ],
             },
             duration_ms: 200000,
             external_urls: { spotify: 'https://open.spotify.com/track/123' },
@@ -196,8 +200,20 @@ describe('mapSpotifyTrack', () => {
 describe('mapSpotifyTracks', () => {
     it('maps multiple valid tracks and preserves order', () => {
         const items: SpotifyTrackItem[] = [
-            makeTrackItem({ track: { ...makeTrackItem().track, id: 'track-1', name: 'Song One' } }),
-            makeTrackItem({ track: { ...makeTrackItem().track, id: 'track-2', name: 'Song Two' } }),
+            makeTrackItem({
+                track: {
+                    ...makeTrackItem().track,
+                    id: 'track-1',
+                    name: 'Song One',
+                },
+            }),
+            makeTrackItem({
+                track: {
+                    ...makeTrackItem().track,
+                    id: 'track-2',
+                    name: 'Song Two',
+                },
+            }),
         ];
         const result = mapSpotifyTracks(items);
         expect(result).toHaveLength(2);
@@ -208,14 +224,20 @@ describe('mapSpotifyTracks', () => {
     it('filters out items whose track is null (null-track guard)', () => {
         const items: RawSpotifyTrackItem[] = [
             makeTrackItem(),
-            { track: null, added_at: '2024-01-01T00:00:00Z', added_by: { id: 'x' } },
+            {
+                track: null,
+                added_at: '2024-01-01T00:00:00Z',
+                added_by: { id: 'x' },
+            },
         ];
         const result = mapRawSpotifyTracks(items);
         expect(result).toHaveLength(1);
     });
 
     it('filters out local tracks that have no track.id (local-file guard)', () => {
-        const localTrack = makeTrackItem({ track: { ...makeTrackItem().track, id: '' } });
+        const localTrack = makeTrackItem({
+            track: { ...makeTrackItem().track, id: '' },
+        });
         const validTrack = makeTrackItem();
         const result = mapSpotifyTracks([localTrack, validTrack]);
         expect(result).toHaveLength(1);
@@ -276,7 +298,9 @@ interface ProfileResult {
 describe('spotify:get-tracks handler logic', () => {
     it('returns { success: true, tracks, total } on success', async () => {
         const fakeItems: SpotifyTrackItem[] = [makeTrackItem()];
-        const mockGetPlaylistTracks = vi.fn().mockResolvedValue({ items: fakeItems, total: 1 });
+        const mockGetPlaylistTracks = vi
+            .fn()
+            .mockResolvedValue({ items: fakeItems, total: 1 });
 
         // Simulate the handler logic
         const handler = async (playlistId: string): Promise<TracksResult> => {
@@ -297,7 +321,9 @@ describe('spotify:get-tracks handler logic', () => {
     });
 
     it('returns { success: false, error } when getPlaylistTracks throws', async () => {
-        const mockGetPlaylistTracks = vi.fn().mockRejectedValue(new Error('Network failure'));
+        const mockGetPlaylistTracks = vi
+            .fn()
+            .mockRejectedValue(new Error('Network failure'));
 
         const handler = async (playlistId: string): Promise<TracksResult> => {
             try {
@@ -326,7 +352,9 @@ describe('spotify:sync-playlist handler logic', () => {
             .mockResolvedValueOnce({ items: page1Items, total: 2 })
             .mockResolvedValueOnce({ items: page2Items, total: 2 });
 
-        const handler = async (linkedSpotifyId: string): Promise<TracksResult> => {
+        const handler = async (
+            linkedSpotifyId: string,
+        ): Promise<TracksResult> => {
             try {
                 const allItems: SpotifyTrackItem[] = [];
                 let offset = 0;
@@ -334,7 +362,11 @@ describe('spotify:sync-playlist handler logic', () => {
                 let total = Infinity;
 
                 while (offset < total) {
-                    const page = await mockGetPlaylistTracks(linkedSpotifyId, limit, offset);
+                    const page = await mockGetPlaylistTracks(
+                        linkedSpotifyId,
+                        limit,
+                        offset,
+                    );
                     total = page.total;
                     allItems.push(...page.items);
                     offset += page.items.length;
@@ -342,7 +374,11 @@ describe('spotify:sync-playlist handler logic', () => {
                 }
 
                 const mapped = mapSpotifyTracks(allItems);
-                return { success: true, tracks: mapped, total: allItems.length };
+                return {
+                    success: true,
+                    tracks: mapped,
+                    total: allItems.length,
+                };
             } catch (error) {
                 return { success: false, error: String(error) };
             }
@@ -364,14 +400,20 @@ describe('spotify:sync-playlist handler logic', () => {
             .mockResolvedValueOnce({ items: page1Items, total: 102 })
             .mockResolvedValueOnce({ items: page2Items, total: 102 });
 
-        const handler = async (linkedSpotifyId: string): Promise<TracksResult> => {
+        const handler = async (
+            linkedSpotifyId: string,
+        ): Promise<TracksResult> => {
             try {
                 const allItems: SpotifyTrackItem[] = [];
                 let offset = 0;
                 let total = Infinity;
 
                 while (offset < total) {
-                    const page = await mockGetPlaylistTracks(linkedSpotifyId, limit, offset);
+                    const page = await mockGetPlaylistTracks(
+                        linkedSpotifyId,
+                        limit,
+                        offset,
+                    );
                     total = page.total;
                     allItems.push(...page.items);
                     offset += page.items.length;
@@ -379,7 +421,11 @@ describe('spotify:sync-playlist handler logic', () => {
                 }
 
                 const mapped = mapSpotifyTracks(allItems);
-                return { success: true, tracks: mapped, total: allItems.length };
+                return {
+                    success: true,
+                    tracks: mapped,
+                    total: allItems.length,
+                };
             } catch (error) {
                 return { success: false, error: String(error) };
             }
@@ -390,13 +436,22 @@ describe('spotify:sync-playlist handler logic', () => {
         expect(response.total).toBe(102);
         expect(mockGetPlaylistTracks).toHaveBeenCalledTimes(2);
         // Second call should use offset = 100
-        expect(mockGetPlaylistTracks).toHaveBeenNthCalledWith(2, 'playlist-big', limit, 100);
+        expect(mockGetPlaylistTracks).toHaveBeenNthCalledWith(
+            2,
+            'playlist-big',
+            limit,
+            100,
+        );
     });
 
     it('returns { success: false, error } when getPlaylistTracks throws', async () => {
-        const mockGetPlaylistTracks = vi.fn().mockRejectedValue(new Error('Auth expired'));
+        const mockGetPlaylistTracks = vi
+            .fn()
+            .mockRejectedValue(new Error('Auth expired'));
 
-        const handler = async (linkedSpotifyId: string): Promise<TracksResult> => {
+        const handler = async (
+            linkedSpotifyId: string,
+        ): Promise<TracksResult> => {
             try {
                 const allItems: SpotifyTrackItem[] = [];
                 let offset = 0;
@@ -404,7 +459,11 @@ describe('spotify:sync-playlist handler logic', () => {
                 let total = Infinity;
 
                 while (offset < total) {
-                    const page = await mockGetPlaylistTracks(linkedSpotifyId, limit, offset);
+                    const page = await mockGetPlaylistTracks(
+                        linkedSpotifyId,
+                        limit,
+                        offset,
+                    );
                     total = page.total;
                     allItems.push(...page.items);
                     offset += page.items.length;
@@ -412,7 +471,11 @@ describe('spotify:sync-playlist handler logic', () => {
                 }
 
                 const mapped = mapSpotifyTracks(allItems);
-                return { success: true, tracks: mapped, total: allItems.length };
+                return {
+                    success: true,
+                    tracks: mapped,
+                    total: allItems.length,
+                };
             } catch (error) {
                 return { success: false, error: String(error) };
             }
@@ -441,7 +504,11 @@ describe('artwork:download handler logic', () => {
         mkdir: (dir: string, opts: { recursive: boolean }) => Promise<void>;
         access: (path: string) => Promise<void>;
         writeFile: (path: string, data: Buffer) => Promise<void>;
-        fetchFn: (url: string) => Promise<{ ok: boolean; status: number; arrayBuffer: () => Promise<ArrayBuffer> }>;
+        fetchFn: (url: string) => Promise<{
+            ok: boolean;
+            status: number;
+            arrayBuffer: () => Promise<ArrayBuffer>;
+        }>;
         userDataPath: string;
         join: (...parts: string[]) => string;
     }) {
@@ -520,7 +587,11 @@ describe('artwork:download handler logic', () => {
             mkdir: vi.fn().mockResolvedValue(undefined),
             access: vi.fn().mockRejectedValue(new Error('ENOENT')),
             writeFile: vi.fn(),
-            fetchFn: vi.fn().mockResolvedValue({ ok: false, status: 403, arrayBuffer: vi.fn() }),
+            fetchFn: vi.fn().mockResolvedValue({
+                ok: false,
+                status: 403,
+                arrayBuffer: vi.fn(),
+            }),
             userDataPath: '/userData',
             join: (...p) => p.join('/'),
         });
@@ -576,7 +647,9 @@ describe('spotify:get-profile handler logic', () => {
         const mockGetCurrentUser = vi.fn().mockResolvedValue({
             id: 'user-spotify-id',
             display_name: 'Test User',
-            images: [{ url: 'https://cdn/avatar.jpg', height: 128, width: 128 }],
+            images: [
+                { url: 'https://cdn/avatar.jpg', height: 128, width: 128 },
+            ],
         });
 
         const handler = async (): Promise<ProfileResult> => {
@@ -627,7 +700,9 @@ describe('spotify:get-profile handler logic', () => {
     });
 
     it('returns { success: false, error } when getCurrentUser throws', async () => {
-        const mockGetCurrentUser = vi.fn().mockRejectedValue(new Error('Not authenticated'));
+        const mockGetCurrentUser = vi
+            .fn()
+            .mockRejectedValue(new Error('Not authenticated'));
 
         const handler = async (): Promise<ProfileResult> => {
             try {
@@ -669,7 +744,9 @@ describe('preload API surface (type smoke tests)', () => {
             error?: string;
         }>;
         // Type assertion: if the signature changed incompatibly, tsc would fail here.
-        const _typeCheck: GetTracks = async (_id: string) => ({ success: true });
+        const _typeCheck: GetTracks = async (_id: string) => ({
+            success: true,
+        });
         expect(typeof _typeCheck).toBe('function');
     });
 
@@ -679,7 +756,9 @@ describe('preload API surface (type smoke tests)', () => {
             localPath?: string;
             error?: string;
         }>;
-        const _typeCheck: ArtworkDownload = async (_url: string) => ({ success: true });
+        const _typeCheck: ArtworkDownload = async (_url: string) => ({
+            success: true,
+        });
         expect(typeof _typeCheck).toBe('function');
     });
 
@@ -702,7 +781,9 @@ describe('preload API surface (type smoke tests)', () => {
             total?: number;
             error?: string;
         }>;
-        const _typeCheck: SyncPlaylist = async (_id: string) => ({ success: true });
+        const _typeCheck: SyncPlaylist = async (_id: string) => ({
+            success: true,
+        });
         expect(typeof _typeCheck).toBe('function');
     });
 
@@ -711,7 +792,10 @@ describe('preload API surface (type smoke tests)', () => {
         // returns an unsubscribe function. The payload matches the
         // playback-degraded SpotifyRuntimeEvent forwarded by main.ts.
         type OnPlaybackDegraded = (
-            callback: (data: { reason: 'premium-required'; status: number }) => void,
+            callback: (data: {
+                reason: 'premium-required';
+                status: number;
+            }) => void,
         ) => () => void;
         const _typeCheck: OnPlaybackDegraded = (_cb) => () => undefined;
         expect(typeof _typeCheck).toBe('function');
@@ -734,10 +818,20 @@ describe('spotify error taxonomy', () => {
     });
 
     it('classifies which kinds are retryable', () => {
-        for (const k of ['rate_limited', 'server', 'network', 'timeout'] as const) {
+        for (const k of [
+            'rate_limited',
+            'server',
+            'network',
+            'timeout',
+        ] as const) {
             expect(isRetryableKind(k)).toBe(true);
         }
-        for (const k of ['unauthorized', 'forbidden', 'not_found', 'unknown'] as const) {
+        for (const k of [
+            'unauthorized',
+            'forbidden',
+            'not_found',
+            'unknown',
+        ] as const) {
             expect(isRetryableKind(k)).toBe(false);
         }
     });
@@ -763,7 +857,9 @@ describe('spotify error taxonomy', () => {
     });
 
     it('SpotifyApiError carries kind/status and survives instanceof', () => {
-        const err = new SpotifyApiError('forbidden', 403, 'nope', { body: 'x' });
+        const err = new SpotifyApiError('forbidden', 403, 'nope', {
+            body: 'x',
+        });
         expect(err).toBeInstanceOf(SpotifyApiError);
         expect(err).toBeInstanceOf(Error);
         expect(err.kind).toBe('forbidden');
@@ -790,7 +886,8 @@ function fetchSequence(...outcomes: Array<Response | Error>) {
     return fn;
 }
 
-const abortError = (): Error => Object.assign(new Error('aborted'), { name: 'AbortError' });
+const abortError = (): Error =>
+    Object.assign(new Error('aborted'), { name: 'AbortError' });
 
 describe('resilientFetch', () => {
     afterEach(() => {
@@ -805,7 +902,11 @@ describe('resilientFetch', () => {
         );
         vi.stubGlobal('fetch', fetchFn);
 
-        const res = await resilientFetch('https://api/x', {}, { sleep, baseBackoffMs: 1 });
+        const res = await resilientFetch(
+            'https://api/x',
+            {},
+            { sleep, baseBackoffMs: 1 },
+        );
 
         expect(res.status).toBe(200);
         expect(fetchFn).toHaveBeenCalledTimes(2);
@@ -815,7 +916,10 @@ describe('resilientFetch', () => {
     it('waits the exact Retry-After before retrying a 429', async () => {
         const sleep = vi.fn().mockResolvedValue(undefined);
         const fetchFn = fetchSequence(
-            new Response('slow down', { status: 429, headers: { 'retry-after': '2' } }),
+            new Response('slow down', {
+                status: 429,
+                headers: { 'retry-after': '2' },
+            }),
             new Response('{}', { status: 200 }),
         );
         vi.stubGlobal('fetch', fetchFn);
@@ -827,7 +931,10 @@ describe('resilientFetch', () => {
 
     it('does not retry a 403 and throws a forbidden error', async () => {
         const sleep = vi.fn();
-        vi.stubGlobal('fetch', fetchSequence(new Response('no', { status: 403 })));
+        vi.stubGlobal(
+            'fetch',
+            fetchSequence(new Response('no', { status: 403 })),
+        );
 
         await expect(
             resilientFetch('https://api/x', {}, { sleep }),
@@ -837,7 +944,10 @@ describe('resilientFetch', () => {
 
     it('does not retry a 404 and throws not_found', async () => {
         const sleep = vi.fn();
-        vi.stubGlobal('fetch', fetchSequence(new Response('missing', { status: 404 })));
+        vi.stubGlobal(
+            'fetch',
+            fetchSequence(new Response('missing', { status: 404 })),
+        );
 
         await expect(
             resilientFetch('https://api/x', {}, { sleep }),
@@ -858,7 +968,10 @@ describe('resilientFetch', () => {
 
     it('maps an AbortError to a timeout kind once retries are exhausted', async () => {
         const sleep = vi.fn().mockResolvedValue(undefined);
-        vi.stubGlobal('fetch', fetchSequence(abortError(), abortError(), abortError()));
+        vi.stubGlobal(
+            'fetch',
+            fetchSequence(abortError(), abortError(), abortError()),
+        );
 
         await expect(
             resilientFetch('https://api/x', {}, { sleep, maxAttempts: 3 }),
@@ -867,16 +980,26 @@ describe('resilientFetch', () => {
 
     it('recovers after a single timeout', async () => {
         const sleep = vi.fn().mockResolvedValue(undefined);
-        vi.stubGlobal('fetch', fetchSequence(abortError(), new Response('{}', { status: 200 })));
+        vi.stubGlobal(
+            'fetch',
+            fetchSequence(abortError(), new Response('{}', { status: 200 })),
+        );
 
         const res = await resilientFetch('https://api/x', {}, { sleep });
         expect(res.status).toBe(200);
     });
 
     it('resolves a 204 No Content without throwing', async () => {
-        vi.stubGlobal('fetch', fetchSequence(new Response(null, { status: 204 })));
+        vi.stubGlobal(
+            'fetch',
+            fetchSequence(new Response(null, { status: 204 })),
+        );
 
-        const res = await resilientFetch('https://api/x', {}, { sleep: vi.fn() });
+        const res = await resilientFetch(
+            'https://api/x',
+            {},
+            { sleep: vi.fn() },
+        );
         expect(res.status).toBe(204);
     });
 });
@@ -893,14 +1016,20 @@ describe('spotify OAuth (PKCE, exchange, refresh)', () => {
 
     it('produces a PKCE pair whose challenge is the SHA-256 of the verifier', async () => {
         await startSpotifyAuth();
-        const authUrl = vi.mocked(shell.openExternal).mock.calls[0][0] as string;
+        const authUrl = vi.mocked(shell.openExternal).mock
+            .calls[0][0] as string;
         const challenge = new URL(authUrl).searchParams.get('code_challenge');
         expect(challenge).toMatch(/^[A-Za-z0-9_-]+$/);
 
         // Capture the verifier from the token-exchange request body.
         const fetchFn = vi.fn().mockResolvedValue(
             new Response(
-                JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 3600, scope: 's' }),
+                JSON.stringify({
+                    access_token: 'a',
+                    refresh_token: 'r',
+                    expires_in: 3600,
+                    scope: 's',
+                }),
                 { status: 200 },
             ),
         );
@@ -909,7 +1038,10 @@ describe('spotify OAuth (PKCE, exchange, refresh)', () => {
 
         const body = fetchFn.mock.calls[0][1].body as URLSearchParams;
         const verifier = body.get('code_verifier') as string;
-        const expected = crypto.createHash('sha256').update(verifier).digest('base64url');
+        const expected = crypto
+            .createHash('sha256')
+            .update(verifier)
+            .digest('base64url');
         expect(expected).toBe(challenge);
     });
 
@@ -919,7 +1051,12 @@ describe('spotify OAuth (PKCE, exchange, refresh)', () => {
             'fetch',
             vi.fn().mockResolvedValue(
                 new Response(
-                    JSON.stringify({ access_token: 'AT', refresh_token: 'RT', expires_in: 3600, scope: 'sc' }),
+                    JSON.stringify({
+                        access_token: 'AT',
+                        refresh_token: 'RT',
+                        expires_in: 3600,
+                        scope: 'sc',
+                    }),
                     { status: 200 },
                 ),
             ),
@@ -934,7 +1071,14 @@ describe('spotify OAuth (PKCE, exchange, refresh)', () => {
 
     it('surfaces the error body when the token exchange fails', async () => {
         await startSpotifyAuth();
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('invalid_grant', { status: 400 })));
+        vi.stubGlobal(
+            'fetch',
+            vi
+                .fn()
+                .mockResolvedValue(
+                    new Response('invalid_grant', { status: 400 }),
+                ),
+        );
 
         const result = await handleSpotifyCallback('bad');
         expect(result.success).toBe(false);
@@ -946,7 +1090,12 @@ describe('spotify OAuth (PKCE, exchange, refresh)', () => {
             'fetch',
             vi.fn().mockResolvedValue(
                 new Response(
-                    JSON.stringify({ access_token: 'AT2', refresh_token: 'RT2', expires_in: 3600, scope: 'sc' }),
+                    JSON.stringify({
+                        access_token: 'AT2',
+                        refresh_token: 'RT2',
+                        expires_in: 3600,
+                        scope: 'sc',
+                    }),
                     { status: 200 },
                 ),
             ),
@@ -963,7 +1112,11 @@ describe('spotify OAuth (PKCE, exchange, refresh)', () => {
             'fetch',
             vi.fn().mockResolvedValue(
                 new Response(
-                    JSON.stringify({ access_token: 'AT3', expires_in: 3600, scope: 'sc' }),
+                    JSON.stringify({
+                        access_token: 'AT3',
+                        expires_in: 3600,
+                        scope: 'sc',
+                    }),
                     { status: 200 },
                 ),
             ),
@@ -975,7 +1128,14 @@ describe('spotify OAuth (PKCE, exchange, refresh)', () => {
     });
 
     it('fails cleanly on a revoked/invalid refresh token', async () => {
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('invalid_grant', { status: 400 })));
+        vi.stubGlobal(
+            'fetch',
+            vi
+                .fn()
+                .mockResolvedValue(
+                    new Response('invalid_grant', { status: 400 }),
+                ),
+        );
 
         const r = await refreshSpotifyToken('revoked');
         expect(r.success).toBe(false);
@@ -987,7 +1147,9 @@ describe('spotify OAuth (PKCE, exchange, refresh)', () => {
 // 7. Spotify client — proactive refresh, degraded mode, 204, 401 retry (#33/#44)
 // ---------------------------------------------------------------------------
 
-const validToken = (overrides: Partial<{ expiresAt: number; accessToken: string }> = {}) => ({
+const validToken = (
+    overrides: Partial<{ expiresAt: number; accessToken: string }> = {},
+) => ({
     accessToken: overrides.accessToken ?? 'tok',
     refreshToken: 'r',
     expiresAt: overrides.expiresAt ?? Date.now() + 3_600_000,
@@ -1001,38 +1163,64 @@ describe('spotify client resilience integration', () => {
     });
 
     it('proactively refreshes a token within REFRESH_BUFFER_MS and uses the fresh one', async () => {
-        initSpotifyClient(validToken({ accessToken: 'old', expiresAt: Date.now() + 1000 }));
+        initSpotifyClient(
+            validToken({ accessToken: 'old', expiresAt: Date.now() + 1000 }),
+        );
         const fetchFn = vi.fn(async (url: string, init: RequestInit) => {
             if (url === SPOTIFY_CONFIG.API.TOKEN) {
                 return new Response(
-                    JSON.stringify({ access_token: 'fresh', refresh_token: 'r2', expires_in: 3600, scope: 's' }),
+                    JSON.stringify({
+                        access_token: 'fresh',
+                        refresh_token: 'r2',
+                        expires_in: 3600,
+                        scope: 's',
+                    }),
                     { status: 200 },
                 );
             }
             const headers = init.headers as Record<string, string>;
             expect(headers.Authorization).toBe('Bearer fresh');
-            return new Response(JSON.stringify({ id: 'u', display_name: 'U', images: [] }), { status: 200 });
+            return new Response(
+                JSON.stringify({ id: 'u', display_name: 'U', images: [] }),
+                { status: 200 },
+            );
         });
         vi.stubGlobal('fetch', fetchFn);
 
         const user = await getCurrentUser();
         expect(user.id).toBe('u');
-        expect(fetchFn.mock.calls.some((c) => c[0] === SPOTIFY_CONFIG.API.TOKEN)).toBe(true);
+        expect(
+            fetchFn.mock.calls.some((c) => c[0] === SPOTIFY_CONFIG.API.TOKEN),
+        ).toBe(true);
     });
 
     it('emits playback-degraded on a 403 from /me/player and still throws forbidden', async () => {
         initSpotifyClient(validToken());
         const events: SpotifyRuntimeEvent[] = [];
         setSpotifyEventListener((e) => events.push(e));
-        vi.stubGlobal('fetch', vi.fn(async () => new Response('premium required', { status: 403 })));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                async () => new Response('premium required', { status: 403 }),
+            ),
+        );
 
-        await expect(getPlaybackState()).rejects.toMatchObject({ kind: 'forbidden' });
-        expect(events).toContainEqual({ type: 'playback-degraded', reason: 'premium-required', status: 403 });
+        await expect(getPlaybackState()).rejects.toMatchObject({
+            kind: 'forbidden',
+        });
+        expect(events).toContainEqual({
+            type: 'playback-degraded',
+            reason: 'premium-required',
+            status: 403,
+        });
     });
 
     it('returns null on a 204 playback state without parsing a body', async () => {
         initSpotifyClient(validToken());
-        vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 204 })));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response(null, { status: 204 })),
+        );
 
         const state = await getPlaybackState();
         expect(state).toBeNull();
@@ -1044,7 +1232,12 @@ describe('spotify client resilience integration', () => {
         const fetchFn = vi.fn(async (url: string, init: RequestInit) => {
             if (url === SPOTIFY_CONFIG.API.TOKEN) {
                 return new Response(
-                    JSON.stringify({ access_token: 'new', refresh_token: 'r2', expires_in: 3600, scope: 's' }),
+                    JSON.stringify({
+                        access_token: 'new',
+                        refresh_token: 'r2',
+                        expires_in: 3600,
+                        scope: 's',
+                    }),
                     { status: 200 },
                 );
             }
@@ -1052,7 +1245,10 @@ describe('spotify client resilience integration', () => {
             if (apiCalls === 1) return new Response('expired', { status: 401 });
             const headers = init.headers as Record<string, string>;
             expect(headers.Authorization).toBe('Bearer new');
-            return new Response(JSON.stringify({ id: 'u2', display_name: 'U2', images: [] }), { status: 200 });
+            return new Response(
+                JSON.stringify({ id: 'u2', display_name: 'U2', images: [] }),
+                { status: 200 },
+            );
         });
         vi.stubGlobal('fetch', fetchFn);
 
@@ -1062,13 +1258,19 @@ describe('spotify client resilience integration', () => {
     });
 
     it('emits auth-error instead of throwing a raw error when refresh fails', async () => {
-        initSpotifyClient(validToken({ accessToken: 'old', expiresAt: Date.now() + 1000 }));
+        initSpotifyClient(
+            validToken({ accessToken: 'old', expiresAt: Date.now() + 1000 }),
+        );
         const events: SpotifyRuntimeEvent[] = [];
         setSpotifyEventListener((e) => events.push(e));
-        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-            if (url === SPOTIFY_CONFIG.API.TOKEN) return new Response('invalid_grant', { status: 400 });
-            return new Response('{}', { status: 200 });
-        }));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string) => {
+                if (url === SPOTIFY_CONFIG.API.TOKEN)
+                    return new Response('invalid_grant', { status: 400 });
+                return new Response('{}', { status: 200 });
+            }),
+        );
 
         await expect(getCurrentUser()).rejects.toBeInstanceOf(SpotifyApiError);
         expect(events.some((e) => e.type === 'auth-error')).toBe(true);

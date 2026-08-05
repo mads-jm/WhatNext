@@ -34,7 +34,12 @@ type CollectionName = keyof WhatNextCollections;
  */
 export async function applyReplicatedChanges(
     collection: string,
-    documents: Array<{ id: string; data: Record<string, unknown>; updatedAt: string; deleted?: boolean }>
+    documents: Array<{
+        id: string;
+        data: Record<string, unknown>;
+        updatedAt: string;
+        deleted?: boolean;
+    }>,
 ): Promise<void> {
     const db = await getDatabase();
     const col = db[collection as CollectionName];
@@ -43,7 +48,9 @@ export async function applyReplicatedChanges(
         return;
     }
 
-    console.log(`[Replication] Applying ${documents.length} changes to ${collection}`);
+    console.log(
+        `[Replication] Applying ${documents.length} changes to ${collection}`,
+    );
 
     for (const doc of documents) {
         if (doc.deleted) {
@@ -59,10 +66,13 @@ export async function applyReplicatedChanges(
             // ends of a session derive the same candidate from the same doc.
             const existing = await col.findOne(doc.id).exec();
             if (existing) {
-                const existingData = existing.toJSON() as Record<string, unknown>;
+                const existingData = existing.toJSON() as Record<
+                    string,
+                    unknown
+                >;
                 const winner = incomingWins(
                     envelopeCandidate(doc),
-                    storedCandidate(existingData)
+                    storedCandidate(existingData),
                 );
                 if (winner) {
                     await existing.update({ $set: doc.data });
@@ -71,7 +81,10 @@ export async function applyReplicatedChanges(
                 try {
                     await col.insert({ id: doc.id, ...doc.data } as never);
                 } catch (e) {
-                    console.warn(`[Replication] Failed to insert ${doc.id}:`, e);
+                    console.warn(
+                        `[Replication] Failed to insert ${doc.id}:`,
+                        e,
+                    );
                 }
             }
         }
@@ -85,7 +98,7 @@ export function setupReplicationListeners(): () => void {
     const cleanup = window.electron?.replication?.onReplicationChanges?.(
         (data) => {
             applyReplicatedChanges(data.collection, data.documents);
-        }
+        },
     );
 
     return cleanup || (() => {});
@@ -96,7 +109,11 @@ export function setupReplicationListeners(): () => void {
  */
 export async function pushLocalChanges(
     collection: string,
-    documents: Array<{ id: string; data: Record<string, unknown>; updatedAt: string }>
+    documents: Array<{
+        id: string;
+        data: Record<string, unknown>;
+        updatedAt: string;
+    }>,
 ): Promise<void> {
     if (!window.electron?.replication) {
         console.warn('[Replication] Replication API not available');

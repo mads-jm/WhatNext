@@ -13,11 +13,18 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createElement } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
 import type { SetBackendPathResult } from '../../../../shared/core/ipc-protocol';
 import { DownloadSettings } from '../DownloadSettings';
 
-const setBackendPath = vi.fn<(payload: unknown) => Promise<SetBackendPathResult>>();
+const setBackendPath =
+    vi.fn<(payload: unknown) => Promise<SetBackendPathResult>>();
 const openFile = vi.fn();
 const getBackendPaths = vi.fn(async () => ({}) as Record<string, string>);
 
@@ -37,9 +44,24 @@ beforeEach(() => {
     (window as unknown as { electron: unknown }).electron = {
         download: {
             checkBackends: vi.fn(async () => [
-                { id: 'ytdlp', name: 'yt-dlp', installed: true, version: '2026.07.04' },
-                { id: 'spotdl', name: 'spotDL', installed: true, version: '4.5.2' },
-                { id: 'spytify', name: 'Spytify', installed: false, error: 'Windows only' },
+                {
+                    id: 'ytdlp',
+                    name: 'yt-dlp',
+                    installed: true,
+                    version: '2026.07.04',
+                },
+                {
+                    id: 'spotdl',
+                    name: 'spotDL',
+                    installed: true,
+                    version: '4.5.2',
+                },
+                {
+                    id: 'spytify',
+                    name: 'Spytify',
+                    installed: false,
+                    error: 'Windows only',
+                },
             ]),
             getBackendPaths,
             setBackendPath,
@@ -65,8 +87,14 @@ function pathInput(name: string): HTMLInputElement {
 
 describe('DownloadSettings — backend path', () => {
     it('sends a Browse… selection straight to main, which accepts it without a prompt', async () => {
-        openFile.mockResolvedValue({ canceled: false, filePaths: ['/opt/bin/yt-dlp'] });
-        setBackendPath.mockResolvedValue({ status: 'saved', paths: { ytdlp: '/opt/bin/yt-dlp' } });
+        openFile.mockResolvedValue({
+            canceled: false,
+            filePaths: ['/opt/bin/yt-dlp'],
+        });
+        setBackendPath.mockResolvedValue({
+            status: 'saved',
+            paths: { ytdlp: '/opt/bin/yt-dlp' },
+        });
 
         renderSettings();
         fireEvent.click((await screen.findAllByText('Browse…'))[0]);
@@ -74,7 +102,10 @@ describe('DownloadSettings — backend path', () => {
         // The renderer sends no claim about where the path came from — main's own
         // record of what its dialog returned is what makes this promptless.
         await waitFor(() =>
-            expect(setBackendPath).toHaveBeenCalledWith({ id: 'ytdlp', path: '/opt/bin/yt-dlp' }),
+            expect(setBackendPath).toHaveBeenCalledWith({
+                id: 'ytdlp',
+                path: '/opt/bin/yt-dlp',
+            }),
         );
     });
 
@@ -100,7 +131,9 @@ describe('DownloadSettings — backend path', () => {
         fireEvent.change(input, { target: { value: '/nope/yt-dlp' } });
         fireEvent.click(screen.getAllByText('Save')[0]);
 
-        expect(await screen.findByText('No such file: /nope/yt-dlp')).toBeTruthy();
+        expect(
+            await screen.findByText('No such file: /nope/yt-dlp'),
+        ).toBeTruthy();
         // The draft survives so the user can correct it.
         expect(pathInput('yt-dlp').value).toBe('/nope/yt-dlp');
     });
@@ -127,7 +160,10 @@ describe('DownloadSettings — backend path', () => {
         fireEvent.click(await screen.findByText('Clear'));
 
         await waitFor(() =>
-            expect(setBackendPath).toHaveBeenCalledWith({ id: 'ytdlp', path: null }),
+            expect(setBackendPath).toHaveBeenCalledWith({
+                id: 'ytdlp',
+                path: null,
+            }),
         );
     });
 });

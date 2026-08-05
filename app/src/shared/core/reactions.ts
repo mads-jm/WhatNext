@@ -3,7 +3,14 @@
  * Pure data — no framework or service dependencies.
  */
 
-export const ALLOWED_REACTIONS = ['fire', 'heart', 'thumbsdown', 'mindblown', 'sleeping', 'party'] as const;
+export const ALLOWED_REACTIONS = [
+    'fire',
+    'heart',
+    'thumbsdown',
+    'mindblown',
+    'sleeping',
+    'party',
+] as const;
 export type ReactionEmoji = (typeof ALLOWED_REACTIONS)[number];
 
 export const REACTION_DISPLAY: Record<ReactionEmoji, string> = {

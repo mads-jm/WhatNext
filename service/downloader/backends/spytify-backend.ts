@@ -1,5 +1,9 @@
 import { ChildProcess } from 'child_process';
-import type { DownloadBackend, BackendStatus, DownloadOptions } from '../backend';
+import type {
+    DownloadBackend,
+    BackendStatus,
+    DownloadOptions,
+} from '../backend';
 import type { DownloadInput, ResolvedTrack, DownloadEvent } from '../types';
 import { runCommand, killProcess } from '../subprocess';
 
@@ -53,7 +57,11 @@ export class SpytifyBackend implements DownloadBackend {
         try {
             const result = await runCommand(this.exe, ['--version']);
             if (result.code === 0) {
-                return { installed: true, version: result.stdout.trim(), path: this.customPath };
+                return {
+                    installed: true,
+                    version: result.stdout.trim(),
+                    path: this.customPath,
+                };
             }
             return {
                 installed: false,
@@ -72,11 +80,14 @@ export class SpytifyBackend implements DownloadBackend {
     async resolve(_input: DownloadInput): Promise<ResolvedTrack[]> {
         throw new Error(
             'Spytify records live Spotify playback; URL resolution is not supported. ' +
-            'Use yt-dlp or spotDL for URL-based downloads.',
+                'Use yt-dlp or spotDL for URL-based downloads.',
         );
     }
 
-    async *download(tracks: ResolvedTrack[], opts: DownloadOptions): AsyncGenerator<DownloadEvent> {
+    async *download(
+        tracks: ResolvedTrack[],
+        opts: DownloadOptions,
+    ): AsyncGenerator<DownloadEvent> {
         if (process.platform !== 'win32') {
             for (const track of tracks) {
                 yield {
@@ -88,19 +99,26 @@ export class SpytifyBackend implements DownloadBackend {
             return;
         }
 
-        const fmt = opts.preferredFormat === 'best_audio' ? 'mp3' : opts.preferredFormat;
+        const fmt =
+            opts.preferredFormat === 'best_audio'
+                ? 'mp3'
+                : opts.preferredFormat;
 
         for (const track of tracks) {
             try {
                 const args = [
-                    '--path', opts.outputDir,
-                    '--format', fmt,
+                    '--path',
+                    opts.outputDir,
+                    '--format',
+                    fmt,
                     // Spytify records whatever Spotify is currently playing;
                     // the sourceUrl is informational for progress tracking only.
                 ];
 
                 const { spawn } = await import('child_process');
-                const proc = spawn(this.exe, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+                const proc = spawn(this.exe, args, {
+                    stdio: ['ignore', 'pipe', 'pipe'],
+                });
                 this.activeProcess = proc;
 
                 let lastStderr = '';
@@ -129,7 +147,9 @@ export class SpytifyBackend implements DownloadBackend {
                     }
 
                     // Rough progress heuristic from "Recording... XX%"
-                    const progressMatch = line.match(/Recording\.\.\.\s*(\d+)%/i);
+                    const progressMatch = line.match(
+                        /Recording\.\.\.\s*(\d+)%/i,
+                    );
                     if (progressMatch) {
                         yield {
                             type: 'progress' as const,

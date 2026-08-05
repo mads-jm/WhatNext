@@ -3,7 +3,10 @@
  * Highlighted when the local user has reacted.
  */
 
-import { REACTION_DISPLAY, type ReactionEmoji } from '../../../shared/core/reactions';
+import {
+    REACTION_DISPLAY,
+    type ReactionEmoji,
+} from '../../../shared/core/reactions';
 
 interface ReactionButtonProps {
     emoji: ReactionEmoji;
@@ -12,7 +15,12 @@ interface ReactionButtonProps {
     onClick: () => void;
 }
 
-export function ReactionButton({ emoji, count, userReacted, onClick }: ReactionButtonProps) {
+export function ReactionButton({
+    emoji,
+    count,
+    userReacted,
+    onClick,
+}: ReactionButtonProps) {
     return (
         <button
             onClick={onClick}

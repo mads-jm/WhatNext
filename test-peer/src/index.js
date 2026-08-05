@@ -76,7 +76,9 @@ import {
 // Identity
 // ========================================
 
-const PEER_NAME = process.env.PEER_NAME || `TestPeer-${Math.random().toString(36).substr(2, 6)}`;
+const PEER_NAME =
+    process.env.PEER_NAME ||
+    `TestPeer-${Math.random().toString(36).substr(2, 6)}`;
 const LOCAL_USER_ID = randomUUID();
 
 // Downloads directory: test-peer/downloads/
@@ -98,8 +100,8 @@ const LOCAL_HANDSHAKE_DATA = {
 
 let node = null;
 let discoveredPeers = new Map(); // peerId -> { multiaddrs, timestamp }
-let connectedPeers = new Set();  // Set<peerId string>
-let relayAddresses = [];         // multiaddr strings for circuit relay servers
+let connectedPeers = new Set(); // Set<peerId string>
+let relayAddresses = []; // multiaddr strings for circuit relay servers
 
 // Hoisted readline interface so protocol callbacks can call rl.prompt().
 const rl = readline.createInterface({
@@ -153,7 +155,11 @@ async function startNode() {
 
         // Register protocol handlers. The responder and the dialer share one
         // completion path (onHandshakeComplete) — mirrors the app's p2p-service.
-        registerHandshakeProtocol(node, LOCAL_HANDSHAKE_DATA, onHandshakeComplete);
+        registerHandshakeProtocol(
+            node,
+            LOCAL_HANDSHAKE_DATA,
+            onHandshakeComplete,
+        );
 
         registerReplicationProtocol(
             node,
@@ -164,18 +170,22 @@ async function startNode() {
             // onPushReceived: apply incoming push and log changes
             async (collection, documents) => {
                 const result = applyDocuments(collection, documents);
-                console.log(chalk.cyan(
-                    `\n[Replication] Push received: ${result.applied} applied, ${result.skipped} skipped (${collection})`,
-                ));
+                console.log(
+                    chalk.cyan(
+                        `\n[Replication] Push received: ${result.applied} applied, ${result.skipped} skipped (${collection})`,
+                    ),
+                );
                 logChangeSummary(result.changes, collection);
                 rl.prompt();
             },
             // onPullResponse: apply pull results and log changes
             (collection, documents, checkpoint) => {
                 const result = applyDocuments(collection, documents);
-                console.log(chalk.cyan(
-                    `\n[Replication] Pull complete: ${result.applied} applied, ${result.skipped} skipped (${collection})`,
-                ));
+                console.log(
+                    chalk.cyan(
+                        `\n[Replication] Pull complete: ${result.applied} applied, ${result.skipped} skipped (${collection})`,
+                    ),
+                );
                 logChangeSummary(result.changes, collection);
                 rl.prompt();
             },
@@ -184,15 +194,21 @@ async function startNode() {
         registerFileTransferProtocol(node, {
             getLocalFiles: () => getAllTestFiles(),
             onTransferStarted: (sha256, filename, totalBytes, peerId) => {
-                console.log(chalk.cyan(
-                    `\n[FileTransfer] Started: ${filename} (${(totalBytes / 1024).toFixed(1)}KB) from ${peerId.slice(0, 12)}...\n`,
-                ));
+                console.log(
+                    chalk.cyan(
+                        `\n[FileTransfer] Started: ${filename} (${(totalBytes / 1024).toFixed(1)}KB) from ${peerId.slice(0, 12)}...\n`,
+                    ),
+                );
                 rl.prompt();
             },
             onProgress: (sha256, bytesReceived, totalBytes) => {
                 if (totalBytes > 0) {
                     const pct = Math.floor((bytesReceived / totalBytes) * 100);
-                    process.stdout.write(chalk.gray(`\r[FileTransfer] ${sha256.slice(0, 8)}... ${pct}% (${(bytesReceived / 1024).toFixed(1)}/${(totalBytes / 1024).toFixed(1)}KB)`));
+                    process.stdout.write(
+                        chalk.gray(
+                            `\r[FileTransfer] ${sha256.slice(0, 8)}... ${pct}% (${(bytesReceived / 1024).toFixed(1)}/${(totalBytes / 1024).toFixed(1)}KB)`,
+                        ),
+                    );
                 }
             },
             onComplete: async (sha256, buf, filename) => {
@@ -200,39 +216,64 @@ async function startNode() {
                 try {
                     // Verify hash
                     const { createHash } = await import('node:crypto');
-                    const actualHash = createHash('sha256').update(buf).digest('hex');
+                    const actualHash = createHash('sha256')
+                        .update(buf)
+                        .digest('hex');
                     const hashOk = actualHash === sha256;
 
                     // Save to downloads dir
                     if (!fs.existsSync(DOWNLOADS_DIR)) {
                         fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });
                     }
-                    const outPath = path.join(DOWNLOADS_DIR, filename || `${sha256.slice(0, 8)}.bin`);
+                    const outPath = path.join(
+                        DOWNLOADS_DIR,
+                        filename || `${sha256.slice(0, 8)}.bin`,
+                    );
                     fs.writeFileSync(outPath, buf);
 
                     if (hashOk) {
-                        console.log(chalk.green(`\n[FileTransfer] Downloaded: ${outPath} (${(buf.length / 1024).toFixed(1)}KB) SHA-256 OK\n`));
+                        console.log(
+                            chalk.green(
+                                `\n[FileTransfer] Downloaded: ${outPath} (${(buf.length / 1024).toFixed(1)}KB) SHA-256 OK\n`,
+                            ),
+                        );
                     } else {
-                        console.log(chalk.red(`\n[FileTransfer] Downloaded: ${outPath} — SHA-256 MISMATCH (expected ${sha256.slice(0, 8)}... got ${actualHash.slice(0, 8)}...)\n`));
+                        console.log(
+                            chalk.red(
+                                `\n[FileTransfer] Downloaded: ${outPath} — SHA-256 MISMATCH (expected ${sha256.slice(0, 8)}... got ${actualHash.slice(0, 8)}...)\n`,
+                            ),
+                        );
                     }
                 } catch (err) {
-                    console.log(chalk.red(`\n[FileTransfer] Failed to save file: ${err.message}\n`));
+                    console.log(
+                        chalk.red(
+                            `\n[FileTransfer] Failed to save file: ${err.message}\n`,
+                        ),
+                    );
                 }
                 rl.prompt();
             },
             onError: (sha256, error) => {
                 process.stdout.write('\n');
-                console.log(chalk.red(`\n[FileTransfer] Error for ${sha256.slice(0, 8)}...: ${error}\n`));
+                console.log(
+                    chalk.red(
+                        `\n[FileTransfer] Error for ${sha256.slice(0, 8)}...: ${error}\n`,
+                    ),
+                );
                 rl.prompt();
             },
             onCancelled: (sha256) => {
-                console.log(chalk.yellow(`\n[FileTransfer] Cancelled: ${sha256.slice(0, 8)}...\n`));
+                console.log(
+                    chalk.yellow(
+                        `\n[FileTransfer] Cancelled: ${sha256.slice(0, 8)}...\n`,
+                    ),
+                );
                 rl.prompt();
             },
         });
 
         const peerId = node.peerId.toString();
-        const multiaddrs = node.getMultiaddrs().map(ma => ma.toString());
+        const multiaddrs = node.getMultiaddrs().map((ma) => ma.toString());
 
         console.log(chalk.green('✅ Node started successfully!\n'));
         console.log(chalk.bold('Identity:'));
@@ -241,10 +282,14 @@ async function startNode() {
         console.log(chalk.bold('\nPeer ID:'));
         console.log(chalk.yellow(`  ${peerId}\n`));
         console.log(chalk.bold('Listening on:'));
-        multiaddrs.forEach(addr => console.log(chalk.gray(`  ${addr}`)));
+        multiaddrs.forEach((addr) => console.log(chalk.gray(`  ${addr}`)));
         console.log(chalk.gray('\n' + '─'.repeat(80) + '\n'));
         console.log(chalk.cyan('👂 Listening for mDNS peer discovery...'));
-        console.log(chalk.gray('   (Make sure WhatNext Electron app is running on same network)\n'));
+        console.log(
+            chalk.gray(
+                '   (Make sure WhatNext Electron app is running on same network)\n',
+            ),
+        );
     } catch (error) {
         console.error(chalk.red('\n❌ Failed to start node:'), error);
         process.exit(1);
@@ -277,8 +322,14 @@ function onHandshakeComplete(remotePeerId, data) {
     setHandshakeInfo(remotePeerId, data);
     if (alreadyKnown) return;
 
-    console.log(chalk.magenta(`\n[Handshake] ✅ Complete with ${data.displayName}`));
-    console.log(chalk.gray(`   Capabilities: ${(data.capabilities ?? []).join(', ')}\n`));
+    console.log(
+        chalk.magenta(`\n[Handshake] ✅ Complete with ${data.displayName}`),
+    );
+    console.log(
+        chalk.gray(
+            `   Capabilities: ${(data.capabilities ?? []).join(', ')}\n`,
+        ),
+    );
     rl.prompt();
 }
 
@@ -290,7 +341,7 @@ function setupEventListeners() {
     // Peer discovered via mDNS
     node.addEventListener('peer:discovery', (evt) => {
         const peerId = evt.detail.id.toString();
-        const multiaddrs = evt.detail.multiaddrs.map(ma => ma.toString());
+        const multiaddrs = evt.detail.multiaddrs.map((ma) => ma.toString());
 
         discoveredPeers.set(peerId, {
             multiaddrs,
@@ -299,8 +350,14 @@ function setupEventListeners() {
 
         console.log(chalk.green('🔍 Peer discovered!'));
         console.log(chalk.gray(`   Peer ID: ${peerId.slice(0, 20)}...`));
-        console.log(chalk.gray(`   Multiaddrs: ${multiaddrs.length} address(es)`));
-        console.log(chalk.gray(`   Type 'connect ${discoveredPeers.size}' to connect\n`));
+        console.log(
+            chalk.gray(`   Multiaddrs: ${multiaddrs.length} address(es)`),
+        );
+        console.log(
+            chalk.gray(
+                `   Type 'connect ${discoveredPeers.size}' to connect\n`,
+            ),
+        );
     });
 
     // Peer connected — auto-initiate handshake
@@ -310,7 +367,9 @@ function setupEventListeners() {
 
         console.log(chalk.green.bold('\n[P2P] ✅ Connected to peer!'));
         console.log(chalk.gray(`   Peer ID: ${peerId.slice(0, 20)}...`));
-        console.log(chalk.gray(`   Total connections: ${connectedPeers.size}\n`));
+        console.log(
+            chalk.gray(`   Total connections: ${connectedPeers.size}\n`),
+        );
 
         // Small delay so the remote has time to register its protocol handler
         // before we dial it. Both sides fire peer:connect simultaneously.
@@ -318,10 +377,18 @@ function setupEventListeners() {
             try {
                 // initiateHandshake now resolves with the REMOTE's HandshakeData;
                 // this is the dialing side's only completion path (#58).
-                const remoteData = await initiateHandshake(node, peerId, LOCAL_HANDSHAKE_DATA);
+                const remoteData = await initiateHandshake(
+                    node,
+                    peerId,
+                    LOCAL_HANDSHAKE_DATA,
+                );
                 onHandshakeComplete(peerId, remoteData);
             } catch (err) {
-                console.log(chalk.yellow(`[Handshake] Failed to initiate: ${err.message}\n`));
+                console.log(
+                    chalk.yellow(
+                        `[Handshake] Failed to initiate: ${err.message}\n`,
+                    ),
+                );
             }
             rl.prompt();
         }, 200);
@@ -335,7 +402,9 @@ function setupEventListeners() {
 
         console.log(chalk.yellow('\n[P2P] ⚠️  Disconnected from peer'));
         console.log(chalk.gray(`   Peer ID: ${peerId.slice(0, 20)}...`));
-        console.log(chalk.gray(`   Total connections: ${connectedPeers.size}\n`));
+        console.log(
+            chalk.gray(`   Total connections: ${connectedPeers.size}\n`),
+        );
     });
 }
 
@@ -353,13 +422,19 @@ function setupEventListeners() {
 function resolvePeer(indexArg) {
     const peers = Array.from(connectedPeers);
     if (peers.length === 0) {
-        console.log(chalk.red('\n❌ No connected peers. Use "connect <n>" first.\n'));
+        console.log(
+            chalk.red('\n❌ No connected peers. Use "connect <n>" first.\n'),
+        );
         return null;
     }
     if (indexArg !== undefined) {
         const idx = parseInt(indexArg, 10) - 1;
         if (isNaN(idx) || idx < 0 || idx >= peers.length) {
-            console.log(chalk.red(`\n❌ Peer index ${indexArg} out of range (1–${peers.length})\n`));
+            console.log(
+                chalk.red(
+                    `\n❌ Peer index ${indexArg} out of range (1–${peers.length})\n`,
+                ),
+            );
             return null;
         }
         return peers[idx];
@@ -374,37 +449,122 @@ function resolvePeer(indexArg) {
 function showHelp() {
     console.log(chalk.cyan('\n📖 Commands:\n'));
     console.log(chalk.bold('  Connection'));
-    console.log(chalk.white('  list') + chalk.gray('                           List discovered peers'));
-    console.log(chalk.white('  connect <n>') + chalk.gray('                   Connect to discovered peer n'));
-    console.log(chalk.white('  connections') + chalk.gray('                   Show active connections'));
-    console.log(chalk.white('  status') + chalk.gray('                        Show node status'));
+    console.log(
+        chalk.white('  list') +
+            chalk.gray('                           List discovered peers'),
+    );
+    console.log(
+        chalk.white('  connect <n>') +
+            chalk.gray('                   Connect to discovered peer n'),
+    );
+    console.log(
+        chalk.white('  connections') +
+            chalk.gray('                   Show active connections'),
+    );
+    console.log(
+        chalk.white('  status') +
+            chalk.gray('                        Show node status'),
+    );
     console.log('');
     console.log(chalk.bold('  Session & Playlist'));
-    console.log(chalk.white('  pull [n]') + chalk.gray('                      Pull all collections from peer n (default: first connected)'));
-    console.log(chalk.white('  track-add [n] <title> [artist]') + chalk.gray(' Create a track locally and push to peer n'));
-    console.log(chalk.white('  playlist') + chalk.gray('                      Show current playlist state (tracks, mode, turn info)'));
-    console.log(chalk.white('  tracks') + chalk.gray('                        List all known tracks with 1-based indices'));
-    console.log(chalk.white('  peers-info') + chalk.gray('                    Show handshake info for connected peers'));
-    console.log(chalk.white('  vote [n] <trackIdx> <+1|-1>') + chalk.gray('  Send vote for a track to peer n'));
-    console.log(chalk.white('  session') + chalk.gray('                       Show full session state (collections, checkpoints)'));
+    console.log(
+        chalk.white('  pull [n]') +
+            chalk.gray(
+                '                      Pull all collections from peer n (default: first connected)',
+            ),
+    );
+    console.log(
+        chalk.white('  track-add [n] <title> [artist]') +
+            chalk.gray(' Create a track locally and push to peer n'),
+    );
+    console.log(
+        chalk.white('  playlist') +
+            chalk.gray(
+                '                      Show current playlist state (tracks, mode, turn info)',
+            ),
+    );
+    console.log(
+        chalk.white('  tracks') +
+            chalk.gray(
+                '                        List all known tracks with 1-based indices',
+            ),
+    );
+    console.log(
+        chalk.white('  peers-info') +
+            chalk.gray(
+                '                    Show handshake info for connected peers',
+            ),
+    );
+    console.log(
+        chalk.white('  vote [n] <trackIdx> <+1|-1>') +
+            chalk.gray('  Send vote for a track to peer n'),
+    );
+    console.log(
+        chalk.white('  session') +
+            chalk.gray(
+                '                       Show full session state (collections, checkpoints)',
+            ),
+    );
     console.log('');
     console.log(chalk.bold('  File Transfer'));
-    console.log(chalk.white('  manifest <n> [playlist-id]') + chalk.gray('    Request file manifest from peer n (alias: mf)'));
-    console.log(chalk.white('  download <n> <sha256>') + chalk.gray('         Download a file from peer n by sha256 (alias: dl)'));
-    console.log(chalk.white('  files') + chalk.gray('                         List local test files available to serve (alias: f)'));
-    console.log(chalk.white('  file-add [name] [size-kb]') + chalk.gray('     Add a random test file (alias: fa)'));
-    console.log(chalk.white('  transfers') + chalk.gray('                     Show active/completed transfers (alias: tf)'));
-    console.log(chalk.white('  transfer-cancel <sha256>') + chalk.gray('      Cancel an active transfer (alias: tc)'));
+    console.log(
+        chalk.white('  manifest <n> [playlist-id]') +
+            chalk.gray('    Request file manifest from peer n (alias: mf)'),
+    );
+    console.log(
+        chalk.white('  download <n> <sha256>') +
+            chalk.gray(
+                '         Download a file from peer n by sha256 (alias: dl)',
+            ),
+    );
+    console.log(
+        chalk.white('  files') +
+            chalk.gray(
+                '                         List local test files available to serve (alias: f)',
+            ),
+    );
+    console.log(
+        chalk.white('  file-add [name] [size-kb]') +
+            chalk.gray('     Add a random test file (alias: fa)'),
+    );
+    console.log(
+        chalk.white('  transfers') +
+            chalk.gray(
+                '                     Show active/completed transfers (alias: tf)',
+            ),
+    );
+    console.log(
+        chalk.white('  transfer-cancel <sha256>') +
+            chalk.gray('      Cancel an active transfer (alias: tc)'),
+    );
     console.log('');
     console.log(chalk.bold('  Relay'));
-    console.log(chalk.white('  relay-add <multiaddr>') + chalk.gray('          Add and connect to a relay server'));
-    console.log(chalk.white('  relay-list') + chalk.gray('                    List configured relay servers'));
-    console.log(chalk.white('  relay-connect') + chalk.gray('                 Reconnect to all configured relays'));
-    console.log(chalk.white('  relay-remove <n>') + chalk.gray('              Remove relay by index'));
+    console.log(
+        chalk.white('  relay-add <multiaddr>') +
+            chalk.gray('          Add and connect to a relay server'),
+    );
+    console.log(
+        chalk.white('  relay-list') +
+            chalk.gray('                    List configured relay servers'),
+    );
+    console.log(
+        chalk.white('  relay-connect') +
+            chalk.gray('                 Reconnect to all configured relays'),
+    );
+    console.log(
+        chalk.white('  relay-remove <n>') +
+            chalk.gray('              Remove relay by index'),
+    );
     console.log('');
     console.log(chalk.bold('  General'));
-    console.log(chalk.white('  help') + chalk.gray('                          Show this help'));
-    console.log(chalk.white('  exit') + chalk.gray('                          Stop the node and exit'));
+    console.log(
+        chalk.white('  help') +
+            chalk.gray('                          Show this help'),
+    );
+    console.log(
+        chalk.white('  exit') +
+            chalk.gray('                          Stop the node and exit'),
+    );
     console.log('');
 }
 
@@ -414,17 +574,25 @@ function listPeers() {
         return;
     }
 
-    console.log(chalk.cyan(`\n📋 Discovered Peers (${discoveredPeers.size}):\n`));
+    console.log(
+        chalk.cyan(`\n📋 Discovered Peers (${discoveredPeers.size}):\n`),
+    );
 
     let index = 1;
     for (const [peerId, info] of discoveredPeers.entries()) {
         const isConnected = connectedPeers.has(peerId);
-        const status = isConnected ? chalk.green('[CONNECTED]') : chalk.gray('[DISCONNECTED]');
+        const status = isConnected
+            ? chalk.green('[CONNECTED]')
+            : chalk.gray('[DISCONNECTED]');
 
         console.log(chalk.white(`${index}. `) + status);
         console.log(chalk.gray(`   Peer ID: ${peerId.slice(0, 40)}...`));
         console.log(chalk.gray(`   Discovered: ${info.timestamp}`));
-        console.log(chalk.gray(`   Multiaddrs: ${info.multiaddrs.length} address(es)\n`));
+        console.log(
+            chalk.gray(
+                `   Multiaddrs: ${info.multiaddrs.length} address(es)\n`,
+            ),
+        );
         index++;
     }
 }
@@ -435,7 +603,9 @@ function showConnections() {
         return;
     }
 
-    console.log(chalk.cyan(`\n🔗 Active Connections (${connectedPeers.size}):\n`));
+    console.log(
+        chalk.cyan(`\n🔗 Active Connections (${connectedPeers.size}):\n`),
+    );
 
     let index = 1;
     for (const peerId of connectedPeers) {
@@ -454,12 +624,20 @@ function showStatus() {
     console.log(chalk.cyan('\n📊 Node Status:\n'));
     console.log(chalk.white('  Name:      ') + chalk.yellow(PEER_NAME));
     console.log(chalk.white('  Peer ID:   ') + chalk.yellow(peerId));
-    console.log(chalk.white('  Multiaddrs:') + chalk.gray(` ${multiaddrs.length}`));
-    multiaddrs.forEach(addr => {
+    console.log(
+        chalk.white('  Multiaddrs:') + chalk.gray(` ${multiaddrs.length}`),
+    );
+    multiaddrs.forEach((addr) => {
         console.log(chalk.gray(`    ${addr.toString()}`));
     });
-    console.log(chalk.white('  Discovered Peers:  ') + chalk.yellow(discoveredPeers.size));
-    console.log(chalk.white('  Active Connections:') + chalk.green(` ${connectedPeers.size}`));
+    console.log(
+        chalk.white('  Discovered Peers:  ') +
+            chalk.yellow(discoveredPeers.size),
+    );
+    console.log(
+        chalk.white('  Active Connections:') +
+            chalk.green(` ${connectedPeers.size}`),
+    );
     console.log('');
 }
 
@@ -467,14 +645,22 @@ async function connectToPeer(peerNumber) {
     const peerIndex = parseInt(peerNumber, 10) - 1;
 
     if (isNaN(peerIndex) || peerIndex < 0) {
-        console.log(chalk.red('\n❌ Invalid peer number. Use "list" to see available peers.\n'));
+        console.log(
+            chalk.red(
+                '\n❌ Invalid peer number. Use "list" to see available peers.\n',
+            ),
+        );
         return;
     }
 
     const peersArray = Array.from(discoveredPeers.entries());
 
     if (peerIndex >= peersArray.length) {
-        console.log(chalk.red(`\n❌ Peer number ${peerNumber} not found. Only ${peersArray.length} peer(s) discovered.\n`));
+        console.log(
+            chalk.red(
+                `\n❌ Peer number ${peerNumber} not found. Only ${peersArray.length} peer(s) discovered.\n`,
+            ),
+        );
         return;
     }
 
@@ -493,23 +679,37 @@ async function connectToPeer(peerNumber) {
 
         const existingConns = node.getConnections(targetPeerId);
         if (existingConns.length > 0) {
-            console.log(chalk.yellow('\n⚠️  Already connected to this peer (existing connection found)\n'));
+            console.log(
+                chalk.yellow(
+                    '\n⚠️  Already connected to this peer (existing connection found)\n',
+                ),
+            );
             return;
         }
 
         const peer = await node.peerStore.get(targetPeerId);
 
         if (!peer || peer.addresses.length === 0) {
-            console.log(chalk.red('❌ Peer not in peerStore or no addresses available\n'));
+            console.log(
+                chalk.red(
+                    '❌ Peer not in peerStore or no addresses available\n',
+                ),
+            );
             return;
         }
 
-        console.log(chalk.gray(`   Trying ${peer.addresses.length} address(es)...\n`));
+        console.log(
+            chalk.gray(`   Trying ${peer.addresses.length} address(es)...\n`),
+        );
 
         const connection = await node.dial(targetPeerId);
 
         console.log(chalk.green('✅ Connection initiated!'));
-        console.log(chalk.gray(`   Remote address: ${connection.remoteAddr.toString()}\n`));
+        console.log(
+            chalk.gray(
+                `   Remote address: ${connection.remoteAddr.toString()}\n`,
+            ),
+        );
     } catch (error) {
         console.log(chalk.red('❌ Connection failed:'), error.message);
         console.log(chalk.gray('\nPossible reasons:'));
@@ -529,7 +729,11 @@ async function cmdPull(peerArg) {
     const peerId = resolvePeer(peerArg);
     if (!peerId) return;
 
-    console.log(chalk.cyan(`\n📥 Pulling all collections from ${peerId.slice(0, 16)}...\n`));
+    console.log(
+        chalk.cyan(
+            `\n📥 Pulling all collections from ${peerId.slice(0, 16)}...\n`,
+        ),
+    );
 
     for (const collection of COLLECTIONS) {
         try {
@@ -537,10 +741,14 @@ async function cmdPull(peerArg) {
             const checkpoint = getCheckpoint(collection);
             await pullCollection(node, peerId, collection, checkpoint);
         } catch (err) {
-            console.log(chalk.red(`  ❌ Failed to pull ${collection}: ${err.message}`));
+            console.log(
+                chalk.red(`  ❌ Failed to pull ${collection}: ${err.message}`),
+            );
         }
     }
-    console.log(chalk.gray('Pull requests sent. Responses arrive asynchronously.\n'));
+    console.log(
+        chalk.gray('Pull requests sent. Responses arrive asynchronously.\n'),
+    );
 }
 
 /**
@@ -556,7 +764,9 @@ async function cmdPull(peerArg) {
  */
 async function cmdTrackAdd(args) {
     if (args.length === 0) {
-        console.log(chalk.red('\n❌ Usage: track-add [peerIdx] <title> [artist]\n'));
+        console.log(
+            chalk.red('\n❌ Usage: track-add [peerIdx] <title> [artist]\n'),
+        );
         return;
     }
 
@@ -606,7 +816,9 @@ async function cmdTrackAdd(args) {
  */
 async function cmdVote(args) {
     if (args.length < 2) {
-        console.log(chalk.red('\n❌ Usage: vote [peerIdx] <trackIdx> <+1|-1>\n'));
+        console.log(
+            chalk.red('\n❌ Usage: vote [peerIdx] <trackIdx> <+1|-1>\n'),
+        );
         return;
     }
 
@@ -629,7 +841,11 @@ async function cmdVote(args) {
     const tracks = getTracksList();
 
     if (isNaN(trackIdx) || trackIdx < 0 || trackIdx >= tracks.length) {
-        console.log(chalk.red(`\n❌ Track index out of range. Use "tracks" to see available tracks (1–${tracks.length}).\n`));
+        console.log(
+            chalk.red(
+                `\n❌ Track index out of range. Use "tracks" to see available tracks (1–${tracks.length}).\n`,
+            ),
+        );
         return;
     }
 
@@ -640,7 +856,9 @@ async function cmdVote(args) {
     const doc = createVoteDocument(LOCAL_USER_ID, trackId, value);
     applyDocuments('trackInteractions', [doc]);
 
-    console.log(chalk.yellow(`\n👍 Vote ${value > 0 ? '+1' : '-1'} for: ${trackTitle}`));
+    console.log(
+        chalk.yellow(`\n👍 Vote ${value > 0 ? '+1' : '-1'} for: ${trackTitle}`),
+    );
 
     try {
         await pushDocuments(node, peerId, 'trackInteractions', [doc]);
@@ -666,12 +884,20 @@ async function cmdManifest(args) {
     // Determine playlist-id: second arg, or first playlist from session, or fallback
     let playlistId = args[1] ?? 'test-playlist';
 
-    console.log(chalk.cyan(`\n[FileTransfer] Requesting manifest from ${peerId.slice(0, 16)}... (playlist: ${playlistId})\n`));
+    console.log(
+        chalk.cyan(
+            `\n[FileTransfer] Requesting manifest from ${peerId.slice(0, 16)}... (playlist: ${playlistId})\n`,
+        ),
+    );
 
     try {
         const manifest = await requestManifest(node, peerId, playlistId);
 
-        console.log(chalk.cyan(`\n[FileTransfer] Manifest received from ${manifest.peerId.slice(0, 16)}...`));
+        console.log(
+            chalk.cyan(
+                `\n[FileTransfer] Manifest received from ${manifest.peerId.slice(0, 16)}...`,
+            ),
+        );
         console.log(chalk.gray(`  Playlist: ${manifest.playlistId}`));
         console.log(chalk.gray(`  Generated: ${manifest.generatedAt}`));
         console.log(chalk.bold(`\n  Files (${manifest.files.length}):\n`));
@@ -682,14 +908,20 @@ async function cmdManifest(args) {
             manifest.files.forEach((f, i) => {
                 console.log(
                     chalk.white(`  ${i + 1}. ${f.filename}`) +
-                    chalk.gray(` [${f.type}] ${(f.sizeBytes / 1024).toFixed(1)}KB`),
+                        chalk.gray(
+                            ` [${f.type}] ${(f.sizeBytes / 1024).toFixed(1)}KB`,
+                        ),
                 );
                 console.log(chalk.gray(`     sha256: ${f.sha256}`));
             });
             console.log('');
         }
     } catch (err) {
-        console.log(chalk.red(`\n[FileTransfer] Manifest request failed: ${err.message}\n`));
+        console.log(
+            chalk.red(
+                `\n[FileTransfer] Manifest request failed: ${err.message}\n`,
+            ),
+        );
     }
 }
 
@@ -700,7 +932,9 @@ async function cmdManifest(args) {
  */
 async function cmdDownload(args) {
     if (args.length < 2) {
-        console.log(chalk.red('\n[FileTransfer] Usage: download <peer-idx> <sha256>\n'));
+        console.log(
+            chalk.red('\n[FileTransfer] Usage: download <peer-idx> <sha256>\n'),
+        );
         return;
     }
 
@@ -713,41 +947,68 @@ async function cmdDownload(args) {
         return;
     }
 
-    console.log(chalk.cyan(`\n[FileTransfer] Requesting ${sha256.slice(0, 8)}... from ${peerId.slice(0, 16)}...\n`));
+    console.log(
+        chalk.cyan(
+            `\n[FileTransfer] Requesting ${sha256.slice(0, 8)}... from ${peerId.slice(0, 16)}...\n`,
+        ),
+    );
 
     try {
         await requestFile(node, peerId, sha256, 0, {
             onTransferStarted: (sha256, filename, totalBytes, peerId) => {
-                console.log(chalk.cyan(
-                    `[FileTransfer] Transfer started: ${filename} (${(totalBytes / 1024).toFixed(1)}KB)\n`,
-                ));
+                console.log(
+                    chalk.cyan(
+                        `[FileTransfer] Transfer started: ${filename} (${(totalBytes / 1024).toFixed(1)}KB)\n`,
+                    ),
+                );
             },
             onProgress: (sha256, bytesReceived, totalBytes) => {
                 if (totalBytes > 0) {
                     const pct = Math.floor((bytesReceived / totalBytes) * 100);
-                    process.stdout.write(chalk.gray(`\r  Progress: ${pct}% (${(bytesReceived / 1024).toFixed(1)}/${(totalBytes / 1024).toFixed(1)}KB)`));
+                    process.stdout.write(
+                        chalk.gray(
+                            `\r  Progress: ${pct}% (${(bytesReceived / 1024).toFixed(1)}/${(totalBytes / 1024).toFixed(1)}KB)`,
+                        ),
+                    );
                 }
             },
             onComplete: async (sha256, buf, filename) => {
                 process.stdout.write('\n');
                 try {
                     const { createHash } = await import('node:crypto');
-                    const actualHash = createHash('sha256').update(buf).digest('hex');
+                    const actualHash = createHash('sha256')
+                        .update(buf)
+                        .digest('hex');
                     const hashOk = actualHash === sha256;
 
                     if (!fs.existsSync(DOWNLOADS_DIR)) {
                         fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });
                     }
-                    const outPath = path.join(DOWNLOADS_DIR, filename || `${sha256.slice(0, 8)}.bin`);
+                    const outPath = path.join(
+                        DOWNLOADS_DIR,
+                        filename || `${sha256.slice(0, 8)}.bin`,
+                    );
                     fs.writeFileSync(outPath, buf);
 
                     if (hashOk) {
-                        console.log(chalk.green(`\n[FileTransfer] Saved: ${outPath} (${(buf.length / 1024).toFixed(1)}KB) SHA-256 OK\n`));
+                        console.log(
+                            chalk.green(
+                                `\n[FileTransfer] Saved: ${outPath} (${(buf.length / 1024).toFixed(1)}KB) SHA-256 OK\n`,
+                            ),
+                        );
                     } else {
-                        console.log(chalk.red(`\n[FileTransfer] Saved: ${outPath} — SHA-256 MISMATCH\n`));
+                        console.log(
+                            chalk.red(
+                                `\n[FileTransfer] Saved: ${outPath} — SHA-256 MISMATCH\n`,
+                            ),
+                        );
                     }
                 } catch (err) {
-                    console.log(chalk.red(`\n[FileTransfer] Save failed: ${err.message}\n`));
+                    console.log(
+                        chalk.red(
+                            `\n[FileTransfer] Save failed: ${err.message}\n`,
+                        ),
+                    );
                 }
                 rl.prompt();
             },
@@ -763,7 +1024,11 @@ async function cmdDownload(args) {
         });
         console.log(chalk.gray('Download initiated — waiting for file...\n'));
     } catch (err) {
-        console.log(chalk.red(`\n[FileTransfer] Download request failed: ${err.message}\n`));
+        console.log(
+            chalk.red(
+                `\n[FileTransfer] Download request failed: ${err.message}\n`,
+            ),
+        );
     }
 }
 
@@ -773,15 +1038,21 @@ async function cmdDownload(args) {
 function cmdFiles() {
     const files = getAllTestFiles();
     if (files.length === 0) {
-        console.log(chalk.yellow('\n[FileTransfer] No test files. Use "file-add" to create one.\n'));
+        console.log(
+            chalk.yellow(
+                '\n[FileTransfer] No test files. Use "file-add" to create one.\n',
+            ),
+        );
         return;
     }
 
-    console.log(chalk.cyan(`\n[FileTransfer] Local Test Files (${files.length}):\n`));
+    console.log(
+        chalk.cyan(`\n[FileTransfer] Local Test Files (${files.length}):\n`),
+    );
     files.forEach((f, i) => {
         console.log(
             chalk.white(`  ${i + 1}. ${f.filename}`) +
-            chalk.gray(` [${f.type}] ${(f.sizeBytes / 1024).toFixed(1)}KB`),
+                chalk.gray(` [${f.type}] ${(f.sizeBytes / 1024).toFixed(1)}KB`),
         );
         console.log(chalk.gray(`     sha256: ${f.sha256}`));
     });
@@ -798,7 +1069,11 @@ async function cmdFileAdd(args) {
     const sizeKb = parseInt(args[1] ?? '128', 10);
 
     if (isNaN(sizeKb) || sizeKb <= 0) {
-        console.log(chalk.red('\n[FileTransfer] Invalid size. Usage: file-add [name] [size-kb]\n'));
+        console.log(
+            chalk.red(
+                '\n[FileTransfer] Invalid size. Usage: file-add [name] [size-kb]\n',
+            ),
+        );
         return;
     }
 
@@ -820,23 +1095,31 @@ function cmdTransfers() {
         return;
     }
 
-    console.log(chalk.cyan(`\n[FileTransfer] Transfers (${transfers.length}):\n`));
+    console.log(
+        chalk.cyan(`\n[FileTransfer] Transfers (${transfers.length}):\n`),
+    );
     for (const t of transfers) {
-        const pct = t.totalBytes > 0 ? Math.floor((t.bytesReceived / t.totalBytes) * 100) : 0;
-        const statusColor = {
-            transferring: chalk.cyan,
-            complete: chalk.green,
-            error: chalk.red,
-            cancelled: chalk.yellow,
-            pending: chalk.gray,
-            verifying: chalk.blue,
-        }[t.status] ?? chalk.white;
+        const pct =
+            t.totalBytes > 0
+                ? Math.floor((t.bytesReceived / t.totalBytes) * 100)
+                : 0;
+        const statusColor =
+            {
+                transferring: chalk.cyan,
+                complete: chalk.green,
+                error: chalk.red,
+                cancelled: chalk.yellow,
+                pending: chalk.gray,
+                verifying: chalk.blue,
+            }[t.status] ?? chalk.white;
 
         console.log(
             chalk.white(`  ${t.sha256.slice(0, 8)}...`) +
-            chalk.gray(` ${t.filename}`) +
-            statusColor(` [${t.status}]`) +
-            chalk.gray(` ${pct}% (${(t.bytesReceived / 1024).toFixed(1)}/${(t.totalBytes / 1024).toFixed(1)}KB)`),
+                chalk.gray(` ${t.filename}`) +
+                statusColor(` [${t.status}]`) +
+                chalk.gray(
+                    ` ${pct}% (${(t.bytesReceived / 1024).toFixed(1)}/${(t.totalBytes / 1024).toFixed(1)}KB)`,
+                ),
         );
         if (t.error) {
             console.log(chalk.red(`    Error: ${t.error}`));
@@ -852,16 +1135,22 @@ function cmdTransfers() {
  */
 async function cmdTransferCancel(args) {
     if (!args[0]) {
-        console.log(chalk.red('\n[FileTransfer] Usage: transfer-cancel <sha256>\n'));
+        console.log(
+            chalk.red('\n[FileTransfer] Usage: transfer-cancel <sha256>\n'),
+        );
         return;
     }
 
     const sha256Prefix = args[0];
     const transfers = getActiveTransfers();
-    const match = transfers.find(t => t.sha256.startsWith(sha256Prefix));
+    const match = transfers.find((t) => t.sha256.startsWith(sha256Prefix));
 
     if (!match) {
-        console.log(chalk.red(`\n[FileTransfer] No active transfer matching: ${sha256Prefix}\n`));
+        console.log(
+            chalk.red(
+                `\n[FileTransfer] No active transfer matching: ${sha256Prefix}\n`,
+            ),
+        );
         return;
     }
 
@@ -870,9 +1159,15 @@ async function cmdTransferCancel(args) {
 
     try {
         await cancelFileTransfer(node, peerId, match.sha256);
-        console.log(chalk.yellow(`\n[FileTransfer] Cancel sent for ${match.sha256.slice(0, 8)}...\n`));
+        console.log(
+            chalk.yellow(
+                `\n[FileTransfer] Cancel sent for ${match.sha256.slice(0, 8)}...\n`,
+            ),
+        );
     } catch (err) {
-        console.log(chalk.red(`\n[FileTransfer] Cancel failed: ${err.message}\n`));
+        console.log(
+            chalk.red(`\n[FileTransfer] Cancel failed: ${err.message}\n`),
+        );
     }
 }
 
@@ -887,7 +1182,11 @@ async function cmdTransferCancel(args) {
 async function cmdRelayAdd(addr) {
     if (!addr) {
         console.log(chalk.red('\n❌ Usage: relay-add <multiaddr>\n'));
-        console.log(chalk.gray('   Example: relay-add /ip4/1.2.3.4/tcp/4002/ws/p2p/12D3KooW...\n'));
+        console.log(
+            chalk.gray(
+                '   Example: relay-add /ip4/1.2.3.4/tcp/4002/ws/p2p/12D3KooW...\n',
+            ),
+        );
         return;
     }
 
@@ -896,7 +1195,9 @@ async function cmdRelayAdd(addr) {
         return;
     }
     if (!addr.includes('/p2p/')) {
-        console.log(chalk.red('\n❌ Multiaddr must include /p2p/<PeerId> component\n'));
+        console.log(
+            chalk.red('\n❌ Multiaddr must include /p2p/<PeerId> component\n'),
+        );
         return;
     }
 
@@ -914,7 +1215,11 @@ async function cmdRelayAdd(addr) {
         console.log(chalk.green('✅ Relay connected!\n'));
     } catch (err) {
         console.log(chalk.red(`❌ Relay connection failed: ${err.message}\n`));
-        console.log(chalk.gray('   The address was saved — it will be retried on "relay-connect".\n'));
+        console.log(
+            chalk.gray(
+                '   The address was saved — it will be retried on "relay-connect".\n',
+            ),
+        );
     }
 }
 
@@ -923,11 +1228,17 @@ async function cmdRelayAdd(addr) {
  */
 async function cmdRelayConnect() {
     if (relayAddresses.length === 0) {
-        console.log(chalk.yellow('\n⚠️  No relay addresses configured. Use "relay-add <multiaddr>" first.\n'));
+        console.log(
+            chalk.yellow(
+                '\n⚠️  No relay addresses configured. Use "relay-add <multiaddr>" first.\n',
+            ),
+        );
         return;
     }
 
-    console.log(chalk.cyan(`\n📡 Connecting to ${relayAddresses.length} relay(s)...\n`));
+    console.log(
+        chalk.cyan(`\n📡 Connecting to ${relayAddresses.length} relay(s)...\n`),
+    );
 
     for (const addr of relayAddresses) {
         try {
@@ -935,7 +1246,9 @@ async function cmdRelayConnect() {
             await node.dial(ma);
             console.log(chalk.green(`  ✅ ${addr.slice(0, 50)}...`));
         } catch (err) {
-            console.log(chalk.red(`  ❌ ${addr.slice(0, 50)}... — ${err.message}`));
+            console.log(
+                chalk.red(`  ❌ ${addr.slice(0, 50)}... — ${err.message}`),
+            );
         }
     }
     console.log('');
@@ -958,7 +1271,9 @@ function cmdRelayRemove(indexArg) {
 
     const idx = parseInt(indexArg, 10) - 1;
     if (isNaN(idx) || idx < 0 || idx >= relayAddresses.length) {
-        console.log(chalk.red(`\n❌ Index out of range (1–${relayAddresses.length})\n`));
+        console.log(
+            chalk.red(`\n❌ Index out of range (1–${relayAddresses.length})\n`),
+        );
         return;
     }
 
@@ -968,7 +1283,11 @@ function cmdRelayRemove(indexArg) {
 
 function cmdRelayList() {
     if (relayAddresses.length === 0) {
-        console.log(chalk.yellow('\n⚠️  No relay addresses configured. Use "relay-add <multiaddr>" to add one.\n'));
+        console.log(
+            chalk.yellow(
+                '\n⚠️  No relay addresses configured. Use "relay-add <multiaddr>" to add one.\n',
+            ),
+        );
         return;
     }
 
@@ -979,7 +1298,9 @@ function cmdRelayList() {
         const peerIdMatch = addr.match(/\/p2p\/(.+)$/);
         const relayPeerId = peerIdMatch ? peerIdMatch[1] : null;
         const isConnected = relayPeerId && connectedPeers.has(relayPeerId);
-        const status = isConnected ? chalk.green('[CONNECTED]') : chalk.gray('[DISCONNECTED]');
+        const status = isConnected
+            ? chalk.green('[CONNECTED]')
+            : chalk.gray('[DISCONNECTED]');
 
         console.log(chalk.white(`  ${i + 1}. `) + status);
         console.log(chalk.gray(`     ${addr}\n`));
@@ -991,7 +1312,9 @@ function cmdRelayList() {
 // ========================================
 
 function startCLI() {
-    console.log(chalk.cyan('\n💬 Interactive CLI ready. Type "help" for commands.\n'));
+    console.log(
+        chalk.cyan('\n💬 Interactive CLI ready. Type "help" for commands.\n'),
+    );
     rl.prompt();
 
     rl.on('line', async (line) => {
@@ -1012,7 +1335,9 @@ function startCLI() {
             case 'connect':
             case 'c':
                 if (args.length === 0) {
-                    console.log(chalk.red('\n❌ Usage: connect <peer-number>\n'));
+                    console.log(
+                        chalk.red('\n❌ Usage: connect <peer-number>\n'),
+                    );
                 } else {
                     await connectToPeer(args[0]);
                 }
@@ -1133,7 +1458,9 @@ function startCLI() {
 
             default:
                 console.log(chalk.red(`\n❌ Unknown command: ${command}`));
-                console.log(chalk.gray('   Type "help" for available commands\n'));
+                console.log(
+                    chalk.gray('   Type "help" for available commands\n'),
+                );
         }
 
         rl.prompt();
@@ -1152,28 +1479,48 @@ function startCLI() {
 
 async function main() {
     console.clear();
-    console.log(chalk.bold.cyan('╔════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.bold.cyan('║        WhatNext Test Peer Client v2.0                     ║'));
-    console.log(chalk.bold.cyan('║  Handshake · Replication · Playlist Validation            ║'));
-    console.log(chalk.bold.cyan('╚════════════════════════════════════════════════════════════╝'));
+    console.log(
+        chalk.bold.cyan(
+            '╔════════════════════════════════════════════════════════════╗',
+        ),
+    );
+    console.log(
+        chalk.bold.cyan(
+            '║        WhatNext Test Peer Client v2.0                     ║',
+        ),
+    );
+    console.log(
+        chalk.bold.cyan(
+            '║  Handshake · Replication · Playlist Validation            ║',
+        ),
+    );
+    console.log(
+        chalk.bold.cyan(
+            '╚════════════════════════════════════════════════════════════╝',
+        ),
+    );
 
     await startNode();
     startCLI();
 }
 
 process.on('SIGINT', async () => {
-    console.log(chalk.cyan('\n\n👋 Received SIGINT, shutting down gracefully...\n'));
+    console.log(
+        chalk.cyan('\n\n👋 Received SIGINT, shutting down gracefully...\n'),
+    );
     if (node) await node.stop();
     process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-    console.log(chalk.cyan('\n\n👋 Received SIGTERM, shutting down gracefully...\n'));
+    console.log(
+        chalk.cyan('\n\n👋 Received SIGTERM, shutting down gracefully...\n'),
+    );
     if (node) await node.stop();
     process.exit(0);
 });
 
-main().catch(error => {
+main().catch((error) => {
     console.error(chalk.red('\n💥 Fatal error:'), error);
     process.exit(1);
 });

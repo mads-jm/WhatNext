@@ -6,7 +6,11 @@
 import { useState } from 'react';
 import { useComments } from '../../hooks/useComments';
 import { useUserStore } from '../../stores/user-store';
-import { createComment, updateComment, deleteComment } from '../../db/services/comment-service';
+import {
+    createComment,
+    updateComment,
+    deleteComment,
+} from '../../db/services/comment-service';
 import { pushLocalChanges } from '../../db/replication-handler';
 import { CommentItem } from './CommentItem';
 
@@ -27,15 +31,18 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
         const body = newBody.trim();
         if (!body) return;
 
-        await createComment({
-            playlistId,
-            trackId,
-            userId,
-            userDisplayName,
-            userAvatarUrl,
-            body,
-            parentId: replyingTo,
-        }, pushLocalChanges);
+        await createComment(
+            {
+                playlistId,
+                trackId,
+                userId,
+                userDisplayName,
+                userAvatarUrl,
+                body,
+                parentId: replyingTo,
+            },
+            pushLocalChanges,
+        );
         setNewBody('');
         setReplyingTo(undefined);
     };
@@ -64,13 +71,19 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
     };
 
     if (loading) {
-        return <div className="text-xs text-on-surface-variant py-2">Loading comments...</div>;
+        return (
+            <div className="text-xs text-on-surface-variant py-2">
+                Loading comments...
+            </div>
+        );
     }
 
     return (
         <div>
             {comments.length === 0 && (
-                <div className="text-xs text-on-surface-variant py-2">No comments yet</div>
+                <div className="text-xs text-on-surface-variant py-2">
+                    No comments yet
+                </div>
             )}
 
             {comments.map(({ comment, replies }) => (
@@ -89,7 +102,9 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
             <div className="mt-2">
                 {replyingTo && (
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-primary">Replying to comment</span>
+                        <span className="text-xs text-primary">
+                            Replying to comment
+                        </span>
                         <button
                             onClick={() => setReplyingTo(undefined)}
                             className="text-xs text-on-surface-variant hover:text-on-surface"
@@ -104,7 +119,9 @@ export function CommentThread({ playlistId, trackId }: CommentThreadProps) {
                         value={newBody}
                         onChange={(e) => setNewBody(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={replyingTo ? 'Write a reply...' : 'Add a comment...'}
+                        placeholder={
+                            replyingTo ? 'Write a reply...' : 'Add a comment...'
+                        }
                         className="flex-1 bg-surface-high/60 border border-outline-variant/50 rounded px-2 py-1.5 text-sm text-on-surface placeholder-on-surface-variant focus:border-primary/50 focus:outline-none"
                     />
                     <button

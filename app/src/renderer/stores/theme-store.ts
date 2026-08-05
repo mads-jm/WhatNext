@@ -28,7 +28,10 @@ interface ThemeStore {
     getActiveTheme: () => ThemeDefinition;
 
     addCustomTheme: (theme: ThemeDefinition) => void;
-    updateCustomTheme: (themeId: string, updates: Partial<ThemeDefinition>) => void;
+    updateCustomTheme: (
+        themeId: string,
+        updates: Partial<ThemeDefinition>,
+    ) => void;
     deleteCustomTheme: (themeId: string) => void;
 
     exportTheme: (themeId: string) => string;
@@ -41,9 +44,14 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
 
     initialize: () => {
         const customThemes = loadCustomThemes();
-        const allThemes: ThemeDefinition[] = [...builtInThemes, ...customThemes];
+        const allThemes: ThemeDefinition[] = [
+            ...builtInThemes,
+            ...customThemes,
+        ];
         const savedId = localStorage.getItem(ACTIVE_THEME_KEY) || 'dark';
-        const activeId = allThemes.find((t) => t.id === savedId) ? savedId : 'dark';
+        const activeId = allThemes.find((t) => t.id === savedId)
+            ? savedId
+            : 'dark';
 
         set({ themes: allThemes, activeThemeId: activeId });
 
@@ -85,7 +93,9 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     },
 
     deleteCustomTheme: (themeId) => {
-        const allThemes = get().themes.filter((t) => t.id !== themeId || t.builtIn);
+        const allThemes = get().themes.filter(
+            (t) => t.id !== themeId || t.builtIn,
+        );
         saveCustomThemes(allThemes.filter((t) => !t.builtIn));
         set({ themes: allThemes });
 

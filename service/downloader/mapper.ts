@@ -3,7 +3,9 @@ import type { ResolvedTrack, AudioFormatOption } from './types';
 /**
  * Detect the source provider from yt-dlp's extractor field.
  */
-export function detectProvider(extractor: string): ResolvedTrack['sourceProvider'] {
+export function detectProvider(
+    extractor: string,
+): ResolvedTrack['sourceProvider'] {
     const lower = extractor.toLowerCase();
     if (lower.includes('youtube')) return 'youtube';
     if (lower.includes('soundcloud')) return 'soundcloud';
@@ -20,11 +22,16 @@ export function mapYtdlpEntry(raw: Record<string, unknown>): ResolvedTrack {
     const sourceUrl = String(raw['webpage_url'] ?? raw['url'] ?? '');
     const extractor = String(raw['extractor'] ?? raw['extractor_key'] ?? '');
     const title = String(raw['title'] ?? 'Unknown Title');
-    const uploader = String(raw['uploader'] ?? raw['artist'] ?? 'Unknown Artist');
+    const uploader = String(
+        raw['uploader'] ?? raw['artist'] ?? 'Unknown Artist',
+    );
     const artist = raw['artist'] ? String(raw['artist']) : uploader;
     const album = String(raw['album'] ?? '');
-    const durationSec = typeof raw['duration'] === 'number' ? raw['duration'] : 0;
-    const thumbnailUrl = raw['thumbnail'] ? String(raw['thumbnail']) : undefined;
+    const durationSec =
+        typeof raw['duration'] === 'number' ? raw['duration'] : 0;
+    const thumbnailUrl = raw['thumbnail']
+        ? String(raw['thumbnail'])
+        : undefined;
 
     const rawFormats = Array.isArray(raw['formats']) ? raw['formats'] : [];
     const availableFormats: AudioFormatOption[] = rawFormats
@@ -47,8 +54,12 @@ export function mapYtdlpEntry(raw: Record<string, unknown>): ResolvedTrack {
             return {
                 formatId: String(f['format_id'] ?? ''),
                 codec,
-                bitrate: typeof bitrateRaw === 'number' ? Math.round(bitrateRaw) : undefined,
-                filesize: typeof filesizeRaw === 'number' ? filesizeRaw : undefined,
+                bitrate:
+                    typeof bitrateRaw === 'number'
+                        ? Math.round(bitrateRaw)
+                        : undefined,
+                filesize:
+                    typeof filesizeRaw === 'number' ? filesizeRaw : undefined,
             };
         });
 
@@ -68,6 +79,8 @@ export function mapYtdlpEntry(raw: Record<string, unknown>): ResolvedTrack {
 /**
  * Map an array of yt-dlp --dump-json entries to ResolvedTrack[].
  */
-export function mapYtdlpEntries(raws: Record<string, unknown>[]): ResolvedTrack[] {
+export function mapYtdlpEntries(
+    raws: Record<string, unknown>[],
+): ResolvedTrack[] {
     return raws.map(mapYtdlpEntry);
 }

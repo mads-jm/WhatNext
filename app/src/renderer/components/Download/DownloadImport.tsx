@@ -23,7 +23,9 @@ type Tab = 'url' | 'library' | 'local';
 export function DownloadImport() {
     const navigate = useNavigationStore((s) => s.navigate);
     const [activeTab, setActiveTab] = useState<Tab>('url');
-    const [disclaimerAccepted, setDisclaimerAccepted] = useState(hasAcceptedDisclaimer);
+    const [disclaimerAccepted, setDisclaimerAccepted] = useState(
+        hasAcceptedDisclaimer,
+    );
 
     const dl = usePlaylistDownload();
 
@@ -32,59 +34,75 @@ export function DownloadImport() {
 
     return (
         <>
-        <DownloadDisclaimerModal
-            open={!disclaimerAccepted}
-            onAccept={() => setDisclaimerAccepted(true)}
-        />
-        <div className="flex flex-col gap-6 p-6 max-w-4xl">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-extrabold font-headline text-on-surface tracking-tight">
-                    Download &amp; Import
-                </h1>
-                <p className="text-sm text-on-surface-variant mt-1">
-                    Download audio from YouTube, SoundCloud, Bandcamp, and more — or import from
-                    your local files.
-                </p>
+            <DownloadDisclaimerModal
+                open={!disclaimerAccepted}
+                onAccept={() => setDisclaimerAccepted(true)}
+            />
+            <div className="flex flex-col gap-6 p-6 max-w-4xl">
+                {/* Header */}
+                <div>
+                    <h1 className="text-2xl font-extrabold font-headline text-on-surface tracking-tight">
+                        Download &amp; Import
+                    </h1>
+                    <p className="text-sm text-on-surface-variant mt-1">
+                        Download audio from YouTube, SoundCloud, Bandcamp, and
+                        more — or import from your local files.
+                    </p>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-1 border-b border-outline-variant/10">
+                    {(
+                        [
+                            {
+                                id: 'url',
+                                label: 'URL Import',
+                                icon: 'fa-solid fa-link',
+                            },
+                            {
+                                id: 'library',
+                                label: 'Library Download',
+                                icon: 'fa-solid fa-cloud-arrow-down',
+                            },
+                            {
+                                id: 'local',
+                                label: 'Local Files',
+                                icon: 'fa-solid fa-folder-open',
+                            },
+                        ] as { id: Tab; label: string; icon: string }[]
+                    ).map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => {
+                                if (tab.id === 'local') {
+                                    navigate('localImport');
+                                    return;
+                                }
+                                setActiveTab(tab.id);
+                            }}
+                            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                                activeTab === tab.id && tab.id !== 'local'
+                                    ? 'border-primary text-on-surface'
+                                    : 'border-transparent text-on-surface-variant hover:text-on-surface'
+                            }`}
+                        >
+                            <i className={tab.icon} />
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Tab content */}
+                {activeTab === 'url' && (
+                    <UrlTab
+                        dl={dl}
+                        hasAnyBackend={hasAnyBackend}
+                        isChecking={isChecking}
+                    />
+                )}
+
+                {activeTab === 'library' && <LibraryDownload />}
             </div>
-
-            {/* Tabs */}
-            <div className="flex gap-1 border-b border-outline-variant/10">
-                {([
-                    { id: 'url', label: 'URL Import', icon: 'fa-solid fa-link' },
-                    { id: 'library', label: 'Library Download', icon: 'fa-solid fa-cloud-arrow-down' },
-                    { id: 'local', label: 'Local Files', icon: 'fa-solid fa-folder-open' },
-                ] as { id: Tab; label: string; icon: string }[]).map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => {
-                            if (tab.id === 'local') {
-                                navigate('localImport');
-                                return;
-                            }
-                            setActiveTab(tab.id);
-                        }}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                            activeTab === tab.id && tab.id !== 'local'
-                                ? 'border-primary text-on-surface'
-                                : 'border-transparent text-on-surface-variant hover:text-on-surface'
-                        }`}
-                    >
-                        <i className={tab.icon} />
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Tab content */}
-            {activeTab === 'url' && (
-                <UrlTab dl={dl} hasAnyBackend={hasAnyBackend} isChecking={isChecking} />
-            )}
-
-            {activeTab === 'library' && (
-                <LibraryDownload />
-            )}
-        </div>
         </>
     );
 }
@@ -126,7 +144,10 @@ function UrlTab({
 
                 {/* URL input */}
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="url-input" className="text-xs uppercase tracking-widest text-on-surface-variant">
+                    <label
+                        htmlFor="url-input"
+                        className="text-xs uppercase tracking-widest text-on-surface-variant"
+                    >
                         Paste a URL
                     </label>
                     <div className="flex gap-2">
@@ -135,13 +156,17 @@ function UrlTab({
                             type="url"
                             value={dl.url}
                             onChange={(e) => dl.setUrl(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && dl.resolveUrl()}
+                            onKeyDown={(e) =>
+                                e.key === 'Enter' && dl.resolveUrl()
+                            }
                             placeholder="https://youtube.com/playlist?list=… or track URL"
                             className="flex-1 bg-surface-high border border-outline-variant/20 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50"
                         />
                         <button
                             onClick={dl.resolveUrl}
-                            disabled={!dl.url.trim() || dl.state === 'resolving'}
+                            disabled={
+                                !dl.url.trim() || dl.state === 'resolving'
+                            }
                             className="px-5 py-2.5 text-sm font-bold bg-gradient-to-r from-primary to-primary-dim text-surface rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity shrink-0"
                         >
                             {dl.state === 'resolving' ? (
@@ -191,7 +216,9 @@ function UrlTab({
     if (dl.state === 'downloading') {
         return (
             <DownloadProgress
-                tracks={dl.resolvedTracks.filter((t) => dl.selectedIds.has(t.sourceId))}
+                tracks={dl.resolvedTracks.filter((t) =>
+                    dl.selectedIds.has(t.sourceId),
+                )}
                 progress={dl.progress}
                 completedCount={dl.completedCount}
                 onCancel={dl.cancel}
@@ -202,7 +229,9 @@ function UrlTab({
     if (dl.state === 'done') {
         return (
             <DownloadComplete
-                tracks={dl.resolvedTracks.filter((t) => dl.selectedIds.has(t.sourceId))}
+                tracks={dl.resolvedTracks.filter((t) =>
+                    dl.selectedIds.has(t.sourceId),
+                )}
                 progress={dl.progress}
                 onReset={dl.reset}
             />
@@ -213,7 +242,9 @@ function UrlTab({
         return (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
                 <i className="fa-solid fa-triangle-exclamation text-3xl text-error" />
-                <p className="text-sm text-on-surface-variant">{dl.error ?? 'Something went wrong.'}</p>
+                <p className="text-sm text-on-surface-variant">
+                    {dl.error ?? 'Something went wrong.'}
+                </p>
                 <button
                     onClick={dl.reset}
                     className="px-5 py-2 text-sm font-medium bg-surface-high border border-outline-variant/20 rounded-xl text-on-surface hover:bg-surface-highest transition-colors"

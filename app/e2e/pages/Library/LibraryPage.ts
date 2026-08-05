@@ -11,7 +11,9 @@ export class LibraryPage {
 
     constructor(private readonly page: Page) {
         this.heading = page.getByRole('heading', { name: /library/i });
-        this.searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i));
+        this.searchInput = page
+            .getByRole('searchbox')
+            .or(page.getByPlaceholder(/search/i));
         this.trackRows = page.locator('[data-testid="track-row"]');
         this.emptyState = page.getByText(/no tracks/i);
     }

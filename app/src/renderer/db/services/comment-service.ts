@@ -47,11 +47,13 @@ export async function createComment(
     };
     const doc = await db.comments.insert(comment);
 
-    await replicationSink?.('comments', [{
-        id: comment.id,
-        data: comment as unknown as Record<string, unknown>,
-        updatedAt: now,
-    }]);
+    await replicationSink?.('comments', [
+        {
+            id: comment.id,
+            data: comment as unknown as Record<string, unknown>,
+            updatedAt: now,
+        },
+    ]);
 
     return doc;
 }
@@ -77,11 +79,13 @@ export async function updateComment(
         },
     });
 
-    await replicationSink?.('comments', [{
-        id,
-        data: { ...comment.toJSON(), body: updates.body, updatedAt: now },
-        updatedAt: now,
-    }]);
+    await replicationSink?.('comments', [
+        {
+            id,
+            data: { ...comment.toJSON(), body: updates.body, updatedAt: now },
+            updatedAt: now,
+        },
+    ]);
 
     return comment;
 }
@@ -106,11 +110,13 @@ export async function deleteComment(
         },
     });
 
-    await replicationSink?.('comments', [{
-        id,
-        data: { ...comment.toJSON(), isDeleted: true, updatedAt: now },
-        updatedAt: now,
-    }]);
+    await replicationSink?.('comments', [
+        {
+            id,
+            data: { ...comment.toJSON(), isDeleted: true, updatedAt: now },
+            updatedAt: now,
+        },
+    ]);
 
     return true;
 }

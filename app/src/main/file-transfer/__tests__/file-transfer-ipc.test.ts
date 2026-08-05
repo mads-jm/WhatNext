@@ -81,9 +81,18 @@ const TOTAL = 64;
 const PLAYLIST = 'playlist-served';
 const TRACK = 'track-served';
 const serveFiles = {
-    audio: { path: path.join(audioDir, 'served-song.mp3'), body: Buffer.from('audio bytes for the serve fixture') },
-    artwork: { path: path.join(artworkDir, 'served-art.jpg'), body: Buffer.from('artwork bytes') },
-    cover: { path: path.join(artworkDir, 'served-cover.jpg'), body: Buffer.from('cover art bytes') },
+    audio: {
+        path: path.join(audioDir, 'served-song.mp3'),
+        body: Buffer.from('audio bytes for the serve fixture'),
+    },
+    artwork: {
+        path: path.join(artworkDir, 'served-art.jpg'),
+        body: Buffer.from('artwork bytes'),
+    },
+    cover: {
+        path: path.join(artworkDir, 'served-cover.jpg'),
+        body: Buffer.from('cover art bytes'),
+    },
 };
 const serveHash = {
     audio: sha256Of(serveFiles.audio.body),
@@ -112,13 +121,21 @@ function seeded(sha256: string): ActiveTransfer {
     };
 }
 
-function chunkMessage(sha256: string, offset: number, body: Buffer, peerId = PEER) {
-    return createIPCMessage(UtilityToMainMessageType.FILE_TRANSFER_CHUNK_RECEIVED, {
-        peerId,
-        sha256,
-        offset,
-        data: body.toString('base64'),
-    });
+function chunkMessage(
+    sha256: string,
+    offset: number,
+    body: Buffer,
+    peerId = PEER,
+) {
+    return createIPCMessage(
+        UtilityToMainMessageType.FILE_TRANSFER_CHUNK_RECEIVED,
+        {
+            peerId,
+            sha256,
+            offset,
+            data: body.toString('base64'),
+        },
+    );
 }
 
 /**
@@ -128,7 +145,8 @@ function chunkMessage(sha256: string, offset: number, body: Buffer, peerId = PEE
  * the accepted-chunk assertions need to wait for the disk write to land.
  */
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
-const settled = (assertion: () => void) => vi.waitFor(assertion, { timeout: 5000, interval: 10 });
+const settled = (assertion: () => void) =>
+    vi.waitFor(assertion, { timeout: 5000, interval: 10 });
 
 function partialPath(sha256: string): string {
     return path.join(partialDir, `${sha256}.tmp`);
@@ -141,7 +159,10 @@ function tmpFiles(): string[] {
 function requestFileMessages(): Array<{ sha256: string }> {
     return utility.postMessage.mock.calls
         .map((c) => c[0])
-        .filter((m) => m.type === MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE)
+        .filter(
+            (m) =>
+                m.type === MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE,
+        )
         .map((m) => m.payload as { sha256: string });
 }
 
@@ -168,13 +189,16 @@ beforeAll(async () => {
             seeded(SHA.otherPeer),
             seeded(SHA.duplicate),
         ]),
-        'utf8'
+        'utf8',
     );
 
     // Serve fixture: files on disk *and* in a persisted hash cache, as they would be
     // after any previous session — before sharing has ever been enabled in this run.
     fs.mkdirSync(artworkDir, { recursive: true });
-    const hashIndex: Record<string, { sha256: string; mtimeMs: number; size: number }> = {};
+    const hashIndex: Record<
+        string,
+        { sha256: string; mtimeMs: number; size: number }
+    > = {};
     for (const [kind, file] of Object.entries(serveFiles)) {
         fs.writeFileSync(file.path, file.body);
         const stat = fs.statSync(file.path);
@@ -184,7 +208,11 @@ beforeAll(async () => {
             size: stat.size,
         };
     }
-    fs.writeFileSync(path.join(audioDir, 'hashes.json'), JSON.stringify(hashIndex), 'utf8');
+    fs.writeFileSync(
+        path.join(audioDir, 'hashes.json'),
+        JSON.stringify(hashIndex),
+        'utf8',
+    );
 
     await registerFileTransferHandlers(win as never, () => utility as never);
 });
@@ -195,13 +223,21 @@ afterAll(() => {
 
 describe('inbound chunks — filesystem effects', () => {
     it('writes a chunk belonging to a transfer we requested', async () => {
-        handleFileTransferUtilityMessage(chunkMessage(SHA.happy, 0, Buffer.alloc(8, 1)));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.happy, 0, Buffer.alloc(8, 1)),
+        );
 
         await settled(() => {
-            expect(fs.readFileSync(partialPath(SHA.happy))).toEqual(Buffer.alloc(8, 1));
+            expect(fs.readFileSync(partialPath(SHA.happy))).toEqual(
+                Buffer.alloc(8, 1),
+            );
             expect(win.webContents.send).toHaveBeenCalledWith(
                 IPC_CHANNELS.FILE_TRANSFER_PROGRESS,
-                expect.objectContaining({ sha256: SHA.happy, bytesReceived: 8, totalBytes: TOTAL })
+                expect.objectContaining({
+                    sha256: SHA.happy,
+                    bytesReceived: 8,
+                    totalBytes: TOTAL,
+                }),
             );
         });
     });
@@ -209,14 +245,20 @@ describe('inbound chunks — filesystem effects', () => {
     it('has zero filesystem effects for a chunk we never requested', async () => {
         const before = tmpFiles();
 
-        handleFileTransferUtilityMessage(chunkMessage(SHA.unsolicited, 0, Buffer.alloc(16, 9)));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.unsolicited, 0, Buffer.alloc(16, 9)),
+        );
         // …including one aimed far out into a sparse file, the disk-fill shape.
         handleFileTransferUtilityMessage(
-            chunkMessage(SHA.unsolicited, 8 * 1024 * 1024 * 1024, Buffer.alloc(16, 9))
+            chunkMessage(
+                SHA.unsolicited,
+                8 * 1024 * 1024 * 1024,
+                Buffer.alloc(16, 9),
+            ),
         );
         // …and one whose "hash" is a traversal payload.
         handleFileTransferUtilityMessage(
-            chunkMessage('../../../etc/whatnext-owned', 0, Buffer.alloc(16, 9))
+            chunkMessage('../../../etc/whatnext-owned', 0, Buffer.alloc(16, 9)),
         );
         await flush();
 
@@ -226,56 +268,91 @@ describe('inbound chunks — filesystem effects', () => {
 
     it('ignores a chunk sent by a peer other than the transfer owner', async () => {
         handleFileTransferUtilityMessage(
-            chunkMessage(SHA.otherPeer, 0, Buffer.alloc(8, 3), 'a-different-peer')
+            chunkMessage(
+                SHA.otherPeer,
+                0,
+                Buffer.alloc(8, 3),
+                'a-different-peer',
+            ),
         );
         await flush();
 
         expect(fs.existsSync(partialPath(SHA.otherPeer))).toBe(false);
         // The transfer itself survives — a hostile peer must not be able to kill it.
         const transfers = getTransfers();
-        expect(transfers.find((t) => t.sha256 === SHA.otherPeer)?.status).toBe('transferring');
+        expect(transfers.find((t) => t.sha256 === SHA.otherPeer)?.status).toBe(
+            'transferring',
+        );
     });
 
     it('fails the transfer on a chunk that overruns the declared size, and discards the partial', async () => {
         // Get a legitimate partial on disk first, so the assertion below is about the
         // partial being *discarded* rather than never having existed.
-        handleFileTransferUtilityMessage(chunkMessage(SHA.bounds, 0, Buffer.alloc(8, 2)));
-        await settled(() => expect(fs.existsSync(partialPath(SHA.bounds))).toBe(true));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.bounds, 0, Buffer.alloc(8, 2)),
+        );
+        await settled(() =>
+            expect(fs.existsSync(partialPath(SHA.bounds))).toBe(true),
+        );
 
         win.webContents.send.mockClear();
         utility.postMessage.mockClear();
 
-        handleFileTransferUtilityMessage(chunkMessage(SHA.bounds, TOTAL - 4, Buffer.alloc(64, 2)));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.bounds, TOTAL - 4, Buffer.alloc(64, 2)),
+        );
 
         // Status, renderer error and peer cancel are synchronous; the unlink is not.
-        expect(getTransfers().find((t) => t.sha256 === SHA.bounds)?.status).toBe('error');
+        expect(
+            getTransfers().find((t) => t.sha256 === SHA.bounds)?.status,
+        ).toBe('error');
         expect(win.webContents.send).toHaveBeenCalledWith(
             IPC_CHANNELS.FILE_TRANSFER_ERROR,
-            expect.objectContaining({ sha256: SHA.bounds })
+            expect.objectContaining({ sha256: SHA.bounds }),
         );
         // The sender is told to stop rather than being left streaming into a void.
         expect(
             utility.postMessage.mock.calls
                 .map((c) => c[0])
-                .some((m) => m.type === MainToUtilityMessageType.FILE_TRANSFER_CANCEL)
+                .some(
+                    (m) =>
+                        m.type ===
+                        MainToUtilityMessageType.FILE_TRANSFER_CANCEL,
+                ),
         ).toBe(true);
-        await settled(() => expect(fs.existsSync(partialPath(SHA.bounds))).toBe(false));
+        await settled(() =>
+            expect(fs.existsSync(partialPath(SHA.bounds))).toBe(false),
+        );
         // Nothing was written at the out-of-bounds offset either — the file is gone,
         // not extended.
         expect(tmpFiles()).not.toContain(`${SHA.bounds}.tmp`);
     });
 
     it('keeps bytesReceived within totalBytes under duplicate and overlapping chunks', async () => {
-        handleFileTransferUtilityMessage(chunkMessage(SHA.duplicate, 0, Buffer.alloc(32, 5)));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.duplicate, 0, Buffer.alloc(32, 5)));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.duplicate, 16, Buffer.alloc(32, 5)));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.duplicate, 32, Buffer.alloc(32, 5)));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.duplicate, 0, Buffer.alloc(32, 5)));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.duplicate, 0, Buffer.alloc(32, 5)),
+        );
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.duplicate, 0, Buffer.alloc(32, 5)),
+        );
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.duplicate, 16, Buffer.alloc(32, 5)),
+        );
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.duplicate, 32, Buffer.alloc(32, 5)),
+        );
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.duplicate, 0, Buffer.alloc(32, 5)),
+        );
 
         await settled(() => {
-            const transfer = getTransfers().find((t) => t.sha256 === SHA.duplicate)!;
+            const transfer = getTransfers().find(
+                (t) => t.sha256 === SHA.duplicate,
+            )!;
             expect(transfer.bytesReceived).toBe(TOTAL);
-            expect(transfer.bytesReceived).toBeLessThanOrEqual(transfer.totalBytes);
+            expect(transfer.bytesReceived).toBeLessThanOrEqual(
+                transfer.totalBytes,
+            );
         });
     });
 });
@@ -285,11 +362,18 @@ describe('cancel releases its concurrency slot', () => {
     it('starts the next queued audio transfer when one is cancelled', async () => {
         utility.postMessage.mockClear();
 
-        await requestFiles([SHA.queueA, SHA.queueB, SHA.queueC].map(audioEntry));
-        expect(requestFileMessages().map((p) => p.sha256)).toEqual([SHA.queueA]);
+        await requestFiles(
+            [SHA.queueA, SHA.queueB, SHA.queueC].map(audioEntry),
+        );
+        expect(requestFileMessages().map((p) => p.sha256)).toEqual([
+            SHA.queueA,
+        ]);
 
         await cancel(SHA.queueA);
-        expect(requestFileMessages().map((p) => p.sha256)).toEqual([SHA.queueA, SHA.queueB]);
+        expect(requestFileMessages().map((p) => p.sha256)).toEqual([
+            SHA.queueA,
+            SHA.queueB,
+        ]);
     });
 
     it('releases the slot exactly once — a late complete or error cannot double-release', async () => {
@@ -299,17 +383,20 @@ describe('cancel releases its concurrency slot', () => {
             createIPCMessage(UtilityToMainMessageType.FILE_TRANSFER_COMPLETE, {
                 peerId: PEER,
                 sha256: SHA.queueA,
-            })
+            }),
         );
         handleFileTransferUtilityMessage(
             createIPCMessage(UtilityToMainMessageType.FILE_TRANSFER_ERROR, {
                 sha256: SHA.queueA,
                 error: 'late error after cancel',
-            })
+            }),
         );
         await flush();
 
-        expect(requestFileMessages().map((p) => p.sha256)).toEqual([SHA.queueA, SHA.queueB]);
+        expect(requestFileMessages().map((p) => p.sha256)).toEqual([
+            SHA.queueA,
+            SHA.queueB,
+        ]);
 
         // …and the queue still moves when the in-flight transfer really ends.
         await cancel(SHA.queueB);
@@ -328,7 +415,9 @@ describe('cancel releases its concurrency slot', () => {
         await cancel(queued);
         await cancel(SHA.queueC);
 
-        expect(requestFileMessages().map((p) => p.sha256)).not.toContain(queued);
+        expect(requestFileMessages().map((p) => p.sha256)).not.toContain(
+            queued,
+        );
     });
 });
 
@@ -377,11 +466,11 @@ describe('serving files — sharing authorization', () => {
 
         // The manifest itself must carry all three types — a gap here would silently
         // become a gap in the allowlist.
-        expect(lastManifest()!.files.map((f) => f.type).sort()).toEqual([
-            'artwork',
-            'audio',
-            'cover-art',
-        ]);
+        expect(
+            lastManifest()!
+                .files.map((f) => f.type)
+                .sort(),
+        ).toEqual(['artwork', 'audio', 'cover-art']);
 
         for (const [kind, hash] of Object.entries(serveHash)) {
             utility.postMessage.mockClear();
@@ -396,7 +485,7 @@ describe('serving files — sharing authorization', () => {
             });
             const chunk = serveMessages()[1];
             expect(Buffer.from(chunk.data ?? '', 'base64')).toEqual(
-                serveFiles[kind as keyof typeof serveFiles].body
+                serveFiles[kind as keyof typeof serveFiles].body,
             );
         }
     });
@@ -454,7 +543,10 @@ describe('serving files — sharing authorization', () => {
 // ---------------------------------------------------------------------------
 
 function getTransfers(): ActiveTransfer[] {
-    return ipcHandlers.get(IPC_CHANNELS.FILE_TRANSFER_GET_TRANSFERS)!(null, undefined as never) as ActiveTransfer[];
+    return ipcHandlers.get(IPC_CHANNELS.FILE_TRANSFER_GET_TRANSFERS)!(
+        null,
+        undefined as never,
+    ) as ActiveTransfer[];
 }
 
 async function requestFiles(files: FileEntry[]): Promise<void> {
@@ -465,7 +557,9 @@ async function requestFiles(files: FileEntry[]): Promise<void> {
 }
 
 async function cancel(sha256: string): Promise<void> {
-    await ipcHandlers.get(IPC_CHANNELS.FILE_TRANSFER_CANCEL)!(null, { sha256 } as never);
+    await ipcHandlers.get(IPC_CHANNELS.FILE_TRANSFER_CANCEL)!(null, {
+        sha256,
+    } as never);
 }
 
 async function setSharing(enabled: boolean): Promise<void> {
@@ -494,22 +588,28 @@ async function registerServeTracks(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 function fileRequest(sha256: string) {
-    return createIPCMessage(UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST, {
-        subtype: 'file-request',
-        peerId: PEER,
-        sha256,
-        offsetBytes: 0,
-    });
+    return createIPCMessage(
+        UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST,
+        {
+            subtype: 'file-request',
+            peerId: PEER,
+            sha256,
+            offsetBytes: 0,
+        },
+    );
 }
 
 function manifestRequest() {
-    return createIPCMessage(UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST, {
-        subtype: 'manifest-request',
-        requestId: 'req-1',
-        peerId: PEER,
-        playlistId: PLAYLIST,
-        trackIds: [],
-    });
+    return createIPCMessage(
+        UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST,
+        {
+            subtype: 'manifest-request',
+            requestId: 'req-1',
+            peerId: PEER,
+            playlistId: PLAYLIST,
+            trackIds: [],
+        },
+    );
 }
 
 /** Every `file-header` / `file-chunk` / `file-complete` / `file-error` we sent, in order. */
@@ -524,13 +624,20 @@ interface ServeMessage {
 function serveMessages(): ServeMessage[] {
     return utility.postMessage.mock.calls
         .map((c) => c[0])
-        .filter((m) => m.type === MainToUtilityMessageType.FILE_TRANSFER_SERVE_CHUNK)
+        .filter(
+            (m) =>
+                m.type === MainToUtilityMessageType.FILE_TRANSFER_SERVE_CHUNK,
+        )
         .map((m) => (m.payload as { message: ServeMessage }).message);
 }
 
 function lastManifest(): FileManifest | undefined {
     const responses = utility.postMessage.mock.calls
         .map((c) => c[0])
-        .filter((m) => m.type === MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE);
+        .filter(
+            (m) =>
+                m.type ===
+                MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE,
+        );
     return responses.at(-1)?.payload.manifest as FileManifest | undefined;
 }

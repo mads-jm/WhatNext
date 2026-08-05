@@ -18,11 +18,11 @@ let currentVerifier: string | null = null;
  */
 function generatePKCE(): PKCEPair {
     // Generate random 32-byte verifier, base64url encode
-    const verifier = crypto.randomBytes(32)
-        .toString('base64url');
+    const verifier = crypto.randomBytes(32).toString('base64url');
 
     // SHA256 hash the verifier, base64url encode for challenge
-    const challenge = crypto.createHash('sha256')
+    const challenge = crypto
+        .createHash('sha256')
         .update(verifier)
         .digest('base64url');
 
@@ -32,9 +32,15 @@ function generatePKCE(): PKCEPair {
 /**
  * Start OAuth flow - opens browser for user authorization
  */
-export async function startSpotifyAuth(): Promise<{ success: boolean; error?: string }> {
+export async function startSpotifyAuth(): Promise<{
+    success: boolean;
+    error?: string;
+}> {
     if (!SPOTIFY_CONFIG.CLIENT_ID) {
-        return { success: false, error: 'Spotify Client ID not configured. Set it in spotify-config.ts' };
+        return {
+            success: false,
+            error: 'Spotify Client ID not configured. Set it in spotify-config.ts',
+        };
     }
 
     const pkce = generatePKCE();
@@ -69,7 +75,10 @@ export async function handleSpotifyCallback(code: string): Promise<{
     error?: string;
 }> {
     if (!currentVerifier) {
-        return { success: false, error: 'No pending auth flow. Start auth first.' };
+        return {
+            success: false,
+            error: 'No pending auth flow. Start auth first.',
+        };
     }
 
     const verifier = currentVerifier;
@@ -92,14 +101,17 @@ export async function handleSpotifyCallback(code: string): Promise<{
 
         if (!response.ok) {
             const errorData = await response.text();
-            return { success: false, error: `Token exchange failed: ${errorData}` };
+            return {
+                success: false,
+                error: `Token exchange failed: ${errorData}`,
+            };
         }
 
         const data = await response.json();
         const tokens: SpotifyTokens = {
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
-            expiresAt: Date.now() + (data.expires_in * 1000),
+            expiresAt: Date.now() + data.expires_in * 1000,
             scope: data.scope,
         };
 
@@ -132,14 +144,17 @@ export async function refreshSpotifyToken(refreshToken: string): Promise<{
 
         if (!response.ok) {
             const errorData = await response.text();
-            return { success: false, error: `Token refresh failed: ${errorData}` };
+            return {
+                success: false,
+                error: `Token refresh failed: ${errorData}`,
+            };
         }
 
         const data = await response.json();
         const tokens: SpotifyTokens = {
             accessToken: data.access_token,
             refreshToken: data.refresh_token || refreshToken,
-            expiresAt: Date.now() + (data.expires_in * 1000),
+            expiresAt: Date.now() + data.expires_in * 1000,
             scope: data.scope,
         };
 

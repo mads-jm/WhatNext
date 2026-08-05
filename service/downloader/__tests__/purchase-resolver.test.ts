@@ -10,7 +10,9 @@ function makeMbSearchResponse(mbid: string) {
     return { recordings: [{ id: mbid }] };
 }
 
-function makeMbRelationsResponse(relations: Array<{ type: string; url: { resource: string } }>) {
+function makeMbRelationsResponse(
+    relations: Array<{ type: string; url: { resource: string } }>,
+) {
     return { relations };
 }
 
@@ -28,7 +30,9 @@ let tmpDir: string;
 let resolver: PurchaseResolver;
 
 beforeEach(async () => {
-    tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'whatnext-resolver-test-'));
+    tmpDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'whatnext-resolver-test-'),
+    );
     resolver = new PurchaseResolver(tmpDir);
     await resolver.init();
     vi.resetAllMocks();
@@ -44,15 +48,25 @@ afterEach(async () => {
 describe('PurchaseResolver', () => {
     describe('cache behaviour', () => {
         it('returns cached result without a network call on second resolve', async () => {
-            const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-                ok: true,
-                json: async () => makeMbSearchResponse('mbid-001'),
-            } as Response).mockResolvedValueOnce({
-                ok: true,
-                json: async () => makeMbRelationsResponse([
-                    { type: 'purchase for download', url: { resource: 'https://burial.bandcamp.com/track/archangel' } },
-                ]),
-            } as Response);
+            const fetchMock = vi
+                .spyOn(globalThis, 'fetch')
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => makeMbSearchResponse('mbid-001'),
+                } as Response)
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () =>
+                        makeMbRelationsResponse([
+                            {
+                                type: 'purchase for download',
+                                url: {
+                                    resource:
+                                        'https://burial.bandcamp.com/track/archangel',
+                                },
+                            },
+                        ]),
+                } as Response);
 
             const req = { title: 'Archangel', artists: ['Burial'] };
             await resolver.resolve(req);
@@ -66,15 +80,24 @@ describe('PurchaseResolver', () => {
         });
 
         it('persists cache to disk so a fresh instance can read it', async () => {
-            vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-                ok: true,
-                json: async () => makeMbSearchResponse('mbid-002'),
-            } as Response).mockResolvedValueOnce({
-                ok: true,
-                json: async () => makeMbRelationsResponse([
-                    { type: 'purchase for download', url: { resource: 'https://burial.bandcamp.com/track/archangel' } },
-                ]),
-            } as Response);
+            vi.spyOn(globalThis, 'fetch')
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => makeMbSearchResponse('mbid-002'),
+                } as Response)
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () =>
+                        makeMbRelationsResponse([
+                            {
+                                type: 'purchase for download',
+                                url: {
+                                    resource:
+                                        'https://burial.bandcamp.com/track/archangel',
+                                },
+                            },
+                        ]),
+                } as Response);
 
             await resolver.resolve({ title: 'Archangel', artists: ['Burial'] });
 
@@ -84,7 +107,10 @@ describe('PurchaseResolver', () => {
             const resolver2 = new PurchaseResolver(tmpDir);
             await resolver2.init();
             const spy = vi.spyOn(globalThis, 'fetch');
-            const result = await resolver2.resolve({ title: 'Archangel', artists: ['Burial'] });
+            const result = await resolver2.resolve({
+                title: 'Archangel',
+                artists: ['Burial'],
+            });
 
             expect(spy).not.toHaveBeenCalled();
             expect(result).toHaveLength(1);
@@ -93,48 +119,79 @@ describe('PurchaseResolver', () => {
 
     describe('MusicBrainz path', () => {
         it('returns purchase link from MB URL relations', async () => {
-            vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-                ok: true,
-                json: async () => makeMbSearchResponse('mbid-abc'),
-            } as Response).mockResolvedValueOnce({
-                ok: true,
-                json: async () => makeMbRelationsResponse([
-                    { type: 'purchase for download', url: { resource: 'https://artist.bandcamp.com/track/song' } },
-                ]),
-            } as Response);
+            vi.spyOn(globalThis, 'fetch')
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => makeMbSearchResponse('mbid-abc'),
+                } as Response)
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () =>
+                        makeMbRelationsResponse([
+                            {
+                                type: 'purchase for download',
+                                url: {
+                                    resource:
+                                        'https://artist.bandcamp.com/track/song',
+                                },
+                            },
+                        ]),
+                } as Response);
 
-            const result = await resolver.resolve({ title: 'Song', artists: ['Artist'] });
+            const result = await resolver.resolve({
+                title: 'Song',
+                artists: ['Artist'],
+            });
             expect(result).toHaveLength(1);
             expect(result[0]?.provider).toBe('bandcamp');
-            expect(result[0]?.url).toBe('https://artist.bandcamp.com/track/song');
+            expect(result[0]?.url).toBe(
+                'https://artist.bandcamp.com/track/song',
+            );
         });
 
         it('skips non-purchase relation types', async () => {
-            vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-                ok: true,
-                json: async () => makeMbSearchResponse('mbid-xyz'),
-            } as Response).mockResolvedValueOnce({
-                ok: true,
-                json: async () => makeMbRelationsResponse([
-                    { type: 'streaming', url: { resource: 'https://open.spotify.com/track/abc' } },
-                ]),
-            } as Response);
+            vi.spyOn(globalThis, 'fetch')
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => makeMbSearchResponse('mbid-xyz'),
+                } as Response)
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () =>
+                        makeMbRelationsResponse([
+                            {
+                                type: 'streaming',
+                                url: {
+                                    resource:
+                                        'https://open.spotify.com/track/abc',
+                                },
+                            },
+                        ]),
+                } as Response);
 
-            const result = await resolver.resolve({ title: 'Song', artists: ['Artist'] });
+            const result = await resolver.resolve({
+                title: 'Song',
+                artists: ['Artist'],
+            });
             expect(result).toHaveLength(0);
         });
 
         it('handles relations field being a non-array gracefully (Array.isArray guard)', async () => {
-            vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-                ok: true,
-                json: async () => makeMbSearchResponse('mbid-guard'),
-            } as Response).mockResolvedValueOnce({
-                ok: true,
-                // relations is null — should not throw
-                json: async () => ({ relations: null }),
-            } as Response);
+            vi.spyOn(globalThis, 'fetch')
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => makeMbSearchResponse('mbid-guard'),
+                } as Response)
+                .mockResolvedValueOnce({
+                    ok: true,
+                    // relations is null — should not throw
+                    json: async () => ({ relations: null }),
+                } as Response);
 
-            const result = await resolver.resolve({ title: 'Song', artists: ['Artist'] });
+            const result = await resolver.resolve({
+                title: 'Song',
+                artists: ['Artist'],
+            });
             expect(result).toHaveLength(0);
         });
 
@@ -144,21 +201,30 @@ describe('PurchaseResolver', () => {
                 json: async () => ({ recordings: [] }),
             } as Response);
 
-            const result = await resolver.resolve({ title: 'Unknown Song', artists: ['Unknown'] });
+            const result = await resolver.resolve({
+                title: 'Unknown Song',
+                artists: ['Unknown'],
+            });
             expect(result).toHaveLength(0);
         });
 
         it('falls through to Bandcamp when MB search fails', async () => {
             vi.spyOn(globalThis, 'fetch')
                 // MB search fails
-                .mockResolvedValueOnce({ ok: false, json: async () => ({}) } as Response)
+                .mockResolvedValueOnce({
+                    ok: false,
+                    json: async () => ({}),
+                } as Response)
                 // Bandcamp succeeds
                 .mockResolvedValueOnce({
                     ok: true,
                     text: async () => BANDCAMP_HTML_WITH_MATCH,
                 } as Response);
 
-            const result = await resolver.resolve({ title: 'Archangel', artists: ['Burial'] });
+            const result = await resolver.resolve({
+                title: 'Archangel',
+                artists: ['Burial'],
+            });
             expect(result[0]?.provider).toBe('bandcamp');
         });
     });
@@ -177,7 +243,10 @@ describe('PurchaseResolver', () => {
                     text: async () => BANDCAMP_HTML_WITH_MATCH,
                 } as Response);
 
-            const result = await resolver.resolve({ title: 'Archangel', artists: ['Burial'] });
+            const result = await resolver.resolve({
+                title: 'Archangel',
+                artists: ['Burial'],
+            });
             expect(result).toHaveLength(1);
             expect(result[0]?.url).toContain('burial.bandcamp.com');
         });
@@ -194,7 +263,10 @@ describe('PurchaseResolver', () => {
                 } as Response);
 
             // Artist "Burial" slug = "burial" — does NOT match "unknownartist"
-            const result = await resolver.resolve({ title: 'Archangel', artists: ['Burial'] });
+            const result = await resolver.resolve({
+                title: 'Archangel',
+                artists: ['Burial'],
+            });
             expect(result).toHaveLength(0);
         });
 
@@ -212,7 +284,10 @@ describe('PurchaseResolver', () => {
                 } as Response);
 
             // "AFX" → slug "afx" (3 chars) — slug check is skipped
-            const result = await resolver.resolve({ title: 'Song', artists: ['AFX'] });
+            const result = await resolver.resolve({
+                title: 'Song',
+                artists: ['AFX'],
+            });
             expect(result[0]?.url).toContain('afx.bandcamp.com');
         });
     });
@@ -243,12 +318,23 @@ describe('PurchaseResolver', () => {
                 text: async () => '',
             } as unknown as Response);
 
-            const r1 = await resolver.resolve({ title: 'Song', artists: ['Artist'] });
-            const fetchCallCount = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
+            const r1 = await resolver.resolve({
+                title: 'Song',
+                artists: ['Artist'],
+            });
+            const fetchCallCount = (
+                globalThis.fetch as ReturnType<typeof vi.fn>
+            ).mock.calls.length;
 
-            const r2 = await resolver.resolve({ title: 'SONG', artists: ['ARTIST'] });
+            const r2 = await resolver.resolve({
+                title: 'SONG',
+                artists: ['ARTIST'],
+            });
             // Should hit cache — no additional fetch calls
-            expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(fetchCallCount);
+            expect(
+                (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
+                    .length,
+            ).toBe(fetchCallCount);
             expect(r1).toEqual(r2);
         });
     });

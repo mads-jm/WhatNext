@@ -71,7 +71,10 @@ function ThemeCard({
             {/* Actions */}
             <div className="flex items-center gap-2 mt-3 pt-2 border-t border-outline-variant/10">
                 <button
-                    onClick={(e) => { e.stopPropagation(); onExport(); }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onExport();
+                    }}
                     className="text-xs text-on-surface-variant hover:text-on-surface transition-colors"
                     title="Export theme"
                 >
@@ -80,7 +83,10 @@ function ThemeCard({
                 </button>
                 {onDelete && (
                     <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete();
+                        }}
                         className="text-xs text-on-surface-variant hover:text-error transition-colors ml-auto"
                         title="Delete theme"
                     >
@@ -150,7 +156,8 @@ export function ThemeSettings() {
                     Appearance
                 </h2>
                 <p className="text-sm text-on-surface-variant">
-                    Choose a theme or import a custom one. Themes can be exported and shared with peers.
+                    Choose a theme or import a custom one. Themes can be
+                    exported and shared with peers.
                 </p>
             </div>
 

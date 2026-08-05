@@ -26,7 +26,9 @@ export function PlaylistComments({ playlistId }: PlaylistCommentsProps) {
                     <i className="fa-solid fa-comments mr-2 text-on-surface-variant" />
                     Discussion {commentCount > 0 && `(${commentCount})`}
                 </span>
-                <i className={`fa-solid fa-chevron-${expanded ? 'up' : 'down'} text-on-surface-variant text-sm`} />
+                <i
+                    className={`fa-solid fa-chevron-${expanded ? 'up' : 'down'} text-on-surface-variant text-sm`}
+                />
             </button>
             {expanded && (
                 <div className="card-body">

@@ -33,7 +33,8 @@ import { getApprovedDirectories } from './approved-dirs-store';
 // shell:open-external
 // ========================================
 
-export type ExternalUrlCheck = { ok: true; url: string } | { ok: false; error: string };
+export type ExternalUrlCheck =
+    { ok: true; url: string } | { ok: false; error: string };
 
 /** Protocols we hand to the OS browser. */
 const WEB_PROTOCOLS = ['http:', 'https:'];
@@ -65,7 +66,11 @@ const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/;
  * the second layer — it keeps malformed URIs from reaching the OS handler at all.
  */
 export function validateExternalUrl(raw: unknown): ExternalUrlCheck {
-    if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_URL_LENGTH) {
+    if (
+        typeof raw !== 'string' ||
+        raw.length === 0 ||
+        raw.length > MAX_URL_LENGTH
+    ) {
         return { ok: false, error: 'Invalid URL' };
     }
     if (CONTROL_CHARS.test(raw)) {
@@ -128,9 +133,12 @@ export function resolveArtworkPath(raw: unknown): string | null {
     if (!path.isAbsolute(raw)) return null;
 
     const resolved = path.resolve(raw);
-    if (!ARTWORK_EXTENSIONS.includes(path.extname(resolved).toLowerCase())) return null;
+    if (!ARTWORK_EXTENSIONS.includes(path.extname(resolved).toLowerCase()))
+        return null;
 
-    const permitted = getArtworkRoots().some((root) => isPathContained(resolved, root));
+    const permitted = getArtworkRoots().some((root) =>
+        isPathContained(resolved, root),
+    );
     return permitted ? resolved : null;
 }
 
@@ -214,7 +222,8 @@ export function wasApprovedOpenFile(raw: unknown): boolean {
 // shell:open-path (reveal a folder)
 // ========================================
 
-export type OpenPathCheck = { ok: true; path: string } | { ok: false; error: string };
+export type OpenPathCheck =
+    { ok: true; path: string } | { ok: false; error: string };
 
 /** Directories the app owns outright; no dialog approval needed to reveal these. */
 function getAppOwnedRoots(): string[] {
@@ -240,7 +249,9 @@ async function realpathOrResolve(candidate: string): Promise<string> {
  * (execution, for `.desktop`/`.bat`/`.exe`), so files are refused outright; and the
  * directory must be one the app owns or one the user picked in a main-process dialog.
  */
-export async function validateOpenPathRequest(raw: unknown): Promise<OpenPathCheck> {
+export async function validateOpenPathRequest(
+    raw: unknown,
+): Promise<OpenPathCheck> {
     if (typeof raw !== 'string' || !raw.trim() || raw.includes('\0')) {
         return { ok: false, error: 'Invalid path' };
     }

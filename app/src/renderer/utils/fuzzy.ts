@@ -60,7 +60,7 @@ export function fuzzyScore(query: string, text: string): number | null {
 export function fuzzyRank<T>(
     query: string,
     items: readonly T[],
-    fields: (item: T) => Array<string | null | undefined>
+    fields: (item: T) => Array<string | null | undefined>,
 ): T[] {
     const q = query.trim();
     if (!q) return [...items];

@@ -28,9 +28,12 @@ export function useP2PDevStatus() {
         peerDetails: false,
     });
 
-    const addLog = useCallback((level: 'info' | 'warn' | 'error' | 'success', message: string) => {
-        useDebugLogStore.getState().addLog(level, message);
-    }, []);
+    const addLog = useCallback(
+        (level: 'info' | 'warn' | 'error' | 'success', message: string) => {
+            useDebugLogStore.getState().addLog(level, message);
+        },
+        [],
+    );
 
     // Polling & event listeners
     useEffect(() => {
@@ -49,13 +52,22 @@ export function useP2PDevStatus() {
                 const newStatus = await window.electron!.p2p.getStatus();
 
                 if (newStatus.nodeStarted && !status.nodeStarted) {
-                    addLog('success', `Node started: ${(newStatus.peerId ?? '').slice(0, 20)}...`);
-                    addLog('info', `Listening on ${newStatus.multiaddrs?.length || 0} addresses`);
+                    addLog(
+                        'success',
+                        `Node started: ${(newStatus.peerId ?? '').slice(0, 20)}...`,
+                    );
+                    addLog(
+                        'info',
+                        `Listening on ${newStatus.multiaddrs?.length || 0} addresses`,
+                    );
                 }
 
                 newStatus.discoveredPeers?.forEach((peer: PeerMetadata) => {
                     if (!knownPeerIds.has(peer.peerId)) {
-                        addLog('info', `Peer discovered: ${peer.displayName} (${peer.peerId.slice(0, 12)}...)`);
+                        addLog(
+                            'info',
+                            `Peer discovered: ${peer.displayName} (${peer.peerId.slice(0, 12)}...)`,
+                        );
                         knownPeerIds.add(peer.peerId);
                     }
                 });
@@ -70,15 +82,28 @@ export function useP2PDevStatus() {
 
         pollStatus();
 
-        const unsubConnected = window.electron.p2p.onConnectionEstablished((data) => {
-            addLog('success', `Connected to ${data.peerId.slice(0, 12)}...`);
-        });
-        const unsubDisconnected = window.electron.p2p.onConnectionClosed((data) => {
-            addLog('warn', `Disconnected from ${data.peerId.slice(0, 12)}...`);
-            if (selectedPeer?.peerId === data.peerId) setSelectedPeer(null);
-        });
+        const unsubConnected = window.electron.p2p.onConnectionEstablished(
+            (data) => {
+                addLog(
+                    'success',
+                    `Connected to ${data.peerId.slice(0, 12)}...`,
+                );
+            },
+        );
+        const unsubDisconnected = window.electron.p2p.onConnectionClosed(
+            (data) => {
+                addLog(
+                    'warn',
+                    `Disconnected from ${data.peerId.slice(0, 12)}...`,
+                );
+                if (selectedPeer?.peerId === data.peerId) setSelectedPeer(null);
+            },
+        );
         const unsubFailed = window.electron.p2p.onConnectionFailed((data) => {
-            addLog('error', `Connection failed: ${data.error || 'Unknown error'}`);
+            addLog(
+                'error',
+                `Connection failed: ${data.error || 'Unknown error'}`,
+            );
         });
         const unsubError = window.electron.p2p.onNodeError((data) => {
             addLog('error', `Node error: ${data.error || 'Unknown error'}`);

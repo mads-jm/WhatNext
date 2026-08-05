@@ -8,7 +8,11 @@ interface ContextMenuState {
     items: ContextMenuItem[];
 }
 
-const CLOSED: ContextMenuState = { visible: false, position: { x: 0, y: 0 }, items: [] };
+const CLOSED: ContextMenuState = {
+    visible: false,
+    position: { x: 0, y: 0 },
+    items: [],
+};
 
 /**
  * Manages context menu open/close state.
@@ -27,7 +31,11 @@ export function useContextMenu() {
     const openMenu = useCallback((e: MouseEvent, items: ContextMenuItem[]) => {
         e.preventDefault();
         e.stopPropagation();
-        setMenuState({ visible: true, position: { x: e.clientX, y: e.clientY }, items });
+        setMenuState({
+            visible: true,
+            position: { x: e.clientX, y: e.clientY },
+            items,
+        });
     }, []);
 
     const closeMenu = useCallback(() => setMenuState(CLOSED), []);

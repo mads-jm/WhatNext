@@ -35,19 +35,22 @@ const BACKEND_INFO: BackendInstallInfo[] = [
         id: 'ytdlp',
         name: 'yt-dlp',
         installUrl: 'https://github.com/yt-dlp/yt-dlp#installation',
-        installNote: 'pip install yt-dlp  ·  brew install yt-dlp  ·  winget install yt-dlp',
+        installNote:
+            'pip install yt-dlp  ·  brew install yt-dlp  ·  winget install yt-dlp',
     },
     {
         id: 'spotdl',
         name: 'spotDL',
         installUrl: 'https://github.com/spotDL/spotify-downloader#installation',
-        installNote: 'pip install spotdl  ·  pipx install spotdl (cross-platform, needs Python)',
+        installNote:
+            'pip install spotdl  ·  pipx install spotdl (cross-platform, needs Python)',
     },
     {
         id: 'spytify',
         name: 'Spytify',
         installUrl: 'https://jwallet.github.io/spy-spotify/',
-        installNote: 'Windows only (.NET) — download from GitHub releases; needs the Spotify desktop app',
+        installNote:
+            'Windows only (.NET) — download from GitHub releases; needs the Spotify desktop app',
         windowsOnly: true,
     },
 ];
@@ -56,9 +59,15 @@ export function DownloadSettings() {
     const [backends, setBackends] = useState<BackendStatusResult[]>([]);
     const [checkingBackends, setCheckingBackends] = useState(true);
     const [paths, setPaths] = useState<BackendPathMap>({});
-    const [pathDrafts, setPathDrafts] = useState<Partial<Record<DownloaderBackendId, string>>>({});
-    const [savingPath, setSavingPath] = useState<DownloaderBackendId | null>(null);
-    const [pathErrors, setPathErrors] = useState<Partial<Record<DownloaderBackendId, string>>>({});
+    const [pathDrafts, setPathDrafts] = useState<
+        Partial<Record<DownloaderBackendId, string>>
+    >({});
+    const [savingPath, setSavingPath] = useState<DownloaderBackendId | null>(
+        null,
+    );
+    const [pathErrors, setPathErrors] = useState<
+        Partial<Record<DownloaderBackendId, string>>
+    >({});
     const [audioDir, setAudioDir] = useState('');
     const [defaultFormat, setDefaultFormat] = useState(
         () => localStorage.getItem(FORMAT_KEY) || 'best_audio',
@@ -80,7 +89,10 @@ export function DownloadSettings() {
 
     useEffect(() => {
         loadBackends();
-        window.electron?.download.getBackendPaths().then(setPaths).catch(() => undefined);
+        window.electron?.download
+            .getBackendPaths()
+            .then(setPaths)
+            .catch(() => undefined);
         window.electron?.app.getPath('documents').then((docs) => {
             setAudioDir(`${docs}\\WhatNext\\audio`);
         });
@@ -121,7 +133,10 @@ export function DownloadSettings() {
             // answer, not a fault: keep their draft and say nothing loud. 'rejected'
             // means main refused the path outright, so show why.
             if (result.status === 'rejected') {
-                setPathErrors((e) => ({ ...e, [id]: result.error ?? 'Path not accepted' }));
+                setPathErrors((e) => ({
+                    ...e,
+                    [id]: result.error ?? 'Path not accepted',
+                }));
             }
         } finally {
             setSavingPath(null);
@@ -146,10 +161,13 @@ export function DownloadSettings() {
     return (
         <div className="p-6 max-w-2xl space-y-8">
             <div>
-                <h2 className="text-lg font-semibold text-on-surface mb-1">Download</h2>
+                <h2 className="text-lg font-semibold text-on-surface mb-1">
+                    Download
+                </h2>
                 <p className="text-sm text-on-surface-variant">
-                    Configure external download tools and preferences. Tools must be installed
-                    independently — WhatNext never bundles them.
+                    Configure external download tools and preferences. Tools
+                    must be installed independently — WhatNext never bundles
+                    them.
                 </p>
             </div>
 
@@ -165,7 +183,10 @@ export function DownloadSettings() {
                         className="text-xs text-primary hover:underline disabled:opacity-50"
                     >
                         {checkingBackends ? (
-                            <><i className="fa-solid fa-spinner fa-spin mr-1" />Checking…</>
+                            <>
+                                <i className="fa-solid fa-spinner fa-spin mr-1" />
+                                Checking…
+                            </>
                         ) : (
                             'Re-check'
                         )}
@@ -175,18 +196,28 @@ export function DownloadSettings() {
                 <div className="space-y-2">
                     {BACKEND_INFO.map((info) => {
                         const status = backends.find((b) => b.id === info.id);
-                        const view = status ? describeBackendStatus(status) : null;
+                        const view = status
+                            ? describeBackendStatus(status)
+                            : null;
                         const installed = view?.installed ?? false;
                         // On non-Windows, Spytify is blocked before any path probe; a custom
                         // path is inert there, so we hide the path editor for it.
                         const spytifyBlocked =
-                            info.windowsOnly && !!view?.error && /Windows/i.test(view.error);
+                            info.windowsOnly &&
+                            !!view?.error &&
+                            /Windows/i.test(view.error);
                         const configuredPath = paths[info.id];
                         const draft = pathDrafts[info.id];
-                        const draftValue = draft !== undefined ? draft : (configuredPath ?? '');
+                        const draftValue =
+                            draft !== undefined
+                                ? draft
+                                : (configuredPath ?? '');
 
                         return (
-                            <div key={info.id} className="bg-surface-high rounded-lg p-4 space-y-3">
+                            <div
+                                key={info.id}
+                                className="bg-surface-high rounded-lg p-4 space-y-3"
+                            >
                                 <div className="flex items-center gap-4">
                                     <div
                                         className={`w-2 h-2 rounded-full shrink-0 ${
@@ -194,7 +225,8 @@ export function DownloadSettings() {
                                                 ? 'bg-on-surface-variant/40'
                                                 : installed
                                                   ? 'bg-primary'
-                                                  : view?.state === 'misconfigured'
+                                                  : view?.state ===
+                                                      'misconfigured'
                                                     ? 'bg-amber-500/70'
                                                     : 'bg-error/60'
                                         }`}
@@ -214,20 +246,24 @@ export function DownloadSettings() {
                                                     {view.version}
                                                 </span>
                                             )}
-                                            {!installed && !checkingBackends && (
-                                                <span
-                                                    className={`text-xs ${
-                                                        view?.state === 'misconfigured'
-                                                            ? 'text-amber-500'
-                                                            : 'text-error'
-                                                    }`}
-                                                >
-                                                    {view?.state === 'misconfigured'
-                                                        ? 'Configured path not found'
-                                                        : 'Not found'}
-                                                </span>
-                                            )}
-                                            {view?.state === 'installed-custom' && (
+                                            {!installed &&
+                                                !checkingBackends && (
+                                                    <span
+                                                        className={`text-xs ${
+                                                            view?.state ===
+                                                            'misconfigured'
+                                                                ? 'text-amber-500'
+                                                                : 'text-error'
+                                                        }`}
+                                                    >
+                                                        {view?.state ===
+                                                        'misconfigured'
+                                                            ? 'Configured path not found'
+                                                            : 'Not found'}
+                                                    </span>
+                                                )}
+                                            {view?.state ===
+                                                'installed-custom' && (
                                                 <span className="text-[10px] uppercase tracking-wider text-primary">
                                                     custom path
                                                 </span>
@@ -247,7 +283,9 @@ export function DownloadSettings() {
                                     {!installed && !checkingBackends && (
                                         <button
                                             onClick={() =>
-                                                window.electron?.shell.openExternal(info.installUrl)
+                                                window.electron?.shell.openExternal(
+                                                    info.installUrl,
+                                                )
                                             }
                                             className="text-xs text-primary hover:underline shrink-0"
                                         >
@@ -259,8 +297,8 @@ export function DownloadSettings() {
                                 {/* Custom executable path */}
                                 {spytifyBlocked ? (
                                     <p className="text-xs text-on-surface-variant">
-                                        Spytify is Windows-only; a custom path has no effect on this
-                                        platform.
+                                        Spytify is Windows-only; a custom path
+                                        has no effect on this platform.
                                     </p>
                                 ) : (
                                     <div className="space-y-1.5">
@@ -270,28 +308,50 @@ export function DownloadSettings() {
                                                 value={draftValue}
                                                 placeholder={`Custom ${info.name} path (leave blank to use PATH)`}
                                                 onChange={(e) =>
-                                                    setPathDrafts((d) => ({ ...d, [info.id]: e.target.value }))
+                                                    setPathDrafts((d) => ({
+                                                        ...d,
+                                                        [info.id]:
+                                                            e.target.value,
+                                                    }))
                                                 }
                                                 className="flex-1 min-w-0 bg-surface border border-outline-variant/20 rounded-md px-2.5 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-primary/50"
                                             />
                                             <button
-                                                onClick={() => browseForPath(info.id, info.name)}
-                                                disabled={savingPath === info.id}
+                                                onClick={() =>
+                                                    browseForPath(
+                                                        info.id,
+                                                        info.name,
+                                                    )
+                                                }
+                                                disabled={
+                                                    savingPath === info.id
+                                                }
                                                 className="text-xs px-2.5 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 shrink-0"
                                             >
                                                 Browse…
                                             </button>
                                             <button
-                                                onClick={() => savePath(info.id, draftValue)}
-                                                disabled={savingPath === info.id}
+                                                onClick={() =>
+                                                    savePath(
+                                                        info.id,
+                                                        draftValue,
+                                                    )
+                                                }
+                                                disabled={
+                                                    savingPath === info.id
+                                                }
                                                 className="text-xs px-2.5 py-1.5 rounded-md bg-surface hover:bg-outline-variant/20 text-on-surface-variant disabled:opacity-50 shrink-0"
                                             >
                                                 Save
                                             </button>
                                             {configuredPath && (
                                                 <button
-                                                    onClick={() => savePath(info.id, null)}
-                                                    disabled={savingPath === info.id}
+                                                    onClick={() =>
+                                                        savePath(info.id, null)
+                                                    }
+                                                    disabled={
+                                                        savingPath === info.id
+                                                    }
                                                     className="text-xs px-2.5 py-1.5 rounded-md bg-surface hover:bg-outline-variant/20 text-on-surface-variant disabled:opacity-50 shrink-0"
                                                 >
                                                     Clear
@@ -304,8 +364,10 @@ export function DownloadSettings() {
                                             </p>
                                         ) : (
                                             <p className="text-xs text-on-surface-variant">
-                                                Browse… picks the program directly. A typed path is
-                                                confirmed once before WhatNext will run it.
+                                                Browse… picks the program
+                                                directly. A typed path is
+                                                confirmed once before WhatNext
+                                                will run it.
                                             </p>
                                         )}
                                     </div>
@@ -347,7 +409,9 @@ export function DownloadSettings() {
                 <div className="bg-surface-high rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-on-surface">Downloaded audio</p>
+                            <p className="text-sm text-on-surface">
+                                Downloaded audio
+                            </p>
                             <p className="text-xs text-on-surface-variant">
                                 yt-dlp and spotDL save files here
                             </p>
@@ -366,8 +430,11 @@ export function DownloadSettings() {
                     </div>
                     <p className="text-xs text-on-surface-variant">
                         To change the audio directory, pass the{' '}
-                        <code className="font-mono bg-surface px-1 rounded">--output</code> flag to
-                        yt-dlp / spotDL directly. Backend executable paths are configurable above.
+                        <code className="font-mono bg-surface px-1 rounded">
+                            --output
+                        </code>{' '}
+                        flag to yt-dlp / spotDL directly. Backend executable
+                        paths are configurable above.
                     </p>
                 </div>
             </section>
@@ -384,21 +451,25 @@ export function DownloadSettings() {
                                 Auto-resolve purchase links
                             </p>
                             <p className="text-xs text-on-surface-variant mt-0.5">
-                                After each download, look up Bandcamp / Beatport links via
-                                MusicBrainz in the background
+                                After each download, look up Bandcamp / Beatport
+                                links via MusicBrainz in the background
                             </p>
                         </div>
                         <button
                             onClick={handlePurchaseLinksToggle}
                             className={`relative w-11 h-6 rounded-full transition-colors ${
-                                autoPurchaseLinks ? 'bg-primary' : 'bg-outline-variant/40'
+                                autoPurchaseLinks
+                                    ? 'bg-primary'
+                                    : 'bg-outline-variant/40'
                             }`}
                             role="switch"
                             aria-checked={autoPurchaseLinks}
                         >
                             <span
                                 className={`absolute top-0.5 left-0.5 w-5 h-5 bg-surface rounded-full shadow transition-transform ${
-                                    autoPurchaseLinks ? 'translate-x-5' : 'translate-x-0'
+                                    autoPurchaseLinks
+                                        ? 'translate-x-5'
+                                        : 'translate-x-0'
                                 }`}
                             />
                         </button>

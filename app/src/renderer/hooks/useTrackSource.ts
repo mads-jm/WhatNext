@@ -15,9 +15,7 @@ import {
     removeTrackFromPlaylist,
 } from '../db/services/playlist-service';
 import { bulkImportTracks } from '../db/services/track-service';
-import {
-    createSessionParticipant,
-} from '../db/services/user-service';
+import { createSessionParticipant } from '../db/services/user-service';
 import {
     addIncomingTrack,
     type AddIncomingTrackResult,
@@ -48,7 +46,7 @@ export interface UseTrackSourceOptions {
  */
 export type AddTrackFn = (
     incoming: IncomingTrack,
-    addedBy: string
+    addedBy: string,
 ) => Promise<AddIncomingTrackResult>;
 
 export interface UseTrackSourceResult {
@@ -67,7 +65,7 @@ export interface UseTrackSourceResult {
  */
 async function processIncomingTracks(
     tracks: SpotifyFullTrackItem[],
-    playlistId: string
+    playlistId: string,
 ): Promise<IncomingTrack[]> {
     if (tracks.length === 0) return [];
 
@@ -77,7 +75,9 @@ async function processIncomingTracks(
     const incomingSpotifyIds = tracks.map((t) => t.spotifyId);
     const [currentPlaylist, matchingLocalTracks] = await Promise.all([
         db.playlists.findOne(playlistId).exec(),
-        db.tracks.find({ selector: { spotifyId: { $in: incomingSpotifyIds } } }).exec(),
+        db.tracks
+            .find({ selector: { spotifyId: { $in: incomingSpotifyIds } } })
+            .exec(),
     ]);
 
     const playlistTrackIds = new Set(currentPlaylist?.trackIds ?? []);
@@ -106,26 +106,34 @@ async function processIncomingTracks(
     const newCollaboratorIds: string[] = [];
 
     if (brandNew.length > 0) {
-        const uniqueSpotifyUserIds = [...new Set(brandNew.map((t) => t.addedBySpotifyId))];
+        const uniqueSpotifyUserIds = [
+            ...new Set(brandNew.map((t) => t.addedBySpotifyId)),
+        ];
         const allUsers = await db.users.find().exec();
 
         for (const spotifyId of uniqueSpotifyUserIds) {
             const match = allUsers.find((u) =>
                 u.linkedAccounts.some(
-                    (a) => a.provider === 'spotify' && a.providerUserId === spotifyId
-                )
+                    (a) =>
+                        a.provider === 'spotify' &&
+                        a.providerUserId === spotifyId,
+                ),
             );
             if (match) {
                 spotifyToWhatNext.set(spotifyId, match.id);
             } else {
-                const displayName = brandNew.find((t) => t.addedBySpotifyId === spotifyId)?.addedByDisplayName;
+                const displayName = brandNew.find(
+                    (t) => t.addedBySpotifyId === spotifyId,
+                )?.addedByDisplayName;
                 const participant = await createSessionParticipant(
                     displayName || spotifyId,
                     spotifyId,
-                    displayName
+                    displayName,
                 );
                 spotifyToWhatNext.set(spotifyId, participant.id);
-                if (!currentPlaylist?.collaboratorIds.includes(participant.id)) {
+                if (
+                    !currentPlaylist?.collaboratorIds.includes(participant.id)
+                ) {
                     newCollaboratorIds.push(participant.id);
                 }
             }
@@ -145,7 +153,7 @@ async function processIncomingTracks(
                 addedAt: t.addedAt,
                 addedBy: spotifyToWhatNext.get(t.addedBySpotifyId)!,
                 albumArtUrl: t.albumArtUrl,
-            }))
+            })),
         );
     }
 
@@ -158,7 +166,10 @@ async function processIncomingTracks(
     if (newCollaboratorIds.length > 0 && currentPlaylist) {
         await currentPlaylist.update({
             $set: {
-                collaboratorIds: [...currentPlaylist.collaboratorIds, ...newCollaboratorIds],
+                collaboratorIds: [
+                    ...currentPlaylist.collaboratorIds,
+                    ...newCollaboratorIds,
+                ],
                 updatedAt: new Date().toISOString(),
             },
         });
@@ -177,7 +188,9 @@ async function processIncomingTracks(
     }));
 }
 
-export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceResult {
+export function useTrackSource(
+    options: UseTrackSourceOptions,
+): UseTrackSourceResult {
     const { config, playlistId, enabled, onNewTracks } = options;
 
     const [syncing, setSyncing] = useState(false);
@@ -202,13 +215,13 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
         let cancelled = false;
 
         // Seed lastTotalRef from local playlist so first poll doesn't re-fetch everything
-        getDatabase().then((db) =>
-            db.playlists.findOne(playlistId).exec()
-        ).then((pl) => {
-            if (pl && lastTotalRef.current === 0) {
-                lastTotalRef.current = pl.trackIds.length;
-            }
-        });
+        getDatabase()
+            .then((db) => db.playlists.findOne(playlistId).exec())
+            .then((pl) => {
+                if (pl && lastTotalRef.current === 0) {
+                    lastTotalRef.current = pl.trackIds.length;
+                }
+            });
 
         const poll = async () => {
             if (cancelled || syncingRef.current) return;
@@ -224,7 +237,7 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
             try {
                 // ── Phase 1: lightweight snapshot check (~200 bytes) ──────
                 const snapshot = await spotify.getPlaylistSnapshot(
-                    config.spotifyPlaylistId
+                    config.spotifyPlaylistId,
                 );
 
                 if (cancelled) return;
@@ -251,7 +264,7 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                     const result = await spotify.getPlaylistTracksFrom(
                         config.spotifyPlaylistId,
                         localTotal,
-                        snapshotId ?? undefined
+                        snapshotId ?? undefined,
                     );
 
                     if (cancelled) return;
@@ -262,7 +275,10 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                     }
 
                     const newTracks = result.tracks ?? [];
-                    const newIncoming = await processIncomingTracks(newTracks, playlistId);
+                    const newIncoming = await processIncomingTracks(
+                        newTracks,
+                        playlistId,
+                    );
 
                     if (!cancelled && newIncoming.length > 0) {
                         onNewTracks?.(newIncoming);
@@ -270,7 +286,7 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                 } else if (remoteTotal < localTotal) {
                     // Tracks were removed — need full sync to find which ones
                     const result = await spotify.getPlaylistTracksFull(
-                        config.spotifyPlaylistId
+                        config.spotifyPlaylistId,
                     );
 
                     if (cancelled) return;
@@ -283,7 +299,10 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                     const tracks = result.tracks ?? [];
 
                     // Process additions (handles re-added tracks too)
-                    const newIncoming = await processIncomingTracks(tracks, playlistId);
+                    const newIncoming = await processIncomingTracks(
+                        tracks,
+                        playlistId,
+                    );
 
                     if (!cancelled && newIncoming.length > 0) {
                         onNewTracks?.(newIncoming);
@@ -292,16 +311,30 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                     // Detect removals
                     if (!cancelled) {
                         const db = await getDatabase();
-                        const spotifyIdSet = new Set(tracks.map((t) => t.spotifyId));
-                        const playlistDoc = await db.playlists.findOne(playlistId).exec();
+                        const spotifyIdSet = new Set(
+                            tracks.map((t) => t.spotifyId),
+                        );
+                        const playlistDoc = await db.playlists
+                            .findOne(playlistId)
+                            .exec();
                         if (playlistDoc) {
                             const localTracks = await db.tracks
-                                .find({ selector: { id: { $in: playlistDoc.trackIds } } })
+                                .find({
+                                    selector: {
+                                        id: { $in: playlistDoc.trackIds },
+                                    },
+                                })
                                 .exec();
                             for (const local of localTracks) {
                                 if (cancelled) break;
-                                if (local.spotifyId && !spotifyIdSet.has(local.spotifyId)) {
-                                    await removeTrackFromPlaylist(playlistId, local.id);
+                                if (
+                                    local.spotifyId &&
+                                    !spotifyIdSet.has(local.spotifyId)
+                                ) {
+                                    await removeTrackFromPlaylist(
+                                        playlistId,
+                                        local.id,
+                                    );
                                 }
                             }
                         }
@@ -342,13 +375,13 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
             pollRef.current = null;
             clearInterval(id);
         };
-    // Justification: the dependency list is deliberately narrower than what the
-    // rule computes. `poll` closes over `config` and `onNewTracks`, which
-    // callers pass as fresh object/function literals each render — including
-    // them would tear down and restart the polling interval on every render.
-    // That is a behaviour change, not a correctness fix; widening this list
-    // safely requires memoising the caller's props first.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Justification: the dependency list is deliberately narrower than what the
+        // rule computes. `poll` closes over `config` and `onNewTracks`, which
+        // callers pass as fresh object/function literals each render — including
+        // them would tear down and restart the polling interval on every render.
+        // That is a behaviour change, not a correctness fix; widening this list
+        // safely requires memoising the caller's props first.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enabled, config.type, playlistId]);
 
     const syncNow = useCallback(() => {
@@ -365,7 +398,7 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                 const result = await addIncomingTrack(
                     incoming,
                     playlistId,
-                    addedBy
+                    addedBy,
                 );
                 setManualError(null);
                 setManualLastAddAt(new Date().toISOString());
@@ -373,12 +406,12 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
                 return result;
             } catch (err) {
                 setManualError(
-                    err instanceof Error ? err.message : String(err)
+                    err instanceof Error ? err.message : String(err),
                 );
                 throw err;
             }
         },
-        [playlistId, onNewTracks]
+        [playlistId, onNewTracks],
     );
 
     if (config.type === 'manual') {

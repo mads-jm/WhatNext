@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 
 export interface AudioStoreIndex {
-    [sourceUrl: string]: string;  // sourceUrl → absolute file path
+    [sourceUrl: string]: string; // sourceUrl → absolute file path
 }
 
 /**
@@ -16,7 +16,9 @@ export class AudioStore {
     private index: AudioStoreIndex = {};
 
     constructor(audioDir?: string) {
-        this.audioDir = audioDir ?? path.join(os.homedir(), 'Documents', 'WhatNext', 'audio');
+        this.audioDir =
+            audioDir ??
+            path.join(os.homedir(), 'Documents', 'WhatNext', 'audio');
         this.indexPath = path.join(this.audioDir, 'index.json');
     }
 
@@ -58,7 +60,11 @@ export class AudioStore {
      */
     async record(sourceUrl: string, filePath: string): Promise<void> {
         this.index[sourceUrl] = filePath;
-        await fs.promises.writeFile(this.indexPath, JSON.stringify(this.index, null, 2), 'utf8');
+        await fs.promises.writeFile(
+            this.indexPath,
+            JSON.stringify(this.index, null, 2),
+            'utf8',
+        );
     }
 
     /**

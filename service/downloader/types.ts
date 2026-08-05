@@ -13,9 +13,9 @@ export interface ResolvedTrack {
 
 export interface AudioFormatOption {
     formatId: string;
-    codec: string;      // 'opus' | 'aac' | 'mp3' | 'flac' | 'wav'
-    bitrate?: number;   // kbps
-    filesize?: number;  // bytes, estimated
+    codec: string; // 'opus' | 'aac' | 'mp3' | 'flac' | 'wav'
+    bitrate?: number; // kbps
+    filesize?: number; // bytes, estimated
 }
 
 export interface DownloadInput {
@@ -25,11 +25,11 @@ export interface DownloadInput {
 }
 
 export interface DownloadStartRequest {
-    backend: string;    // 'ytdlp' | 'spotdl' | 'spytify'
+    backend: string; // 'ytdlp' | 'spotdl' | 'spytify'
     tracks: Array<{
         sourceUrl: string;
         sourceProvider: string;
-        preferredFormat: string;  // 'best_audio' | 'opus' | 'mp3' | 'flac'
+        preferredFormat: string; // 'best_audio' | 'opus' | 'mp3' | 'flac'
     }>;
     outputDir?: string;
     /** Optional caller-supplied correlation ID. Auto-generated (UUID) if omitted. */
@@ -57,8 +57,8 @@ export interface PurchaseResolveRequest {
 }
 
 export interface PurchaseLink {
-    provider: string;   // 'bandcamp' | 'beatport' | 'itunes' | 'amazon'
+    provider: string; // 'bandcamp' | 'beatport' | 'itunes' | 'amazon'
     url: string;
-    label?: string;     // e.g. "Buy on Bandcamp ($1+)"
+    label?: string; // e.g. "Buy on Bandcamp ($1+)"
     resolvedAt: string; // ISO timestamp
 }

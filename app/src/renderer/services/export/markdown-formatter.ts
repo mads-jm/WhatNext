@@ -4,7 +4,10 @@
  */
 
 import type { ExportPlaylist, ExportComment } from './export-types';
-import { REACTION_DISPLAY, type ReactionEmoji } from '../../../shared/core/reactions';
+import {
+    REACTION_DISPLAY,
+    type ReactionEmoji,
+} from '../../../shared/core/reactions';
 
 export function formatAsMarkdown(data: ExportPlaylist): string {
     const lines: string[] = [];
@@ -18,10 +21,14 @@ export function formatAsMarkdown(data: ExportPlaylist): string {
     lines.push(`tracks: ${data.trackCount}`);
     lines.push(`duration: "${formatDuration(data.totalDurationMs)}"`);
     if (data.tags.length > 0) {
-        lines.push(`tags: [${data.tags.map((t) => `"${escapeYaml(t)}"`).join(', ')}]`);
+        lines.push(
+            `tags: [${data.tags.map((t) => `"${escapeYaml(t)}"`).join(', ')}]`,
+        );
     }
     if (data.collaborators.length > 0) {
-        lines.push(`collaborators: [${data.collaborators.map((c) => `"${escapeYaml(c)}"`).join(', ')}]`);
+        lines.push(
+            `collaborators: [${data.collaborators.map((c) => `"${escapeYaml(c)}"`).join(', ')}]`,
+        );
     }
     lines.push('source: WhatNext');
     lines.push('---');
@@ -64,13 +71,18 @@ export function formatAsMarkdown(data: ExportPlaylist): string {
         lines.push(`- **Duration:** ${formatDuration(track.durationMs)}`);
         lines.push(`- **Added by:** ${track.addedBy}`);
         if (track.spotifyId) {
-            lines.push(`- **Spotify:** [Open](https://open.spotify.com/track/${track.spotifyId})`);
+            lines.push(
+                `- **Spotify:** [Open](https://open.spotify.com/track/${track.spotifyId})`,
+            );
         }
 
         // Reactions
         const activeReactions = Object.entries(track.reactions)
             .filter(([, count]) => count > 0)
-            .map(([emoji, count]) => `${REACTION_DISPLAY[emoji as ReactionEmoji]} ${count}`);
+            .map(
+                ([emoji, count]) =>
+                    `${REACTION_DISPLAY[emoji as ReactionEmoji]} ${count}`,
+            );
         if (activeReactions.length > 0) {
             lines.push(`- **Reactions:** ${activeReactions.join('  ')}`);
         }
@@ -89,7 +101,9 @@ export function formatAsMarkdown(data: ExportPlaylist): string {
 
     // Footer
     lines.push('---');
-    lines.push(`*Exported from WhatNext on ${new Date().toISOString().split('T')[0]}*`);
+    lines.push(
+        `*Exported from WhatNext on ${new Date().toISOString().split('T')[0]}*`,
+    );
 
     return lines.join('\n');
 }

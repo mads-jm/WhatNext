@@ -60,7 +60,10 @@ interface UseCompanionBridgeResult {
     timeRequests: CompanionTimeRequestEvent[];
     startServer: () => Promise<void>;
     stopServer: () => Promise<void>;
-    respondToTimeRequest: (clientId: string, action: 'seen' | 'granted') => void;
+    respondToTimeRequest: (
+        clientId: string,
+        action: 'seen' | 'granted',
+    ) => void;
     clearReactions: () => void;
     clearTimeRequests: () => void;
 }
@@ -77,7 +80,7 @@ interface UseCompanionBridgeResult {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function useDebouncedCallback<T extends (...args: any[]) => void>(
     fn: T,
-    delayMs: number
+    delayMs: number,
 ): T {
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const fnRef = useRef(fn);
@@ -117,10 +120,17 @@ export function useCompanionBridge({
     coHostIds = [],
 }: UseCompanionBridgeParams): UseCompanionBridgeResult {
     const [serverRunning, setServerRunning] = useState(false);
-    const [serverInfo, setServerInfo] = useState<{ port: number; localIp: string } | null>(null);
-    const [connectedClients, setConnectedClients] = useState<CompanionClientInfo[]>([]);
+    const [serverInfo, setServerInfo] = useState<{
+        port: number;
+        localIp: string;
+    } | null>(null);
+    const [connectedClients, setConnectedClients] = useState<
+        CompanionClientInfo[]
+    >([]);
     const [reactions, setReactions] = useState<CompanionReactionEvent[]>([]);
-    const [timeRequests, setTimeRequests] = useState<CompanionTimeRequestEvent[]>([]);
+    const [timeRequests, setTimeRequests] = useState<
+        CompanionTimeRequestEvent[]
+    >([]);
 
     const companion = window.electron?.companion;
 
@@ -158,30 +168,40 @@ export function useCompanionBridge({
     useEffect(() => {
         if (!companion || !serverRunning) return;
 
-        const removeJoined = companion.onClientJoined((data: CompanionClientEventPayload) => {
-            setConnectedClients((prev) => [
-                ...prev.filter((c) => c.clientId !== data.clientId),
-                { clientId: data.clientId, displayName: data.displayName },
-            ]);
-        });
+        const removeJoined = companion.onClientJoined(
+            (data: CompanionClientEventPayload) => {
+                setConnectedClients((prev) => [
+                    ...prev.filter((c) => c.clientId !== data.clientId),
+                    { clientId: data.clientId, displayName: data.displayName },
+                ]);
+            },
+        );
 
-        const removeLeft = companion.onClientLeft((data: CompanionClientEventPayload) => {
-            setConnectedClients((prev) => prev.filter((c) => c.clientId !== data.clientId));
-        });
+        const removeLeft = companion.onClientLeft(
+            (data: CompanionClientEventPayload) => {
+                setConnectedClients((prev) =>
+                    prev.filter((c) => c.clientId !== data.clientId),
+                );
+            },
+        );
 
-        const removeReaction = companion.onReaction((data: CompanionReactionPayload) => {
-            setReactions((prev) => [
-                ...prev.slice(-49), // Keep last 50
-                { ...data, timestamp: Date.now() },
-            ]);
-        });
+        const removeReaction = companion.onReaction(
+            (data: CompanionReactionPayload) => {
+                setReactions((prev) => [
+                    ...prev.slice(-49), // Keep last 50
+                    { ...data, timestamp: Date.now() },
+                ]);
+            },
+        );
 
-        const removeTimeReq = companion.onTimeRequest((data: CompanionTimeRequestPayload) => {
-            setTimeRequests((prev) => [
-                ...prev.slice(-19), // Keep last 20
-                { ...data, timestamp: Date.now() },
-            ]);
-        });
+        const removeTimeReq = companion.onTimeRequest(
+            (data: CompanionTimeRequestPayload) => {
+                setTimeRequests((prev) => [
+                    ...prev.slice(-19), // Keep last 20
+                    { ...data, timestamp: Date.now() },
+                ]);
+            },
+        );
 
         return () => {
             removeJoined();
@@ -220,7 +240,8 @@ export function useCompanionBridge({
     }, 500);
 
     useEffect(() => {
-        if (!companion || !serverRunning || !playlistId || !sessionActive) return;
+        if (!companion || !serverRunning || !playlistId || !sessionActive)
+            return;
 
         let sub: { unsubscribe: () => void } | null = null;
         let alive = true;
@@ -243,27 +264,25 @@ export function useCompanionBridge({
 
                     // Subscribe to tracks
                     sub?.unsubscribe();
-                    sub = db.tracks
-                        .findByIds(ids)
-                        .$.subscribe((trackMap) => {
-                            if (!alive) return;
-                            const ordered: CompanionTrack[] = ids
-                                .map((id) => trackMap.get(id))
-                                .filter(Boolean)
-                                .map((doc) => {
-                                    const t = doc!.toJSON() as TrackDocType;
-                                    return {
-                                        id: t.id,
-                                        title: t.title,
-                                        artists: t.artists,
-                                        album: t.album,
-                                        durationMs: t.durationMs,
-                                        albumArtUrl: t.albumArtUrl ?? null,
-                                        addedBy: t.addedBy ?? null,
-                                    };
-                                });
-                            pushTracks(ordered);
-                        });
+                    sub = db.tracks.findByIds(ids).$.subscribe((trackMap) => {
+                        if (!alive) return;
+                        const ordered: CompanionTrack[] = ids
+                            .map((id) => trackMap.get(id))
+                            .filter(Boolean)
+                            .map((doc) => {
+                                const t = doc!.toJSON() as TrackDocType;
+                                return {
+                                    id: t.id,
+                                    title: t.title,
+                                    artists: t.artists,
+                                    album: t.album,
+                                    durationMs: t.durationMs,
+                                    albumArtUrl: t.albumArtUrl ?? null,
+                                    addedBy: t.addedBy ?? null,
+                                };
+                            });
+                        pushTracks(ordered);
+                    });
                 });
 
             // Store outer sub for cleanup
@@ -280,9 +299,12 @@ export function useCompanionBridge({
     // Push participants (debounced)
     // ========================================
 
-    const pushParticipants = useDebouncedCallback((participants: CompanionParticipant[]) => {
-        companion?.pushParticipants(participants);
-    }, 500);
+    const pushParticipants = useDebouncedCallback(
+        (participants: CompanionParticipant[]) => {
+            companion?.pushParticipants(participants);
+        },
+        500,
+    );
 
     useEffect(() => {
         if (!companion || !serverRunning || !sessionActive) return;
@@ -318,9 +340,12 @@ export function useCompanionBridge({
     // Actions
     // ========================================
 
-    const respondToTimeRequest = useCallback((clientId: string, action: 'seen' | 'granted') => {
-        companion?.respondToTimeRequest(clientId, action);
-    }, [companion]);
+    const respondToTimeRequest = useCallback(
+        (clientId: string, action: 'seen' | 'granted') => {
+            companion?.respondToTimeRequest(clientId, action);
+        },
+        [companion],
+    );
 
     const clearReactions = useCallback(() => setReactions([]), []);
     const clearTimeRequests = useCallback(() => setTimeRequests([]), []);

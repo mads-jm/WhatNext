@@ -17,7 +17,7 @@ export type { CreateTrackInput, UpdateTrackInput };
  * Create a new track
  */
 export async function createTrack(
-    input: CreateTrackInput
+    input: CreateTrackInput,
 ): Promise<TrackDocument> {
     const db = await getDatabase();
 
@@ -85,7 +85,7 @@ export async function searchTracks(query: string) {
  */
 export async function updateTrack(
     id: string,
-    updates: UpdateTrackInput
+    updates: UpdateTrackInput,
 ): Promise<TrackDocument | null> {
     const db = await getDatabase();
     const track = await db.tracks.findOne(id).exec();
@@ -119,11 +119,11 @@ export async function deleteTrack(id: string): Promise<boolean> {
 /**
  * Get tracks by IDs (for playlist display)
  */
-export async function getTracksByIds(
-    ids: string[]
-): Promise<TrackDocument[]> {
+export async function getTracksByIds(ids: string[]): Promise<TrackDocument[]> {
     const db = await getDatabase();
-    const map: Map<string, TrackDocument> = await db.tracks.findByIds(ids).exec();
+    const map: Map<string, TrackDocument> = await db.tracks
+        .findByIds(ids)
+        .exec();
     return Array.from(map.values());
 }
 
@@ -131,7 +131,7 @@ export async function getTracksByIds(
  * Bulk import tracks
  */
 export async function bulkImportTracks(
-    tracks: CreateTrackInput[]
+    tracks: CreateTrackInput[],
 ): Promise<string[]> {
     const db = await getDatabase();
 

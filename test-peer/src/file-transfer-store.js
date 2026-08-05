@@ -145,7 +145,7 @@ export function completeTransfer(sha256) {
 
     // Sort chunks by offset and assemble
     t.chunks.sort((a, b) => a.offset - b.offset);
-    const buf = Buffer.concat(t.chunks.map(c => c.data));
+    const buf = Buffer.concat(t.chunks.map((c) => c.data));
     t.status = 'complete';
     t.completedAt = new Date().toISOString();
 
@@ -197,5 +197,5 @@ export function getActiveTransfers() {
 // ─── Seed files ───────────────────────────────────────────────────────────────
 
 // Create two small test files on module load so the peer always has something to offer.
-addTestFile('test-track.mp3', crypto.randomBytes(256 * 1024));  // 256KB fake audio
-addTestFile('cover.jpg', crypto.randomBytes(32 * 1024));        // 32KB fake artwork
+addTestFile('test-track.mp3', crypto.randomBytes(256 * 1024)); // 256KB fake audio
+addTestFile('cover.jpg', crypto.randomBytes(32 * 1024)); // 32KB fake artwork

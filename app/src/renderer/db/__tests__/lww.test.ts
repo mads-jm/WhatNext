@@ -11,7 +11,9 @@ import {
 
 describe('parseTimestampMs', () => {
     it('parses an ISO-8601 string to epoch ms', () => {
-        expect(parseTimestampMs('2026-06-27T00:00:00.000Z')).toBe(Date.parse('2026-06-27T00:00:00.000Z'));
+        expect(parseTimestampMs('2026-06-27T00:00:00.000Z')).toBe(
+            Date.parse('2026-06-27T00:00:00.000Z'),
+        );
     });
 
     it('parses ISO strings of differing precision to the same instant', () => {
@@ -29,7 +31,7 @@ describe('parseTimestampMs', () => {
         'maps unparseable/missing value %p to 0',
         (value) => {
             expect(parseTimestampMs(value as unknown)).toBe(0);
-        }
+        },
     );
 });
 
@@ -57,8 +59,8 @@ describe('incomingWins', () => {
         expect(
             incomingWins(
                 { updatedAt: '2026-06-27T00:00:01.000Z' },
-                { updatedAt: '2026-06-27T00:00:00.000Z' }
-            )
+                { updatedAt: '2026-06-27T00:00:00.000Z' },
+            ),
         ).toBe(true);
     });
 
@@ -66,8 +68,8 @@ describe('incomingWins', () => {
         expect(
             incomingWins(
                 { updatedAt: '2026-06-27T00:00:00.000Z' },
-                { updatedAt: '2026-06-27T00:00:01.000Z' }
-            )
+                { updatedAt: '2026-06-27T00:00:01.000Z' },
+            ),
         ).toBe(false);
     });
 
@@ -76,14 +78,20 @@ describe('incomingWins', () => {
         expect(
             incomingWins(
                 { updatedAt: '2026-06-27T12:00:00Z', tiebreak: 'a' },
-                { updatedAt: '2026-06-27T12:00:00.000Z', tiebreak: 'a' }
-            )
+                { updatedAt: '2026-06-27T12:00:00.000Z', tiebreak: 'a' },
+            ),
         ).toBe(false);
     });
 
     it('breaks an exact timestamp tie deterministically by content key', () => {
-        const older = { updatedAt: '2026-06-27T12:00:00.000Z', tiebreak: 'aaa' };
-        const newerKey = { updatedAt: '2026-06-27T12:00:00.000Z', tiebreak: 'zzz' };
+        const older = {
+            updatedAt: '2026-06-27T12:00:00.000Z',
+            tiebreak: 'aaa',
+        };
+        const newerKey = {
+            updatedAt: '2026-06-27T12:00:00.000Z',
+            tiebreak: 'zzz',
+        };
         // The larger key wins, and the decision is symmetric: whichever side is
         // "incoming", the SAME version (zzz) ends up the winner → peers converge.
         expect(incomingWins(newerKey, older)).toBe(true);
@@ -97,7 +105,10 @@ describe('incomingWins', () => {
 
     it('treats a missing/unparseable incoming timestamp as oldest (loses)', () => {
         expect(
-            incomingWins({ updatedAt: undefined }, { updatedAt: '2026-06-27T12:00:00.000Z' })
+            incomingWins(
+                { updatedAt: undefined },
+                { updatedAt: '2026-06-27T12:00:00.000Z' },
+            ),
         ).toBe(false);
     });
 });
@@ -150,12 +161,12 @@ describe('contentKey (cross-peer tie-break symmetry)', () => {
         // On P: incoming = vQ payload, existing = stored vP.
         const qWinsOnP = incomingWins(
             { updatedAt: ts, tiebreak: contentKey(vQ_data) },
-            { updatedAt: ts, tiebreak: contentKey(stored(vP_data)) }
+            { updatedAt: ts, tiebreak: contentKey(stored(vP_data)) },
         );
         // On Q: incoming = vP payload, existing = stored vQ.
         const pWinsOnQ = incomingWins(
             { updatedAt: ts, tiebreak: contentKey(vP_data) },
-            { updatedAt: ts, tiebreak: contentKey(stored(vQ_data)) }
+            { updatedAt: ts, tiebreak: contentKey(stored(vQ_data)) },
         );
 
         // Convergence: exactly one side's version is the winner on BOTH peers.
@@ -212,12 +223,12 @@ describe('contentKey (cross-peer tie-break symmetry)', () => {
         // On P: incoming = vQ stripped payload, existing = stored vP (with localFilePath).
         const qWinsOnP = incomingWins(
             { updatedAt: ts, tiebreak: contentKey(vQ_data) },
-            { updatedAt: ts, tiebreak: contentKey(storedP) }
+            { updatedAt: ts, tiebreak: contentKey(storedP) },
         );
         // On Q: incoming = vP stripped payload, existing = stored vQ (no localFilePath).
         const pWinsOnQ = incomingWins(
             { updatedAt: ts, tiebreak: contentKey(vP_data) },
-            { updatedAt: ts, tiebreak: contentKey(storedQ) }
+            { updatedAt: ts, tiebreak: contentKey(storedQ) },
         );
 
         // Convergence: the peers must agree on a single winner.
@@ -227,12 +238,14 @@ describe('contentKey (cross-peer tie-break symmetry)', () => {
 
 describe('stableStringify', () => {
     it('produces identical output regardless of key order', () => {
-        expect(stableStringify({ a: 1, b: 2 })).toBe(stableStringify({ b: 2, a: 1 }));
+        expect(stableStringify({ a: 1, b: 2 })).toBe(
+            stableStringify({ b: 2, a: 1 }),
+        );
     });
 
     it('sorts nested object keys too', () => {
         expect(stableStringify({ outer: { y: 1, x: 2 } })).toBe(
-            stableStringify({ outer: { x: 2, y: 1 } })
+            stableStringify({ outer: { x: 2, y: 1 } }),
         );
     });
 
@@ -259,8 +272,18 @@ describe('app ↔ test-peer LWW parity (#58)', () => {
         updatedAt: TS,
     });
 
-    const appEdit = { id: 'tr-1', title: 'App edit', artists: ['Band'], updatedAt: TS };
-    const peerEdit = { id: 'tr-1', title: 'Peer edit', artists: ['Band'], updatedAt: TS };
+    const appEdit = {
+        id: 'tr-1',
+        title: 'App edit',
+        artists: ['Band'],
+        updatedAt: TS,
+    };
+    const peerEdit = {
+        id: 'tr-1',
+        title: 'Peer edit',
+        artists: ['Band'],
+        updatedAt: TS,
+    };
 
     it('converges on the same winner when both sides edit the same doc at the same timestamp', () => {
         // The app's stored copy is an RxDocument: RxDB internals plus a
@@ -275,12 +298,12 @@ describe('app ↔ test-peer LWW parity (#58)', () => {
         // App receives the peer's edit.
         const peerWinsOnApp = incomingWins(
             envelopeCandidate(envelope(peerEdit)),
-            storedCandidate(appStored)
+            storedCandidate(appStored),
         );
         // Test peer receives the app's edit; its stored copy is the peer's own envelope.
         const appWinsOnPeer = incomingWins(
             envelopeCandidate(envelope(appEdit)),
-            envelopeCandidate(envelope(peerEdit))
+            envelopeCandidate(envelope(peerEdit)),
         );
 
         // Exactly one version survives, and it is the SAME one on both sides.
@@ -295,16 +318,17 @@ describe('app ↔ test-peer LWW parity (#58)', () => {
         // `incoming.updatedAt > existing.updatedAt` is false on an exact tie, so
         // the peer ALWAYS kept its own copy while the app picked by content —
         // one of the two orderings below is guaranteed to disagree with it.
-        const rawStringCompareAcceptsApp = envelope(appEdit).updatedAt > envelope(peerEdit).updatedAt;
+        const rawStringCompareAcceptsApp =
+            envelope(appEdit).updatedAt > envelope(peerEdit).updatedAt;
         expect(rawStringCompareAcceptsApp).toBe(false);
 
         const sharedAcceptsApp = incomingWins(
             envelopeCandidate(envelope(appEdit)),
-            envelopeCandidate(envelope(peerEdit))
+            envelopeCandidate(envelope(peerEdit)),
         );
         const sharedAcceptsPeer = incomingWins(
             envelopeCandidate(envelope(peerEdit)),
-            envelopeCandidate(envelope(appEdit))
+            envelopeCandidate(envelope(appEdit)),
         );
         // The shared comparator is antisymmetric on a tie — it does break it.
         expect(sharedAcceptsApp).toBe(!sharedAcceptsPeer);
@@ -312,10 +336,18 @@ describe('app ↔ test-peer LWW parity (#58)', () => {
 
     it('still prefers the strictly-newer timestamp regardless of content key', () => {
         const older = envelope({ id: 'tr-1', title: 'zzz-old', updatedAt: TS });
-        const newer = { id: 'tr-1', data: { id: 'tr-1', title: 'aaa-new' }, updatedAt: '2026-06-27T12:00:01.000Z' };
+        const newer = {
+            id: 'tr-1',
+            data: { id: 'tr-1', title: 'aaa-new' },
+            updatedAt: '2026-06-27T12:00:01.000Z',
+        };
 
-        expect(incomingWins(envelopeCandidate(newer), envelopeCandidate(older))).toBe(true);
-        expect(incomingWins(envelopeCandidate(older), envelopeCandidate(newer))).toBe(false);
+        expect(
+            incomingWins(envelopeCandidate(newer), envelopeCandidate(older)),
+        ).toBe(true);
+        expect(
+            incomingWins(envelopeCandidate(older), envelopeCandidate(newer)),
+        ).toBe(false);
     });
 
     it('ignores device-local fields on the stored side when breaking a tie', () => {
@@ -323,10 +355,15 @@ describe('app ↔ test-peer LWW parity (#58)', () => {
         // them). If storedCandidate did not drop them, the app's key would differ
         // from the peer's for identical content and the two would oscillate.
         const shared = { id: 'tr-1', title: 'Same', updatedAt: TS };
-        const appStored = { ...shared, localFilePath: '/x.flac', localFileSize: 9, _rev: '2-b' };
+        const appStored = {
+            ...shared,
+            localFilePath: '/x.flac',
+            localFileSize: 9,
+            _rev: '2-b',
+        };
 
         expect(storedCandidate(appStored).tiebreak).toBe(
-            envelopeCandidate(envelope(shared)).tiebreak
+            envelopeCandidate(envelope(shared)).tiebreak,
         );
     });
 });

@@ -11,7 +11,12 @@ interface SpotifyPlaylistBrowserProps {
     onSelect: (playlist: SpotifyPlaylist) => void;
 }
 
-export function SpotifyPlaylistBrowser({ playlists, browsing, onRefresh, onSelect }: SpotifyPlaylistBrowserProps) {
+export function SpotifyPlaylistBrowser({
+    playlists,
+    browsing,
+    onRefresh,
+    onSelect,
+}: SpotifyPlaylistBrowserProps) {
     return (
         <div className="space-y-4">
             {/* Header */}
@@ -21,8 +26,12 @@ export function SpotifyPlaylistBrowser({ playlists, browsing, onRefresh, onSelec
                         <i className="fa-brands fa-spotify text-surface text-sm" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-on-surface">Your Spotify Playlists</h2>
-                        <p className="text-sm text-on-surface-variant">{playlists.length} playlists found</p>
+                        <h2 className="text-lg font-bold text-on-surface">
+                            Your Spotify Playlists
+                        </h2>
+                        <p className="text-sm text-on-surface-variant">
+                            {playlists.length} playlists found
+                        </p>
                     </div>
                 </div>
                 <button
@@ -59,9 +68,13 @@ export function SpotifyPlaylistBrowser({ playlists, browsing, onRefresh, onSelec
                             <h3 className="font-semibold text-on-surface truncate group-hover:text-surface transition-colors">
                                 {playlist.name}
                             </h3>
-                            <p className="text-xs text-on-surface-variant mt-0.5">{playlist.owner.display_name}</p>
+                            <p className="text-xs text-on-surface-variant mt-0.5">
+                                {playlist.owner.display_name}
+                            </p>
                             <div className="flex items-center gap-2 mt-1.5">
-                                <span className="text-xs text-on-surface-variant">{playlist.tracks.total} tracks</span>
+                                <span className="text-xs text-on-surface-variant">
+                                    {playlist.tracks.total} tracks
+                                </span>
                                 {playlist.collaborative && (
                                     <span className="text-xs px-1.5 py-0.5 bg-primary/15 text-primary rounded">
                                         Collaborative

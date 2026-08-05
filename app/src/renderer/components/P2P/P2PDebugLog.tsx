@@ -19,12 +19,20 @@ export function P2PDebugLog({ logs }: P2PDebugLogProps) {
     return (
         <div className="bg-surface text-primary rounded p-3 font-mono text-xs space-y-1 max-h-64 overflow-y-auto">
             {logs.length === 0 ? (
-                <div className="text-on-surface-variant italic">No logs yet</div>
+                <div className="text-on-surface-variant italic">
+                    No logs yet
+                </div>
             ) : (
                 logs.map((log) => (
                     <div key={log.id} className="flex gap-2">
-                        <span className="text-on-surface-variant">[{log.time}]</span>
-                        <span className={LOG_LEVEL_COLORS[log.level] ?? 'text-primary'}>
+                        <span className="text-on-surface-variant">
+                            [{log.time}]
+                        </span>
+                        <span
+                            className={
+                                LOG_LEVEL_COLORS[log.level] ?? 'text-primary'
+                            }
+                        >
                             [{log.level.toUpperCase()}]
                         </span>
                         <span>{log.message}</span>

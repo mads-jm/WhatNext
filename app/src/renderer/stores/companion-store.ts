@@ -18,7 +18,9 @@ interface CompanionStore {
     /** Non-null when an active relay tunnel URL has been established. */
     relayUrl: string | null;
 
-    setServerInfo: (info: { port: number; localIp: string; joinPin: string } | null) => void;
+    setServerInfo: (
+        info: { port: number; localIp: string; joinPin: string } | null,
+    ) => void;
     setRelayUrl: (url: string | null) => void;
     clearAll: () => void;
 }

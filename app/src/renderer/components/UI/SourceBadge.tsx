@@ -41,7 +41,11 @@ export function SourceBadge({ track }: { track: TrackDocType }) {
         case 'youtube':
             return (
                 <span
-                    title={track.sourceUrl ? `YouTube · ${track.sourceUrl}` : 'YouTube'}
+                    title={
+                        track.sourceUrl
+                            ? `YouTube · ${track.sourceUrl}`
+                            : 'YouTube'
+                    }
                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/15 text-red-400"
                 >
                     <i className="fa-brands fa-youtube" />
@@ -52,7 +56,11 @@ export function SourceBadge({ track }: { track: TrackDocType }) {
         case 'soundcloud':
             return (
                 <span
-                    title={track.sourceUrl ? `SoundCloud · ${track.sourceUrl}` : 'SoundCloud'}
+                    title={
+                        track.sourceUrl
+                            ? `SoundCloud · ${track.sourceUrl}`
+                            : 'SoundCloud'
+                    }
                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/15 text-orange-400"
                 >
                     <i className="fa-brands fa-soundcloud" />
@@ -63,7 +71,11 @@ export function SourceBadge({ track }: { track: TrackDocType }) {
         case 'bandcamp':
             return (
                 <span
-                    title={track.sourceUrl ? `Bandcamp · ${track.sourceUrl}` : 'Bandcamp'}
+                    title={
+                        track.sourceUrl
+                            ? `Bandcamp · ${track.sourceUrl}`
+                            : 'Bandcamp'
+                    }
                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-500/15 text-teal-400"
                 >
                     <i className="fa-brands fa-bandcamp" />

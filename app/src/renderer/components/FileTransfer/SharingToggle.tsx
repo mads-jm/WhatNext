@@ -5,30 +5,36 @@
  * Reads state from the Zustand store; calls setSharing via the useFileTransfer hook.
  */
 
-import { useFileTransferStore } from '../../stores/file-transfer-store'
+import { useFileTransferStore } from '../../stores/file-transfer-store';
 
 export interface SharingToggleProps {
-    playlistId: string
-    disabled?: boolean
+    playlistId: string;
+    disabled?: boolean;
     /** Called after the toggle changes. Parent is responsible for calling setSharing + registerTracks. */
-    onSharingChanged?: (enabled: boolean) => Promise<void>
+    onSharingChanged?: (enabled: boolean) => Promise<void>;
 }
 
-export function SharingToggle({ playlistId, disabled = false, onSharingChanged }: SharingToggleProps) {
-    const enabled = useFileTransferStore((s) => s.sharingEnabled.get(playlistId) ?? false)
-    const setSharingEnabled = useFileTransferStore((s) => s.setSharingEnabled)
+export function SharingToggle({
+    playlistId,
+    disabled = false,
+    onSharingChanged,
+}: SharingToggleProps) {
+    const enabled = useFileTransferStore(
+        (s) => s.sharingEnabled.get(playlistId) ?? false,
+    );
+    const setSharingEnabled = useFileTransferStore((s) => s.setSharingEnabled);
 
     const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (disabled) return
-        const next = e.target.checked
-        setSharingEnabled(playlistId, next)
+        if (disabled) return;
+        const next = e.target.checked;
+        setSharingEnabled(playlistId, next);
         if (onSharingChanged) {
-            await onSharingChanged(next)
+            await onSharingChanged(next);
         } else {
             // Fallback: just toggle sharing without registering tracks
-            await window.electron?.fileTransfer?.setSharing(playlistId, next)
+            await window.electron?.fileTransfer?.setSharing(playlistId, next);
         }
-    }
+    };
 
     return (
         <label
@@ -55,7 +61,9 @@ export function SharingToggle({ playlistId, disabled = false, onSharingChanged }
                 />
             </div>
             <div className="space-y-0.5">
-                <span className="text-xs font-medium text-on-surface">Share files with peers</span>
+                <span className="text-xs font-medium text-on-surface">
+                    Share files with peers
+                </span>
                 {!disabled && (
                     <p className="text-[10px] text-on-surface-variant">
                         {enabled
@@ -70,5 +78,5 @@ export function SharingToggle({ playlistId, disabled = false, onSharingChanged }
                 )}
             </div>
         </label>
-    )
+    );
 }

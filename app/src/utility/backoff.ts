@@ -31,7 +31,7 @@ export interface BackoffOptions {
 export function computeBackoffDelay(
     attempt: number,
     options: BackoffOptions,
-    rng: () => number = Math.random
+    rng: () => number = Math.random,
 ): number {
     const safeAttempt = attempt < 0 ? 0 : attempt;
     const raw = options.baseMs * Math.pow(options.factor, safeAttempt);

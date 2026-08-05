@@ -32,7 +32,9 @@ export function useP2PStatus(pollInterval = 2000): P2PStatusPayload {
         };
 
         poll();
-        return () => { active = false; };
+        return () => {
+            active = false;
+        };
     }, [pollInterval]);
 
     return status;

@@ -8,7 +8,10 @@ interface SessionHeaderProps {
     trackSourceError?: string | null;
 }
 
-export function SessionHeader({ onEndSession, trackSourceError }: SessionHeaderProps) {
+export function SessionHeader({
+    onEndSession,
+    trackSourceError,
+}: SessionHeaderProps) {
     return (
         <div className="flex items-center gap-3" data-testid="session-header">
             <button className="btn-ghost text-sm" onClick={onEndSession}>

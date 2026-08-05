@@ -23,9 +23,13 @@ import { P2P_CONFIG } from '../../shared/p2p-config';
 
 const PROTOCOL = `${P2P_CONFIG.PROTOCOL_PREFIX}/ping/1.0.0`;
 const PING_INTERVAL = 30_000; // 30 seconds
-const PONG_TIMEOUT = 10_000;  // 10 second response window
+const PONG_TIMEOUT = 10_000; // 10 second response window
 
-export type PresenceCallback = (peerId: string, online: boolean, lastSeenAt: string) => void;
+export type PresenceCallback = (
+    peerId: string,
+    online: boolean,
+    lastSeenAt: string,
+) => void;
 
 async function readByte(stream: Stream): Promise<number | null> {
     try {
@@ -59,7 +63,11 @@ export function registerPingProtocol(node: Libp2p): void {
         } catch {
             // Ignore stream errors — peer may have disconnected
         } finally {
-            try { await stream.close(); } catch { /* ignore */ }
+            try {
+                await stream.close();
+            } catch {
+                /* ignore */
+            }
         }
     });
 }
@@ -71,18 +79,25 @@ async function pingPeer(node: Libp2p, peerId: string): Promise<boolean> {
     try {
         const { peerIdFromString } = await import('@libp2p/peer-id');
         // dialProtocol returns the stream directly in libp2p v2+
-        const stream = await node.dialProtocol(peerIdFromString(peerId), PROTOCOL);
+        const stream = await node.dialProtocol(
+            peerIdFromString(peerId),
+            PROTOCOL,
+        );
         const PING_BYTE = 0x57; // 'W' for WhatNext
 
         const pongPromise = readByte(stream);
         await writeByte(stream, PING_BYTE);
 
         const timeoutPromise = new Promise<null>((resolve) =>
-            setTimeout(() => resolve(null), PONG_TIMEOUT)
+            setTimeout(() => resolve(null), PONG_TIMEOUT),
         );
 
         const result = await Promise.race([pongPromise, timeoutPromise]);
-        try { await stream.close(); } catch { /* ignore */ }
+        try {
+            await stream.close();
+        } catch {
+            /* ignore */
+        }
 
         return result === PING_BYTE;
     } catch {
@@ -98,14 +113,16 @@ async function pingPeer(node: Libp2p, peerId: string): Promise<boolean> {
  */
 export function startPresenceTracking(
     node: Libp2p,
-    onPresenceChange: PresenceCallback
+    onPresenceChange: PresenceCallback,
 ): () => void {
     const lastSeenAt: Map<string, string> = new Map();
     const onlineState: Map<string, boolean> = new Map();
 
     const timer = setInterval(async () => {
         const connections = node.getConnections();
-        const connectedPeerIds = new Set(connections.map((c) => c.remotePeer.toString()));
+        const connectedPeerIds = new Set(
+            connections.map((c) => c.remotePeer.toString()),
+        );
 
         for (const peerId of connectedPeerIds) {
             const alive = await pingPeer(node, peerId);

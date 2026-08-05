@@ -36,7 +36,10 @@ export function killAll(): void {
  * Run a command to completion, collecting stdout and stderr.
  * Uses spawn (not exec) to avoid shell injection.
  */
-export async function runCommand(cmd: string, args: string[]): Promise<SpawnResult> {
+export async function runCommand(
+    cmd: string,
+    args: string[],
+): Promise<SpawnResult> {
     return new Promise((resolve, reject) => {
         const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
         trackProcess(proc);
@@ -99,7 +102,11 @@ const DEFAULT_TIMEOUT_MS = 300_000;
  * Returns the async line generator alongside the ChildProcess and stderr
  * accessor so callers can cancel and read error output.
  */
-export function spawnLines(cmd: string, args: string[], timeout = DEFAULT_TIMEOUT_MS): SpawnLinesResult {
+export function spawnLines(
+    cmd: string,
+    args: string[],
+    timeout = DEFAULT_TIMEOUT_MS,
+): SpawnLinesResult {
     const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     trackProcess(proc);
 
@@ -202,15 +209,20 @@ export function spawnLines(cmd: string, args: string[], timeout = DEFAULT_TIMEOU
                 if (procError) throw procError;
                 return;
             } else {
-                const result = await new Promise<IteratorResult<string>>((res) => {
-                    if (pendingLines.length > 0) {
-                        res({ value: pendingLines.shift()!, done: false });
-                    } else if (done) {
-                        res({ value: undefined as unknown as string, done: true });
-                    } else {
-                        resolveNext = res;
-                    }
-                });
+                const result = await new Promise<IteratorResult<string>>(
+                    (res) => {
+                        if (pendingLines.length > 0) {
+                            res({ value: pendingLines.shift()!, done: false });
+                        } else if (done) {
+                            res({
+                                value: undefined as unknown as string,
+                                done: true,
+                            });
+                        } else {
+                            resolveNext = res;
+                        }
+                    },
+                );
                 if (result.done) {
                     if (procError) throw procError;
                     return;
@@ -280,7 +292,11 @@ export function parseYtdlpProgress(
         result.eta = etaMatch[1];
     }
 
-    if (result.percent === undefined && result.speed === undefined && result.eta === undefined) {
+    if (
+        result.percent === undefined &&
+        result.speed === undefined &&
+        result.eta === undefined
+    ) {
         return null;
     }
 

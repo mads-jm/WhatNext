@@ -15,10 +15,16 @@ export class WelcomePage {
 
     constructor(private readonly page: Page) {
         // The modal is rendered into a portal, so query from page root.
-        this.modal = page.locator('.bg-gray-900.border.border-gray-700.rounded-xl');
-        this.heading = page.getByRole('heading', { name: /welcome to whatnext/i });
+        this.modal = page.locator(
+            '.bg-gray-900.border.border-gray-700.rounded-xl',
+        );
+        this.heading = page.getByRole('heading', {
+            name: /welcome to whatnext/i,
+        });
         this.displayNameInput = page.getByPlaceholder(/your display name/i);
-        this.getStartedButton = page.getByRole('button', { name: /get started|save|continue/i });
+        this.getStartedButton = page.getByRole('button', {
+            name: /get started|save|continue/i,
+        });
         this.skipButton = page.getByRole('button', { name: /skip/i });
     }
 

@@ -27,7 +27,9 @@ export function saveTokens(tokens: SpotifyTokens): void {
         fs.writeFileSync(tokenPath, encrypted);
     } else {
         // Dev fallback: plaintext (not for production)
-        console.warn('[TokenStore] safeStorage unavailable, storing tokens in plaintext');
+        console.warn(
+            '[TokenStore] safeStorage unavailable, storing tokens in plaintext',
+        );
         fs.writeFileSync(tokenPath, data, 'utf-8');
     }
 }

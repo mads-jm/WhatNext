@@ -11,7 +11,10 @@
 
 import { randomUUID } from 'crypto';
 import chalk from 'chalk';
-import { incomingWins, envelopeCandidate } from '../../app/src/shared/lww/index.js';
+import {
+    incomingWins,
+    envelopeCandidate,
+} from '../../app/src/shared/lww/index.js';
 
 // ─── Collections ─────────────────────────────────────────────────────────────
 
@@ -66,7 +69,10 @@ const handshakeInfoByPeer = new Map();
  */
 function applyLWW(collectionMap, incoming) {
     const existing = collectionMap.get(incoming.id);
-    if (!existing || incomingWins(envelopeCandidate(incoming), envelopeCandidate(existing))) {
+    if (
+        !existing ||
+        incomingWins(envelopeCandidate(incoming), envelopeCandidate(existing))
+    ) {
         collectionMap.set(incoming.id, incoming);
         return { applied: true, previous: existing ?? null };
     }
@@ -108,7 +114,12 @@ export function applyDocuments(collection, documents) {
             });
         } else {
             skipped++;
-            changes.push({ id: doc.id, type: 'skipped', previous, incoming: doc });
+            changes.push({
+                id: doc.id,
+                type: 'skipped',
+                previous,
+                incoming: doc,
+            });
         }
     }
 
@@ -121,7 +132,10 @@ export function applyDocuments(collection, documents) {
     // diverge on. See impl notes for #58.
     const accepted = documents.filter((_, i) => changes[i]?.type !== 'skipped');
     if (accepted.length > 0) {
-        const maxTs = accepted.reduce((max, d) => (d.updatedAt > max ? d.updatedAt : max), '');
+        const maxTs = accepted.reduce(
+            (max, d) => (d.updatedAt > max ? d.updatedAt : max),
+            '',
+        );
         const current = checkpoints.get(collection) ?? '';
         if (maxTs > current) {
             checkpoints.set(collection, maxTs);
@@ -146,7 +160,7 @@ export function getDocuments(collection, checkpoint, limit = 100) {
 
     let docs = Array.from(map.values());
     if (checkpoint) {
-        docs = docs.filter(d => d.updatedAt > checkpoint);
+        docs = docs.filter((d) => d.updatedAt > checkpoint);
     }
     docs.sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
     docs = docs.slice(0, limit);
@@ -237,7 +251,7 @@ export function createVoteDocument(userId, trackId, value) {
  * @returns {Array<{id: string, data: object, updatedAt: string}>}
  */
 export function getTracksList() {
-    return Array.from(collections.tracks.values()).filter(d => !d.deleted);
+    return Array.from(collections.tracks.values()).filter((d) => !d.deleted);
 }
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
@@ -249,15 +263,21 @@ export function getTracksList() {
  * @returns {string}
  */
 export function formatPlaylistDisplay() {
-    const playlists = Array.from(collections.playlists.values()).filter(d => !d.deleted);
+    const playlists = Array.from(collections.playlists.values()).filter(
+        (d) => !d.deleted,
+    );
     if (playlists.length === 0) {
-        return chalk.yellow('No playlist data. Run "pull" to fetch from a connected peer.');
+        return chalk.yellow(
+            'No playlist data. Run "pull" to fetch from a connected peer.',
+        );
     }
 
     const playlist = playlists[0].data;
     const lines = [];
 
-    lines.push(chalk.cyan(`\n🎵 Playlist: ${playlist.playlistName ?? '(unnamed)'}`));
+    lines.push(
+        chalk.cyan(`\n🎵 Playlist: ${playlist.playlistName ?? '(unnamed)'}`),
+    );
     lines.push(chalk.gray(`   ID:    ${playlist.id}`));
     lines.push(chalk.gray(`   Owner: ${playlist.ownerId ?? '—'}`));
     lines.push(chalk.gray(`   Mode:  ${playlist.queueMode ?? 'free_for_all'}`));
@@ -269,10 +289,14 @@ export function formatPlaylistDisplay() {
     if (playlist.queueMode === 'turn_taking') {
         const turnUser = _resolveDisplayName(playlist.currentTurnUserId);
         lines.push(chalk.magenta(`\n   🎲 Turn: ${turnUser}`));
-        lines.push(chalk.gray(
-            `   Progress: ${playlist.turnTracksAdded ?? 0}/${playlist.tracksPerTurn ?? 1} tracks` +
-            (playlist.maxTurns ? ` | Turn ${playlist.turnsCompleted ?? 0}/${playlist.maxTurns}` : ''),
-        ));
+        lines.push(
+            chalk.gray(
+                `   Progress: ${playlist.turnTracksAdded ?? 0}/${playlist.tracksPerTurn ?? 1} tracks` +
+                    (playlist.maxTurns
+                        ? ` | Turn ${playlist.turnsCompleted ?? 0}/${playlist.maxTurns}`
+                        : ''),
+            ),
+        );
         if (playlist.isComplete) {
             lines.push(chalk.green('   ✅ Playlist marked complete'));
         }
@@ -293,9 +317,12 @@ export function formatPlaylistDisplay() {
                 ? `${track.data.title} — ${(track.data.artists ?? []).join(', ')}`
                 : `(unknown track ${tid.slice(0, 8)}...)`;
             const votes = voteTallies[tid] ?? 0;
-            const voteStr = votes !== 0
-                ? (votes > 0 ? chalk.green(` [+${votes}]`) : chalk.red(` [${votes}]`))
-                : '';
+            const voteStr =
+                votes !== 0
+                    ? votes > 0
+                        ? chalk.green(` [+${votes}]`)
+                        : chalk.red(` [${votes}]`)
+                    : '';
             lines.push(`   ${chalk.white(`${i + 1}.`)} ${label}${voteStr}`);
         });
     }
@@ -312,7 +339,9 @@ export function formatPlaylistDisplay() {
 export function formatTracksDisplay() {
     const tracks = getTracksList();
     if (tracks.length === 0) {
-        return chalk.yellow('\nNo track data. Run "pull" to fetch from a connected peer.\n');
+        return chalk.yellow(
+            '\nNo track data. Run "pull" to fetch from a connected peer.\n',
+        );
     }
 
     const lines = [chalk.cyan(`\n🎵 Tracks (${tracks.length}):\n`)];
@@ -320,7 +349,9 @@ export function formatTracksDisplay() {
         const t = doc.data;
         lines.push(
             chalk.white(`  ${i + 1}. ${t.title ?? '(untitled)'}`) +
-            chalk.gray(` — ${(t.artists ?? []).join(', ')} | added by: ${(t.addedBy ?? '').slice(0, 8)}...`),
+                chalk.gray(
+                    ` — ${(t.artists ?? []).join(', ')} | added by: ${(t.addedBy ?? '').slice(0, 8)}...`,
+                ),
         );
     });
     lines.push('');
@@ -334,16 +365,28 @@ export function formatTracksDisplay() {
  */
 export function formatPeersInfoDisplay() {
     if (handshakeInfoByPeer.size === 0) {
-        return chalk.yellow('\nNo handshake data yet. Connect to a peer first.\n');
+        return chalk.yellow(
+            '\nNo handshake data yet. Connect to a peer first.\n',
+        );
     }
 
-    const lines = [chalk.cyan(`\n🤝 Peer Handshake Info (${handshakeInfoByPeer.size}):\n`)];
+    const lines = [
+        chalk.cyan(`\n🤝 Peer Handshake Info (${handshakeInfoByPeer.size}):\n`),
+    ];
     for (const [peerId, data] of handshakeInfoByPeer.entries()) {
         lines.push(chalk.white(`  ${data.displayName ?? '(unknown)'}`));
         lines.push(chalk.gray(`    Peer ID:      ${peerId.slice(0, 40)}...`));
-        lines.push(chalk.gray(`    User ID:      ${(data.userId ?? '').slice(0, 8)}...`));
+        lines.push(
+            chalk.gray(
+                `    User ID:      ${(data.userId ?? '').slice(0, 8)}...`,
+            ),
+        );
         lines.push(chalk.gray(`    Version:      ${data.version ?? '—'}`));
-        lines.push(chalk.gray(`    Capabilities: ${(data.capabilities ?? []).join(', ')}`));
+        lines.push(
+            chalk.gray(
+                `    Capabilities: ${(data.capabilities ?? []).join(', ')}`,
+            ),
+        );
         lines.push('');
     }
     return lines.join('\n');
@@ -359,18 +402,25 @@ export function formatSessionDisplay() {
 
     for (const [name, map] of Object.entries(collections)) {
         const total = map.size;
-        const live = Array.from(map.values()).filter(d => !d.deleted).length;
+        const live = Array.from(map.values()).filter((d) => !d.deleted).length;
         const cp = checkpoints.get(name) ?? 'none';
         lines.push(
             chalk.white(`  ${name.padEnd(20)}`) +
-            chalk.gray(`${live} live / ${total} total | checkpoint: ${cp}`),
+                chalk.gray(`${live} live / ${total} total | checkpoint: ${cp}`),
         );
     }
 
     lines.push('');
-    lines.push(chalk.white('  Connected peers:  ') + chalk.gray(handshakeInfoByPeer.size));
+    lines.push(
+        chalk.white('  Connected peers:  ') +
+            chalk.gray(handshakeInfoByPeer.size),
+    );
     for (const [peerId, data] of handshakeInfoByPeer.entries()) {
-        lines.push(chalk.gray(`    ${data.displayName ?? '?'} (${peerId.slice(0, 16)}...)`));
+        lines.push(
+            chalk.gray(
+                `    ${data.displayName ?? '?'} (${peerId.slice(0, 16)}...)`,
+            ),
+        );
     }
 
     lines.push('');
@@ -401,10 +451,12 @@ export function getCheckpoint(collection) {
  * @param {string} collection
  */
 export function logChangeSummary(changes, collection) {
-    const relevant = changes.filter(c => c.type !== 'skipped');
+    const relevant = changes.filter((c) => c.type !== 'skipped');
     if (relevant.length === 0) return;
 
-    console.log(chalk.yellow(`\n[Store] ${collection}: ${relevant.length} change(s)`));
+    console.log(
+        chalk.yellow(`\n[Store] ${collection}: ${relevant.length} change(s)`),
+    );
 
     for (const change of relevant) {
         if (change.type === 'delete') {
@@ -418,18 +470,24 @@ export function logChangeSummary(changes, collection) {
         if (collection === 'playlists') {
             _logPlaylistChange(data, prev);
         } else if (collection === 'tracks') {
-            console.log(chalk.green(
-                `  + Track: ${data.title ?? '?'} — ${(data.artists ?? []).join(', ')}`,
-            ));
+            console.log(
+                chalk.green(
+                    `  + Track: ${data.title ?? '?'} — ${(data.artists ?? []).join(', ')}`,
+                ),
+            );
         } else if (collection === 'trackInteractions') {
             if (data.interactionType === 'vote') {
                 const sign = (data.value ?? 0) > 0 ? '+1' : '-1';
-                console.log(chalk.yellow(
-                    `  👍 Vote: ${(data.userId ?? '?').slice(0, 8)}... voted ${sign} on ${(data.trackId ?? '').slice(0, 8)}...`,
-                ));
+                console.log(
+                    chalk.yellow(
+                        `  👍 Vote: ${(data.userId ?? '?').slice(0, 8)}... voted ${sign} on ${(data.trackId ?? '').slice(0, 8)}...`,
+                    ),
+                );
             }
         } else if (collection === 'users') {
-            console.log(chalk.gray(`  👤 User: ${data.displayName ?? data.id}`));
+            console.log(
+                chalk.gray(`  👤 User: ${data.displayName ?? data.id}`),
+            );
         }
     }
     console.log('');
@@ -457,12 +515,14 @@ function _logPlaylistChange(data, prev) {
     const prevTrackIds = prev?.trackIds ?? [];
     const newTrackIds = data.trackIds ?? [];
 
-    const added = newTrackIds.filter(id => !prevTrackIds.includes(id));
-    const removed = prevTrackIds.filter(id => !newTrackIds.includes(id));
+    const added = newTrackIds.filter((id) => !prevTrackIds.includes(id));
+    const removed = prevTrackIds.filter((id) => !newTrackIds.includes(id));
 
     for (const id of added) {
         const track = collections.tracks.get(id);
-        const label = track ? `${track.data.title} — ${(track.data.artists ?? []).join(', ')}` : id.slice(0, 16);
+        const label = track
+            ? `${track.data.title} — ${(track.data.artists ?? []).join(', ')}`
+            : id.slice(0, 16);
         console.log(chalk.green(`  + Track added to playlist: ${label}`));
     }
     for (const id of removed) {

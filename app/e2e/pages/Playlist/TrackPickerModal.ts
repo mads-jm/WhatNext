@@ -23,7 +23,9 @@ export class TrackPickerModal {
     }
 
     async selectTrack(title: string) {
-        await this.modal.getByRole('checkbox', { name: new RegExp(title, 'i') }).check();
+        await this.modal
+            .getByRole('checkbox', { name: new RegExp(title, 'i') })
+            .check();
     }
 
     async confirm() {

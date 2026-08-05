@@ -14,8 +14,10 @@ vi.mock('@multiformats/multiaddr', () => ({
     multiaddr: (addr: string) => ({ toString: () => addr }),
 }));
 
-const ADDR_A = '/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-const ADDR_B = '/ip4/127.0.0.1/tcp/4002/p2p/12D3KooWBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
+const ADDR_A =
+    '/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const ADDR_B =
+    '/ip4/127.0.0.1/tcp/4002/p2p/12D3KooWBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
 
 interface FakeConnection {
     remotePeer: { toString(): string };
@@ -39,10 +41,16 @@ interface FakeNode {
     getConnections: ReturnType<typeof vi.fn>;
 }
 
-function makeNode(dialImpl: (addr: string) => Promise<FakeConnection>): FakeNode {
+function makeNode(
+    dialImpl: (addr: string) => Promise<FakeConnection>,
+): FakeNode {
     return {
-        dial: vi.fn(async (ma: { toString(): string }) => dialImpl(ma.toString())),
-        getConnections: vi.fn(() => [] as Array<{ remotePeer: { toString(): string } }>),
+        dial: vi.fn(async (ma: { toString(): string }) =>
+            dialImpl(ma.toString()),
+        ),
+        getConnections: vi.fn(
+            () => [] as Array<{ remotePeer: { toString(): string } }>,
+        ),
     };
 }
 
@@ -51,7 +59,10 @@ function makeNode(dialImpl: (addr: string) => Promise<FakeConnection>): FakeNode
  * `predicate` holds or `maxRounds` is reached. Robust against retries that pause
  * on a dynamic `import()` the timer advance can't pump in a single step.
  */
-async function advanceUntil(predicate: () => boolean, maxRounds = 12): Promise<void> {
+async function advanceUntil(
+    predicate: () => boolean,
+    maxRounds = 12,
+): Promise<void> {
     for (let i = 0; i < maxRounds && !predicate(); i++) {
         await vi.advanceTimersByTimeAsync(P2P_CONFIG.RELAY.RETRY_MAX_DELAY);
         // Each retry awaits `import('@multiformats/multiaddr')`; under fake timers
@@ -88,7 +99,11 @@ describe('RelayManager backoff + reconnect', () => {
         const node = makeNode(async () => {
             throw new Error('connection refused');
         });
-        const mgr = new RelayManager(node as unknown as Libp2p, [ADDR_A], () => {});
+        const mgr = new RelayManager(
+            node as unknown as Libp2p,
+            [ADDR_A],
+            () => {},
+        );
 
         await mgr.connectAll();
         expect(node.dial).toHaveBeenCalledTimes(1);
@@ -113,7 +128,7 @@ describe('RelayManager backoff + reconnect', () => {
         const mgr = new RelayManager(
             node as unknown as Libp2p,
             [ADDR_A, ADDR_B],
-            (connected, ma) => statuses.push([connected, ma])
+            (connected, ma) => statuses.push([connected, ma]),
         );
 
         await mgr.connectAll();
@@ -122,16 +137,19 @@ describe('RelayManager backoff + reconnect', () => {
         await advanceUntil(
             () =>
                 node.dial.mock.calls.some(
-                    (c) => (c[0] as { toString(): string }).toString() === ADDR_B
+                    (c) =>
+                        (c[0] as { toString(): string }).toString() === ADDR_B,
                 ),
-            P2P_CONFIG.RELAY.MAX_RETRIES + 4
+            P2P_CONFIG.RELAY.MAX_RETRIES + 4,
         );
 
         const dialedB = node.dial.mock.calls.some(
-            (c) => (c[0] as { toString(): string }).toString() === ADDR_B
+            (c) => (c[0] as { toString(): string }).toString() === ADDR_B,
         );
         expect(dialedB).toBe(true);
-        expect(statuses.some(([connected, ma]) => connected && ma === ADDR_B)).toBe(true);
+        expect(
+            statuses.some(([connected, ma]) => connected && ma === ADDR_B),
+        ).toBe(true);
 
         mgr.dispose();
     });
@@ -148,7 +166,7 @@ describe('RelayManager heartbeat liveness', () => {
         const mgr = new RelayManager(
             node as unknown as Libp2p,
             [ADDR_A],
-            (connected, ma) => statuses.push([connected, ma])
+            (connected, ma) => statuses.push([connected, ma]),
         );
 
         await mgr.connectAll();
@@ -168,10 +186,16 @@ describe('RelayManager heartbeat liveness', () => {
     it('reports live when the relay peer is still connected', async () => {
         const conn = makeConnection('relayA-peer');
         const node = makeNode(async () => conn);
-        const mgr = new RelayManager(node as unknown as Libp2p, [ADDR_A], () => {});
+        const mgr = new RelayManager(
+            node as unknown as Libp2p,
+            [ADDR_A],
+            () => {},
+        );
 
         await mgr.connectAll();
-        node.getConnections.mockReturnValue([{ remotePeer: { toString: () => 'relayA-peer' } }]);
+        node.getConnections.mockReturnValue([
+            { remotePeer: { toString: () => 'relayA-peer' } },
+        ]);
 
         expect(mgr.checkRelayLiveness()).toBe(true);
         expect(mgr.currentRelayMultiaddr).toBe(ADDR_A);

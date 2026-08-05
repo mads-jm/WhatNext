@@ -81,7 +81,10 @@ async function walkDir(dirPath: string, result: ScanResult): Promise<void> {
                     });
                     result.stats.supported++;
                 } catch (err) {
-                    console.warn(`[Scanner] Cannot stat file: ${fullPath}`, err);
+                    console.warn(
+                        `[Scanner] Cannot stat file: ${fullPath}`,
+                        err,
+                    );
                     result.stats.skipped++;
                 }
             } else {

@@ -19,8 +19,12 @@ vi.mock('../../db/services/playlist-service', () => ({
     bulkAddTracksToPlaylist: vi.fn(),
     removeTrackFromPlaylist: vi.fn(),
 }));
-vi.mock('../../db/services/track-service', () => ({ bulkImportTracks: vi.fn() }));
-vi.mock('../../db/services/user-service', () => ({ createSessionParticipant: vi.fn() }));
+vi.mock('../../db/services/track-service', () => ({
+    bulkImportTracks: vi.fn(),
+}));
+vi.mock('../../db/services/user-service', () => ({
+    createSessionParticipant: vi.fn(),
+}));
 vi.mock('../../db/services/track-sink', () => ({ addIncomingTrack: vi.fn() }));
 
 import { getDatabase } from '../../db/database';
@@ -47,14 +51,23 @@ function deferred<T>() {
     return { promise, resolve };
 }
 
-const getPlaylistSnapshot = vi.fn<(playlistId: string) => Promise<SnapshotResult>>();
-const getPlaylistTracksFrom = vi.fn(async () => ({ success: true, tracks: [] }));
-const getPlaylistTracksFull = vi.fn(async () => ({ success: true, tracks: [] }));
+const getPlaylistSnapshot =
+    vi.fn<(playlistId: string) => Promise<SnapshotResult>>();
+const getPlaylistTracksFrom = vi.fn(async () => ({
+    success: true,
+    tracks: [],
+}));
+const getPlaylistTracksFull = vi.fn(async () => ({
+    success: true,
+    tracks: [],
+}));
 
 beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getDatabase).mockResolvedValue({
-        playlists: { findOne: () => ({ exec: async () => ({ trackIds: [] }) }) },
+        playlists: {
+            findOne: () => ({ exec: async () => ({ trackIds: [] }) }),
+        },
         // Justification: this stands in for a whole `RxDatabase<WhatNextCollections>`
         // while implementing the one query under test. Typing it honestly means
         // constructing five real RxCollections (or a deep Partial that RxDB's
@@ -63,7 +76,11 @@ beforeEach(() => {
     } as any);
     Object.assign(window, {
         electron: {
-            spotify: { getPlaylistSnapshot, getPlaylistTracksFrom, getPlaylistTracksFull },
+            spotify: {
+                getPlaylistSnapshot,
+                getPlaylistTracksFrom,
+                getPlaylistTracksFull,
+            },
         },
     });
 });

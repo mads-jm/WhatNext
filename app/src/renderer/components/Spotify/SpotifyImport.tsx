@@ -12,7 +12,8 @@ import { SpotifyImportComplete } from './SpotifyImportComplete';
 import { SpotifyErrorState } from './SpotifyErrorState';
 
 export function SpotifyImport() {
-    const { selectPlaylist: navSelectPlaylist, navigate } = useNavigationStore();
+    const { selectPlaylist: navSelectPlaylist, navigate } =
+        useNavigationStore();
     const sp = useSpotifyImport();
 
     // Auth gate (not authenticated, or connecting)
@@ -33,7 +34,9 @@ export function SpotifyImport() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
                     <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-on-surface-variant">Loading your playlists...</p>
+                    <p className="text-on-surface-variant">
+                        Loading your playlists...
+                    </p>
                 </div>
             </div>
         );

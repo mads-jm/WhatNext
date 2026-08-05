@@ -27,7 +27,9 @@ describe('CheckpointStore round-trip', () => {
         // Simulate a process restart: brand-new instance reading the same file.
         const reloaded = new CheckpointStore(filePath, 0);
         await reloaded.load();
-        expect(reloaded.get('peerA:playlists')).toBe('2026-06-27T00:00:00.000Z');
+        expect(reloaded.get('peerA:playlists')).toBe(
+            '2026-06-27T00:00:00.000Z',
+        );
         expect(reloaded.get('peerA:tracks')).toBe('2026-06-27T00:00:01.000Z');
     });
 
@@ -49,7 +51,10 @@ describe('CheckpointStore round-trip', () => {
 
 describe('CheckpointStore graceful degradation', () => {
     it('starts empty when the file is absent (cold start → full resync)', async () => {
-        const store = new CheckpointStore(path.join(tmpDir, 'does-not-exist.json'), 0);
+        const store = new CheckpointStore(
+            path.join(tmpDir, 'does-not-exist.json'),
+            0,
+        );
         await store.load();
         expect(store.entries()).toEqual([]);
     });
@@ -62,7 +67,10 @@ describe('CheckpointStore graceful degradation', () => {
     });
 
     it('ignores non-string values in the persisted record', async () => {
-        fs.writeFileSync(filePath, JSON.stringify({ good: 'x', bad: 123, nested: {} }));
+        fs.writeFileSync(
+            filePath,
+            JSON.stringify({ good: 'x', bad: 123, nested: {} }),
+        );
         const store = new CheckpointStore(filePath, 0);
         await store.load();
         expect(store.get('good')).toBe('x');
@@ -71,7 +79,10 @@ describe('CheckpointStore graceful degradation', () => {
     });
 
     it('does not crash flushing into an unwritable directory', async () => {
-        const store = new CheckpointStore('/this/path/should/not/exist/ckpt.json', 0);
+        const store = new CheckpointStore(
+            '/this/path/should/not/exist/ckpt.json',
+            0,
+        );
         await store.load();
         store.set('k', 'v');
         await expect(store.flush()).resolves.toBeUndefined();
@@ -108,9 +119,11 @@ describe('CheckpointStore debounce', () => {
 
 describe('resolveCheckpointPath', () => {
     it('honors the WHATNEXT_CHECKPOINT_PATH override', () => {
-        expect(resolveCheckpointPath({ WHATNEXT_CHECKPOINT_PATH: '/custom/ckpt.json' })).toBe(
-            '/custom/ckpt.json'
-        );
+        expect(
+            resolveCheckpointPath({
+                WHATNEXT_CHECKPOINT_PATH: '/custom/ckpt.json',
+            }),
+        ).toBe('/custom/ckpt.json');
     });
 
     it('derives a WhatNext-scoped path under a config dir otherwise', () => {

@@ -39,22 +39,27 @@ export function LibraryDownload() {
                 <div className="flex items-start gap-3 p-4 bg-surface-high rounded-xl border border-outline-variant/20">
                     <i className="fa-brands fa-spotify text-[#1DB954] mt-0.5" />
                     <div className="text-sm text-on-surface-variant">
-                        These tracks are in your library with Spotify metadata but no local audio
-                        file. spotDL will find matching audio on YouTube and tag it with full
-                        Spotify metadata.
+                        These tracks are in your library with Spotify metadata
+                        but no local audio file. spotDL will find matching audio
+                        on YouTube and tag it with full Spotify metadata.
                     </div>
                 </div>
 
                 {/* Format + actions row */}
                 <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
-                        <label htmlFor="library-format" className="text-xs uppercase tracking-widest text-on-surface-variant shrink-0">
+                        <label
+                            htmlFor="library-format"
+                            className="text-xs uppercase tracking-widest text-on-surface-variant shrink-0"
+                        >
                             Format
                         </label>
                         <select
                             id="library-format"
                             value={lib.preferredFormat}
-                            onChange={(e) => lib.setPreferredFormat(e.target.value)}
+                            onChange={(e) =>
+                                lib.setPreferredFormat(e.target.value)
+                            }
                             className="bg-surface-high border border-outline-variant/20 rounded-lg px-3 py-1.5 text-sm text-on-surface focus:outline-none focus:border-primary/50"
                         >
                             {FORMAT_OPTIONS.map((o) => (
@@ -72,7 +77,9 @@ export function LibraryDownload() {
                         >
                             All
                         </button>
-                        <span className="text-on-surface-variant text-xs">·</span>
+                        <span className="text-on-surface-variant text-xs">
+                            ·
+                        </span>
                         <button
                             onClick={lib.selectNone}
                             className="text-xs text-on-surface-variant hover:text-on-surface hover:underline"
@@ -104,7 +111,8 @@ export function LibraryDownload() {
                         disabled={lib.selectedIds.size === 0}
                         className="px-6 py-2.5 text-sm font-bold bg-gradient-to-r from-primary to-primary-dim text-surface rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                     >
-                        Download {lib.selectedIds.size} track{lib.selectedIds.size !== 1 ? 's' : ''}
+                        Download {lib.selectedIds.size} track
+                        {lib.selectedIds.size !== 1 ? 's' : ''}
                     </button>
                 </div>
             </div>
@@ -114,7 +122,9 @@ export function LibraryDownload() {
     if (lib.state === 'downloading') {
         return (
             <LibraryProgress
-                tracks={lib.candidates.filter((d) => lib.selectedIds.has(d.id) && !!d.spotifyId)}
+                tracks={lib.candidates.filter(
+                    (d) => lib.selectedIds.has(d.id) && !!d.spotifyId,
+                )}
                 progress={lib.progress}
                 completedCount={lib.completedCount}
                 onCancel={lib.cancel}
@@ -123,7 +133,9 @@ export function LibraryDownload() {
     }
 
     if (lib.state === 'done') {
-        const total = lib.candidates.filter((d) => lib.selectedIds.has(d.id)).length;
+        const total = lib.candidates.filter((d) =>
+            lib.selectedIds.has(d.id),
+        ).length;
         const successCount = Array.from(lib.progress.values()).filter(
             (p) => p.status === 'complete',
         ).length;
@@ -138,17 +150,22 @@ export function LibraryDownload() {
             <div className="flex flex-col items-center justify-center py-16 gap-4">
                 <i className="fa-solid fa-circle-check text-4xl text-primary" />
                 <div className="text-center">
-                    <p className="font-semibold text-on-surface">Downloads complete</p>
+                    <p className="font-semibold text-on-surface">
+                        Downloads complete
+                    </p>
                     <p className="text-sm text-on-surface-variant mt-1">
-                        {successCount} track{successCount !== 1 ? 's' : ''} saved locally
+                        {successCount} track{successCount !== 1 ? 's' : ''}{' '}
+                        saved locally
                         {unimportedCount > 0 && (
                             <span className="text-tertiary">
-                                {' '}· {unimportedCount} downloaded but not linked
+                                {' '}
+                                · {unimportedCount} downloaded but not linked
                             </span>
                         )}
                         {failedCount > 0 && (
                             <span className="text-error">
-                                {' '}· {failedCount} failed
+                                {' '}
+                                · {failedCount} failed
                             </span>
                         )}
                     </p>
@@ -167,7 +184,9 @@ export function LibraryDownload() {
         return (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
                 <i className="fa-solid fa-triangle-exclamation text-3xl text-error" />
-                <p className="text-sm text-on-surface-variant">{lib.error ?? 'Something went wrong.'}</p>
+                <p className="text-sm text-on-surface-variant">
+                    {lib.error ?? 'Something went wrong.'}
+                </p>
                 <button
                     onClick={lib.reset}
                     className="px-5 py-2 text-sm font-medium bg-surface-high border border-outline-variant/20 rounded-xl text-on-surface hover:bg-surface-highest transition-colors"
@@ -192,7 +211,8 @@ function EmptyState() {
             <div className="text-center">
                 <p className="font-medium text-on-surface">All caught up</p>
                 <p className="text-sm text-on-surface-variant mt-1">
-                    Every Spotify track in your library already has a local audio file.
+                    Every Spotify track in your library already has a local
+                    audio file.
                 </p>
             </div>
         </div>
@@ -218,7 +238,11 @@ function TrackRow({
             />
             {track.albumArtUrl ? (
                 <img
-                    src={track.albumArtLocalPath ? `file://${track.albumArtLocalPath}` : track.albumArtUrl}
+                    src={
+                        track.albumArtLocalPath
+                            ? `file://${track.albumArtLocalPath}`
+                            : track.albumArtUrl
+                    }
                     alt=""
                     className="w-9 h-9 rounded object-cover shrink-0 bg-surface-high"
                 />
@@ -228,7 +252,9 @@ function TrackRow({
                 </div>
             )}
             <div className="flex-1 min-w-0">
-                <p className="text-sm text-on-surface truncate">{track.title}</p>
+                <p className="text-sm text-on-surface truncate">
+                    {track.title}
+                </p>
                 <p className="text-xs text-on-surface-variant truncate">
                     {track.artists?.join(', ')}
                     {track.album ? ` · ${track.album}` : ''}
@@ -256,10 +282,15 @@ function LibraryProgress({
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <span className="text-sm text-on-surface-variant">
-                    <span className="font-semibold text-on-surface">{completedCount}</span> /{' '}
-                    {total} downloaded
+                    <span className="font-semibold text-on-surface">
+                        {completedCount}
+                    </span>{' '}
+                    / {total} downloaded
                 </span>
-                <button onClick={onCancel} className="text-xs text-error hover:underline">
+                <button
+                    onClick={onCancel}
+                    className="text-xs text-error hover:underline"
+                >
                     Cancel
                 </button>
             </div>
@@ -273,7 +304,13 @@ function LibraryProgress({
                         percent: 0,
                         status: 'pending' as const,
                     };
-                    return <LibraryTrackProgressRow key={track.id} track={track} progress={p} />;
+                    return (
+                        <LibraryTrackProgressRow
+                            key={track.id}
+                            track={track}
+                            progress={p}
+                        />
+                    );
                 })}
             </div>
         </div>
@@ -300,13 +337,18 @@ function LibraryTrackProgressRow({
                   ? 'fa-spinner fa-spin text-secondary'
                   : 'fa-clock text-on-surface-variant';
 
-    const isTerminal = status === 'complete' || status === 'error' || status === 'unimported';
+    const isTerminal =
+        status === 'complete' || status === 'error' || status === 'unimported';
 
     return (
         <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
-                <i className={`fa-solid ${statusIcon} w-3.5 text-center text-xs`} />
-                <span className="text-sm text-on-surface truncate flex-1">{track.title}</span>
+                <i
+                    className={`fa-solid ${statusIcon} w-3.5 text-center text-xs`}
+                />
+                <span className="text-sm text-on-surface truncate flex-1">
+                    {track.title}
+                </span>
                 {status === 'downloading' && (
                     <span className="text-xs text-on-surface-variant font-mono shrink-0">
                         {speed ?? ''}
@@ -317,7 +359,9 @@ function LibraryTrackProgressRow({
                     <span className="text-xs text-primary shrink-0">Done</span>
                 )}
                 {status === 'unimported' && (
-                    <span className="text-xs text-tertiary shrink-0">Not linked</span>
+                    <span className="text-xs text-tertiary shrink-0">
+                        Not linked
+                    </span>
                 )}
                 {status === 'error' && (
                     <span className="text-xs text-error shrink-0">Failed</span>

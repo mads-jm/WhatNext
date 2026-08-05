@@ -15,7 +15,7 @@
  * Capability string advertised during P2P handshake to signal file transfer support.
  * Peers that include this in their capabilities list can participate in file transfers.
  */
-export const FILE_TRANSFER_CAPABILITY = 'file-transfer/1.0.0'
+export const FILE_TRANSFER_CAPABILITY = 'file-transfer/1.0.0';
 
 // ========================================
 // Configuration Constants
@@ -45,7 +45,7 @@ export const FILE_TRANSFER_CONFIG = {
 
     /** Filename for persisted transfer state (resume across restarts) */
     TRANSFER_STATE_FILE: 'transfers.json',
-} as const
+} as const;
 
 // ========================================
 // File Entry
@@ -58,28 +58,28 @@ export const FILE_TRANSFER_CONFIG = {
  */
 export interface FileEntry {
     /** RxDB track ID, or playlistId when type === 'cover-art' */
-    trackId: string
+    trackId: string;
 
-    type: 'audio' | 'artwork' | 'cover-art'
+    type: 'audio' | 'artwork' | 'cover-art';
 
     /** SHA-256 content hash (hex) — used for dedup and integrity verification */
-    sha256: string
+    sha256: string;
 
-    sizeBytes: number
+    sizeBytes: number;
 
     /** MIME type, e.g. 'audio/mpeg', 'image/jpeg' */
-    mimeType: string
+    mimeType: string;
 
     /** Display filename — not used to derive disk paths on the receiving end */
-    filename: string
+    filename: string;
 
     // Audio-specific fields (only populated when type === 'audio')
 
     /** Codec identifier, e.g. 'mp3' | 'opus' | 'aac' | 'flac' | 'wav' */
-    audioFormat?: string
+    audioFormat?: string;
 
     /** Encoding bitrate in kbps */
-    audioBitrate?: number
+    audioBitrate?: number;
 }
 
 // ========================================
@@ -92,14 +92,14 @@ export interface FileEntry {
  */
 export interface FileManifest {
     /** libp2p peer ID of the sender */
-    peerId: string
+    peerId: string;
 
-    playlistId: string
+    playlistId: string;
 
-    files: FileEntry[]
+    files: FileEntry[];
 
     /** ISO timestamp — allows receivers to detect stale manifests */
-    generatedAt: string
+    generatedAt: string;
 }
 
 // ========================================
@@ -123,45 +123,45 @@ export interface FileManifest {
  */
 export type FileTransferMessage =
     | {
-          type: 'manifest-request'
-          playlistId: string
+          type: 'manifest-request';
+          playlistId: string;
       }
     | {
-          type: 'manifest-response'
-          manifest: FileManifest
+          type: 'manifest-response';
+          manifest: FileManifest;
       }
     | {
           /** offsetBytes enables resume — set to 0 for a fresh request */
-          type: 'file-request'
-          sha256: string
-          offsetBytes: number
+          type: 'file-request';
+          sha256: string;
+          offsetBytes: number;
       }
     | {
-          type: 'file-header'
-          sha256: string
-          totalBytes: number
-          chunkSize: number
+          type: 'file-header';
+          sha256: string;
+          totalBytes: number;
+          chunkSize: number;
       }
     | {
           /** data is base64-encoded for JSON transport */
-          type: 'file-chunk'
-          sha256: string
-          offset: number
-          data: string
+          type: 'file-chunk';
+          sha256: string;
+          offset: number;
+          data: string;
       }
     | {
-          type: 'file-complete'
-          sha256: string
+          type: 'file-complete';
+          sha256: string;
       }
     | {
-          type: 'file-error'
-          sha256: string
-          error: string
+          type: 'file-error';
+          sha256: string;
+          error: string;
       }
     | {
-          type: 'transfer-cancel'
-          sha256: string
-      }
+          type: 'transfer-cancel';
+          sha256: string;
+      };
 
 // ========================================
 // Transfer State
@@ -172,29 +172,35 @@ export type FileTransferMessage =
  * Persisted to TRANSFER_STATE_FILE for resume-across-restart support.
  */
 export interface ActiveTransfer {
-    sha256: string
+    sha256: string;
 
     /** RxDB track ID (or playlistId for cover-art) */
-    trackId: string
+    trackId: string;
 
-    type: 'audio' | 'artwork' | 'cover-art'
+    type: 'audio' | 'artwork' | 'cover-art';
 
-    filename: string
+    filename: string;
 
-    totalBytes: number
+    totalBytes: number;
 
-    bytesReceived: number
+    bytesReceived: number;
 
-    status: 'pending' | 'transferring' | 'verifying' | 'complete' | 'error' | 'cancelled'
+    status:
+        | 'pending'
+        | 'transferring'
+        | 'verifying'
+        | 'complete'
+        | 'error'
+        | 'cancelled';
 
     /** libp2p peer ID we are downloading from */
-    peerId: string
+    peerId: string;
 
     /** ISO timestamp when the transfer was initiated */
-    startedAt: string
+    startedAt: string;
 
     /** Populated when status === 'error' */
-    error?: string
+    error?: string;
 }
 
 // ========================================
@@ -205,11 +211,11 @@ export interface ActiveTransfer {
  * Emitted repeatedly during an active transfer to drive progress UI.
  */
 export interface TransferProgress {
-    sha256: string
-    trackId: string
-    bytesReceived: number
-    totalBytes: number
-    bytesPerSecond: number
+    sha256: string;
+    trackId: string;
+    bytesReceived: number;
+    totalBytes: number;
+    bytesPerSecond: number;
 }
 
 /**
@@ -217,18 +223,18 @@ export interface TransferProgress {
  * available at localFilePath.
  */
 export interface TransferComplete {
-    sha256: string
-    trackId: string
-    type: 'audio' | 'artwork' | 'cover-art'
+    sha256: string;
+    trackId: string;
+    type: 'audio' | 'artwork' | 'cover-art';
     /** Absolute path to the written file on disk */
-    localFilePath: string
+    localFilePath: string;
 }
 
 /**
  * Emitted when a transfer fails unrecoverably.
  */
 export interface TransferError {
-    sha256: string
-    trackId: string
-    error: string
+    sha256: string;
+    trackId: string;
+    error: string;
 }

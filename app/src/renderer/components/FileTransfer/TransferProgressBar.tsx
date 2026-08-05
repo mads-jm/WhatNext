@@ -6,21 +6,21 @@
  *  - TransferProgressAggregate — playlist-scoped aggregate with expand/collapse
  */
 
-import { useState } from 'react'
-import type { ActiveTransfer } from '../../../shared/core/file-transfer-types'
-import { useFileTransferStatus } from '../../hooks/useFileTransfer'
-import { useFileTransferStore } from '../../stores/file-transfer-store'
+import { useState } from 'react';
+import type { ActiveTransfer } from '../../../shared/core/file-transfer-types';
+import { useFileTransferStatus } from '../../hooks/useFileTransfer';
+import { useFileTransferStore } from '../../stores/file-transfer-store';
 
 // ----------------------------------------------------------------
 // Utility
 // ----------------------------------------------------------------
 
 function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B'
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
-    if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)} MB`
-    return `${(bytes / 1073741824).toFixed(1)} GB`
+    if (bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)} MB`;
+    return `${(bytes / 1073741824).toFixed(1)} GB`;
 }
 
 // ----------------------------------------------------------------
@@ -28,8 +28,8 @@ function formatBytes(bytes: number): string {
 // ----------------------------------------------------------------
 
 export interface TransferProgressItemProps {
-    transfer: ActiveTransfer
-    onCancel: (sha256: string) => void
+    transfer: ActiveTransfer;
+    onCancel: (sha256: string) => void;
 }
 
 const STATUS_BAR_COLOR: Record<ActiveTransfer['status'], string> = {
@@ -39,7 +39,7 @@ const STATUS_BAR_COLOR: Record<ActiveTransfer['status'], string> = {
     complete: 'bg-green-500',
     error: 'bg-red-500',
     cancelled: 'bg-surface-high',
-}
+};
 
 const STATUS_LABEL: Record<ActiveTransfer['status'], string> = {
     pending: 'Pending',
@@ -48,20 +48,28 @@ const STATUS_LABEL: Record<ActiveTransfer['status'], string> = {
     complete: 'Done',
     error: 'Error',
     cancelled: 'Cancelled',
-}
+};
 
-export function TransferProgressItem({ transfer, onCancel }: TransferProgressItemProps) {
+export function TransferProgressItem({
+    transfer,
+    onCancel,
+}: TransferProgressItemProps) {
     const pct =
         transfer.totalBytes > 0
-            ? Math.min(100, Math.round((transfer.bytesReceived / transfer.totalBytes) * 100))
-            : 0
+            ? Math.min(
+                  100,
+                  Math.round(
+                      (transfer.bytesReceived / transfer.totalBytes) * 100,
+                  ),
+              )
+            : 0;
 
     const isActive =
         transfer.status === 'pending' ||
         transfer.status === 'transferring' ||
-        transfer.status === 'verifying'
+        transfer.status === 'verifying';
 
-    const barColor = STATUS_BAR_COLOR[transfer.status]
+    const barColor = STATUS_BAR_COLOR[transfer.status];
 
     return (
         <div className="space-y-1">
@@ -96,18 +104,23 @@ export function TransferProgressItem({ transfer, onCancel }: TransferProgressIte
 
             <div className="flex items-center justify-between">
                 {transfer.status === 'error' ? (
-                    <span className="text-[10px] text-error">{transfer.error ?? 'Unknown error'}</span>
+                    <span className="text-[10px] text-error">
+                        {transfer.error ?? 'Unknown error'}
+                    </span>
                 ) : (
                     <span className="text-[10px] text-on-surface-variant">
-                        {formatBytes(transfer.bytesReceived)} / {formatBytes(transfer.totalBytes)}
+                        {formatBytes(transfer.bytesReceived)} /{' '}
+                        {formatBytes(transfer.totalBytes)}
                     </span>
                 )}
                 {transfer.status !== 'error' && (
-                    <span className="text-[10px] text-on-surface-variant">{pct}%</span>
+                    <span className="text-[10px] text-on-surface-variant">
+                        {pct}%
+                    </span>
                 )}
             </div>
         </div>
-    )
+    );
 }
 
 // ----------------------------------------------------------------
@@ -115,39 +128,42 @@ export function TransferProgressItem({ transfer, onCancel }: TransferProgressIte
 // ----------------------------------------------------------------
 
 export interface TransferProgressAggregateProps {
-    playlistId?: string
-    onCancel: (sha256: string) => void
+    playlistId?: string;
+    onCancel: (sha256: string) => void;
 }
 
 export function TransferProgressAggregate({
     playlistId,
     onCancel,
 }: TransferProgressAggregateProps) {
-    const [expanded, setExpanded] = useState(false)
+    const [expanded, setExpanded] = useState(false);
 
-    const status = useFileTransferStatus(playlistId)
-    const transfers = useFileTransferStore((s) => s.transfers)
-    const manifests = useFileTransferStore((s) => s.manifests)
+    const status = useFileTransferStatus(playlistId);
+    const transfers = useFileTransferStore((s) => s.transfers);
+    const manifests = useFileTransferStore((s) => s.manifests);
 
-    if (status.totalFiles === 0) return null
+    if (status.totalFiles === 0) return null;
 
     const overallPct =
         status.totalBytes > 0
-            ? Math.min(100, Math.round((status.bytesReceived / status.totalBytes) * 100))
-            : 0
+            ? Math.min(
+                  100,
+                  Math.round((status.bytesReceived / status.totalBytes) * 100),
+              )
+            : 0;
 
     // Filter to the same scope as useFileTransferStatus.
     // When playlistId is provided, restrict to transfers whose trackId belongs
     // to that playlist's manifest (plus the playlist cover-art entry).
     // Falls back to all transfers when no playlistId or no manifest yet.
     const relevantTransfers = (() => {
-        if (!playlistId) return [...transfers.values()]
-        const manifest = manifests.get(playlistId)
-        if (!manifest) return [...transfers.values()]
-        const trackIds = new Set(manifest.files.map((f) => f.trackId))
-        trackIds.add(playlistId) // cover-art entry uses playlistId as trackId
-        return [...transfers.values()].filter((t) => trackIds.has(t.trackId))
-    })()
+        if (!playlistId) return [...transfers.values()];
+        const manifest = manifests.get(playlistId);
+        if (!manifest) return [...transfers.values()];
+        const trackIds = new Set(manifest.files.map((f) => f.trackId));
+        trackIds.add(playlistId); // cover-art entry uses playlistId as trackId
+        return [...transfers.values()].filter((t) => trackIds.has(t.trackId));
+    })();
 
     const activeTransfers = relevantTransfers.filter(
         (t) =>
@@ -156,9 +172,9 @@ export function TransferProgressAggregate({
             t.status === 'verifying' ||
             t.status === 'complete' ||
             t.status === 'error',
-    )
+    );
 
-    const hasActive = status.activeDownloads > 0
+    const hasActive = status.activeDownloads > 0;
 
     return (
         <div className="card card-body space-y-3">
@@ -179,11 +195,14 @@ export function TransferProgressAggregate({
                         </span>
                         {status.totalBytes > 0 && (
                             <span className="text-[10px] text-on-surface-variant">
-                                {formatBytes(status.bytesReceived)} / {formatBytes(status.totalBytes)}
+                                {formatBytes(status.bytesReceived)} /{' '}
+                                {formatBytes(status.totalBytes)}
                             </span>
                         )}
                         {status.hasErrors && (
-                            <span className="text-[10px] text-error">· errors</span>
+                            <span className="text-[10px] text-error">
+                                · errors
+                            </span>
                         )}
                     </div>
 
@@ -205,10 +224,14 @@ export function TransferProgressAggregate({
             {expanded && activeTransfers.length > 0 && (
                 <div className="space-y-3 pt-2 border-t border-outline-variant">
                     {activeTransfers.map((t) => (
-                        <TransferProgressItem key={t.sha256} transfer={t} onCancel={onCancel} />
+                        <TransferProgressItem
+                            key={t.sha256}
+                            transfer={t}
+                            onCancel={onCancel}
+                        />
                     ))}
                 </div>
             )}
         </div>
-    )
+    );
 }

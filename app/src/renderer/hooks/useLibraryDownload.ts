@@ -22,11 +22,7 @@ import type { DownloadEvent } from '../../../../service/downloader/types';
 import type { TrackProgress } from './usePlaylistDownload';
 
 export type LibraryDownloadState =
-    | 'loading'
-    | 'idle'
-    | 'downloading'
-    | 'done'
-    | 'error';
+    'loading' | 'idle' | 'downloading' | 'done' | 'error';
 
 const DEFAULT_FORMAT = 'mp3';
 
@@ -35,7 +31,9 @@ export function useLibraryDownload() {
     const [candidates, setCandidates] = useState<TrackDocument[]>([]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [preferredFormat, setPreferredFormat] = useState(DEFAULT_FORMAT);
-    const [progress, setProgress] = useState<Map<string, TrackProgress>>(new Map());
+    const [progress, setProgress] = useState<Map<string, TrackProgress>>(
+        new Map(),
+    );
     const [completedCount, setCompletedCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +62,9 @@ export function useLibraryDownload() {
                 if (cancelled) return;
                 // Post-filter: no localFilePath set
                 const eligible = docs.filter(
-                    (d) => d.spotifyId && (!d.localFilePath || d.localFilePath === ''),
+                    (d) =>
+                        d.spotifyId &&
+                        (!d.localFilePath || d.localFilePath === ''),
                 );
                 setCandidates(eligible);
                 setSelectedIds(new Set(eligible.map((d) => d.id)));
@@ -133,70 +133,84 @@ export function useLibraryDownload() {
         const completedPaths = new Map<string, string>(); // sourceUrl → localFilePath
         let localCompleted = 0; // Local counter — avoids async calls inside React state updaters
 
-        const unsubProgress = window.electron?.download.onProgress((event: DownloadEvent) => {
-            setProgress((prev) => {
-                const next = new Map(prev);
-                const entry = next.get(event.sourceUrl);
-                if (entry) {
-                    next.set(event.sourceUrl, {
-                        ...entry,
-                        percent: event.percent ?? entry.percent,
-                        speed: event.speed,
-                        eta: event.eta,
-                        status: 'downloading',
-                    });
-                }
-                return next;
-            });
-        });
-
-        const unsubComplete = window.electron?.download.onTrackComplete((event: DownloadEvent) => {
-            // Without a path there is nothing to patch onto the track document,
-            // so `patchTrackDocs` skips it — say so instead of claiming success (#57).
-            const willPatch = Boolean(event.localFilePath);
-            if (event.localFilePath) {
-                completedPaths.set(event.sourceUrl, event.localFilePath);
-            }
-            setProgress((prev) => {
-                const next = new Map(prev);
-                const entry = next.get(event.sourceUrl);
-                if (entry) {
-                    next.set(event.sourceUrl, {
-                        ...entry,
-                        percent: 100,
-                        status: willPatch ? 'complete' : 'unimported',
-                        localFilePath: event.localFilePath,
-                    });
-                }
-                return next;
-            });
-            localCompleted += 1;
-            setCompletedCount(localCompleted);
-            if (localCompleted >= toDownload.length) {
-                void patchTrackDocs(urlToDocId, completedPaths, preferredFormat).then(() => {
-                    if (isMountedRef.current) setState('done');
-                    void enrichLibraryTracksWithPurchaseLinks(
-                        toDownload.map((d) => ({
-                            id: d.id,
-                            title: d.title,
-                            artists: d.artists ?? [],
-                            album: d.album ?? '',
-                        })),
-                    );
+        const unsubProgress = window.electron?.download.onProgress(
+            (event: DownloadEvent) => {
+                setProgress((prev) => {
+                    const next = new Map(prev);
+                    const entry = next.get(event.sourceUrl);
+                    if (entry) {
+                        next.set(event.sourceUrl, {
+                            ...entry,
+                            percent: event.percent ?? entry.percent,
+                            speed: event.speed,
+                            eta: event.eta,
+                            status: 'downloading',
+                        });
+                    }
+                    return next;
                 });
-            }
-        });
+            },
+        );
 
-        const unsubError = window.electron?.download.onError((event: DownloadEvent) => {
-            setProgress((prev) => {
-                const next = new Map(prev);
-                const entry = next.get(event.sourceUrl);
-                if (entry) {
-                    next.set(event.sourceUrl, { ...entry, status: 'error', error: event.error });
+        const unsubComplete = window.electron?.download.onTrackComplete(
+            (event: DownloadEvent) => {
+                // Without a path there is nothing to patch onto the track document,
+                // so `patchTrackDocs` skips it — say so instead of claiming success (#57).
+                const willPatch = Boolean(event.localFilePath);
+                if (event.localFilePath) {
+                    completedPaths.set(event.sourceUrl, event.localFilePath);
                 }
-                return next;
-            });
-        });
+                setProgress((prev) => {
+                    const next = new Map(prev);
+                    const entry = next.get(event.sourceUrl);
+                    if (entry) {
+                        next.set(event.sourceUrl, {
+                            ...entry,
+                            percent: 100,
+                            status: willPatch ? 'complete' : 'unimported',
+                            localFilePath: event.localFilePath,
+                        });
+                    }
+                    return next;
+                });
+                localCompleted += 1;
+                setCompletedCount(localCompleted);
+                if (localCompleted >= toDownload.length) {
+                    void patchTrackDocs(
+                        urlToDocId,
+                        completedPaths,
+                        preferredFormat,
+                    ).then(() => {
+                        if (isMountedRef.current) setState('done');
+                        void enrichLibraryTracksWithPurchaseLinks(
+                            toDownload.map((d) => ({
+                                id: d.id,
+                                title: d.title,
+                                artists: d.artists ?? [],
+                                album: d.album ?? '',
+                            })),
+                        );
+                    });
+                }
+            },
+        );
+
+        const unsubError = window.electron?.download.onError(
+            (event: DownloadEvent) => {
+                setProgress((prev) => {
+                    const next = new Map(prev);
+                    const entry = next.get(event.sourceUrl);
+                    if (entry) {
+                        next.set(event.sourceUrl, {
+                            ...entry,
+                            status: 'error',
+                            error: event.error,
+                        });
+                    }
+                    return next;
+                });
+            },
+        );
 
         if (unsubProgress) unsubscribeRefs.current.push(unsubProgress);
         if (unsubComplete) unsubscribeRefs.current.push(unsubComplete);
@@ -270,7 +284,12 @@ async function patchTrackDocs(
 
 /** Resolve purchase links for library tracks and persist to RxDB. Fire-and-forget. */
 async function enrichLibraryTracksWithPurchaseLinks(
-    tracks: Array<{ id: string; title: string; artists: string[]; album: string }>,
+    tracks: Array<{
+        id: string;
+        title: string;
+        artists: string[];
+        album: string;
+    }>,
 ): Promise<void> {
     for (const track of tracks) {
         try {

@@ -27,13 +27,22 @@ export function SpotifyImportComplete({
                 <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
                     <i className="fa-solid fa-check text-surface text-2xl" />
                 </div>
-                <h2 className="text-2xl font-bold text-on-surface mb-3">Playlist Created!</h2>
+                <h2 className="text-2xl font-bold text-on-surface mb-3">
+                    Playlist Created!
+                </h2>
                 <p className="text-on-surface-variant mb-2">
-                    Imported <span className="text-primary font-semibold">{importCount}</span> tracks
+                    Imported{' '}
+                    <span className="text-primary font-semibold">
+                        {importCount}
+                    </span>{' '}
+                    tracks
                     {selectedPlaylist && (
                         <>
                             {' '}
-                            from <span className="text-on-surface font-medium">{selectedPlaylist.name}</span>
+                            from{' '}
+                            <span className="text-on-surface font-medium">
+                                {selectedPlaylist.name}
+                            </span>
                         </>
                     )}{' '}
                     into your Library.

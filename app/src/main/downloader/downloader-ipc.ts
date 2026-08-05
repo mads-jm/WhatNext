@@ -28,7 +28,11 @@ export { killDownloadProcesses };
  * Guard against sending to a destroyed BrowserWindow (e.g. user closes app mid-download).
  * win.webContents.send() throws if the window has already been destroyed.
  */
-function safeSend(win: BrowserWindow, channel: string, ...args: unknown[]): void {
+function safeSend(
+    win: BrowserWindow,
+    channel: string,
+    ...args: unknown[]
+): void {
     if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
         win.webContents.send(channel, ...args);
     }
@@ -48,7 +52,10 @@ async function getDownloaderModules(): Promise<Mod> {
 
 // Registry of backend instances (initialised lazily)
 type BackendId = 'ytdlp' | 'spotdl' | 'spytify';
-type BackendRegistry = Record<BackendId, import('../../../../service/downloader/backend').DownloadBackend | null>;
+type BackendRegistry = Record<
+    BackendId,
+    import('../../../../service/downloader/backend').DownloadBackend | null
+>;
 
 const backends: BackendRegistry = {
     ytdlp: null,
@@ -56,10 +63,14 @@ const backends: BackendRegistry = {
     spytify: null,
 };
 
-let audioStore: import('../../../../service/downloader/audio-store').AudioStore | null = null;
+let audioStore:
+    import('../../../../service/downloader/audio-store').AudioStore | null =
+    null;
 let storeReady = false;
 
-async function ensureStore(): Promise<import('../../../../service/downloader/audio-store').AudioStore> {
+async function ensureStore(): Promise<
+    import('../../../../service/downloader/audio-store').AudioStore
+> {
     if (audioStore && storeReady) return audioStore;
     const mod = await getDownloaderModules();
     audioStore = new mod.AudioStore();
@@ -73,15 +84,20 @@ async function getBackend(
 ): Promise<import('../../../../service/downloader/backend').DownloadBackend> {
     const mod = await getDownloaderModules();
     if (id === 'ytdlp') {
-        if (!backends.ytdlp) backends.ytdlp = new mod.YtdlpBackend(getBackendPath('ytdlp'));
+        if (!backends.ytdlp)
+            backends.ytdlp = new mod.YtdlpBackend(getBackendPath('ytdlp'));
         return backends.ytdlp!;
     }
     if (id === 'spotdl') {
-        if (!backends.spotdl) backends.spotdl = new mod.SpotdlBackend(getBackendPath('spotdl'));
+        if (!backends.spotdl)
+            backends.spotdl = new mod.SpotdlBackend(getBackendPath('spotdl'));
         return backends.spotdl!;
     }
     if (id === 'spytify') {
-        if (!backends.spytify) backends.spytify = new mod.SpytifyBackend(getBackendPath('spytify'));
+        if (!backends.spytify)
+            backends.spytify = new mod.SpytifyBackend(
+                getBackendPath('spytify'),
+            );
         return backends.spytify!;
     }
     throw new Error(`Unknown download backend: "${id}"`);
@@ -108,7 +124,7 @@ async function confirmBackendExecutable(
         message: 'Run this program as a download tool?',
         detail:
             `WhatNext will run:\n\n${executablePath}\n\n` +
-            'It runs with your user account\'s permissions. Only continue if you ' +
+            "It runs with your user account's permissions. Only continue if you " +
             'installed this program yourself and trust it.',
     });
     return response === 1;
@@ -118,7 +134,9 @@ async function confirmBackendExecutable(
  * Register all download IPC handlers.
  * Must be called after the BrowserWindow is created so we can send events back.
  */
-export async function registerDownloadHandlers(win: BrowserWindow): Promise<void> {
+export async function registerDownloadHandlers(
+    win: BrowserWindow,
+): Promise<void> {
     // Pre-init the audio store
     await ensureStore();
 
@@ -126,27 +144,33 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
     // download:check-backends
     // Returns the install status of all known backends.
     // -----------------------------------------------------------------------
-    ipcMain.handle(IPC_CHANNELS.DOWNLOAD_CHECK_BACKENDS, async (): Promise<BackendStatusResult[]> => {
-        const [ytdlp, spotdl, spytify] = await Promise.all([
-            getBackend('ytdlp').then((b) => b.checkInstalled()),
-            getBackend('spotdl').then((b) => b.checkInstalled()),
-            getBackend('spytify').then((b) => b.checkInstalled()),
-        ]);
-        return [
-            { id: 'ytdlp', name: 'yt-dlp', ...ytdlp },
-            { id: 'spotdl', name: 'spotDL', ...spotdl },
-            { id: 'spytify', name: 'Spytify', ...spytify },
-        ];
-    });
+    ipcMain.handle(
+        IPC_CHANNELS.DOWNLOAD_CHECK_BACKENDS,
+        async (): Promise<BackendStatusResult[]> => {
+            const [ytdlp, spotdl, spytify] = await Promise.all([
+                getBackend('ytdlp').then((b) => b.checkInstalled()),
+                getBackend('spotdl').then((b) => b.checkInstalled()),
+                getBackend('spytify').then((b) => b.checkInstalled()),
+            ]);
+            return [
+                { id: 'ytdlp', name: 'yt-dlp', ...ytdlp },
+                { id: 'spotdl', name: 'spotDL', ...spotdl },
+                { id: 'spytify', name: 'Spytify', ...spytify },
+            ];
+        },
+    );
 
     // -----------------------------------------------------------------------
     // download:suggest-backend
     // Returns the suggested backend id for a given URL.
     // -----------------------------------------------------------------------
-    ipcMain.handle(IPC_CHANNELS.DOWNLOAD_SUGGEST_BACKEND, async (_e, url: string): Promise<string> => {
-        const mod = await getDownloaderModules();
-        return mod.suggestBackend(url);
-    });
+    ipcMain.handle(
+        IPC_CHANNELS.DOWNLOAD_SUGGEST_BACKEND,
+        async (_e, url: string): Promise<string> => {
+            const mod = await getDownloaderModules();
+            return mod.suggestBackend(url);
+        },
+    );
 
     // -----------------------------------------------------------------------
     // download:get-backend-paths / download:set-backend-path
@@ -170,9 +194,15 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
 
             if (!decision.ok) {
                 return {
-                    status: decision.reason === 'declined' ? 'declined' : 'rejected',
+                    status:
+                        decision.reason === 'declined'
+                            ? 'declined'
+                            : 'rejected',
                     paths: getBackendPaths(),
-                    error: decision.reason === 'invalid' ? decision.error : undefined,
+                    error:
+                        decision.reason === 'invalid'
+                            ? decision.error
+                            : undefined,
                 };
             }
 
@@ -192,7 +222,9 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
         async (
             _e,
             req: DownloadResolveRequest,
-        ): Promise<import('../../../../service/downloader/types').ResolvedTrack[]> => {
+        ): Promise<
+            import('../../../../service/downloader/types').ResolvedTrack[]
+        > => {
             // Rejected before the backend is even constructed: the input becomes argv
             // for a spawned downloader, which reads a leading-dash token as an option.
             const check = validateResolveInput(req?.input);
@@ -242,7 +274,10 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
             const acceptedTracks = req.tracks.filter((t) => {
                 const check = validateSourceUrl(t.sourceUrl);
                 if (!check.ok) {
-                    reject(String(t.sourceUrl), new DownloadInputError(check.error).message);
+                    reject(
+                        String(t.sourceUrl),
+                        new DownloadInputError(check.error).message,
+                    );
                 }
                 return check.ok;
             });
@@ -253,10 +288,13 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
             // Resolve each requested track to a ResolvedTrack if we only have URLs.
             // The request carries tracks with sourceUrl already set.
             const resolvedTracks = acceptedTracks.map(
-                (t): import('../../../../service/downloader/types').ResolvedTrack => ({
+                (
+                    t,
+                ): import('../../../../service/downloader/types').ResolvedTrack => ({
                     sourceId: '',
                     sourceUrl: t.sourceUrl,
-                    sourceProvider: t.sourceProvider as import('../../../../service/downloader/types').ResolvedTrack['sourceProvider'],
+                    sourceProvider:
+                        t.sourceProvider as import('../../../../service/downloader/types').ResolvedTrack['sourceProvider'],
                     title: '',
                     artists: [],
                     album: '',
@@ -278,12 +316,17 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
             // so we cannot realpathSync it — path.relative() containment on the resolved+
             // normalised strings is the correct approach here.
 
-            const normalize = (p: string) => process.platform === 'win32' ? p.toLowerCase() : p;
+            const normalize = (p: string) =>
+                process.platform === 'win32' ? p.toLowerCase() : p;
             const rawOutputDir = req.outputDir ?? store.getAudioDir();
             const realBase = fs.realpathSync(store.getAudioDir());
             const resolved = path.resolve(rawOutputDir);
-            const relative = path.relative(normalize(realBase), normalize(resolved));
-            const isContained = !relative.startsWith('..') && !path.isAbsolute(relative);
+            const relative = path.relative(
+                normalize(realBase),
+                normalize(resolved),
+            );
+            const isContained =
+                !relative.startsWith('..') && !path.isAbsolute(relative);
             const outputDir = resolved;
             if (!isContained) {
                 // Per-track (not sourceUrl: '') so the renderer can actually match it —
@@ -304,33 +347,56 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
                 try {
                     for (let i = 0; i < resolvedTracks.length; i++) {
                         const singleTrack = resolvedTracks[i];
-                        const format = acceptedTracks[i]?.preferredFormat ?? 'best_audio';
+                        const format =
+                            acceptedTracks[i]?.preferredFormat ?? 'best_audio';
 
                         // Dedup check — skip backend if we already have this file on disk.
-                        const existingPath = store.getExisting(singleTrack.sourceUrl);
+                        const existingPath = store.getExisting(
+                            singleTrack.sourceUrl,
+                        );
                         if (existingPath) {
-                            safeSend(win, IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE, {
-                                downloadId,
-                                type: 'complete',
-                                sourceUrl: singleTrack.sourceUrl,
-                                localFilePath: existingPath,
-                            });
+                            safeSend(
+                                win,
+                                IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE,
+                                {
+                                    downloadId,
+                                    type: 'complete',
+                                    sourceUrl: singleTrack.sourceUrl,
+                                    localFilePath: existingPath,
+                                },
+                            );
                             continue;
                         }
 
-                        for await (const event of backend.download([singleTrack], {
-                            outputDir,
-                            preferredFormat: format,
-                        })) {
+                        for await (const event of backend.download(
+                            [singleTrack],
+                            {
+                                outputDir,
+                                preferredFormat: format,
+                            },
+                        )) {
                             if (event.type === 'progress') {
-                                safeSend(win, IPC_CHANNELS.DOWNLOAD_PROGRESS, { downloadId, ...event });
+                                safeSend(win, IPC_CHANNELS.DOWNLOAD_PROGRESS, {
+                                    downloadId,
+                                    ...event,
+                                });
                             } else if (event.type === 'complete') {
                                 if (event.localFilePath) {
-                                    await store.record(event.sourceUrl, event.localFilePath);
+                                    await store.record(
+                                        event.sourceUrl,
+                                        event.localFilePath,
+                                    );
                                 }
-                                safeSend(win, IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE, { downloadId, ...event });
+                                safeSend(
+                                    win,
+                                    IPC_CHANNELS.DOWNLOAD_TRACK_COMPLETE,
+                                    { downloadId, ...event },
+                                );
                             } else if (event.type === 'error') {
-                                safeSend(win, IPC_CHANNELS.DOWNLOAD_ERROR, { downloadId, ...event });
+                                safeSend(win, IPC_CHANNELS.DOWNLOAD_ERROR, {
+                                    downloadId,
+                                    ...event,
+                                });
                             }
                         }
                     }

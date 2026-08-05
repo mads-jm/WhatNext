@@ -190,7 +190,9 @@ export function contentKey(value) {
     }
     /** @type {Record<string, unknown>} */
     const projected = {};
-    for (const [k, v] of Object.entries(/** @type {Record<string, unknown>} */ (value))) {
+    for (const [k, v] of Object.entries(
+        /** @type {Record<string, unknown>} */ (value),
+    )) {
         if (NON_CONTENT_KEYS.has(k) || k.startsWith('_')) {
             continue;
         }

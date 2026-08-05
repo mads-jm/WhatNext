@@ -11,7 +11,10 @@ interface BackendGateProps {
     backends: BackendStatusResult[];
 }
 
-const INSTALL_INSTRUCTIONS: Record<string, { label: string; instructions: string; docsUrl: string }> = {
+const INSTALL_INSTRUCTIONS: Record<
+    string,
+    { label: string; instructions: string; docsUrl: string }
+> = {
     ytdlp: {
         label: 'yt-dlp',
         instructions: 'pip install yt-dlp   or   brew install yt-dlp',
@@ -42,7 +45,8 @@ export function BackendGate({ backends }: BackendGateProps) {
                     No download backend installed
                 </h3>
                 <p className="text-sm text-on-surface-variant mt-1">
-                    WhatNext uses external tools to download audio. Install one to get started.
+                    WhatNext uses external tools to download audio. Install one
+                    to get started.
                 </p>
             </div>
 
@@ -63,7 +67,9 @@ export function BackendGate({ backends }: BackendGateProps) {
                                 </span>
                                 <button
                                     onClick={() =>
-                                        window.electron?.shell.openExternal(info.docsUrl)
+                                        window.electron?.shell.openExternal(
+                                            info.docsUrl,
+                                        )
                                     }
                                     className="text-xs text-primary hover:underline"
                                 >
@@ -73,7 +79,9 @@ export function BackendGate({ backends }: BackendGateProps) {
                             {misconfigured ? (
                                 <p className="text-xs text-amber-500">
                                     Configured path not found:{' '}
-                                    <span className="font-mono break-all">{view.path}</span>
+                                    <span className="font-mono break-all">
+                                        {view.path}
+                                    </span>
                                 </p>
                             ) : (
                                 <code className="block text-xs bg-surface-high text-on-surface-variant rounded-lg px-3 py-2 font-mono">
@@ -89,9 +97,13 @@ export function BackendGate({ backends }: BackendGateProps) {
             </div>
 
             <p className="text-xs text-on-surface-variant text-center">
-                Already installed, just not on your PATH? Set a custom path under{' '}
-                <span className="text-on-surface">Settings → Download → Backend Tools</span>, then
-                re-check. Otherwise, install one above, restart WhatNext, and return here.
+                Already installed, just not on your PATH? Set a custom path
+                under{' '}
+                <span className="text-on-surface">
+                    Settings → Download → Backend Tools
+                </span>
+                , then re-check. Otherwise, install one above, restart WhatNext,
+                and return here.
             </p>
         </div>
     );

@@ -13,7 +13,11 @@ import { usePlaybackState } from '../../hooks/usePlaybackState';
 import { useTrackSource } from '../../hooks/useTrackSource';
 import { useSessionReplication } from '../../hooks/useSessionReplication';
 import { getDatabase } from '../../db/database';
-import type { PlaylistDocType, TrackDocType, UserDocType } from '../../db/schemas';
+import type {
+    PlaylistDocType,
+    TrackDocType,
+    UserDocType,
+} from '../../db/schemas';
 import { computeEffectiveTurn } from '../../utils/turn-helpers';
 import { hasLocalPlaybackSurface } from '../../utils/playback-helpers';
 import { advanceTurn } from '../../db/services/playlist-service';
@@ -60,7 +64,9 @@ export function SessionView({ playlistId }: SessionViewProps) {
     const [playlist, setPlaylist] = useState<PlaylistDocType | null>(null);
     const [tracks, setTracks] = useState<TrackDocType[]>([]);
     const [participants, setParticipants] = useState<UserDocType[]>([]);
-    const [currentTurnUser, setCurrentTurnUser] = useState<UserDocType | null>(null);
+    const [currentTurnUser, setCurrentTurnUser] = useState<UserDocType | null>(
+        null,
+    );
     const [showSharePanel, setShowSharePanel] = useState(false);
 
     // Subscribe to playlist changes reactively
@@ -71,11 +77,10 @@ export function SessionView({ playlistId }: SessionViewProps) {
 
         getDatabase().then((db) => {
             if (!alive) return;
-            sub = db.playlists
-                .findOne(activeId)
-                .$.subscribe((doc) => {
-                    if (alive) setPlaylist(doc ? doc.toJSON() as PlaylistDocType : null);
-                });
+            sub = db.playlists.findOne(activeId).$.subscribe((doc) => {
+                if (alive)
+                    setPlaylist(doc ? (doc.toJSON() as PlaylistDocType) : null);
+            });
         });
 
         return () => {
@@ -102,7 +107,10 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     if (alive) {
                         const ordered = ids
                             .map((id) => docs.find((d) => d.id === id))
-                            .filter((d): d is NonNullable<typeof d> => d !== undefined)
+                            .filter(
+                                (d): d is NonNullable<typeof d> =>
+                                    d !== undefined,
+                            )
                             .map((d) => d.toJSON() as TrackDocType);
                         setTracks(ordered);
                     }
@@ -113,13 +121,13 @@ export function SessionView({ playlistId }: SessionViewProps) {
             alive = false;
             sub?.unsubscribe();
         };
-    // Justification: the dependency is a computed value-key, not an identity.
-    // `playlist` is a fresh object on every RxDB emission, so depending on it
-    // would resubscribe the track query constantly; joining the id list makes
-    // the effect re-run only when the membership actually changes. The rule
-    // cannot statically verify a computed dependency, and the alternatives
-    // (depend on `playlist`, or memoise it) both change when this resubscribes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Justification: the dependency is a computed value-key, not an identity.
+        // `playlist` is a fresh object on every RxDB emission, so depending on it
+        // would resubscribe the track query constantly; joining the id list makes
+        // the effect re-run only when the membership actually changes. The rule
+        // cannot statically verify a computed dependency, and the alternatives
+        // (depend on `playlist`, or memoise it) both change when this resubscribes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playlist?.trackIds.join(',')]);
 
     // Load participants by ID
@@ -137,43 +145,65 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     setParticipants(
                         ids
                             .map((id) => map.get(id))
-                            .filter((u): u is NonNullable<typeof u> => u !== undefined)
-                            .map((u) => u.toJSON() as UserDocType)
+                            .filter(
+                                (u): u is NonNullable<typeof u> =>
+                                    u !== undefined,
+                            )
+                            .map((u) => u.toJSON() as UserDocType),
                     );
                 });
         });
 
-        return () => { alive = false; };
-    // Justification: same computed value-key pattern as the effect above —
-    // `sessionState` is replaced wholesale on every session update, so the
-    // participant list is keyed by value to avoid refetching users on every
-    // unrelated session change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        return () => {
+            alive = false;
+        };
+        // Justification: same computed value-key pattern as the effect above —
+        // `sessionState` is replaced wholesale on every session update, so the
+        // participant list is keyed by value to avoid refetching users on every
+        // unrelated session change.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionState?.participantIds.join(',')]);
 
     // Resolve current turn user display name using effective (track-derived) turn user
     const effectiveTurnUserId = (() => {
-        if (!playlist || playlist.queueMode !== 'turn_taking' || playlist.isComplete) return undefined;
+        if (
+            !playlist ||
+            playlist.queueMode !== 'turn_taking' ||
+            playlist.isComplete
+        )
+            return undefined;
         const state = computeEffectiveTurn(playlist, tracks);
         return state.effectiveTurnUserId;
     })();
 
     useEffect(() => {
         const turnId = effectiveTurnUserId;
-        if (!turnId) { setCurrentTurnUser(null); return; }
+        if (!turnId) {
+            setCurrentTurnUser(null);
+            return;
+        }
         let alive = true;
 
         getDatabase().then((db) => {
-            db.users.findOne(turnId).exec().then((doc) => {
-                if (alive) setCurrentTurnUser(doc ? doc.toJSON() as UserDocType : null);
-            });
+            db.users
+                .findOne(turnId)
+                .exec()
+                .then((doc) => {
+                    if (alive)
+                        setCurrentTurnUser(
+                            doc ? (doc.toJSON() as UserDocType) : null,
+                        );
+                });
         });
 
-        return () => { alive = false; };
+        return () => {
+            alive = false;
+        };
     }, [effectiveTurnUserId]);
 
     // Auto-advance when track history shows the quota is full but DB hasn't caught up
-    const turnQuotaFull = effectiveTurnUserId !== undefined &&
+    const turnQuotaFull =
+        effectiveTurnUserId !== undefined &&
         playlist !== null &&
         playlist.queueMode === 'turn_taking' &&
         !playlist.isComplete &&
@@ -196,7 +226,13 @@ export function SessionView({ playlistId }: SessionViewProps) {
     useSessionReplication(isActiveSession);
 
     // File transfer — mount IPC listeners and expose actions
-    const { requestManifest, requestFiles, cancelTransfer, registerTracks, setSharing } = useFileTransfer();
+    const {
+        requestManifest,
+        requestFiles,
+        cancelTransfer,
+        registerTracks,
+        setSharing,
+    } = useFileTransfer();
     const manifests = useFileTransferStore((s) => s.manifests);
     const peerCapabilities = useFileTransferStore((s) => s.peerCapabilities);
 
@@ -204,18 +240,21 @@ export function SessionView({ playlistId }: SessionViewProps) {
     // The manifests map is keyed by playlistId — one manifest per playlist (last received).
     // "No manifest yet" means either the map has no entry for this playlist, or the stored
     // manifest came from a different peer.
-    const existingManifestPeerId = activeId ? manifests.get(activeId)?.peerId : undefined;
+    const existingManifestPeerId = activeId
+        ? manifests.get(activeId)?.peerId
+        : undefined;
     const capablePeersWithoutManifest = activeId
         ? [...peerCapabilities.entries()]
               .filter(
                   ([peerId, caps]) =>
-                      caps.includes(FILE_TRANSFER_CAPABILITY) && peerId !== existingManifestPeerId,
+                      caps.includes(FILE_TRANSFER_CAPABILITY) &&
+                      peerId !== existingManifestPeerId,
               )
               .map(([peerId]) => peerId)
         : [];
 
     // Manifests scoped to the active playlist — store is keyed by playlistId
-    const activeManifest = activeId ? manifests.get(activeId) ?? null : null;
+    const activeManifest = activeId ? (manifests.get(activeId) ?? null) : null;
 
     const isHost = sessionState?.hostId === userId;
 
@@ -230,12 +269,17 @@ export function SessionView({ playlistId }: SessionViewProps) {
         enabled: isActiveSession,
     });
 
-    const { state: playbackState } = usePlaybackState(isActiveSession && isSpotifyPlayback);
+    const { state: playbackState } = usePlaybackState(
+        isActiveSession && isSpotifyPlayback,
+    );
 
     // Determine if there's a next track after the currently playing one
     const hasNextTrack = (() => {
-        if (!playbackState?.currentTrackExternalId || tracks.length === 0) return true; // no warning when unknown
-        const currentIdx = tracks.findIndex((t) => t.spotifyId === playbackState.currentTrackExternalId);
+        if (!playbackState?.currentTrackExternalId || tracks.length === 0)
+            return true; // no warning when unknown
+        const currentIdx = tracks.findIndex(
+            (t) => t.spotifyId === playbackState.currentTrackExternalId,
+        );
         if (currentIdx === -1) return true; // playing something not in our list
         return currentIdx < tracks.length - 1;
     })();
@@ -258,10 +302,12 @@ export function SessionView({ playlistId }: SessionViewProps) {
     // Active session
     // ----------------------------------------
     // Derive turn state from actual track list — resilient to stored counter drift
-    const turnState = playlist?.queueMode === 'turn_taking' && !playlist.isComplete
-        ? computeEffectiveTurn(playlist, tracks)
-        : null;
-    const isMyTurn = turnState !== null && turnState.effectiveTurnUserId === userId;
+    const turnState =
+        playlist?.queueMode === 'turn_taking' && !playlist.isComplete
+            ? computeEffectiveTurn(playlist, tracks)
+            : null;
+    const isMyTurn =
+        turnState !== null && turnState.effectiveTurnUserId === userId;
 
     const handleEndSession = () => {
         clearCompanion();
@@ -278,7 +324,10 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     trackSourceError={trackSourceError}
                 />
 
-                <TrackEndingWarning playbackState={playbackState} hasNextTrack={hasNextTrack} />
+                <TrackEndingWarning
+                    playbackState={playbackState}
+                    hasNextTrack={hasNextTrack}
+                />
 
                 {/* No playback-ownership control here by design: nothing in Phase 1
                     propagates ownership between peers, so any take/hand-off
@@ -291,7 +340,9 @@ export function SessionView({ playlistId }: SessionViewProps) {
                         isMyTurn={isMyTurn}
                         currentTurnDisplayName={currentTurnUser?.displayName}
                         currentTurnAvatarUrl={currentTurnUser?.avatarUrl}
-                        currentTurnAvatarLocalPath={currentTurnUser?.avatarLocalPath}
+                        currentTurnAvatarLocalPath={
+                            currentTurnUser?.avatarLocalPath
+                        }
                         tracksPerTurn={playlist.tracksPerTurn}
                         turnTracksAdded={turnState.turnTracksAdded}
                         turnsCompleted={playlist.turnsCompleted}
@@ -317,17 +368,26 @@ export function SessionView({ playlistId }: SessionViewProps) {
                                 <SharingToggle
                                     playlistId={activeId}
                                     onSharingChanged={async (enabled) => {
-                                        await setSharing(activeId, enabled)
-                                        if (enabled && playlist && tracks.length > 0) {
+                                        await setSharing(activeId, enabled);
+                                        if (
+                                            enabled &&
+                                            playlist &&
+                                            tracks.length > 0
+                                        ) {
                                             await registerTracks(
                                                 activeId,
-                                                playlist.coverArtLocalPath ?? undefined,
+                                                playlist.coverArtLocalPath ??
+                                                    undefined,
                                                 tracks.map((t) => ({
                                                     trackId: t.id,
-                                                    audioPath: t.localFilePath ?? undefined,
-                                                    artworkPath: t.albumArtLocalPath ?? undefined,
+                                                    audioPath:
+                                                        t.localFilePath ??
+                                                        undefined,
+                                                    artworkPath:
+                                                        t.albumArtLocalPath ??
+                                                        undefined,
                                                 })),
-                                            )
+                                            );
                                         }
                                     }}
                                 />
@@ -347,7 +407,10 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     <div className="card card-body flex items-center justify-between gap-3">
                         <span className="text-xs text-on-surface-variant">
                             {capablePeersWithoutManifest.length} peer
-                            {capablePeersWithoutManifest.length > 1 ? 's have' : ' has'} files available
+                            {capablePeersWithoutManifest.length > 1
+                                ? 's have'
+                                : ' has'}{' '}
+                            files available
                         </span>
                         <button
                             onClick={() => {
@@ -366,7 +429,9 @@ export function SessionView({ playlistId }: SessionViewProps) {
                 {activeManifest && (
                     <FileManifestPanel
                         manifest={activeManifest}
-                        onRequestFiles={(files) => requestFiles(activeManifest.peerId, files)}
+                        onRequestFiles={(files) =>
+                            requestFiles(activeManifest.peerId, files)
+                        }
                     />
                 )}
 
@@ -374,7 +439,10 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     participants={participants}
                     tracks={tracks}
                     currentUserId={userId}
-                    currentTurnUserId={turnState?.effectiveTurnUserId ?? playlist?.currentTurnUserId}
+                    currentTurnUserId={
+                        turnState?.effectiveTurnUserId ??
+                        playlist?.currentTurnUserId
+                    }
                     turnOrder={playlist?.turnOrder}
                 />
 
@@ -394,8 +462,12 @@ export function SessionView({ playlistId }: SessionViewProps) {
                     tracks={tracks}
                     participants={participants}
                     playlistId={activeId}
-                    isLiveSync={sessionState?.trackSource.type === 'spotify-collab'}
-                    currentTrackExternalId={playbackState?.currentTrackExternalId}
+                    isLiveSync={
+                        sessionState?.trackSource.type === 'spotify-collab'
+                    }
+                    currentTrackExternalId={
+                        playbackState?.currentTrackExternalId
+                    }
                     onSyncNow={syncNow ?? undefined}
                     syncing={trackSourceSyncing}
                 />

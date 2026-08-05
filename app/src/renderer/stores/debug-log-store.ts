@@ -16,7 +16,10 @@ let logIdCounter = 0;
 
 interface DebugLogStore {
     logs: LogEntry[];
-    addLog: (level: 'info' | 'warn' | 'error' | 'success', message: string) => void;
+    addLog: (
+        level: 'info' | 'warn' | 'error' | 'success',
+        message: string,
+    ) => void;
 }
 
 export const useDebugLogStore = create<DebugLogStore>((set) => ({

@@ -20,8 +20,7 @@ type TracksState =
     | { status: 'error'; tracks: TrackDocType[] };
 
 type TracksAction =
-    | { type: 'SUCCESS'; tracks: TrackDocType[] }
-    | { type: 'ERROR' };
+    { type: 'SUCCESS'; tracks: TrackDocType[] } | { type: 'ERROR' };
 
 function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     switch (action.type) {
@@ -34,11 +33,26 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
 export function LibraryView() {
     const { db } = useDatabase();
-    const { addingTo, feedback: addedFeedback, add: addToPlaylist } = useAddToPlaylist();
-    const [tracksState, dispatchTracks] = useReducer(tracksReducer, { status: 'loading', tracks: [] });
+    const {
+        addingTo,
+        feedback: addedFeedback,
+        add: addToPlaylist,
+    } = useAddToPlaylist();
+    const [tracksState, dispatchTracks] = useReducer(tracksReducer, {
+        status: 'loading',
+        tracks: [],
+    });
     const [playlists, setPlaylists] = useState<PlaylistDocType[]>([]);
     const [search, setSearch] = useState('');
-    const [sourceFilter, setSourceFilter] = useState<'all' | 'spotify' | 'local' | 'youtube' | 'soundcloud' | 'bandcamp' | 'manual'>('all');
+    const [sourceFilter, setSourceFilter] = useState<
+        | 'all'
+        | 'spotify'
+        | 'local'
+        | 'youtube'
+        | 'soundcloud'
+        | 'bandcamp'
+        | 'manual'
+    >('all');
 
     const tracks = tracksState.tracks;
     const loading = tracksState.status === 'loading';
@@ -46,23 +60,32 @@ export function LibraryView() {
     // Reactive track subscription
     useEffect(() => {
         if (!db) return;
-        const sub = db.tracks.find({ sort: [{ addedAt: 'desc' }] }).$.subscribe({
-            next: (docs: RxDocument<TrackDocType>[]) => {
-                dispatchTracks({ type: 'SUCCESS', tracks: docs.map((d) => d.toJSON() as TrackDocType) });
-            },
-            error: () => dispatchTracks({ type: 'ERROR' }),
-        });
+        const sub = db.tracks
+            .find({ sort: [{ addedAt: 'desc' }] })
+            .$.subscribe({
+                next: (docs: RxDocument<TrackDocType>[]) => {
+                    dispatchTracks({
+                        type: 'SUCCESS',
+                        tracks: docs.map((d) => d.toJSON() as TrackDocType),
+                    });
+                },
+                error: () => dispatchTracks({ type: 'ERROR' }),
+            });
         return () => sub.unsubscribe();
     }, [db]);
 
     // Reactive playlist subscription (for "add to playlist" dropdown)
     useEffect(() => {
         if (!db) return;
-        const sub = db.playlists.find({ sort: [{ updatedAt: 'desc' }] }).$.subscribe({
-            next: (docs: RxDocument<PlaylistDocType>[]) => {
-                setPlaylists(docs.map((d) => d.toJSON() as PlaylistDocType));
-            },
-        });
+        const sub = db.playlists
+            .find({ sort: [{ updatedAt: 'desc' }] })
+            .$.subscribe({
+                next: (docs: RxDocument<PlaylistDocType>[]) => {
+                    setPlaylists(
+                        docs.map((d) => d.toJSON() as PlaylistDocType),
+                    );
+                },
+            });
         return () => sub.unsubscribe();
     }, [db]);
 
@@ -75,7 +98,8 @@ export function LibraryView() {
         const q = search.toLowerCase().trim();
         return tracks.filter((t) => {
             // Source filter — uses source field with fallback for pre-migration tracks
-            if (sourceFilter !== 'all' && resolveSource(t) !== sourceFilter) return false;
+            if (sourceFilter !== 'all' && resolveSource(t) !== sourceFilter)
+                return false;
             // Text search
             if (!q) return true;
             return (
@@ -86,11 +110,21 @@ export function LibraryView() {
         });
     }, [tracks, search, sourceFilter]);
 
-    const spotifyCount = tracks.filter((t) => resolveSource(t) === 'spotify').length;
-    const localCount = tracks.filter((t) => resolveSource(t) === 'local').length;
-    const youtubeCount = tracks.filter((t) => resolveSource(t) === 'youtube').length;
-    const soundcloudCount = tracks.filter((t) => resolveSource(t) === 'soundcloud').length;
-    const bandcampCount = tracks.filter((t) => resolveSource(t) === 'bandcamp').length;
+    const spotifyCount = tracks.filter(
+        (t) => resolveSource(t) === 'spotify',
+    ).length;
+    const localCount = tracks.filter(
+        (t) => resolveSource(t) === 'local',
+    ).length;
+    const youtubeCount = tracks.filter(
+        (t) => resolveSource(t) === 'youtube',
+    ).length;
+    const soundcloudCount = tracks.filter(
+        (t) => resolveSource(t) === 'soundcloud',
+    ).length;
+    const bandcampCount = tracks.filter(
+        (t) => resolveSource(t) === 'bandcamp',
+    ).length;
 
     const handleAddToPlaylist = (trackId: string, playlistId: string) => {
         const pl = playlists.find((p) => p.id === playlistId);
@@ -106,12 +140,17 @@ export function LibraryView() {
                         <div>
                             <h2 className="text-2xl font-bold mb-1">Library</h2>
                             <p className="text-sm text-on-surface-variant">
-                                Your local-first track collection — every track imported into WhatNext lives here.
+                                Your local-first track collection — every track
+                                imported into WhatNext lives here.
                             </p>
                         </div>
                         <div className="text-right shrink-0">
-                            <p className="text-3xl font-bold text-on-surface">{tracks.length}</p>
-                            <p className="text-xs text-on-surface-variant">tracks</p>
+                            <p className="text-3xl font-bold text-on-surface">
+                                {tracks.length}
+                            </p>
+                            <p className="text-xs text-on-surface-variant">
+                                tracks
+                            </p>
                         </div>
                     </div>
 
@@ -126,7 +165,10 @@ export function LibraryView() {
                             }`}
                         >
                             <i className="fa-solid fa-layer-group" />
-                            All <span className="font-semibold">{tracks.length}</span>
+                            All{' '}
+                            <span className="font-semibold">
+                                {tracks.length}
+                            </span>
                         </button>
                         <button
                             onClick={() => setSourceFilter('spotify')}
@@ -137,7 +179,10 @@ export function LibraryView() {
                             }`}
                         >
                             <i className="fa-brands fa-spotify" />
-                            Spotify <span className="font-semibold">{spotifyCount}</span>
+                            Spotify{' '}
+                            <span className="font-semibold">
+                                {spotifyCount}
+                            </span>
                         </button>
                         <button
                             onClick={() => setSourceFilter('local')}
@@ -148,7 +193,8 @@ export function LibraryView() {
                             }`}
                         >
                             <i className="fa-solid fa-hard-drive" />
-                            Local Files <span className="font-semibold">{localCount}</span>
+                            Local Files{' '}
+                            <span className="font-semibold">{localCount}</span>
                         </button>
                         {youtubeCount > 0 && (
                             <button
@@ -160,7 +206,10 @@ export function LibraryView() {
                                 }`}
                             >
                                 <i className="fa-brands fa-youtube" />
-                                YouTube <span className="font-semibold">{youtubeCount}</span>
+                                YouTube{' '}
+                                <span className="font-semibold">
+                                    {youtubeCount}
+                                </span>
                             </button>
                         )}
                         {soundcloudCount > 0 && (
@@ -173,7 +222,10 @@ export function LibraryView() {
                                 }`}
                             >
                                 <i className="fa-brands fa-soundcloud" />
-                                SoundCloud <span className="font-semibold">{soundcloudCount}</span>
+                                SoundCloud{' '}
+                                <span className="font-semibold">
+                                    {soundcloudCount}
+                                </span>
                             </button>
                         )}
                         {bandcampCount > 0 && (
@@ -186,7 +238,10 @@ export function LibraryView() {
                                 }`}
                             >
                                 <i className="fa-brands fa-bandcamp" />
-                                Bandcamp <span className="font-semibold">{bandcampCount}</span>
+                                Bandcamp{' '}
+                                <span className="font-semibold">
+                                    {bandcampCount}
+                                </span>
                             </button>
                         )}
                     </div>
@@ -240,24 +295,40 @@ export function LibraryView() {
                     ) : tracks.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-on-surface-variant">
                             <i className="fa-solid fa-music text-5xl mb-4 text-on-surface-variant" />
-                            <h3 className="text-lg font-medium mb-2">Library is empty</h3>
+                            <h3 className="text-lg font-medium mb-2">
+                                Library is empty
+                            </h3>
                             <p className="text-sm text-center max-w-xs">
-                                Import tracks from Spotify to populate your Library. All imported tracks appear here regardless of which playlist they're in.
+                                Import tracks from Spotify to populate your
+                                Library. All imported tracks appear here
+                                regardless of which playlist they're in.
                             </p>
                         </div>
                     ) : filteredTracks.length === 0 ? (
                         <div className="flex items-center justify-center py-16 text-on-surface-variant">
-                            <p className="text-sm">No tracks match your search.</p>
+                            <p className="text-sm">
+                                No tracks match your search.
+                            </p>
                         </div>
                     ) : (
                         <table className="w-full">
                             <thead className="sticky top-0 bg-surface text-xs text-on-surface-variant uppercase border-b border-outline-variant">
                                 <tr>
-                                    <th className="text-left px-4 py-2 w-8">#</th>
-                                    <th className="text-left px-4 py-2">Title</th>
-                                    <th className="text-left px-4 py-2 hidden md:table-cell">Album</th>
-                                    <th className="text-left px-4 py-2 w-24">Source</th>
-                                    <th className="text-right px-4 py-2 w-16">Dur.</th>
+                                    <th className="text-left px-4 py-2 w-8">
+                                        #
+                                    </th>
+                                    <th className="text-left px-4 py-2">
+                                        Title
+                                    </th>
+                                    <th className="text-left px-4 py-2 hidden md:table-cell">
+                                        Album
+                                    </th>
+                                    <th className="text-left px-4 py-2 w-24">
+                                        Source
+                                    </th>
+                                    <th className="text-right px-4 py-2 w-16">
+                                        Dur.
+                                    </th>
                                     <th className="px-4 py-2 w-10"></th>
                                 </tr>
                             </thead>
@@ -272,13 +343,23 @@ export function LibraryView() {
                                         </td>
                                         <td className="px-4 py-2.5">
                                             <div className="flex items-center gap-3">
-                                                {artSrc(track.albumArtLocalPath, track.albumArtUrl) ? (
+                                                {artSrc(
+                                                    track.albumArtLocalPath,
+                                                    track.albumArtUrl,
+                                                ) ? (
                                                     <img
-                                                        src={artSrc(track.albumArtLocalPath, track.albumArtUrl)}
+                                                        src={artSrc(
+                                                            track.albumArtLocalPath,
+                                                            track.albumArtUrl,
+                                                        )}
                                                         alt=""
                                                         className="w-9 h-9 rounded object-cover shrink-0"
                                                         onError={(e) => {
-                                                            if (track.albumArtUrl) e.currentTarget.src = track.albumArtUrl;
+                                                            if (
+                                                                track.albumArtUrl
+                                                            )
+                                                                e.currentTarget.src =
+                                                                    track.albumArtUrl;
                                                         }}
                                                     />
                                                 ) : (
@@ -291,7 +372,9 @@ export function LibraryView() {
                                                         {track.title}
                                                     </div>
                                                     <div className="text-xs text-on-surface-variant truncate">
-                                                        {track.artists.join(', ')}
+                                                        {track.artists.join(
+                                                            ', ',
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -310,11 +393,15 @@ export function LibraryView() {
                                             {playlists.length > 0 && (
                                                 <div className="relative group/add">
                                                     <button
-                                                        disabled={addingTo?.trackId === track.id}
+                                                        disabled={
+                                                            addingTo?.trackId ===
+                                                            track.id
+                                                        }
                                                         className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-high transition-all disabled:opacity-50"
                                                         title="Add to playlist"
                                                     >
-                                                        {addingTo?.trackId === track.id ? (
+                                                        {addingTo?.trackId ===
+                                                        track.id ? (
                                                             <i className="fa-solid fa-spinner fa-spin text-xs" />
                                                         ) : (
                                                             <i className="fa-solid fa-plus text-xs" />
@@ -328,10 +415,17 @@ export function LibraryView() {
                                                         {playlists.map((pl) => (
                                                             <button
                                                                 key={pl.id}
-                                                                onClick={() => handleAddToPlaylist(track.id, pl.id)}
+                                                                onClick={() =>
+                                                                    handleAddToPlaylist(
+                                                                        track.id,
+                                                                        pl.id,
+                                                                    )
+                                                                }
                                                                 className="w-full text-left px-3 py-2 text-sm text-on-surface hover:bg-surface-high hover:text-on-surface transition-colors truncate"
                                                             >
-                                                                {pl.playlistName}
+                                                                {
+                                                                    pl.playlistName
+                                                                }
                                                             </button>
                                                         ))}
                                                     </div>

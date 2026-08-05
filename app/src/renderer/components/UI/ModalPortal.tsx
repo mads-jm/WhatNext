@@ -64,7 +64,7 @@ export function ModalPortal({
                 onClose();
             }
         },
-        [closeOnEscape, onClose]
+        [closeOnEscape, onClose],
     );
 
     // Register/unregister escape listener and body scroll lock
@@ -111,6 +111,6 @@ export function ModalPortal({
             {/* Content (above backdrop) */}
             <div className="relative">{children}</div>
         </div>,
-        getModalRoot()
+        getModalRoot(),
     );
 }

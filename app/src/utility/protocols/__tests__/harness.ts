@@ -135,7 +135,10 @@ export class MockConnection {
  * the test drive `getConnections()`.
  */
 export class MockLibp2p {
-    handlers: Map<string, (stream: MockStream, connection: MockConnection) => unknown> = new Map();
+    handlers: Map<
+        string,
+        (stream: MockStream, connection: MockConnection) => unknown
+    > = new Map();
     connections: Array<{ remotePeer: { toString(): string } }> = [];
     /** Every `dialProtocol` call, in order — lets a test assert "dialed exactly once". */
     dials: Array<{ peerId: string; protocol: string }> = [];
@@ -144,7 +147,10 @@ export class MockLibp2p {
 
     private dialQueue: MockStream[] = [];
 
-    handle(protocol: string, handler: (stream: MockStream, connection: MockConnection) => unknown): void {
+    handle(
+        protocol: string,
+        handler: (stream: MockStream, connection: MockConnection) => unknown,
+    ): void {
         this.handlers.set(protocol, handler);
     }
 
@@ -153,7 +159,9 @@ export class MockLibp2p {
     }
 
     setConnectedPeers(peerIds: string[]): void {
-        this.connections = peerIds.map((id) => ({ remotePeer: { toString: () => id } }));
+        this.connections = peerIds.map((id) => ({
+            remotePeer: { toString: () => id },
+        }));
     }
 
     /**
@@ -166,7 +174,10 @@ export class MockLibp2p {
         this.dialQueue.push(stream);
     }
 
-    async dialProtocol(peerId: { toString(): string }, protocol: string): Promise<MockStream> {
+    async dialProtocol(
+        peerId: { toString(): string },
+        protocol: string,
+    ): Promise<MockStream> {
         this.dials.push({ peerId: peerId.toString(), protocol });
         const stream = this.dialQueue.shift() ?? new MockStream();
         this.dialedStreams.push(stream);

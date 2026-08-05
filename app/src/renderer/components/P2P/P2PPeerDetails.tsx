@@ -30,14 +30,22 @@ export function P2PPeerDetails({ peer, onClose }: P2PPeerDetailsProps) {
                     label="Discovered"
                     value={`${peer.discovered}${peer.discoveredAt ? ` at ${new Date(peer.discoveredAt).toLocaleTimeString()}` : ''}`}
                 />
-                <P2PInfoRow label="Last Seen" value={new Date(peer.lastSeenAt).toLocaleTimeString()} />
+                <P2PInfoRow
+                    label="Last Seen"
+                    value={new Date(peer.lastSeenAt).toLocaleTimeString()}
+                />
 
                 {(peer.protocols?.length ?? 0) > 0 && (
                     <div>
-                        <span className="font-semibold text-on-surface-variant">Protocols ({peer.protocols!.length}):</span>
+                        <span className="font-semibold text-on-surface-variant">
+                            Protocols ({peer.protocols!.length}):
+                        </span>
                         <div className="mt-1 space-y-1">
                             {peer.protocols!.map((protocol: string) => (
-                                <div key={protocol} className="bg-primary/10 rounded px-2 py-1 font-mono">
+                                <div
+                                    key={protocol}
+                                    className="bg-primary/10 rounded px-2 py-1 font-mono"
+                                >
                                     {protocol}
                                 </div>
                             ))}
@@ -47,10 +55,15 @@ export function P2PPeerDetails({ peer, onClose }: P2PPeerDetailsProps) {
 
                 {(peer.multiaddrs?.length ?? 0) > 0 && (
                     <div>
-                        <span className="font-semibold text-on-surface-variant">Multiaddrs ({peer.multiaddrs!.length}):</span>
+                        <span className="font-semibold text-on-surface-variant">
+                            Multiaddrs ({peer.multiaddrs!.length}):
+                        </span>
                         <div className="mt-1 space-y-1">
                             {peer.multiaddrs!.map((addr: string) => (
-                                <div key={addr} className="bg-surface-high rounded px-2 py-1 font-mono break-all">
+                                <div
+                                    key={addr}
+                                    className="bg-surface-high rounded px-2 py-1 font-mono break-all"
+                                >
                                     {addr}
                                 </div>
                             ))}

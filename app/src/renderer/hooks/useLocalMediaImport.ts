@@ -15,26 +15,34 @@
 import { useState, useCallback } from 'react';
 import { useUserStore } from '../stores/user-store';
 import { bulkImportTracks } from '../db/services/track-service';
-import { createPlaylist, bulkAddTracksToPlaylist } from '../db/services/playlist-service';
+import {
+    createPlaylist,
+    bulkAddTracksToPlaylist,
+} from '../db/services/playlist-service';
 import type { ScanDirectoryTrack } from '../../shared/core/ipc-protocol';
 
 export type LocalImportState =
-    | 'idle'
-    | 'scanning'
-    | 'selecting'
-    | 'importing'
-    | 'done'
-    | 'error';
+    'idle' | 'scanning' | 'selecting' | 'importing' | 'done' | 'error';
 
 export function useLocalMediaImport() {
     const userId = useUserStore((s) => s.userId);
 
     const [state, setState] = useState<LocalImportState>('idle');
-    const [scannedTracks, setScannedTracks] = useState<ScanDirectoryTrack[]>([]);
-    const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
-    const [scanStats, setScanStats] = useState<{ scanned: number; supported: number; skipped: number } | null>(null);
+    const [scannedTracks, setScannedTracks] = useState<ScanDirectoryTrack[]>(
+        [],
+    );
+    const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(
+        new Set(),
+    );
+    const [scanStats, setScanStats] = useState<{
+        scanned: number;
+        supported: number;
+        skipped: number;
+    } | null>(null);
     const [importCount, setImportCount] = useState(0);
-    const [createdPlaylistId, setCreatedPlaylistId] = useState<string | null>(null);
+    const [createdPlaylistId, setCreatedPlaylistId] = useState<string | null>(
+        null,
+    );
     const [error, setError] = useState<string | null>(null);
 
     /**
@@ -55,7 +63,8 @@ export function useLocalMediaImport() {
             const dirPath = result.filePaths[0];
             setState('scanning');
 
-            const scanResult = await window.electron?.media.scanDirectory(dirPath);
+            const scanResult =
+                await window.electron?.media.scanDirectory(dirPath);
 
             if (!scanResult?.success) {
                 setError(scanResult?.error ?? 'Scan failed');

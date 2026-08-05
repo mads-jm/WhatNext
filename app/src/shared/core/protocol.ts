@@ -30,7 +30,7 @@ export enum ProtocolAction {
 export interface ParsedProtocolUrl {
     action: ProtocolAction;
     peerId: PeerId;
-    relay?: string;    // Optional relay multiaddr
+    relay?: string; // Optional relay multiaddr
     sessionId?: string; // Optional session ID (for rendezvous / short-code lookup)
     metadata?: Record<string, string>; // Additional query params
 }
@@ -113,9 +113,11 @@ export function createConnectUrl(
         relay?: string;
         sessionId?: string;
         metadata?: Record<string, string>;
-    }
+    },
 ): string {
-    const url = new URL(`${PROTOCOL_SCHEME}://${ProtocolAction.CONNECT}/${peerId}`);
+    const url = new URL(
+        `${PROTOCOL_SCHEME}://${ProtocolAction.CONNECT}/${peerId}`,
+    );
 
     if (options?.relay) {
         url.searchParams.set('relay', options.relay);
@@ -177,7 +179,7 @@ export function isValidPeerId(peerId: string): boolean {
     // Check for known prefixes
     const validPrefixes = ['Qm', '12D3Koo', 'bafz'];
     const hasValidPrefix = validPrefixes.some((prefix) =>
-        peerId.startsWith(prefix)
+        peerId.startsWith(prefix),
     );
 
     if (!hasValidPrefix) {
@@ -188,7 +190,7 @@ export function isValidPeerId(peerId: string): boolean {
     // base32: a-z, 2-7
     const isValidCharset =
         /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-            peerId
+            peerId,
         ) || /^[a-z2-7]+$/.test(peerId);
 
     return isValidCharset;
@@ -205,7 +207,9 @@ export function isValidPeerId(peerId: string): boolean {
  * @param multiaddr - libp2p multiaddr string
  * @returns Peer ID or undefined if not found
  */
-export function extractPeerIdFromMultiaddr(multiaddr: string): PeerId | undefined {
+export function extractPeerIdFromMultiaddr(
+    multiaddr: string,
+): PeerId | undefined {
     const match = multiaddr.match(/\/p2p\/([^/]+)/);
     return match?.[1];
 }

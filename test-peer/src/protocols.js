@@ -98,8 +98,14 @@ async function readStreamMessageWithTimeout(stream, timeoutMs) {
             readStreamMessage(stream),
             new Promise((_resolve, reject) => {
                 timer = setTimeout(() => {
-                    const err = new Error(`[Handshake] No response within ${timeoutMs}ms`);
-                    try { stream.abort(err); } catch { /* already gone */ }
+                    const err = new Error(
+                        `[Handshake] No response within ${timeoutMs}ms`,
+                    );
+                    try {
+                        stream.abort(err);
+                    } catch {
+                        /* already gone */
+                    }
                     reject(err);
                 }, timeoutMs);
             }),
@@ -130,7 +136,9 @@ export function registerHandshakeProtocol(node, localData, onHandshake) {
     node.handle(P2P_CONFIG.PROTOCOLS.HANDSHAKE, async (stream, connection) => {
         try {
             const remotePeerId = connection.remotePeer.toString();
-            console.log(`[Handshake] Incoming from ${remotePeerId.slice(0, 12)}...`);
+            console.log(
+                `[Handshake] Incoming from ${remotePeerId.slice(0, 12)}...`,
+            );
 
             const remoteData = await readStreamMessage(stream);
 
@@ -140,7 +148,10 @@ export function registerHandshakeProtocol(node, localData, onHandshake) {
             console.log(`[Handshake] Complete with ${remoteData.displayName}`);
             onHandshake(remotePeerId, remoteData);
         } catch (error) {
-            console.error('[Handshake] Error handling incoming:', error.message);
+            console.error(
+                '[Handshake] Error handling incoming:',
+                error.message,
+            );
         }
     });
 }
@@ -159,16 +170,28 @@ export function registerHandshakeProtocol(node, localData, onHandshake) {
  * @param {number} [timeoutMs] - overridable only for tests
  * @returns {Promise<object>} the remote peer's HandshakeData
  */
-export async function initiateHandshake(node, remotePeerId, localData, timeoutMs = HANDSHAKE_RESPONSE_TIMEOUT) {
+export async function initiateHandshake(
+    node,
+    remotePeerId,
+    localData,
+    timeoutMs = HANDSHAKE_RESPONSE_TIMEOUT,
+) {
     const peerId = peerIdFromString(remotePeerId);
     console.log(`[Handshake] Initiating with ${remotePeerId.slice(0, 12)}...`);
 
-    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.HANDSHAKE);
+    const stream = await node.dialProtocol(
+        peerId,
+        P2P_CONFIG.PROTOCOLS.HANDSHAKE,
+    );
     try {
         stream.send(encodeFramed(localData));
         return await readStreamMessageWithTimeout(stream, timeoutMs);
     } finally {
-        try { await stream.close(); } catch { /* ignore */ }
+        try {
+            await stream.close();
+        } catch {
+            /* ignore */
+        }
     }
 }
 
@@ -187,64 +210,90 @@ export async function initiateHandshake(node, remotePeerId, localData, timeoutMs
  * @param {(collection: string, documents: object[]) => Promise<void>} onPushReceived
  * @param {(collection: string, documents: object[], checkpoint: string) => void} onPullResponse
  */
-export function registerReplicationProtocol(node, onPullRequest, onPushReceived, onPullResponse) {
-    node.handle(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION, async (stream, connection) => {
-        try {
-            const message = await readStreamMessage(stream);
-            const remotePeer = connection.remotePeer.toString().slice(0, 12);
+export function registerReplicationProtocol(
+    node,
+    onPullRequest,
+    onPushReceived,
+    onPullResponse,
+) {
+    node.handle(
+        P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+        async (stream, connection) => {
+            try {
+                const message = await readStreamMessage(stream);
+                const remotePeer = connection.remotePeer
+                    .toString()
+                    .slice(0, 12);
 
-            console.log(`[Replication] Received ${message.type} for ${message.collection} from ${remotePeer}...`);
+                console.log(
+                    `[Replication] Received ${message.type} for ${message.collection} from ${remotePeer}...`,
+                );
 
-            switch (message.type) {
-                case 'pull-request': {
-                    const result = await onPullRequest(
-                        message.collection,
-                        message.checkpoint ?? null,
-                        message.limit ?? 100,
-                    );
-                    const responseStream = await connection.newStream(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION);
-                    await writeStreamMessage(responseStream, {
-                        type: 'pull-response',
-                        collection: message.collection,
-                        documents: result.documents,
-                        checkpoint: result.checkpoint,
-                    });
-                    break;
-                }
-
-                case 'push': {
-                    if (message.documents && message.documents.length > 0) {
-                        await onPushReceived(message.collection, message.documents);
+                switch (message.type) {
+                    case 'pull-request': {
+                        const result = await onPullRequest(
+                            message.collection,
+                            message.checkpoint ?? null,
+                            message.limit ?? 100,
+                        );
+                        const responseStream = await connection.newStream(
+                            P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+                        );
+                        await writeStreamMessage(responseStream, {
+                            type: 'pull-response',
+                            collection: message.collection,
+                            documents: result.documents,
+                            checkpoint: result.checkpoint,
+                        });
+                        break;
                     }
-                    const ackStream = await connection.newStream(P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION);
-                    await writeStreamMessage(ackStream, {
-                        type: 'push-ack',
-                        collection: message.collection,
-                    });
-                    break;
-                }
 
-                case 'pull-response': {
-                    onPullResponse(
-                        message.collection,
-                        message.documents ?? [],
-                        message.checkpoint ?? null,
-                    );
-                    break;
-                }
+                    case 'push': {
+                        if (message.documents && message.documents.length > 0) {
+                            await onPushReceived(
+                                message.collection,
+                                message.documents,
+                            );
+                        }
+                        const ackStream = await connection.newStream(
+                            P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+                        );
+                        await writeStreamMessage(ackStream, {
+                            type: 'push-ack',
+                            collection: message.collection,
+                        });
+                        break;
+                    }
 
-                case 'push-ack': {
-                    console.log(`[Replication] Push acknowledged for ${message.collection}`);
-                    break;
-                }
+                    case 'pull-response': {
+                        onPullResponse(
+                            message.collection,
+                            message.documents ?? [],
+                            message.checkpoint ?? null,
+                        );
+                        break;
+                    }
 
-                default:
-                    console.warn(`[Replication] Unknown message type: ${message.type}`);
+                    case 'push-ack': {
+                        console.log(
+                            `[Replication] Push acknowledged for ${message.collection}`,
+                        );
+                        break;
+                    }
+
+                    default:
+                        console.warn(
+                            `[Replication] Unknown message type: ${message.type}`,
+                        );
+                }
+            } catch (error) {
+                console.error(
+                    '[Replication] Error handling stream:',
+                    error.message,
+                );
             }
-        } catch (error) {
-            console.error('[Replication] Error handling stream:', error.message);
-        }
-    });
+        },
+    );
 }
 
 /**
@@ -258,8 +307,13 @@ export function registerReplicationProtocol(node, onPullRequest, onPushReceived,
  */
 export async function pushDocuments(node, remotePeerId, collection, documents) {
     const peerId = peerIdFromString(remotePeerId);
-    console.log(`[Replication] Pushing ${documents.length} doc(s) to ${remotePeerId.slice(0, 12)}... (${collection})`);
-    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION);
+    console.log(
+        `[Replication] Pushing ${documents.length} doc(s) to ${remotePeerId.slice(0, 12)}... (${collection})`,
+    );
+    const stream = await node.dialProtocol(
+        peerId,
+        P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+    );
     await writeStreamMessage(stream, {
         type: 'push',
         collection,
@@ -278,10 +332,21 @@ export async function pushDocuments(node, remotePeerId, collection, documents) {
  * @param {number} [limit=100]
  * @returns {Promise<void>}
  */
-export async function pullCollection(node, remotePeerId, collection, checkpoint, limit = 100) {
+export async function pullCollection(
+    node,
+    remotePeerId,
+    collection,
+    checkpoint,
+    limit = 100,
+) {
     const peerId = peerIdFromString(remotePeerId);
-    console.log(`[Replication] Pulling ${collection} from ${remotePeerId.slice(0, 12)}... (checkpoint: ${checkpoint ?? 'null'})`);
-    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION);
+    console.log(
+        `[Replication] Pulling ${collection} from ${remotePeerId.slice(0, 12)}... (checkpoint: ${checkpoint ?? 'null'})`,
+    );
+    const stream = await node.dialProtocol(
+        peerId,
+        P2P_CONFIG.PROTOCOLS.RXDB_REPLICATION,
+    );
     await writeStreamMessage(stream, {
         type: 'pull-request',
         collection,
@@ -292,7 +357,7 @@ export async function pullCollection(node, remotePeerId, collection, checkpoint,
 
 // ─── File Transfer Protocol ───────────────────────────────────────────────────
 
-const FILE_TRANSFER_CHUNK_SIZE = 65536;       // 64KB
+const FILE_TRANSFER_CHUNK_SIZE = 65536; // 64KB
 const FILE_TRANSFER_MAX_MESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
 /**
@@ -345,14 +410,19 @@ async function readFramedMessage(iter, carry) {
     const headerResult = await accumulateBytes(iter, 4, carry);
     if (!headerResult) return null;
 
-    const view = new DataView(headerResult.buf.buffer, headerResult.buf.byteOffset);
+    const view = new DataView(
+        headerResult.buf.buffer,
+        headerResult.buf.byteOffset,
+    );
     const length = view.getUint32(0, false); // big-endian
 
     if (length === 0) {
         throw new Error('readFramedMessage: rejected zero-length message');
     }
     if (length > FILE_TRANSFER_MAX_MESSAGE_SIZE) {
-        throw new Error(`readFramedMessage: rejected oversized message (length=${length})`);
+        throw new Error(
+            `readFramedMessage: rejected oversized message (length=${length})`,
+        );
     }
 
     const bodyResult = await accumulateBytes(iter, length, headerResult.rest);
@@ -377,28 +447,36 @@ async function readFramedMessage(iter, carry) {
 async function serveFile(stream, fileEntry, offsetBytes) {
     const { sha256, data: buf, sizeBytes } = fileEntry;
 
-    stream.send(encodeFramed({
-        type: 'file-header',
-        sha256,
-        totalBytes: sizeBytes,
-        chunkSize: FILE_TRANSFER_CHUNK_SIZE,
-    }));
+    stream.send(
+        encodeFramed({
+            type: 'file-header',
+            sha256,
+            totalBytes: sizeBytes,
+            chunkSize: FILE_TRANSFER_CHUNK_SIZE,
+        }),
+    );
 
     let offset = offsetBytes;
     while (offset < buf.length) {
         const end = Math.min(offset + FILE_TRANSFER_CHUNK_SIZE, buf.length);
         const chunk = buf.slice(offset, end);
-        stream.send(encodeFramed({
-            type: 'file-chunk',
-            sha256,
-            offset,
-            data: chunk.toString('base64'),
-        }));
+        stream.send(
+            encodeFramed({
+                type: 'file-chunk',
+                sha256,
+                offset,
+                data: chunk.toString('base64'),
+            }),
+        );
         offset = end;
     }
 
     stream.send(encodeFramed({ type: 'file-complete', sha256 }));
-    try { await stream.close(); } catch { /* ignore */ }
+    try {
+        await stream.close();
+    } catch {
+        /* ignore */
+    }
 }
 
 /**
@@ -413,7 +491,14 @@ async function serveFile(stream, fileEntry, offsetBytes) {
  * @param {(bytesReceived: number, totalBytes: number) => void} onProgress
  * @returns {Promise<void>}
  */
-async function receiveFileStream(iter, carry, remotePeerId, sha256, stream, onProgress) {
+async function receiveFileStream(
+    iter,
+    carry,
+    remotePeerId,
+    sha256,
+    stream,
+    onProgress,
+) {
     let remaining = carry;
     let totalBytes = 0;
 
@@ -427,7 +512,9 @@ async function receiveFileStream(iter, carry, remotePeerId, sha256, stream, onPr
         switch (message.type) {
             case 'file-header': {
                 totalBytes = message.totalBytes;
-                console.log(`[FileTransfer] Receiving ${sha256.slice(0, 8)}... totalBytes=${totalBytes}`);
+                console.log(
+                    `[FileTransfer] Receiving ${sha256.slice(0, 8)}... totalBytes=${totalBytes}`,
+                );
                 break;
             }
 
@@ -439,28 +526,46 @@ async function receiveFileStream(iter, carry, remotePeerId, sha256, stream, onPr
             }
 
             case 'file-complete': {
-                console.log(`[FileTransfer] Complete: ${sha256.slice(0, 8)}...`);
+                console.log(
+                    `[FileTransfer] Complete: ${sha256.slice(0, 8)}...`,
+                );
                 completeTransfer(sha256);
-                try { await stream.close(); } catch { /* ignore */ }
+                try {
+                    await stream.close();
+                } catch {
+                    /* ignore */
+                }
                 return;
             }
 
             case 'file-error': {
-                console.error(`[FileTransfer] Error from peer: ${message.error}`);
+                console.error(
+                    `[FileTransfer] Error from peer: ${message.error}`,
+                );
                 failTransfer(sha256, message.error);
-                try { await stream.close(); } catch { /* ignore */ }
+                try {
+                    await stream.close();
+                } catch {
+                    /* ignore */
+                }
                 return;
             }
 
             case 'transfer-cancel': {
                 console.log(`[FileTransfer] Transfer cancelled by remote`);
                 cancelTransferRecord(sha256);
-                try { await stream.close(); } catch { /* ignore */ }
+                try {
+                    await stream.close();
+                } catch {
+                    /* ignore */
+                }
                 return;
             }
 
             default:
-                console.warn(`[FileTransfer] Unexpected message in receive stream: ${message.type}`);
+                console.warn(
+                    `[FileTransfer] Unexpected message in receive stream: ${message.type}`,
+                );
                 break;
         }
     }
@@ -482,107 +587,184 @@ async function receiveFileStream(iter, carry, remotePeerId, sha256, stream, onPr
  * @param {(sha256: string) => void} callbacks.onCancelled
  */
 export function registerFileTransferProtocol(node, callbacks) {
-    node.handle(P2P_CONFIG.PROTOCOLS.FILE_TRANSFER, async (stream, connection) => {
-        const remotePeerId = connection.remotePeer.toString();
-        const shortId = remotePeerId.slice(0, 12);
+    node.handle(
+        P2P_CONFIG.PROTOCOLS.FILE_TRANSFER,
+        async (stream, connection) => {
+            const remotePeerId = connection.remotePeer.toString();
+            const shortId = remotePeerId.slice(0, 12);
 
-        console.log(`[FileTransfer] Incoming stream from ${shortId}...`);
+            console.log(`[FileTransfer] Incoming stream from ${shortId}...`);
 
-        try {
-            const iter = stream[Symbol.asyncIterator]();
-            const firstRead = await readFramedMessage(iter, new Uint8Array(0));
+            try {
+                const iter = stream[Symbol.asyncIterator]();
+                const firstRead = await readFramedMessage(
+                    iter,
+                    new Uint8Array(0),
+                );
 
-            if (!firstRead) {
-                console.warn(`[FileTransfer] Empty or malformed first message from ${shortId}`);
-                try { await stream.close(); } catch { /* ignore */ }
-                return;
-            }
-
-            const { message, rest } = firstRead;
-
-            switch (message.type) {
-                case 'manifest-request': {
-                    const playlistId = message.playlistId ?? 'unknown';
-                    console.log(`[FileTransfer] Manifest request from ${shortId} for playlist ${playlistId}`);
-
-                    const localFiles = callbacks.getLocalFiles();
-                    const manifest = {
-                        peerId: node.peerId.toString(),
-                        playlistId,
-                        files: localFiles.map(f => ({
-                            trackId: f.trackId,
-                            type: f.type,
-                            sha256: f.sha256,
-                            sizeBytes: f.sizeBytes,
-                            mimeType: f.mimeType,
-                            filename: f.filename,
-                        })),
-                        generatedAt: new Date().toISOString(),
-                    };
-
-                    stream.send(encodeFramed({ type: 'manifest-response', manifest }));
-                    try { await stream.close(); } catch { /* ignore */ }
-                    break;
+                if (!firstRead) {
+                    console.warn(
+                        `[FileTransfer] Empty or malformed first message from ${shortId}`,
+                    );
+                    try {
+                        await stream.close();
+                    } catch {
+                        /* ignore */
+                    }
+                    return;
                 }
 
-                case 'file-request': {
-                    const { sha256, offsetBytes } = message;
-                    console.log(`[FileTransfer] File request from ${shortId}: ${sha256.slice(0, 8)}... offset=${offsetBytes}`);
+                const { message, rest } = firstRead;
 
-                    const fileEntry = getTestFile(sha256);
-                    if (!fileEntry) {
-                        console.warn(`[FileTransfer] File not found: ${sha256.slice(0, 8)}...`);
-                        stream.send(encodeFramed({
-                            type: 'file-error',
-                            sha256,
-                            error: `file not found: ${sha256.slice(0, 8)}`,
-                        }));
-                        try { await stream.close(); } catch { /* ignore */ }
+                switch (message.type) {
+                    case 'manifest-request': {
+                        const playlistId = message.playlistId ?? 'unknown';
+                        console.log(
+                            `[FileTransfer] Manifest request from ${shortId} for playlist ${playlistId}`,
+                        );
+
+                        const localFiles = callbacks.getLocalFiles();
+                        const manifest = {
+                            peerId: node.peerId.toString(),
+                            playlistId,
+                            files: localFiles.map((f) => ({
+                                trackId: f.trackId,
+                                type: f.type,
+                                sha256: f.sha256,
+                                sizeBytes: f.sizeBytes,
+                                mimeType: f.mimeType,
+                                filename: f.filename,
+                            })),
+                            generatedAt: new Date().toISOString(),
+                        };
+
+                        stream.send(
+                            encodeFramed({
+                                type: 'manifest-response',
+                                manifest,
+                            }),
+                        );
+                        try {
+                            await stream.close();
+                        } catch {
+                            /* ignore */
+                        }
                         break;
                     }
 
-                    // Serve inline — no IPC needed in test-peer
-                    await serveFile(stream, fileEntry, offsetBytes ?? 0);
-                    break;
-                }
+                    case 'file-request': {
+                        const { sha256, offsetBytes } = message;
+                        console.log(
+                            `[FileTransfer] File request from ${shortId}: ${sha256.slice(0, 8)}... offset=${offsetBytes}`,
+                        );
 
-                case 'file-header':
-                case 'file-chunk':
-                case 'file-complete': {
-                    // We are receiving the response to a file-request we sent.
-                    // This path fires when the provider's first message arrives on our
-                    // outbound stream (which is also registered as an incoming stream
-                    // from libp2p's perspective). Hand off to the receive loop.
-                    if (message.type === 'file-header') {
-                        const { sha256, totalBytes } = message;
-                        startTransfer(sha256, sha256.slice(0, 8) + '.bin', totalBytes, remotePeerId);
-                        callbacks.onTransferStarted(sha256, sha256.slice(0, 8) + '.bin', totalBytes, remotePeerId);
-                        await receiveFileStream(iter, rest, remotePeerId, sha256, stream,
-                            (total) => callbacks.onProgress(sha256, getActiveTransfers().find(t => t.sha256 === sha256)?.bytesReceived ?? 0, total));
+                        const fileEntry = getTestFile(sha256);
+                        if (!fileEntry) {
+                            console.warn(
+                                `[FileTransfer] File not found: ${sha256.slice(0, 8)}...`,
+                            );
+                            stream.send(
+                                encodeFramed({
+                                    type: 'file-error',
+                                    sha256,
+                                    error: `file not found: ${sha256.slice(0, 8)}`,
+                                }),
+                            );
+                            try {
+                                await stream.close();
+                            } catch {
+                                /* ignore */
+                            }
+                            break;
+                        }
+
+                        // Serve inline — no IPC needed in test-peer
+                        await serveFile(stream, fileEntry, offsetBytes ?? 0);
+                        break;
                     }
-                    break;
-                }
 
-                case 'transfer-cancel': {
-                    console.log(`[FileTransfer] Cancel received from ${shortId} for ${message.sha256.slice(0, 8)}...`);
-                    cancelTransferRecord(message.sha256);
-                    callbacks.onCancelled(message.sha256);
-                    try { await stream.close(); } catch { /* ignore */ }
-                    break;
-                }
+                    case 'file-header':
+                    case 'file-chunk':
+                    case 'file-complete': {
+                        // We are receiving the response to a file-request we sent.
+                        // This path fires when the provider's first message arrives on our
+                        // outbound stream (which is also registered as an incoming stream
+                        // from libp2p's perspective). Hand off to the receive loop.
+                        if (message.type === 'file-header') {
+                            const { sha256, totalBytes } = message;
+                            startTransfer(
+                                sha256,
+                                sha256.slice(0, 8) + '.bin',
+                                totalBytes,
+                                remotePeerId,
+                            );
+                            callbacks.onTransferStarted(
+                                sha256,
+                                sha256.slice(0, 8) + '.bin',
+                                totalBytes,
+                                remotePeerId,
+                            );
+                            await receiveFileStream(
+                                iter,
+                                rest,
+                                remotePeerId,
+                                sha256,
+                                stream,
+                                (total) =>
+                                    callbacks.onProgress(
+                                        sha256,
+                                        getActiveTransfers().find(
+                                            (t) => t.sha256 === sha256,
+                                        )?.bytesReceived ?? 0,
+                                        total,
+                                    ),
+                            );
+                        }
+                        break;
+                    }
 
-                default:
-                    console.warn(`[FileTransfer] Unknown message type from ${shortId}: ${message.type}`);
-                    try { await stream.close(); } catch { /* ignore */ }
-                    break;
+                    case 'transfer-cancel': {
+                        console.log(
+                            `[FileTransfer] Cancel received from ${shortId} for ${message.sha256.slice(0, 8)}...`,
+                        );
+                        cancelTransferRecord(message.sha256);
+                        callbacks.onCancelled(message.sha256);
+                        try {
+                            await stream.close();
+                        } catch {
+                            /* ignore */
+                        }
+                        break;
+                    }
+
+                    default:
+                        console.warn(
+                            `[FileTransfer] Unknown message type from ${shortId}: ${message.type}`,
+                        );
+                        try {
+                            await stream.close();
+                        } catch {
+                            /* ignore */
+                        }
+                        break;
+                }
+            } catch (err) {
+                console.error(
+                    `[FileTransfer] Stream error from ${shortId}:`,
+                    err.message,
+                );
+                try {
+                    await stream.close();
+                } catch {
+                    /* ignore */
+                }
             }
-        } catch (err) {
-            console.error(`[FileTransfer] Stream error from ${shortId}:`, err.message);
-            try { await stream.close(); } catch { /* ignore */ }
-        }
-    });
+        },
+    );
 
-    console.log(`[FileTransfer] Protocol registered: ${P2P_CONFIG.PROTOCOLS.FILE_TRANSFER}`);
+    console.log(
+        `[FileTransfer] Protocol registered: ${P2P_CONFIG.PROTOCOLS.FILE_TRANSFER}`,
+    );
 }
 
 /**
@@ -595,9 +777,14 @@ export function registerFileTransferProtocol(node, callbacks) {
  */
 export async function requestManifest(node, remotePeerId, playlistId) {
     const peerId = peerIdFromString(remotePeerId);
-    console.log(`[FileTransfer] Requesting manifest from ${remotePeerId.slice(0, 12)}... for playlist ${playlistId}`);
+    console.log(
+        `[FileTransfer] Requesting manifest from ${remotePeerId.slice(0, 12)}... for playlist ${playlistId}`,
+    );
 
-    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.FILE_TRANSFER);
+    const stream = await node.dialProtocol(
+        peerId,
+        P2P_CONFIG.PROTOCOLS.FILE_TRANSFER,
+    );
 
     try {
         stream.send(encodeFramed({ type: 'manifest-request', playlistId }));
@@ -618,7 +805,11 @@ export async function requestManifest(node, remotePeerId, playlistId) {
         }
         throw new Error(`Unexpected response type: ${message.type}`);
     } finally {
-        try { await stream.close(); } catch { /* ignore */ }
+        try {
+            await stream.close();
+        } catch {
+            /* ignore */
+        }
     }
 }
 
@@ -633,11 +824,22 @@ export async function requestManifest(node, remotePeerId, playlistId) {
  * @param {object} callbacks - same shape as registerFileTransferProtocol callbacks
  * @returns {Promise<void>}
  */
-export async function requestFile(node, remotePeerId, sha256, offsetBytes, callbacks) {
+export async function requestFile(
+    node,
+    remotePeerId,
+    sha256,
+    offsetBytes,
+    callbacks,
+) {
     const peerId = peerIdFromString(remotePeerId);
-    console.log(`[FileTransfer] Requesting file ${sha256.slice(0, 8)}... from ${remotePeerId.slice(0, 12)}... offset=${offsetBytes}`);
+    console.log(
+        `[FileTransfer] Requesting file ${sha256.slice(0, 8)}... from ${remotePeerId.slice(0, 12)}... offset=${offsetBytes}`,
+    );
 
-    const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.FILE_TRANSFER);
+    const stream = await node.dialProtocol(
+        peerId,
+        P2P_CONFIG.PROTOCOLS.FILE_TRANSFER,
+    );
     stream.send(encodeFramed({ type: 'file-request', sha256, offsetBytes }));
 
     // Fire-and-forget receive loop
@@ -657,51 +859,89 @@ export async function requestFile(node, remotePeerId, sha256, offsetBytes, callb
                 switch (message.type) {
                     case 'file-header': {
                         totalBytes = message.totalBytes;
-                        startTransfer(sha256, sha256.slice(0, 8) + '.bin', totalBytes, remotePeerId);
-                        callbacks.onTransferStarted(sha256, sha256.slice(0, 8) + '.bin', totalBytes, remotePeerId);
+                        startTransfer(
+                            sha256,
+                            sha256.slice(0, 8) + '.bin',
+                            totalBytes,
+                            remotePeerId,
+                        );
+                        callbacks.onTransferStarted(
+                            sha256,
+                            sha256.slice(0, 8) + '.bin',
+                            totalBytes,
+                            remotePeerId,
+                        );
                         break;
                     }
 
                     case 'file-chunk': {
                         const chunkBuf = Buffer.from(message.data, 'base64');
                         recordChunk(sha256, message.offset, chunkBuf);
-                        const t = getActiveTransfers().find(t => t.sha256 === sha256);
-                        callbacks.onProgress(sha256, t?.bytesReceived ?? 0, totalBytes);
+                        const t = getActiveTransfers().find(
+                            (t) => t.sha256 === sha256,
+                        );
+                        callbacks.onProgress(
+                            sha256,
+                            t?.bytesReceived ?? 0,
+                            totalBytes,
+                        );
                         break;
                     }
 
                     case 'file-complete': {
                         const assembled = completeTransfer(sha256);
                         if (assembled) {
-                            await callbacks.onComplete(sha256, assembled.buf, assembled.filename);
+                            await callbacks.onComplete(
+                                sha256,
+                                assembled.buf,
+                                assembled.filename,
+                            );
                         }
-                        try { await stream.close(); } catch { /* ignore */ }
+                        try {
+                            await stream.close();
+                        } catch {
+                            /* ignore */
+                        }
                         return;
                     }
 
                     case 'file-error': {
                         failTransfer(sha256, message.error);
                         callbacks.onError(sha256, message.error);
-                        try { await stream.close(); } catch { /* ignore */ }
+                        try {
+                            await stream.close();
+                        } catch {
+                            /* ignore */
+                        }
                         return;
                     }
 
                     case 'transfer-cancel': {
                         cancelTransferRecord(sha256);
                         callbacks.onCancelled(sha256);
-                        try { await stream.close(); } catch { /* ignore */ }
+                        try {
+                            await stream.close();
+                        } catch {
+                            /* ignore */
+                        }
                         return;
                     }
 
                     default:
-                        console.warn(`[FileTransfer] Unexpected message in file stream: ${message.type}`);
+                        console.warn(
+                            `[FileTransfer] Unexpected message in file stream: ${message.type}`,
+                        );
                         break;
                 }
             }
         } catch (err) {
             failTransfer(sha256, err.message);
             callbacks.onError(sha256, `stream-error: ${err.message}`);
-            try { await stream.close(); } catch { /* ignore */ }
+            try {
+                await stream.close();
+            } catch {
+                /* ignore */
+            }
         }
     })();
 }
@@ -716,14 +956,23 @@ export async function requestFile(node, remotePeerId, sha256, offsetBytes, callb
  */
 export async function cancelFileTransfer(node, remotePeerId, sha256) {
     const peerId = peerIdFromString(remotePeerId);
-    console.log(`[FileTransfer] Sending cancel for ${sha256.slice(0, 8)}... to ${remotePeerId.slice(0, 12)}...`);
+    console.log(
+        `[FileTransfer] Sending cancel for ${sha256.slice(0, 8)}... to ${remotePeerId.slice(0, 12)}...`,
+    );
 
     cancelTransferRecord(sha256);
 
     try {
-        const stream = await node.dialProtocol(peerId, P2P_CONFIG.PROTOCOLS.FILE_TRANSFER);
+        const stream = await node.dialProtocol(
+            peerId,
+            P2P_CONFIG.PROTOCOLS.FILE_TRANSFER,
+        );
         stream.send(encodeFramed({ type: 'transfer-cancel', sha256 }));
-        try { await stream.close(); } catch { /* ignore */ }
+        try {
+            await stream.close();
+        } catch {
+            /* ignore */
+        }
     } catch (err) {
         console.warn(`[FileTransfer] Could not send cancel: ${err.message}`);
     }
@@ -733,4 +982,9 @@ export async function cancelFileTransfer(node, remotePeerId, sha256) {
 
 export { P2P_CONFIG };
 
-export const COLLECTIONS = ['playlists', 'tracks', 'trackInteractions', 'users'];
+export const COLLECTIONS = [
+    'playlists',
+    'tracks',
+    'trackInteractions',
+    'users',
+];

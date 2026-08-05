@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
 import { formatAsMarkdown } from '../markdown-formatter';
-import type { ExportPlaylist, ExportTrack, ExportComment } from '../export-types';
+import type {
+    ExportPlaylist,
+    ExportTrack,
+    ExportComment,
+} from '../export-types';
 import type { ReactionEmoji } from '../../../../shared/core/reactions';
 
 function makeTrack(overrides: Partial<ExportTrack> = {}): ExportTrack {
@@ -97,13 +101,17 @@ describe('formatAsMarkdown — YAML frontmatter', () => {
     });
 
     it('includes collaborators when present', () => {
-        const md = formatAsMarkdown(makePlaylist({ collaborators: ['Bob', 'Carol'] }));
+        const md = formatAsMarkdown(
+            makePlaylist({ collaborators: ['Bob', 'Carol'] }),
+        );
         expect(md).toContain('collaborators:');
         expect(md).toContain('"Bob"');
     });
 
     it('escapes double-quotes in the title', () => {
-        const md = formatAsMarkdown(makePlaylist({ name: 'My "Best" Playlist' }));
+        const md = formatAsMarkdown(
+            makePlaylist({ name: 'My "Best" Playlist' }),
+        );
         expect(md).toContain('title: "My \\"Best\\" Playlist"');
     });
 });
@@ -115,7 +123,9 @@ describe('formatAsMarkdown — body structure', () => {
     });
 
     it('includes cover art image when coverArtUrl is present', () => {
-        const md = formatAsMarkdown(makePlaylist({ coverArtUrl: 'https://cdn/cover.jpg' }));
+        const md = formatAsMarkdown(
+            makePlaylist({ coverArtUrl: 'https://cdn/cover.jpg' }),
+        );
         expect(md).toContain('![Cover Art](https://cdn/cover.jpg)');
     });
 
@@ -127,7 +137,9 @@ describe('formatAsMarkdown — body structure', () => {
     });
 
     it('includes description as a block quote', () => {
-        const md = formatAsMarkdown(makePlaylist({ description: 'A great mix' }));
+        const md = formatAsMarkdown(
+            makePlaylist({ description: 'A great mix' }),
+        );
         expect(md).toContain('> A great mix');
     });
 
@@ -137,7 +149,9 @@ describe('formatAsMarkdown — body structure', () => {
     });
 
     it('includes Discussion section when playlist comments exist', () => {
-        const md = formatAsMarkdown(makePlaylist({ comments: [makeComment()] }));
+        const md = formatAsMarkdown(
+            makePlaylist({ comments: [makeComment()] }),
+        );
         expect(md).toContain('## Discussion');
     });
 
@@ -148,7 +162,10 @@ describe('formatAsMarkdown — body structure', () => {
 
     it('numbers tracks starting at 1', () => {
         const playlist = makePlaylist({
-            tracks: [makeTrack({ title: 'First' }), makeTrack({ title: 'Second' })],
+            tracks: [
+                makeTrack({ title: 'First' }),
+                makeTrack({ title: 'Second' }),
+            ],
         });
         const md = formatAsMarkdown(playlist);
         expect(md).toContain('### 1. First');
@@ -164,21 +181,37 @@ describe('formatAsMarkdown — body structure', () => {
 describe('formatAsMarkdown — track fields', () => {
     it('includes album art when albumArtUrl present', () => {
         const md = formatAsMarkdown(
-            makePlaylist({ tracks: [makeTrack({ albumArtUrl: 'https://cdn/art.jpg', album: 'Test Album' })] })
+            makePlaylist({
+                tracks: [
+                    makeTrack({
+                        albumArtUrl: 'https://cdn/art.jpg',
+                        album: 'Test Album',
+                    }),
+                ],
+            }),
         );
         expect(md).toContain('![Test Album](https://cdn/art.jpg)');
     });
 
     it('omits album art when albumArtUrl absent', () => {
         const md = formatAsMarkdown(
-            makePlaylist({ tracks: [makeTrack({ albumArtUrl: undefined })] })
+            makePlaylist({ tracks: [makeTrack({ albumArtUrl: undefined })] }),
         );
         // No img syntax in tracks section
         expect(md).not.toMatch(/!\[.*\]\(.*\)/);
     });
 
     it('renders non-zero reactions', () => {
-        const track = makeTrack({ reactions: { fire: 2, heart: 0, thumbsdown: 0, mindblown: 0, sleeping: 0, party: 0 } as Record<ReactionEmoji, number> });
+        const track = makeTrack({
+            reactions: {
+                fire: 2,
+                heart: 0,
+                thumbsdown: 0,
+                mindblown: 0,
+                sleeping: 0,
+                party: 0,
+            } as Record<ReactionEmoji, number>,
+        });
         const md = formatAsMarkdown(makePlaylist({ tracks: [track] }));
         expect(md).toContain('🔥 2');
     });
@@ -199,7 +232,11 @@ describe('formatAsMarkdown — comment nesting', () => {
 
     it('indents replies by two spaces per depth level', () => {
         const reply = makeComment({ author: 'Bob', body: 'Agreed' });
-        const parent = makeComment({ author: 'Alice', body: 'Nice!', replies: [reply] });
+        const parent = makeComment({
+            author: 'Alice',
+            body: 'Nice!',
+            replies: [reply],
+        });
         const md = formatAsMarkdown(makePlaylist({ comments: [parent] }));
         // Reply should appear with two-space indent
         expect(md).toContain('  - **Bob**');
@@ -208,12 +245,16 @@ describe('formatAsMarkdown — comment nesting', () => {
 
 describe('formatAsMarkdown — duration formatting', () => {
     it('uses m:ss format for sub-hour durations in frontmatter', () => {
-        const md = formatAsMarkdown(makePlaylist({ totalDurationMs: 3 * 60000 + 30000 }));
+        const md = formatAsMarkdown(
+            makePlaylist({ totalDurationMs: 3 * 60000 + 30000 }),
+        );
         expect(md).toContain('duration: "3:30"');
     });
 
     it('uses Xh Ym format for durations >= 1 hour in frontmatter', () => {
-        const md = formatAsMarkdown(makePlaylist({ totalDurationMs: 90 * 60000 }));
+        const md = formatAsMarkdown(
+            makePlaylist({ totalDurationMs: 90 * 60000 }),
+        );
         expect(md).toContain('duration: "1h 30m"');
     });
 });

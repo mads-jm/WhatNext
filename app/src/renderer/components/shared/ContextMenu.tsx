@@ -46,7 +46,8 @@ export interface ContextMenuProps {
 
 const ITEM_BASE =
     'w-full text-left px-3 py-1.5 text-sm transition-colors flex items-center gap-2 rounded-lg select-none';
-const ITEM_DEFAULT = 'text-on-surface hover:bg-surface-high hover:text-on-surface';
+const ITEM_DEFAULT =
+    'text-on-surface hover:bg-surface-high hover:text-on-surface';
 const ITEM_DANGER = 'text-error hover:bg-error/10 hover:text-error';
 const MENU_SHELL =
     'fixed z-50 bg-surface-high rounded-xl ring-1 ring-white/10 shadow-2xl p-1 min-w-[180px]';
@@ -55,24 +56,36 @@ function itemCls(variant?: 'default' | 'danger') {
     return `${ITEM_BASE} ${variant === 'danger' ? ITEM_DANGER : ITEM_DEFAULT}`;
 }
 
-function MenuIcon({ icon, variant }: { icon: string; variant?: 'default' | 'danger' }) {
+function MenuIcon({
+    icon,
+    variant,
+}: {
+    icon: string;
+    variant?: 'default' | 'danger';
+}) {
     if (icon.startsWith('fa-')) {
         return (
             <i
                 className={`${icon} w-4 text-center text-xs ${
-                    variant === 'danger' ? 'text-error' : 'text-on-surface-variant'
+                    variant === 'danger'
+                        ? 'text-error'
+                        : 'text-on-surface-variant'
                 }`}
             />
         );
     }
-    return <span className="w-4 text-center text-base leading-none">{icon}</span>;
+    return (
+        <span className="w-4 text-center text-base leading-none">{icon}</span>
+    );
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
-    const [confirmItem, setConfirmItem] = useState<ContextMenuAction | null>(null);
+    const [confirmItem, setConfirmItem] = useState<ContextMenuAction | null>(
+        null,
+    );
     const [activeSubMenu, setActiveSubMenu] = useState<string | null>(null);
     const [pos, setPos] = useState({ x: 0, y: 0 });
 
@@ -94,7 +107,10 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
             if (e.key === 'Escape') onClose();
         };
         const onDown = (e: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+            if (
+                menuRef.current &&
+                !menuRef.current.contains(e.target as Node)
+            ) {
                 onClose();
             }
         };
@@ -122,7 +138,11 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     // ── Confirmation state ──────────────────────────────────────────────────
     if (confirmItem) {
         return createPortal(
-            <div ref={menuRef} style={{ top: pos.y, left: pos.x }} className={MENU_SHELL}>
+            <div
+                ref={menuRef}
+                style={{ top: pos.y, left: pos.x }}
+                className={MENU_SHELL}
+            >
                 <p className="px-3 py-1.5 text-xs text-on-surface-variant border-b border-outline-variant mb-1 truncate">
                     {confirmItem.confirmLabel ?? `${confirmItem.label}?`}
                 </p>
@@ -136,7 +156,10 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
                     <i className="fa-solid fa-triangle-exclamation w-4 text-center text-xs text-error" />
                     Confirm
                 </button>
-                <button onClick={() => setConfirmItem(null)} className={itemCls()}>
+                <button
+                    onClick={() => setConfirmItem(null)}
+                    className={itemCls()}
+                >
                     <i className="fa-solid fa-xmark w-4 text-center text-xs text-on-surface-variant" />
                     Cancel
                 </button>
@@ -147,12 +170,23 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
 
     // ── Normal item list ────────────────────────────────────────────────────
     return createPortal(
-        <div ref={menuRef} style={{ top: pos.y, left: pos.x }} className={MENU_SHELL}>
+        <div
+            ref={menuRef}
+            style={{ top: pos.y, left: pos.x }}
+            className={MENU_SHELL}
+        >
             {items.map((item, index) => {
                 if (item.separator) {
                     // Separators have no stable id; position among separators is stable for a given menu
-                    const sepIndex = items.slice(0, index).filter((i) => 'separator' in i && i.separator).length;
-                    return <div key={`sep-${sepIndex}`} className="border-t border-outline-variant my-1" />;
+                    const sepIndex = items
+                        .slice(0, index)
+                        .filter((i) => 'separator' in i && i.separator).length;
+                    return (
+                        <div
+                            key={`sep-${sepIndex}`}
+                            className="border-t border-outline-variant my-1"
+                        />
+                    );
                 }
                 // TypeScript now narrows item to ContextMenuAction below this point
                 if (item.subItems?.length) {
@@ -165,7 +199,12 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
                             onMouseLeave={() => setActiveSubMenu(null)}
                         >
                             <button className={itemCls(item.variant)}>
-                                {item.icon && <MenuIcon icon={item.icon} variant={item.variant} />}
+                                {item.icon && (
+                                    <MenuIcon
+                                        icon={item.icon}
+                                        variant={item.variant}
+                                    />
+                                )}
                                 <span className="flex-1">{item.label}</span>
                                 <i
                                     className={`fa-solid fa-chevron-${flyLeft ? 'left' : 'right'} text-[10px] text-on-surface-variant`}
@@ -185,7 +224,10 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
                                             className={itemCls(sub.variant)}
                                         >
                                             {sub.icon && (
-                                                <MenuIcon icon={sub.icon} variant={sub.variant} />
+                                                <MenuIcon
+                                                    icon={sub.icon}
+                                                    variant={sub.variant}
+                                                />
                                             )}
                                             {sub.label}
                                         </button>
@@ -202,7 +244,9 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
                         onClick={() => handleItemClick(item)}
                         className={itemCls(item.variant)}
                     >
-                        {item.icon && <MenuIcon icon={item.icon} variant={item.variant} />}
+                        {item.icon && (
+                            <MenuIcon icon={item.icon} variant={item.variant} />
+                        )}
                         {item.label}
                     </button>
                 );

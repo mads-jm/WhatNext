@@ -24,21 +24,29 @@
 import { useEffect, useRef } from 'react';
 import { getDatabase } from '../db/database';
 import { DEVICE_LOCAL_FIELDS } from '../db/schemas';
-import type {
-    ReplicationPullRequestPayload,
-} from '../../shared/core/ipc-protocol';
+import type { ReplicationPullRequestPayload } from '../../shared/core/ipc-protocol';
 
-const SESSION_COLLECTIONS = ['playlists', 'tracks', 'trackInteractions', 'comments', 'users'] as const;
-type SessionCollection = typeof SESSION_COLLECTIONS[number];
+const SESSION_COLLECTIONS = [
+    'playlists',
+    'tracks',
+    'trackInteractions',
+    'comments',
+    'users',
+] as const;
+type SessionCollection = (typeof SESSION_COLLECTIONS)[number];
 
 // Minimum gap between pushes of the same collection (debounce, ms)
 const PUSH_DEBOUNCE_MS = 500;
 
 export function useSessionReplication(enabled: boolean) {
     // Per-collection debounce timer refs
-    const pushTimers = useRef<Partial<Record<SessionCollection, ReturnType<typeof setTimeout>>>>({});
+    const pushTimers = useRef<
+        Partial<Record<SessionCollection, ReturnType<typeof setTimeout>>>
+    >({});
     // Per-collection pending changed doc IDs, deduplicated
-    const pendingChanges = useRef<Partial<Record<SessionCollection, Set<string>>>>({});
+    const pendingChanges = useRef<
+        Partial<Record<SessionCollection, Set<string>>>
+    >({});
 
     useEffect(() => {
         if (!enabled) return;
@@ -65,58 +73,84 @@ export function useSessionReplication(enabled: boolean) {
                 const collection = (db as any)[col];
                 if (!collection) continue;
 
-                const sub = collection.$.subscribe((changeEvent: {
-                    operation: string;
-                    documentId: string;
-                    documentData?: Record<string, unknown>;
-                }) => {
-                    if (!alive) return;
-
-                    // Track which doc changed
-                    if (!pendingChanges.current[col]) {
-                        pendingChanges.current[col] = new Set();
-                    }
-                    pendingChanges.current[col]!.add(changeEvent.documentId);
-
-                    // Debounce the push
-                    clearTimeout(pushTimers.current[col]);
-                    pushTimers.current[col] = setTimeout(async () => {
+                const sub = collection.$.subscribe(
+                    (changeEvent: {
+                        operation: string;
+                        documentId: string;
+                        documentData?: Record<string, unknown>;
+                    }) => {
                         if (!alive) return;
-                        const ids = [...(pendingChanges.current[col] ?? [])];
-                        pendingChanges.current[col] = new Set();
 
-                        if (ids.length === 0) return;
-
-                        try {
-                            const docs = await collection.findByIds(ids).exec();
-                            const documents = ids.map((id) => {
-                                const doc = docs.get(id);
-                                if (!doc) {
-                                    // Document was deleted
-                                    return { id, data: {}, updatedAt: new Date().toISOString(), deleted: true };
-                                }
-                                const data = { ...doc.toJSON() } as Record<string, unknown>;
-                                // Strip device-local fields before sending to peers.
-                                // Sourced from the shared DEVICE_LOCAL_FIELDS so this
-                                // strip and the LWW tiebreak strip (lww.contentKey)
-                                // can never drift apart. Field names are unique per
-                                // collection, so deleting the full set is safe here.
-                                for (const field of DEVICE_LOCAL_FIELDS) {
-                                    delete data[field];
-                                }
-                                return {
-                                    id,
-                                    data,
-                                    updatedAt: (data as { updatedAt?: string }).updatedAt ?? new Date().toISOString(),
-                                };
-                            });
-
-                            await window.electron?.replication.pushChanges(col, documents);
-                        } catch (err) {
-                            console.warn('[useSessionReplication] push error for', col, err);
+                        // Track which doc changed
+                        if (!pendingChanges.current[col]) {
+                            pendingChanges.current[col] = new Set();
                         }
-                    }, PUSH_DEBOUNCE_MS);
-                });
+                        pendingChanges.current[col]!.add(
+                            changeEvent.documentId,
+                        );
+
+                        // Debounce the push
+                        clearTimeout(pushTimers.current[col]);
+                        pushTimers.current[col] = setTimeout(async () => {
+                            if (!alive) return;
+                            const ids = [
+                                ...(pendingChanges.current[col] ?? []),
+                            ];
+                            pendingChanges.current[col] = new Set();
+
+                            if (ids.length === 0) return;
+
+                            try {
+                                const docs = await collection
+                                    .findByIds(ids)
+                                    .exec();
+                                const documents = ids.map((id) => {
+                                    const doc = docs.get(id);
+                                    if (!doc) {
+                                        // Document was deleted
+                                        return {
+                                            id,
+                                            data: {},
+                                            updatedAt: new Date().toISOString(),
+                                            deleted: true,
+                                        };
+                                    }
+                                    const data = { ...doc.toJSON() } as Record<
+                                        string,
+                                        unknown
+                                    >;
+                                    // Strip device-local fields before sending to peers.
+                                    // Sourced from the shared DEVICE_LOCAL_FIELDS so this
+                                    // strip and the LWW tiebreak strip (lww.contentKey)
+                                    // can never drift apart. Field names are unique per
+                                    // collection, so deleting the full set is safe here.
+                                    for (const field of DEVICE_LOCAL_FIELDS) {
+                                        delete data[field];
+                                    }
+                                    return {
+                                        id,
+                                        data,
+                                        updatedAt:
+                                            (data as { updatedAt?: string })
+                                                .updatedAt ??
+                                            new Date().toISOString(),
+                                    };
+                                });
+
+                                await window.electron?.replication.pushChanges(
+                                    col,
+                                    documents,
+                                );
+                            } catch (err) {
+                                console.warn(
+                                    '[useSessionReplication] push error for',
+                                    col,
+                                    err,
+                                );
+                            }
+                        }, PUSH_DEBOUNCE_MS);
+                    },
+                );
 
                 cleanups.push(() => sub.unsubscribe());
             }
@@ -130,76 +164,107 @@ export function useSessionReplication(enabled: boolean) {
             // 2. Respond to pull requests from peers (via utility → main → renderer).
             //    The utility process needs our local data to fulfill a remote peer pull.
             // ------------------------------------------------------------------
-            const removePullRequestListener = window.electron?.replication.onPullRequest(
-                async (payload: ReplicationPullRequestPayload) => {
-                    if (!alive) return;
-                    const { requestId, collection: col, checkpoint, limit = 500 } = payload;
-
-                    // Justification: `col` arrives off the wire as a plain
-                    // string, so no static index type applies — and the
-                    // `if (!collection)` branch below is precisely the runtime
-                    // check that makes an unknown name safe. Same union-of-
-                    // signatures obstacle as the change$ subscription above.
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const collection = (db as any)[col];
-                    if (!collection) {
-                        await window.electron?.replication.respondToPullRequest({
+            const removePullRequestListener =
+                window.electron?.replication.onPullRequest(
+                    async (payload: ReplicationPullRequestPayload) => {
+                        if (!alive) return;
+                        const {
                             requestId,
                             collection: col,
-                            documents: [],
-                            checkpoint: new Date().toISOString(),
-                        });
-                        return;
-                    }
+                            checkpoint,
+                            limit = 500,
+                        } = payload;
 
-                    try {
-                        // Fetch documents updated after the checkpoint
-                        const selector = checkpoint
-                            ? { updatedAt: { $gt: checkpoint } }
-                            : {};
+                        // Justification: `col` arrives off the wire as a plain
+                        // string, so no static index type applies — and the
+                        // `if (!collection)` branch below is precisely the runtime
+                        // check that makes an unknown name safe. Same union-of-
+                        // signatures obstacle as the change$ subscription above.
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const collection = (db as any)[col];
+                        if (!collection) {
+                            await window.electron?.replication.respondToPullRequest(
+                                {
+                                    requestId,
+                                    collection: col,
+                                    documents: [],
+                                    checkpoint: new Date().toISOString(),
+                                },
+                            );
+                            return;
+                        }
 
-                        const docs = await collection
-                            .find({ selector, limit, sort: [{ updatedAt: 'asc' }] })
-                            .exec();
+                        try {
+                            // Fetch documents updated after the checkpoint
+                            const selector = checkpoint
+                                ? { updatedAt: { $gt: checkpoint } }
+                                : {};
 
-                        const documents = docs.map((d: { toJSON: () => Record<string, unknown> }) => {
-                            const data = { ...d.toJSON() } as Record<string, unknown>;
-                            // Strip device-local fields before sending to peers
-                            if (col === 'tracks') {
-                                delete data.localFilePath;
-                                delete data.localFileSize;
-                                delete data.albumArtLocalPath;
-                            }
-                            if (col === 'playlists') {
-                                delete data.coverArtLocalPath;
-                            }
-                            return {
-                                id: (data as { id: string }).id,
-                                data,
-                                updatedAt: (data as { updatedAt?: string }).updatedAt ?? new Date().toISOString(),
-                            };
-                        });
+                            const docs = await collection
+                                .find({
+                                    selector,
+                                    limit,
+                                    sort: [{ updatedAt: 'asc' }],
+                                })
+                                .exec();
 
-                        await window.electron?.replication.respondToPullRequest({
-                            requestId,
-                            collection: col,
-                            documents,
-                            checkpoint: new Date().toISOString(),
-                        });
-                    } catch (err) {
-                        console.warn('[useSessionReplication] pull request error for', col, err);
-                        // Respond with empty set so the utility promise resolves rather than timing out
-                        await window.electron?.replication.respondToPullRequest({
-                            requestId,
-                            collection: col,
-                            documents: [],
-                            checkpoint: new Date().toISOString(),
-                        });
-                    }
-                }
-            );
+                            const documents = docs.map(
+                                (d: {
+                                    toJSON: () => Record<string, unknown>;
+                                }) => {
+                                    const data = { ...d.toJSON() } as Record<
+                                        string,
+                                        unknown
+                                    >;
+                                    // Strip device-local fields before sending to peers
+                                    if (col === 'tracks') {
+                                        delete data.localFilePath;
+                                        delete data.localFileSize;
+                                        delete data.albumArtLocalPath;
+                                    }
+                                    if (col === 'playlists') {
+                                        delete data.coverArtLocalPath;
+                                    }
+                                    return {
+                                        id: (data as { id: string }).id,
+                                        data,
+                                        updatedAt:
+                                            (data as { updatedAt?: string })
+                                                .updatedAt ??
+                                            new Date().toISOString(),
+                                    };
+                                },
+                            );
 
-            if (removePullRequestListener) cleanups.push(removePullRequestListener);
+                            await window.electron?.replication.respondToPullRequest(
+                                {
+                                    requestId,
+                                    collection: col,
+                                    documents,
+                                    checkpoint: new Date().toISOString(),
+                                },
+                            );
+                        } catch (err) {
+                            console.warn(
+                                '[useSessionReplication] pull request error for',
+                                col,
+                                err,
+                            );
+                            // Respond with empty set so the utility promise resolves rather than timing out
+                            await window.electron?.replication.respondToPullRequest(
+                                {
+                                    requestId,
+                                    collection: col,
+                                    documents: [],
+                                    checkpoint: new Date().toISOString(),
+                                },
+                            );
+                        }
+                    },
+                );
+
+            if (removePullRequestListener)
+                cleanups.push(removePullRequestListener);
         }
 
         setup();

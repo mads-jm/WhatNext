@@ -7,7 +7,11 @@
 
 import { getDatabase } from '../database';
 import type { PlaylistDocType, PlaylistDocument } from '../schemas';
-import type { CreatePlaylistInput, UpdatePlaylistInput, PlaylistWithTracks } from '../types';
+import type {
+    CreatePlaylistInput,
+    UpdatePlaylistInput,
+    PlaylistWithTracks,
+} from '../types';
 import { findTracksByIds } from '../query-helpers';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -18,7 +22,7 @@ export type { CreatePlaylistInput, UpdatePlaylistInput };
  * Create a new playlist
  */
 export async function createPlaylist(
-    input: CreatePlaylistInput
+    input: CreatePlaylistInput,
 ): Promise<PlaylistDocument> {
     const db = await getDatabase();
 
@@ -56,7 +60,7 @@ export async function createPlaylist(
  * Get a playlist by ID
  */
 export async function getPlaylist(
-    id: string
+    id: string,
 ): Promise<PlaylistDocument | null> {
     const db = await getDatabase();
     return db.playlists.findOne(id).exec();
@@ -92,7 +96,7 @@ export async function searchPlaylists(query: string) {
  */
 export async function updatePlaylist(
     id: string,
-    updates: UpdatePlaylistInput
+    updates: UpdatePlaylistInput,
 ): Promise<PlaylistDocument | null> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(id).exec();
@@ -131,7 +135,7 @@ export async function deletePlaylist(id: string): Promise<boolean> {
  */
 export async function addTrackToPlaylist(
     playlistId: string,
-    trackId: string
+    trackId: string,
 ): Promise<PlaylistDocument | null> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
@@ -145,7 +149,8 @@ export async function addTrackToPlaylist(
         return playlist;
     }
 
-    const isTurnTaking = playlist.queueMode === 'turn_taking' && !playlist.isComplete;
+    const isTurnTaking =
+        playlist.queueMode === 'turn_taking' && !playlist.isComplete;
     const tracksPerTurn = playlist.tracksPerTurn ?? 1;
     const turnTracksAdded = (playlist.turnTracksAdded ?? 0) + 1;
     const turnFull = isTurnTaking && turnTracksAdded >= tracksPerTurn;
@@ -154,7 +159,9 @@ export async function addTrackToPlaylist(
         $set: {
             trackIds: [...playlist.trackIds, trackId],
             updatedAt: new Date().toISOString(),
-            ...(isTurnTaking && { turnTracksAdded: turnFull ? 0 : turnTracksAdded }),
+            ...(isTurnTaking && {
+                turnTracksAdded: turnFull ? 0 : turnTracksAdded,
+            }),
         },
     });
 
@@ -172,7 +179,7 @@ export async function addTrackToPlaylist(
                 .exec();
             const totalMs = Array.from(trackDocs.values()).reduce(
                 (sum, t) => sum + t.durationMs,
-                0
+                0,
             );
             if (totalMs >= maxDurationMs) {
                 await updated.update({
@@ -196,7 +203,12 @@ export async function addTrackToPlaylist(
 export async function advanceTurn(playlistId: string): Promise<void> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
-    if (!playlist || playlist.queueMode !== 'turn_taking' || playlist.isComplete) return;
+    if (
+        !playlist ||
+        playlist.queueMode !== 'turn_taking' ||
+        playlist.isComplete
+    )
+        return;
 
     const order = playlist.turnOrder?.length
         ? playlist.turnOrder
@@ -225,7 +237,10 @@ export async function advanceTurn(playlistId: string): Promise<void> {
 /**
  * Update the explicit turn order for a playlist.
  */
-export async function setTurnOrder(playlistId: string, order: string[]): Promise<void> {
+export async function setTurnOrder(
+    playlistId: string,
+    order: string[],
+): Promise<void> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
     if (!playlist) return;
@@ -241,16 +256,25 @@ export async function setTurnOrder(playlistId: string, order: string[]): Promise
  */
 export async function setTurnConfig(
     playlistId: string,
-    config: { tracksPerTurn?: number; maxTurns?: number | null; maxDurationMs?: number | null }
+    config: {
+        tracksPerTurn?: number;
+        maxTurns?: number | null;
+        maxDurationMs?: number | null;
+    },
 ): Promise<void> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
     if (!playlist) return;
 
-    const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
-    if (config.tracksPerTurn !== undefined) updates.tracksPerTurn = config.tracksPerTurn;
-    if (config.maxTurns !== undefined) updates.maxTurns = config.maxTurns ?? undefined;
-    if (config.maxDurationMs !== undefined) updates.maxDurationMs = config.maxDurationMs ?? undefined;
+    const updates: Record<string, unknown> = {
+        updatedAt: new Date().toISOString(),
+    };
+    if (config.tracksPerTurn !== undefined)
+        updates.tracksPerTurn = config.tracksPerTurn;
+    if (config.maxTurns !== undefined)
+        updates.maxTurns = config.maxTurns ?? undefined;
+    if (config.maxDurationMs !== undefined)
+        updates.maxDurationMs = config.maxDurationMs ?? undefined;
 
     await playlist.update({ $set: updates });
 }
@@ -296,7 +320,7 @@ export async function reopenPlaylist(playlistId: string): Promise<void> {
  */
 export async function removeTrackFromPlaylist(
     playlistId: string,
-    trackId: string
+    trackId: string,
 ): Promise<PlaylistDocument | null> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
@@ -320,7 +344,7 @@ export async function removeTrackFromPlaylist(
  */
 export async function reorderPlaylistTracks(
     playlistId: string,
-    newOrder: string[]
+    newOrder: string[],
 ): Promise<PlaylistDocument | null> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
@@ -331,7 +355,7 @@ export async function reorderPlaylistTracks(
 
     // Validate that all tracks exist in the playlist
     const validTracks = newOrder.filter((trackId) =>
-        playlist.trackIds.includes(trackId)
+        playlist.trackIds.includes(trackId),
     );
 
     await playlist.update({
@@ -349,7 +373,7 @@ export async function reorderPlaylistTracks(
  */
 export async function bulkAddTracksToPlaylist(
     playlistId: string,
-    trackIds: string[]
+    trackIds: string[],
 ): Promise<PlaylistDocument | null> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
@@ -360,7 +384,7 @@ export async function bulkAddTracksToPlaylist(
 
     // Filter out duplicates
     const newTrackIds = trackIds.filter(
-        (id) => !playlist.trackIds.includes(id)
+        (id) => !playlist.trackIds.includes(id),
     );
 
     await playlist.update({
@@ -377,7 +401,7 @@ export async function bulkAddTracksToPlaylist(
  * Clear all tracks from playlist
  */
 export async function clearPlaylist(
-    playlistId: string
+    playlistId: string,
 ): Promise<PlaylistDocument | null> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
@@ -399,7 +423,9 @@ export async function clearPlaylist(
 /**
  * Get playlist with populated track data
  */
-export async function getPlaylistWithTracks(playlistId: string): Promise<PlaylistWithTracks | null> {
+export async function getPlaylistWithTracks(
+    playlistId: string,
+): Promise<PlaylistWithTracks | null> {
     const db = await getDatabase();
     const playlist = await db.playlists.findOne(playlistId).exec();
 

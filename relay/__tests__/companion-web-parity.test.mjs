@@ -25,7 +25,9 @@ function checksums(dir) {
     return Object.fromEntries(
         entries.map((name) => [
             name,
-            createHash('sha256').update(readFileSync(join(dir, name))).digest('hex'),
+            createHash('sha256')
+                .update(readFileSync(join(dir, name)))
+                .digest('hex'),
         ]),
     );
 }

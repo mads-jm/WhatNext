@@ -13,7 +13,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // `ipc-guards` (imported transitively for the dialog record) pulls in electron.
-const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wn-dlguard-userdata-'));
+const userDataDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'wn-dlguard-userdata-'),
+);
 vi.mock('electron', () => ({ app: { getPath: () => userDataDir } }));
 
 import {
@@ -45,7 +47,7 @@ function confirmStub(answer: boolean) {
 // ---------------------------------------------------------------------------
 
 describe('validateSourceUrl', () => {
-    it('accepts http(s) links and hands back the caller\'s exact string', () => {
+    it("accepts http(s) links and hands back the caller's exact string", () => {
         // Not URL.href: the renderer correlates download events by the string it sent,
         // so a normalised URL would orphan every progress/error event for the track.
         const raw = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -71,7 +73,9 @@ describe('validateSourceUrl', () => {
 
     it('rejects non-http protocols that would still reach argv', () => {
         expect(validateSourceUrl('file:///etc/passwd').ok).toBe(false);
-        expect(validateSourceUrl('spotify:track:1IHWl5LamUGEuP4ozKQSXZ').ok).toBe(false);
+        expect(
+            validateSourceUrl('spotify:track:1IHWl5LamUGEuP4ozKQSXZ').ok,
+        ).toBe(false);
         expect(validateSourceUrl('javascript:alert(1)').ok).toBe(false);
     });
 
@@ -80,7 +84,9 @@ describe('validateSourceUrl', () => {
         expect(validateSourceUrl(undefined).ok).toBe(false);
         expect(validateSourceUrl(42).ok).toBe(false);
         expect(validateSourceUrl('https://x.com/a\n--exec=sh').ok).toBe(false);
-        expect(validateSourceUrl(`https://x.com/${'a'.repeat(4000)}`).ok).toBe(false);
+        expect(validateSourceUrl(`https://x.com/${'a'.repeat(4000)}`).ok).toBe(
+            false,
+        );
     });
 });
 
@@ -91,7 +97,10 @@ describe('validateSourceUrl', () => {
 describe('validateResolveInput', () => {
     it('accepts a url input', () => {
         expect(
-            validateResolveInput({ type: 'url', url: 'https://open.spotify.com/playlist/abc' }),
+            validateResolveInput({
+                type: 'url',
+                url: 'https://open.spotify.com/playlist/abc',
+            }),
         ).toEqual({ ok: true });
     });
 
@@ -101,26 +110,42 @@ describe('validateResolveInput', () => {
         expect(
             validateResolveInput({
                 type: 'spotify-ids',
-                spotifyIds: ['1IHWl5LamUGEuP4ozKQSXZ', '4uLU6hMCjMI75M1A2tKUQC'],
+                spotifyIds: [
+                    '1IHWl5LamUGEuP4ozKQSXZ',
+                    '4uLU6hMCjMI75M1A2tKUQC',
+                ],
             }),
         ).toEqual({ ok: true });
     });
 
     it('rejects a hostile url input before any backend is constructed', () => {
-        expect(validateResolveInput({ type: 'url', url: '--exec=calc' }).ok).toBe(false);
+        expect(
+            validateResolveInput({ type: 'url', url: '--exec=calc' }).ok,
+        ).toBe(false);
         expect(validateResolveInput({ type: 'url' }).ok).toBe(false);
     });
 
     it('rejects ids that are not Spotify base62 ids', () => {
-        expect(validateResolveInput({ type: 'spotify-ids', spotifyIds: [] }).ok).toBe(false);
         expect(
-            validateResolveInput({ type: 'spotify-ids', spotifyIds: ['../../etc/passwd'] }).ok,
+            validateResolveInput({ type: 'spotify-ids', spotifyIds: [] }).ok,
         ).toBe(false);
-        expect(validateResolveInput({ type: 'spotify-ids', spotifyIds: ['short'] }).ok).toBe(false);
         expect(
             validateResolveInput({
                 type: 'spotify-ids',
-                spotifyIds: ['1IHWl5LamUGEuP4ozKQSXZ', 'not a valid id here!!!'],
+                spotifyIds: ['../../etc/passwd'],
+            }).ok,
+        ).toBe(false);
+        expect(
+            validateResolveInput({ type: 'spotify-ids', spotifyIds: ['short'] })
+                .ok,
+        ).toBe(false);
+        expect(
+            validateResolveInput({
+                type: 'spotify-ids',
+                spotifyIds: [
+                    '1IHWl5LamUGEuP4ozKQSXZ',
+                    'not a valid id here!!!',
+                ],
             }).ok,
         ).toBe(false);
     });
@@ -134,9 +159,9 @@ describe('validateResolveInput', () => {
     it('names the offending value in the error so a rejection is diagnosable', () => {
         const check = validateResolveInput({ type: 'url', url: 'notaurl' });
         expect(check.ok).toBe(false);
-        expect(new DownloadInputError((check as { error: string }).error).message).toContain(
-            'notaurl',
-        );
+        expect(
+            new DownloadInputError((check as { error: string }).error).message,
+        ).toContain('notaurl');
     });
 });
 
@@ -151,7 +176,10 @@ describe('validateBackendPathRequest', () => {
         recordApprovedOpenFile(fakeBinary);
         const confirm = confirmStub(false);
 
-        const decision = await validateBackendPathRequest({ id: 'ytdlp', path: fakeBinary }, confirm);
+        const decision = await validateBackendPathRequest(
+            { id: 'ytdlp', path: fakeBinary },
+            confirm,
+        );
 
         expect(decision).toEqual({ ok: true, id: 'ytdlp', path: fakeBinary });
         expect(confirm).not.toHaveBeenCalled();
@@ -165,7 +193,12 @@ describe('validateBackendPathRequest', () => {
         fs.writeFileSync(unrecorded, '#!/bin/sh\n');
 
         const decision = await validateBackendPathRequest(
-            { id: 'spotdl', path: unrecorded, fromDialog: true, approved: true },
+            {
+                id: 'spotdl',
+                path: unrecorded,
+                fromDialog: true,
+                approved: true,
+            },
             confirm,
         );
 
@@ -178,7 +211,10 @@ describe('validateBackendPathRequest', () => {
         fs.writeFileSync(typed, '#!/bin/sh\n');
         const confirm = confirmStub(true);
 
-        const decision = await validateBackendPathRequest({ id: 'ytdlp', path: typed }, confirm);
+        const decision = await validateBackendPathRequest(
+            { id: 'ytdlp', path: typed },
+            confirm,
+        );
 
         expect(confirm).toHaveBeenCalledTimes(1);
         expect(decision).toEqual({ ok: true, id: 'ytdlp', path: typed });
@@ -212,21 +248,32 @@ describe('validateBackendPathRequest', () => {
 
     it('refuses a directory, without prompting', async () => {
         const confirm = confirmStub(true);
-        const decision = await validateBackendPathRequest({ id: 'ytdlp', path: someDir }, confirm);
+        const decision = await validateBackendPathRequest(
+            { id: 'ytdlp', path: someDir },
+            confirm,
+        );
 
         expect(decision).toMatchObject({ ok: false, reason: 'invalid' });
-        expect((decision as { error: string }).error).toContain('Not a program file');
+        expect((decision as { error: string }).error).toContain(
+            'Not a program file',
+        );
         expect(confirm).not.toHaveBeenCalled();
     });
 
     it('refuses a relative path and an unknown backend id', async () => {
         const confirm = confirmStub(true);
-        expect(await validateBackendPathRequest({ id: 'ytdlp', path: './yt-dlp' }, confirm)).toMatchObject(
-            { ok: false, reason: 'invalid' },
-        );
-        expect(await validateBackendPathRequest({ id: 'rm-rf', path: fakeBinary }, confirm)).toMatchObject(
-            { ok: false, reason: 'invalid' },
-        );
+        expect(
+            await validateBackendPathRequest(
+                { id: 'ytdlp', path: './yt-dlp' },
+                confirm,
+            ),
+        ).toMatchObject({ ok: false, reason: 'invalid' });
+        expect(
+            await validateBackendPathRequest(
+                { id: 'rm-rf', path: fakeBinary },
+                confirm,
+            ),
+        ).toMatchObject({ ok: false, reason: 'invalid' });
         expect(await validateBackendPathRequest(null, confirm)).toMatchObject({
             ok: false,
             reason: 'invalid',
@@ -238,7 +285,10 @@ describe('validateBackendPathRequest', () => {
         const confirm = confirmStub(false);
 
         for (const value of [null, undefined, '   ']) {
-            const decision = await validateBackendPathRequest({ id: 'spotdl', path: value }, confirm);
+            const decision = await validateBackendPathRequest(
+                { id: 'spotdl', path: value },
+                confirm,
+            );
             expect(decision).toEqual({ ok: true, id: 'spotdl', path: null });
         }
         expect(confirm).not.toHaveBeenCalled();

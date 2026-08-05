@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { computeBackoffDelay, type BackoffOptions } from '../backoff';
 
-const OPTS: BackoffOptions = { baseMs: 1000, maxMs: 30000, factor: 2, jitter: 0 };
+const OPTS: BackoffOptions = {
+    baseMs: 1000,
+    maxMs: 30000,
+    factor: 2,
+    jitter: 0,
+};
 
 describe('computeBackoffDelay', () => {
     it('grows exponentially with no jitter', () => {

@@ -38,7 +38,7 @@ export interface AddIncomingTrackResult {
 export async function addIncomingTrack(
     incoming: IncomingTrack,
     playlistId: string,
-    addedBy: string
+    addedBy: string,
 ): Promise<AddIncomingTrackResult> {
     // Spotify is the only source whose externalId maps onto spotifyId.
     const isSpotify = incoming.externalSource === 'spotify';

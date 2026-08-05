@@ -85,7 +85,8 @@ function createSession(code) {
  * public, so leaking it tells an attacker nothing.
  */
 function tokenMatches(presented, expected) {
-    if (typeof presented !== 'string' || typeof expected !== 'string') return false;
+    if (typeof presented !== 'string' || typeof expected !== 'string')
+        return false;
     const a = Buffer.from(presented, 'utf-8');
     const b = Buffer.from(expected, 'utf-8');
     if (a.length !== b.length) return false;
@@ -123,7 +124,8 @@ const expiryTimer = setInterval(() => {
     for (const [code, session] of sessions) {
         if (now - session.createdAt > SESSION_TTL_MS) {
             console.log(`[Companion Tunnel] Session ${code} expired`);
-            if (session.host?.readyState === WebSocket.OPEN) session.host.close();
+            if (session.host?.readyState === WebSocket.OPEN)
+                session.host.close();
             for (const ws of session.phones.values()) {
                 if (ws.readyState === WebSocket.OPEN) ws.close();
             }
@@ -155,7 +157,10 @@ function serveStatic(res, filePath) {
     const normalizedFull = resolve(filePath);
     const normalizedDir = resolve(WEB_DIR) + sep;
 
-    if (!normalizedFull.startsWith(normalizedDir) && normalizedFull !== normalizedDir.slice(0, -1)) {
+    if (
+        !normalizedFull.startsWith(normalizedDir) &&
+        normalizedFull !== normalizedDir.slice(0, -1)
+    ) {
         res.writeHead(403);
         res.end('Forbidden');
         return;
@@ -201,11 +206,13 @@ const httpServer = createServer((req, res) => {
         console.log(`[Companion Tunnel] Session ${code} created`);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-            code,
-            hostToken: session.hostToken,
-            tunnelProtocolVersion: TUNNEL_PROTOCOL_VERSION,
-        }));
+        res.end(
+            JSON.stringify({
+                code,
+                hostToken: session.hostToken,
+                tunnelProtocolVersion: TUNNEL_PROTOCOL_VERSION,
+            }),
+        );
         return;
     }
 
@@ -234,7 +241,9 @@ const httpServer = createServer((req, res) => {
     if (pathname === '/' || pathname === '/index.html') {
         // Root page — minimal landing
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end('<html><body style="background:#111827;color:#9ca3af;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><p>WhatNext Companion Relay</p></body></html>');
+        res.end(
+            '<html><body style="background:#111827;color:#9ca3af;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><p>WhatNext Companion Relay</p></body></html>',
+        );
         return;
     }
 
@@ -291,14 +300,19 @@ function parseHostEnvelope(raw) {
     if (parsed.type !== 'host:message') return null;
     if (!parsed.payload || typeof parsed.payload !== 'object') return null;
 
-    const to = typeof parsed.to === 'string' && parsed.to.length > 0 ? parsed.to : null;
+    const to =
+        typeof parsed.to === 'string' && parsed.to.length > 0
+            ? parsed.to
+            : null;
     return { to, payload: parsed.payload };
 }
 
 /** Send a relay -> host control/message envelope. */
 function sendToHost(session, envelope) {
     if (session.host && session.host.readyState === WebSocket.OPEN) {
-        session.host.send(JSON.stringify({ v: TUNNEL_PROTOCOL_VERSION, ...envelope }));
+        session.host.send(
+            JSON.stringify({ v: TUNNEL_PROTOCOL_VERSION, ...envelope }),
+        );
     }
 }
 
@@ -312,7 +326,9 @@ function handleHostConnection(ws, code, req) {
     // Authenticate BEFORE touching session.host: an unauthenticated attach must
     // not disturb — let alone replace — the host that is already attached.
     if (!tokenMatches(extractHostToken(req), session.hostToken)) {
-        console.warn(`[Companion Tunnel] Rejected host attach to session ${code} (bad or missing credential)`);
+        console.warn(
+            `[Companion Tunnel] Rejected host attach to session ${code} (bad or missing credential)`,
+        );
         ws.close(4003, 'Unauthorized');
         return;
     }
@@ -330,7 +346,9 @@ function handleHostConnection(ws, code, req) {
         if (!envelope) {
             // Unversioned or malformed frame — an app older than this relay.
             // Dropped rather than broadcast, so no accidental legacy fallback.
-            console.warn(`[Companion Tunnel] Dropped unrecognised host frame for session ${code}`);
+            console.warn(
+                `[Companion Tunnel] Dropped unrecognised host frame for session ${code}`,
+            );
             return;
         }
 
@@ -354,7 +372,9 @@ function handleHostConnection(ws, code, req) {
     });
 
     ws.on('close', () => {
-        console.log(`[Companion Tunnel] Host disconnected from session ${code}`);
+        console.log(
+            `[Companion Tunnel] Host disconnected from session ${code}`,
+        );
         if (session.host === ws) {
             session.host = null;
         }
@@ -365,7 +385,10 @@ function handleHostConnection(ws, code, req) {
     });
 
     ws.on('error', (err) => {
-        console.error(`[Companion Tunnel] Host WS error (${code}):`, err.message);
+        console.error(
+            `[Companion Tunnel] Host WS error (${code}):`,
+            err.message,
+        );
     });
 }
 
@@ -384,7 +407,9 @@ function handlePhoneConnection(ws, code) {
 
     const phoneId = `phone-${++phoneIdCounter}`;
     session.phones.set(phoneId, ws);
-    console.log(`[Companion Tunnel] Phone ${phoneId} connected to session ${code} (${session.phones.size} phones)`);
+    console.log(
+        `[Companion Tunnel] Phone ${phoneId} connected to session ${code} (${session.phones.size} phones)`,
+    );
 
     ws.on('message', (raw) => {
         // Forward phone messages to the host, tagged with this phone's id so
@@ -401,15 +426,23 @@ function handlePhoneConnection(ws, code) {
 
     ws.on('close', () => {
         session.phones.delete(phoneId);
-        console.log(`[Companion Tunnel] Phone ${phoneId} disconnected from session ${code} (${session.phones.size} phones)`);
+        console.log(
+            `[Companion Tunnel] Phone ${phoneId} disconnected from session ${code} (${session.phones.size} phones)`,
+        );
         sendToHost(session, { type: 'phone:disconnect', from: phoneId });
-        if (session.phones.size === 0 && (!session.host || session.host.readyState !== WebSocket.OPEN)) {
+        if (
+            session.phones.size === 0 &&
+            (!session.host || session.host.readyState !== WebSocket.OPEN)
+        ) {
             cleanupSession(code);
         }
     });
 
     ws.on('error', (err) => {
-        console.error(`[Companion Tunnel] Phone WS error (${code}/${phoneId}):`, err.message);
+        console.error(
+            `[Companion Tunnel] Phone WS error (${code}/${phoneId}):`,
+            err.message,
+        );
     });
 }
 
@@ -422,8 +455,11 @@ export function startCompanionTunnel(port = COMPANION_PORT) {
         httpServer.listen(port, '0.0.0.0', () => {
             // Read the bound port back — callers may pass 0 for an OS-assigned one.
             const address = httpServer.address();
-            const boundPort = typeof address === 'object' && address ? address.port : port;
-            console.log(`[Companion Tunnel] Listening on http://0.0.0.0:${boundPort}`);
+            const boundPort =
+                typeof address === 'object' && address ? address.port : port;
+            console.log(
+                `[Companion Tunnel] Listening on http://0.0.0.0:${boundPort}`,
+            );
             resolve({ port: boundPort });
         });
         httpServer.on('error', reject);

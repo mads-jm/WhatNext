@@ -5,14 +5,25 @@
  */
 
 import { getDatabase } from '../database';
-import type { TrackInteractionDocType, TrackInteractionDocument } from '../schemas';
+import type {
+    TrackInteractionDocType,
+    TrackInteractionDocument,
+} from '../schemas';
 import type { ReplicationSink } from '../../../shared/core/types';
 import type { ReactionEmoji } from '../../../shared/core/reactions';
 
 // Re-export so barrel (services/index.ts) consumers don't break
-export { ALLOWED_REACTIONS, REACTION_DISPLAY, type ReactionEmoji } from '../../../shared/core/reactions';
+export {
+    ALLOWED_REACTIONS,
+    REACTION_DISPLAY,
+    type ReactionEmoji,
+} from '../../../shared/core/reactions';
 
-function reactionId(userId: string, trackId: string, emoji: ReactionEmoji): string {
+function reactionId(
+    userId: string,
+    trackId: string,
+    emoji: ReactionEmoji,
+): string {
     return `${userId}_${trackId}_reaction_${emoji}`;
 }
 
@@ -40,11 +51,13 @@ export async function toggleReaction(
             },
         });
 
-        await replicationSink?.('trackInteractions', [{
-            id,
-            data: { ...existing.toJSON(), value: newValue, updatedAt: now },
-            updatedAt: now,
-        }]);
+        await replicationSink?.('trackInteractions', [
+            {
+                id,
+                data: { ...existing.toJSON(), value: newValue, updatedAt: now },
+                updatedAt: now,
+            },
+        ]);
 
         return existing;
     }
@@ -62,11 +75,13 @@ export async function toggleReaction(
     };
     const doc = await db.trackInteractions.insert(reaction);
 
-    await replicationSink?.('trackInteractions', [{
-        id,
-        data: reaction as unknown as Record<string, unknown>,
-        updatedAt: now,
-    }]);
+    await replicationSink?.('trackInteractions', [
+        {
+            id,
+            data: reaction as unknown as Record<string, unknown>,
+            updatedAt: now,
+        },
+    ]);
 
     return doc;
 }

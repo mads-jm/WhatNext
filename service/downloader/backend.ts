@@ -24,7 +24,9 @@ export interface DownloadBackend {
     supportedInputs: readonly InputType[];
 
     checkInstalled(): Promise<BackendStatus>;
-    resolve(input: import('./types').DownloadInput): Promise<import('./types').ResolvedTrack[]>;
+    resolve(
+        input: import('./types').DownloadInput,
+    ): Promise<import('./types').ResolvedTrack[]>;
     download(
         tracks: import('./types').ResolvedTrack[],
         opts: DownloadOptions,

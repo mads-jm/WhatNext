@@ -35,7 +35,9 @@ type CheckpointRecord = Record<string, string>;
  * Electron's own defaults for app name `WhatNext`. An explicit override via
  * `WHATNEXT_CHECKPOINT_PATH` wins (it points at the *file*, not the dir).
  */
-export function resolveCheckpointPath(env: NodeJS.ProcessEnv = process.env): string {
+export function resolveCheckpointPath(
+    env: NodeJS.ProcessEnv = process.env,
+): string {
     const override = env.WHATNEXT_CHECKPOINT_PATH;
     if (override && override.trim() !== '') {
         return override;
@@ -45,13 +47,24 @@ export function resolveCheckpointPath(env: NodeJS.ProcessEnv = process.env): str
     let dir: string;
     switch (process.platform) {
         case 'win32':
-            dir = path.join(env.APPDATA ?? path.join(home, 'AppData', 'Roaming'), APP_DIR_NAME);
+            dir = path.join(
+                env.APPDATA ?? path.join(home, 'AppData', 'Roaming'),
+                APP_DIR_NAME,
+            );
             break;
         case 'darwin':
-            dir = path.join(home, 'Library', 'Application Support', APP_DIR_NAME);
+            dir = path.join(
+                home,
+                'Library',
+                'Application Support',
+                APP_DIR_NAME,
+            );
             break;
         default:
-            dir = path.join(env.XDG_CONFIG_HOME ?? path.join(home, '.config'), APP_DIR_NAME);
+            dir = path.join(
+                env.XDG_CONFIG_HOME ?? path.join(home, '.config'),
+                APP_DIR_NAME,
+            );
             break;
     }
     return path.join(dir, CHECKPOINT_FILE);
@@ -78,11 +91,16 @@ export class CheckpointStore {
         try {
             const raw = await fs.promises.readFile(this.filePath, 'utf-8');
             const parsed = JSON.parse(raw) as unknown;
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            if (
+                parsed &&
+                typeof parsed === 'object' &&
+                !Array.isArray(parsed)
+            ) {
                 this.cache = new Map(
                     Object.entries(parsed as CheckpointRecord).filter(
-                        ([k, v]) => typeof k === 'string' && typeof v === 'string'
-                    )
+                        ([k, v]) =>
+                            typeof k === 'string' && typeof v === 'string',
+                    ),
                 );
             } else {
                 this.cache = new Map();
@@ -141,14 +159,22 @@ export class CheckpointStore {
         }
         const record: CheckpointRecord = Object.fromEntries(this.cache);
         try {
-            await fs.promises.mkdir(path.dirname(this.filePath), { recursive: true });
+            await fs.promises.mkdir(path.dirname(this.filePath), {
+                recursive: true,
+            });
             // Atomic-ish write: temp file + rename so a crash mid-write can't
             // leave a half-written (corrupt) checkpoint file.
             const tmp = `${this.filePath}.tmp`;
-            await fs.promises.writeFile(tmp, JSON.stringify(record, null, 2), 'utf-8');
+            await fs.promises.writeFile(
+                tmp,
+                JSON.stringify(record, null, 2),
+                'utf-8',
+            );
             await fs.promises.rename(tmp, this.filePath);
         } catch (err) {
-            console.warn(`[CheckpointStore] Failed to persist checkpoints: ${err}`);
+            console.warn(
+                `[CheckpointStore] Failed to persist checkpoints: ${err}`,
+            );
         }
     }
 

@@ -67,7 +67,8 @@ export function AddTrackPanel({ onAdd, error }: AddTrackPanelProps) {
 
     // Load the library the first time the Library tab is opened.
     useEffect(() => {
-        if (!open || mode !== 'library' || libraryLoaded || loadingLibrary) return;
+        if (!open || mode !== 'library' || libraryLoaded || loadingLibrary)
+            return;
         let cancelled = false;
         setLoadingLibrary(true);
         setLibraryError(null);
@@ -81,7 +82,9 @@ export function AddTrackPanel({ onAdd, error }: AddTrackPanelProps) {
             } catch (err) {
                 if (!cancelled) {
                     setLibraryError(
-                        err instanceof Error ? err.message : 'Failed to load your library.'
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to load your library.',
                     );
                 }
             } finally {
@@ -100,7 +103,7 @@ export function AddTrackPanel({ onAdd, error }: AddTrackPanelProps) {
                 t.artists.join(' '),
                 t.album,
             ]).slice(0, MAX_RESULTS),
-        [query, library]
+        [query, library],
     );
 
     const resetForm = () => {
@@ -264,7 +267,9 @@ export function AddTrackPanel({ onAdd, error }: AddTrackPanelProps) {
                                 <li key={track.id}>
                                     <button
                                         className="btn-ghost text-sm w-full text-left"
-                                        onClick={() => handleAddFromLibrary(track)}
+                                        onClick={() =>
+                                            handleAddFromLibrary(track)
+                                        }
                                         disabled={submitting}
                                     >
                                         {track.title}

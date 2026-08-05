@@ -151,5 +151,9 @@ export interface FileTransferMetadata {
  */
 export type ReplicationSink = (
     collection: string,
-    documents: Array<{ id: string; data: Record<string, unknown>; updatedAt: string }>
+    documents: Array<{
+        id: string;
+        data: Record<string, unknown>;
+        updatedAt: string;
+    }>,
 ) => Promise<void>;

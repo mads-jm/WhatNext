@@ -29,7 +29,9 @@ export interface StreamHandlerArg {
     stream: import('@libp2p/interface').Stream;
     connection: {
         remotePeer: { toString(): string };
-        newStream(protocol: string): Promise<import('@libp2p/interface').Stream>;
+        newStream(
+            protocol: string,
+        ): Promise<import('@libp2p/interface').Stream>;
         remoteAddr: MultiaddrLike;
     };
 }

@@ -17,9 +17,15 @@ export class CreatePlaylistDialog {
         this.nameInput = this.dialog.getByLabel(/name/i);
         this.descriptionInput = this.dialog.getByLabel(/description/i);
         this.tagsInput = this.dialog.getByLabel(/tags/i);
-        this.collaborativeCheckbox = this.dialog.getByRole('checkbox', { name: /collaborative/i });
-        this.submitButton = this.dialog.getByRole('button', { name: /create/i });
-        this.cancelButton = this.dialog.getByRole('button', { name: /cancel/i });
+        this.collaborativeCheckbox = this.dialog.getByRole('checkbox', {
+            name: /collaborative/i,
+        });
+        this.submitButton = this.dialog.getByRole('button', {
+            name: /create/i,
+        });
+        this.cancelButton = this.dialog.getByRole('button', {
+            name: /cancel/i,
+        });
     }
 
     async fill(name: string, description?: string) {

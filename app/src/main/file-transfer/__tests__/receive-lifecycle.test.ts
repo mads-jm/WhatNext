@@ -26,7 +26,10 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import type { ActiveTransfer, FileEntry } from '../../../shared/core/file-transfer-types';
+import type {
+    ActiveTransfer,
+    FileEntry,
+} from '../../../shared/core/file-transfer-types';
 import {
     IPC_CHANNELS,
     MainToUtilityMessageType,
@@ -73,7 +76,10 @@ const FINISHED_BODY = Buffer.concat([
     Buffer.alloc(8, 0xb2),
     Buffer.alloc(8, 0xc3),
 ]);
-const FINISHED_SHA = crypto.createHash('sha256').update(FINISHED_BODY).digest('hex');
+const FINISHED_SHA = crypto
+    .createHash('sha256')
+    .update(FINISHED_BODY)
+    .digest('hex');
 
 const SHA = {
     race: '1'.repeat(64),
@@ -106,11 +112,15 @@ const opens: OpenRecord[] = [];
 
 function opensFor(sha256: string, flags?: string): OpenRecord[] {
     return opens.filter(
-        (o) => o.path === partialPath(sha256) && (flags === undefined || o.flags === flags),
+        (o) =>
+            o.path === partialPath(sha256) &&
+            (flags === undefined || o.flags === flags),
     );
 }
 
-function seeded(overrides: Partial<ActiveTransfer> & { sha256: string; peerId: string }): ActiveTransfer {
+function seeded(
+    overrides: Partial<ActiveTransfer> & { sha256: string; peerId: string },
+): ActiveTransfer {
     return {
         trackId: `track-${overrides.sha256.slice(0, 4)}`,
         type: 'audio',
@@ -123,13 +133,21 @@ function seeded(overrides: Partial<ActiveTransfer> & { sha256: string; peerId: s
     };
 }
 
-function chunkMessage(sha256: string, offset: number, body: Buffer, peerId = PEER_CHUNK) {
-    return createIPCMessage(UtilityToMainMessageType.FILE_TRANSFER_CHUNK_RECEIVED, {
-        peerId,
-        sha256,
-        offset,
-        data: body.toString('base64'),
-    });
+function chunkMessage(
+    sha256: string,
+    offset: number,
+    body: Buffer,
+    peerId = PEER_CHUNK,
+) {
+    return createIPCMessage(
+        UtilityToMainMessageType.FILE_TRANSFER_CHUNK_RECEIVED,
+        {
+            peerId,
+            sha256,
+            offset,
+            data: body.toString('base64'),
+        },
+    );
 }
 
 function completeMessage(sha256: string, peerId = PEER_CHUNK) {
@@ -140,7 +158,8 @@ function completeMessage(sha256: string, peerId = PEER_CHUNK) {
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
-const settled = (assertion: () => void) => vi.waitFor(assertion, { timeout: 5000, interval: 10 });
+const settled = (assertion: () => void) =>
+    vi.waitFor(assertion, { timeout: 5000, interval: 10 });
 
 function partialPath(sha256: string): string {
     return path.join(partialDir, `${sha256}.tmp`);
@@ -150,7 +169,10 @@ function partialPath(sha256: string): string {
 function dispatched(): string[] {
     return utility.postMessage.mock.calls
         .map((c) => c[0])
-        .filter((m) => m.type === MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE)
+        .filter(
+            (m) =>
+                m.type === MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE,
+        )
         .map((m) => (m.payload as { sha256: string }).sha256);
 }
 
@@ -170,8 +192,16 @@ beforeAll(async () => {
     fs.writeFileSync(
         path.join(partialDir, 'transfers.json'),
         JSON.stringify([
-            seeded({ sha256: SHA.race, peerId: PEER_CHUNK, status: 'transferring' }),
-            seeded({ sha256: SHA.abort, peerId: PEER_CHUNK, status: 'transferring' }),
+            seeded({
+                sha256: SHA.race,
+                peerId: PEER_CHUNK,
+                status: 'transferring',
+            }),
+            seeded({
+                sha256: SHA.abort,
+                peerId: PEER_CHUNK,
+                status: 'transferring',
+            }),
             seeded({
                 sha256: SHA.finished,
                 peerId: PEER_CHUNK,
@@ -194,7 +224,11 @@ beforeAll(async () => {
     const realOpen = fs.promises.open;
     vi.spyOn(fs.promises, 'open').mockImplementation(async (p, flags) => {
         const handle = await realOpen(p as never, flags as never);
-        const record: OpenRecord = { path: String(p), flags: String(flags), closes: 0 };
+        const record: OpenRecord = {
+            path: String(p),
+            flags: String(flags),
+            closes: 0,
+        };
         opens.push(record);
         const realClose = handle.close.bind(handle);
         handle.close = async () => {
@@ -217,13 +251,23 @@ describe('partial-file handle ownership', () => {
         // Both handlers run their synchronous prefix — guard, then the map lookup —
         // before either's open resolves, which is exactly the interleaving that used
         // to produce two descriptors and orphan the first.
-        handleFileTransferUtilityMessage(chunkMessage(SHA.race, 0, Buffer.alloc(8, 1)));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.race, 8, Buffer.alloc(8, 2)));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.race, 16, Buffer.alloc(8, 3)));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.race, 0, Buffer.alloc(8, 1)),
+        );
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.race, 8, Buffer.alloc(8, 2)),
+        );
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.race, 16, Buffer.alloc(8, 3)),
+        );
 
         await settled(() => {
             expect(fs.readFileSync(partialPath(SHA.race))).toEqual(
-                Buffer.concat([Buffer.alloc(8, 1), Buffer.alloc(8, 2), Buffer.alloc(8, 3)]),
+                Buffer.concat([
+                    Buffer.alloc(8, 1),
+                    Buffer.alloc(8, 2),
+                    Buffer.alloc(8, 3),
+                ]),
             );
         });
 
@@ -258,12 +302,20 @@ describe('partial-file handle ownership', () => {
 
 describe('chunks arriving after teardown has begun', () => {
     it('completes a legitimate multi-chunk transfer and does not let a late chunk resurrect it', async () => {
-        handleFileTransferUtilityMessage(chunkMessage(SHA.finished, 0, FINISHED_BODY.subarray(0, 8)));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.finished, 8, FINISHED_BODY.subarray(8, 16)));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.finished, 16, FINISHED_BODY.subarray(16)));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.finished, 0, FINISHED_BODY.subarray(0, 8)),
+        );
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.finished, 8, FINISHED_BODY.subarray(8, 16)),
+        );
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.finished, 16, FINISHED_BODY.subarray(16)),
+        );
 
         await settled(() =>
-            expect(fs.readFileSync(partialPath(SHA.finished))).toEqual(FINISHED_BODY),
+            expect(fs.readFileSync(partialPath(SHA.finished))).toEqual(
+                FINISHED_BODY,
+            ),
         );
 
         const opensBefore = opensFor(SHA.finished).length;
@@ -272,54 +324,74 @@ describe('chunks arriving after teardown has begun', () => {
         // reopen a descriptor and recreate the .tmp underneath the rename, because the
         // status only flipped to 'verifying' after an await.
         handleFileTransferUtilityMessage(completeMessage(SHA.finished));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.finished, 0, FINISHED_BODY.subarray(0, 8)));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.finished, 0, FINISHED_BODY.subarray(0, 8)),
+        );
 
         await settled(() =>
-            expect(getTransfers().find((t) => t.sha256 === SHA.finished)?.status).toBe('complete'),
+            expect(
+                getTransfers().find((t) => t.sha256 === SHA.finished)?.status,
+            ).toBe('complete'),
         );
 
         // The file landed intact — the guard against over-tightening the late-chunk rule.
-        expect(fs.readFileSync(path.join(audioDir, 'finished.mp3'))).toEqual(FINISHED_BODY);
+        expect(fs.readFileSync(path.join(audioDir, 'finished.mp3'))).toEqual(
+            FINISHED_BODY,
+        );
         // …and nothing reopened or recreated the partial behind it.
         expect(opensFor(SHA.finished).length).toBe(opensBefore);
         expect(fs.existsSync(partialPath(SHA.finished))).toBe(false);
     });
 
     it('does not recreate a partial that an abort just discarded', async () => {
-        handleFileTransferUtilityMessage(chunkMessage(SHA.abort, 0, Buffer.alloc(8, 7)));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.abort, 0, Buffer.alloc(8, 7)),
+        );
         // Wait for the bytes, not just the file: the partial exists from the moment the
         // creating open lands, which is before the writable handle is even open.
         await settled(() =>
-            expect(fs.readFileSync(partialPath(SHA.abort))).toEqual(Buffer.alloc(8, 7)),
+            expect(fs.readFileSync(partialPath(SHA.abort))).toEqual(
+                Buffer.alloc(8, 7),
+            ),
         );
 
         const opensBefore = opensFor(SHA.abort).length;
 
         // An overrunning chunk aborts the transfer (unlinking the partial); an
         // in-bounds chunk right behind it must not bring the file back.
-        handleFileTransferUtilityMessage(chunkMessage(SHA.abort, TOTAL - 4, Buffer.alloc(64, 7)));
-        handleFileTransferUtilityMessage(chunkMessage(SHA.abort, 8, Buffer.alloc(8, 7)));
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.abort, TOTAL - 4, Buffer.alloc(64, 7)),
+        );
+        handleFileTransferUtilityMessage(
+            chunkMessage(SHA.abort, 8, Buffer.alloc(8, 7)),
+        );
 
-        await settled(() => expect(fs.existsSync(partialPath(SHA.abort))).toBe(false));
+        await settled(() =>
+            expect(fs.existsSync(partialPath(SHA.abort))).toBe(false),
+        );
         await flush();
 
         expect(fs.existsSync(partialPath(SHA.abort))).toBe(false);
         expect(opensFor(SHA.abort).length).toBe(opensBefore);
-        expect(getTransfers().find((t) => t.sha256 === SHA.abort)?.status).toBe('error');
+        expect(getTransfers().find((t) => t.sha256 === SHA.abort)?.status).toBe(
+            'error',
+        );
     });
 });
 
 describe('resume goes through the download queue', () => {
     // MAX_CONCURRENT_AUDIO is 1: before this cycle, resume posted requests straight to
     // the utility, so all three of these started at once regardless of the limit.
-    it('paces a reconnecting peer\'s backlog instead of starting all of it at once', async () => {
+    it("paces a reconnecting peer's backlog instead of starting all of it at once", async () => {
         utility.postMessage.mockClear();
 
         await resumeIncompleteTransfers(PEER_A);
         expect(dispatched()).toEqual([SHA.r1]);
 
         // What is queued says so — a queued transfer is not "transferring".
-        const statuses = getTransfers().filter((t) => t.peerId === PEER_A).map((t) => t.status);
+        const statuses = getTransfers()
+            .filter((t) => t.peerId === PEER_A)
+            .map((t) => t.status);
         expect(statuses).toEqual(['pending', 'pending', 'pending']);
 
         // Nothing is stranded: the backlog drains as slots free.
@@ -333,7 +405,10 @@ describe('resume goes through the download queue', () => {
     it('puts a resumed partial ahead of a fresh request that has not been dispatched', async () => {
         utility.postMessage.mockClear();
 
-        await requestFiles(PEER_FRESH, [audioEntry(SHA.f1), audioEntry(SHA.f2)]);
+        await requestFiles(PEER_FRESH, [
+            audioEntry(SHA.f1),
+            audioEntry(SHA.f2),
+        ]);
         expect(dispatched()).toEqual([SHA.f1]); // f2 waits for the audio slot
 
         await resumeIncompleteTransfers(PEER_B);
@@ -378,7 +453,9 @@ describe('resume goes through the download queue', () => {
         await resumeIncompleteTransfers(PEER_D);
         await resumeIncompleteTransfers(PEER_D);
         expect(dispatched()).toEqual([SHA.f4]);
-        expect(getTransfers().find((t) => t.sha256 === SHA.r6)?.status).toBe('pending');
+        expect(getTransfers().find((t) => t.sha256 === SHA.r6)?.status).toBe(
+            'pending',
+        );
 
         await cancel(SHA.f4);
         expect(dispatched()).toEqual([SHA.f4, SHA.r6]);
@@ -427,5 +504,7 @@ async function requestFiles(peerId: string, files: FileEntry[]): Promise<void> {
 }
 
 async function cancel(sha256: string): Promise<void> {
-    await ipcHandlers.get(IPC_CHANNELS.FILE_TRANSFER_CANCEL)!(null, { sha256 } as never);
+    await ipcHandlers.get(IPC_CHANNELS.FILE_TRANSFER_CANCEL)!(null, {
+        sha256,
+    } as never);
 }

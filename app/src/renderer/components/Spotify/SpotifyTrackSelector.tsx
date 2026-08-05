@@ -4,7 +4,10 @@
  */
 
 import { formatDuration } from '../../utils/format';
-import type { SpotifyPlaylist, MappedTrack } from '../../hooks/useSpotifyImport';
+import type {
+    SpotifyPlaylist,
+    MappedTrack,
+} from '../../hooks/useSpotifyImport';
 
 interface SpotifyTrackSelectorProps {
     playlist: SpotifyPlaylist;
@@ -50,9 +53,12 @@ export function SpotifyTrackSelector({
                         />
                     )}
                     <div>
-                        <h2 className="text-lg font-bold text-on-surface">{playlist.name}</h2>
+                        <h2 className="text-lg font-bold text-on-surface">
+                            {playlist.name}
+                        </h2>
                         <p className="text-sm text-on-surface-variant">
-                            {playlist.tracks.total} tracks by {playlist.owner.display_name}
+                            {playlist.tracks.total} tracks by{' '}
+                            {playlist.owner.display_name}
                         </p>
                     </div>
                 </div>
@@ -63,7 +69,9 @@ export function SpotifyTrackSelector({
                 <div className="flex items-center justify-center py-12">
                     <div className="text-center">
                         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                        <p className="text-on-surface-variant text-sm">Loading tracks...</p>
+                        <p className="text-on-surface-variant text-sm">
+                            Loading tracks...
+                        </p>
                     </div>
                 </div>
             )}
@@ -75,8 +83,10 @@ export function SpotifyTrackSelector({
                     <div className="flex items-center justify-between bg-surface-high rounded-lg px-4 py-3">
                         <div className="flex items-center gap-3">
                             <span className="text-sm text-on-surface">
-                                <span className="text-primary font-semibold">{selectedTrackIds.size}</span> of{' '}
-                                {tracks.length} selected
+                                <span className="text-primary font-semibold">
+                                    {selectedTrackIds.size}
+                                </span>{' '}
+                                of {tracks.length} selected
                             </span>
                             <div className="flex gap-2">
                                 <button
@@ -103,7 +113,8 @@ export function SpotifyTrackSelector({
                             }`}
                         >
                             <i className="fa-solid fa-download" />
-                            Import {selectedTrackIds.size} Track{selectedTrackIds.size !== 1 ? 's' : ''}
+                            Import {selectedTrackIds.size} Track
+                            {selectedTrackIds.size !== 1 ? 's' : ''}
                         </button>
                     </div>
 
@@ -114,7 +125,9 @@ export function SpotifyTrackSelector({
                             <div className="col-span-5">Title</div>
                             <div className="col-span-3">Album</div>
                             <div className="col-span-2">Artists</div>
-                            <div className="col-span-1 text-right">Duration</div>
+                            <div className="col-span-1 text-right">
+                                Duration
+                            </div>
                         </div>
                         <div className="max-h-[500px] overflow-y-auto">
                             {tracks.map((track, index) => (
@@ -138,12 +151,18 @@ export function SpotifyTrackSelector({
                                             {selectedTrackIds.has(track.id) ? (
                                                 <i className="fa-solid fa-check" />
                                             ) : (
-                                                <span className="text-on-surface-variant">{index + 1}</span>
+                                                <span className="text-on-surface-variant">
+                                                    {index + 1}
+                                                </span>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="col-span-5 truncate text-on-surface">{track.title}</div>
-                                    <div className="col-span-3 truncate text-on-surface-variant">{track.album}</div>
+                                    <div className="col-span-5 truncate text-on-surface">
+                                        {track.title}
+                                    </div>
+                                    <div className="col-span-3 truncate text-on-surface-variant">
+                                        {track.album}
+                                    </div>
                                     <div className="col-span-2 truncate text-on-surface-variant">
                                         {track.artists.join(', ')}
                                     </div>
@@ -162,7 +181,9 @@ export function SpotifyTrackSelector({
                 <div className="flex items-center justify-center py-12">
                     <div className="text-center">
                         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                        <p className="text-on-surface-variant text-sm">Importing {selectedTrackIds.size} tracks...</p>
+                        <p className="text-on-surface-variant text-sm">
+                            Importing {selectedTrackIds.size} tracks...
+                        </p>
                     </div>
                 </div>
             )}

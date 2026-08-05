@@ -11,7 +11,7 @@ export function StorageSettings() {
     const [userDataPath, setUserDataPath] = useState<string>('');
     const [artworkPath, setArtworkPath] = useState<string>('');
     const [defaultExportDir, setDefaultExportDir] = useState<string>(
-        () => localStorage.getItem(EXPORT_DIR_KEY) || ''
+        () => localStorage.getItem(EXPORT_DIR_KEY) || '',
     );
 
     useEffect(() => {
@@ -45,9 +45,12 @@ export function StorageSettings() {
     return (
         <div className="p-6 max-w-2xl space-y-6">
             <div>
-                <h2 className="text-lg font-semibold text-on-surface mb-1">Storage</h2>
+                <h2 className="text-lg font-semibold text-on-surface mb-1">
+                    Storage
+                </h2>
                 <p className="text-sm text-on-surface-variant">
-                    Where WhatNext stores your data. All data stays on your machine.
+                    Where WhatNext stores your data. All data stays on your
+                    machine.
                 </p>
             </div>
 
@@ -55,8 +58,12 @@ export function StorageSettings() {
             <div className="bg-surface-high rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-sm font-medium text-on-surface">Database</h3>
-                        <p className="text-xs text-on-surface-variant">RxDB / IndexedDB data and app configuration</p>
+                        <h3 className="text-sm font-medium text-on-surface">
+                            Database
+                        </h3>
+                        <p className="text-xs text-on-surface-variant">
+                            RxDB / IndexedDB data and app configuration
+                        </p>
                     </div>
                     <button
                         onClick={() => openPath(userDataPath)}
@@ -76,8 +83,12 @@ export function StorageSettings() {
             <div className="bg-surface-high rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-sm font-medium text-on-surface">Artwork Cache</h3>
-                        <p className="text-xs text-on-surface-variant">Locally cached album and playlist artwork</p>
+                        <h3 className="text-sm font-medium text-on-surface">
+                            Artwork Cache
+                        </h3>
+                        <p className="text-xs text-on-surface-variant">
+                            Locally cached album and playlist artwork
+                        </p>
                     </div>
                     <button
                         onClick={() => openPath(artworkPath)}
@@ -97,7 +108,9 @@ export function StorageSettings() {
             <div className="bg-surface-high rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-sm font-medium text-on-surface">Default Export Directory</h3>
+                        <h3 className="text-sm font-medium text-on-surface">
+                            Default Export Directory
+                        </h3>
                         <p className="text-xs text-on-surface-variant">
                             {defaultExportDir
                                 ? 'Save dialogs will open to this directory'

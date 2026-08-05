@@ -5,23 +5,30 @@
  */
 
 import type { ExportPlaylist, ExportComment } from './export-types';
-import { REACTION_DISPLAY, type ReactionEmoji } from '../../../shared/core/reactions';
+import {
+    REACTION_DISPLAY,
+    type ReactionEmoji,
+} from '../../../shared/core/reactions';
 
 export function formatAsHtml(data: ExportPlaylist): string {
-    const tracksHtml = data.tracks.map((track, i) => {
-        const reactionsHtml = Object.entries(track.reactions)
-            .filter(([, count]) => count > 0)
-            .map(([emoji, count]) =>
-                `<span class="reaction">${REACTION_DISPLAY[emoji as ReactionEmoji]} ${count}</span>`
-            )
-            .join('');
+    const tracksHtml = data.tracks
+        .map((track, i) => {
+            const reactionsHtml = Object.entries(track.reactions)
+                .filter(([, count]) => count > 0)
+                .map(
+                    ([emoji, count]) =>
+                        `<span class="reaction">${REACTION_DISPLAY[emoji as ReactionEmoji]} ${count}</span>`,
+                )
+                .join('');
 
-        const commentsHtml = track.comments.map((c) => renderCommentHtml(c)).join('');
-        const artHtml = track.albumArtUrl
-            ? `<img class="track-art" src="${escapeHtml(track.albumArtUrl)}" alt="${escapeHtml(track.album)}" loading="lazy">`
-            : '';
+            const commentsHtml = track.comments
+                .map((c) => renderCommentHtml(c))
+                .join('');
+            const artHtml = track.albumArtUrl
+                ? `<img class="track-art" src="${escapeHtml(track.albumArtUrl)}" alt="${escapeHtml(track.album)}" loading="lazy">`
+                : '';
 
-        return `
+            return `
     <div class="track">
         ${artHtml}
         <div class="track-num">${i + 1}</div>
@@ -33,14 +40,16 @@ export function formatAsHtml(data: ExportPlaylist): string {
         </div>
         <div class="track-duration">${formatDuration(track.durationMs)}</div>
     </div>`;
-    }).join('');
+        })
+        .join('');
 
-    const playlistCommentsHtml = data.comments.length > 0
-        ? `<div class="section">
+    const playlistCommentsHtml =
+        data.comments.length > 0
+            ? `<div class="section">
             <h2>Discussion</h2>
             ${data.comments.map((c) => renderCommentHtml(c)).join('')}
         </div>`
-        : '';
+            : '';
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -102,9 +111,10 @@ export function formatAsHtml(data: ExportPlaylist): string {
 
 function renderCommentHtml(comment: ExportComment): string {
     const date = new Date(comment.createdAt).toLocaleDateString();
-    const repliesHtml = comment.replies.length > 0
-        ? `<div class="comment-replies">${comment.replies.map((r) => renderCommentHtml(r)).join('')}</div>`
-        : '';
+    const repliesHtml =
+        comment.replies.length > 0
+            ? `<div class="comment-replies">${comment.replies.map((r) => renderCommentHtml(r)).join('')}</div>`
+            : '';
 
     return `<div class="comment">
     <span class="comment-author">${escapeHtml(comment.author)}</span>

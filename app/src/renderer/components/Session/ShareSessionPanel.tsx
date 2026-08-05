@@ -29,7 +29,10 @@ export function ShareSessionPanel({ sessionId }: ShareSessionPanelProps) {
                 setInviteUrl(result.url);
                 setShortCode(result.shortCode ?? null);
             } else {
-                setLoadError(result?.error ?? 'P2P node not running — start the node first.');
+                setLoadError(
+                    result?.error ??
+                        'P2P node not running — start the node first.',
+                );
             }
         });
     }, [sessionId]);
@@ -69,7 +72,9 @@ export function ShareSessionPanel({ sessionId }: ShareSessionPanelProps) {
 
     return (
         <div className="card card-body space-y-4">
-            <h3 className="text-sm font-semibold text-on-surface">Share This Session</h3>
+            <h3 className="text-sm font-semibold text-on-surface">
+                Share This Session
+            </h3>
 
             {loadError ? (
                 <p className="text-xs text-error">{loadError}</p>
@@ -77,7 +82,12 @@ export function ShareSessionPanel({ sessionId }: ShareSessionPanelProps) {
                 <>
                     {/* Invite URL */}
                     <div className="space-y-1">
-                        <label htmlFor="share-invite-url" className="text-xs text-on-surface-variant">Invite Link</label>
+                        <label
+                            htmlFor="share-invite-url"
+                            className="text-xs text-on-surface-variant"
+                        >
+                            Invite Link
+                        </label>
                         <div className="flex gap-2">
                             <input
                                 id="share-invite-url"
@@ -98,9 +108,17 @@ export function ShareSessionPanel({ sessionId }: ShareSessionPanelProps) {
                     {/* Short code */}
                     {shortCode && (
                         <div className="space-y-1">
-                            <label htmlFor="share-short-code" className="text-xs text-on-surface-variant">Short Code (voice-friendly)</label>
+                            <label
+                                htmlFor="share-short-code"
+                                className="text-xs text-on-surface-variant"
+                            >
+                                Short Code (voice-friendly)
+                            </label>
                             <div className="flex items-center gap-2">
-                                <span id="share-short-code" className="text-xl font-mono font-bold tracking-widest text-primary bg-surface-high rounded-lg px-4 py-2">
+                                <span
+                                    id="share-short-code"
+                                    className="text-xl font-mono font-bold tracking-widest text-primary bg-surface-high rounded-lg px-4 py-2"
+                                >
                                     {shortCode}
                                 </span>
                                 <button
@@ -111,7 +129,8 @@ export function ShareSessionPanel({ sessionId }: ShareSessionPanelProps) {
                                 </button>
                             </div>
                             <p className="text-xs text-on-surface-variant">
-                                Dictate this code over voice chat — your friend enters it to join.
+                                Dictate this code over voice chat — your friend
+                                enters it to join.
                             </p>
                         </div>
                     )}
@@ -120,13 +139,22 @@ export function ShareSessionPanel({ sessionId }: ShareSessionPanelProps) {
 
             {/* Join a session */}
             <div className="space-y-1 pt-2 border-t border-outline-variant">
-                <label htmlFor="share-join-input" className="text-xs text-on-surface-variant">Join a Session</label>
+                <label
+                    htmlFor="share-join-input"
+                    className="text-xs text-on-surface-variant"
+                >
+                    Join a Session
+                </label>
                 <div className="flex gap-2">
                     <input
                         id="share-join-input"
                         type="text"
                         value={joinInput}
-                        onChange={(e) => { setJoinInput(e.target.value); setJoinError(null); setJoinSuccess(false); }}
+                        onChange={(e) => {
+                            setJoinInput(e.target.value);
+                            setJoinError(null);
+                            setJoinSuccess(false);
+                        }}
                         onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
                         placeholder="Paste whtnxt:// link or enter short code…"
                         className="flex-1 bg-surface-high text-on-surface text-xs font-mono rounded-lg px-3 py-2 border border-outline-variant focus:border-primary focus:outline-none"
@@ -140,7 +168,9 @@ export function ShareSessionPanel({ sessionId }: ShareSessionPanelProps) {
                     </button>
                 </div>
                 {joinError && <p className="text-xs text-error">{joinError}</p>}
-                {joinSuccess && <p className="text-xs text-primary">Connecting to peer…</p>}
+                {joinSuccess && (
+                    <p className="text-xs text-primary">Connecting to peer…</p>
+                )}
             </div>
         </div>
     );
