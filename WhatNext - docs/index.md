@@ -73,27 +73,25 @@ cd app && npm run build                 # Production build
 
 ---
 
-## Active Development Status (2026-06-27)
+## Active Development Status (2026-08-05)
 
-> **Update 2026-08-01**: the pre-merge review [[report-260801-mvp-premerge-review]] re-checked this list against the integrated `mvp` + wave-1 tree — several 🟡/🟠 items below have since landed fixes (durable replication checkpoints, Manual TrackSource un-stubbed, 340 passing tests), while new merge-blocking security findings gate the merge to `main`. Read that report for current state.
-
-> **Reality-checked** against code in [[report-260627-mvp-state-of-the-union]]. Legend: ✅ solid · 🟡 works but fragile/untested · 🟠 stubbed/partial · 🔜 planned. Most features exist; the gap is **reliability and tests**, not features.
+> Legend: ✅ solid · 🟡 works but fragile/untested · 🟠 stubbed/partial · 🔜 planned. Wave 1 (PRs #51–#55) and wave 2 (five hardening epics, committed directly to `mvp`) are both complete; all three quality gates (lint, typecheck, tests) are green and CI runs on every push to `mvp`/`main`. Historical snapshots: [[report-260627-mvp-state-of-the-union]] (pre-wave-1), [[report-260801-mvp-premerge-review]] (wave-1 integration review, verdict NOT YET — its six merge-blockers have all since been closed, see [[report-260804-ipc-trust-boundary-review]] for the READY verification of the trust-boundary half).
 
 - ✅ P2P networking foundation (libp2p: mDNS + circuit relay + DCUtR)
-- ✅ Spotify adapter — import + Connect playback (uses only post-lockdown-allowed endpoints)
-- 🟡 RxDB replication over libp2p — works, but in-memory checkpoints (resync each launch), 5s silent-timeout drops, string-LWW
-- 🟡 Sessions v1 (provider-abstracted — [[adr-260307-session-architecture-provider-abstraction]])
-- 🟡 Social features — reactions/comments solid; turn-taking has a concurrent-add race
-- 🟡 Remote sessions via circuit relay + DCUtR ([[adr-260315-p2p-session-pairing]]) — no reconnection/fallback
-- 🟡 Audio sourcing — local import + yt-dlp + spotDL with infra tests; Spytify Windows-only PoC; P2P fileshare v0 untested ([[audio-acquisition-service]])
+- ✅ Spotify adapter — import + Connect playback (post-lockdown-allowed endpoints only), typed error taxonomy, timeout/backoff resilience (wave 1, PR #52)
+- ✅ RxDB replication over libp2p — durable checkpoints, skew-aware LWW, reconnect backoff + liveness heartbeat (wave 1, PR #54); handshake single-stream fix landed (#58, **live 2-peer QA still owed**)
+- ✅ Main-process trust boundary — exec branch deleted, artwork/file-write/open-path containment, downloader argv hygiene ([[epic-ipc-trust-boundary]], verified READY in [[report-260804-ipc-trust-boundary-review]])
+- ✅ P2P file transfer v0 — chunk/serve guards, manifest-time sharing authorization, receive-path lifecycle hardening ([[epic-file-transfer-guards]]; accepted limitation: served files fail closed after host restart)
+- 🟡 Sessions v1 (provider-abstracted — [[adr-260307-session-architecture-provider-abstraction]]); turn-taking still has a concurrent-add race (#43)
+- 🟡 Audio sourcing — local import + yt-dlp + spotDL hardened with backend tests ([[epic-audio-acquisition-hardening]]); open bugs: batch stranding #63, spotDL output drift #64; Spytify Windows-only PoC
+- 🟡 Manual `TrackSource` — implemented (wave 1, PR #51); P2P `TrackSource` arm remains stubbed (#38)
+- 🟡 Companion client — snapshot viewer + PIN join, reconnect tokens, host-authed relay tunnel ([[epic-session-liveness-fixes]]; **BREAKING relay+app lockstep deploy pending live QA**); **bidirectional control still stubbed** ([[companion-client-spec]], #39)
 - 🔜 Co-host model + playback mutex — **post-MVP.** Playback is device-local by design; the dead ownership UI was removed 2026-08-03 rather than relabelled, and a cross-peer mutex needs the (deferred) session-message channel ([[epic-session-liveness-fixes]] §WB5). `playlist.coHostIds` stays in schema v5, unused, to avoid a migration
-- 🟠 Companion client — snapshot viewer works; **bidirectional control stubbed** ([[Companion-Client]], [[companion-client-spec]])
-- 🟠 Non-Spotify track sources — Manual & P2P `TrackSource` paths are **no-op stubs** (`useTrackSource.ts:322`)
-- ⚠️ **Test coverage near-zero for P2P/replication/playback**; no React error boundaries ([[mvp-reality-react-quality]])
+- ⚠️ 563 passing tests across 40 files (P2P protocols, replication, LWW, file transfer, companion, downloader backends) — but `p2p-service.ts`, most db services, and nearly all renderer components remain untested, and there are still no React error boundaries (#49)
 - 🔜 Open metadata enrichment (MusicBrainz/ListenBrainz)
-- 📋 Local file import adapter spec'd ([[local-file-import-adapter]], [[tapec-integration-analysis]])
+- 📋 Local file import adapter — absorbed into [[audio-acquisition-service]] (Phase A shipped)
 
-**Next focus**: finish stubbed features (Manual/P2P sources, companion control), then harden replication + Spotify errors, then tests. Backlog reconciliation: [[report-260627-issue-reconciliation]].
+**Next focus**: v0.1.0 pre-merge touch-up on `mvp` — codebase-wide format/lint standardization, test reorganization + gap fill (#32/#26/#45), conservative organizational pass, tech-debt inventory, docs consolidation — then human live QA (handshake #58, companion lockstep deploy, backend-path dialog) and the `mvp`→`main` PR. Backlog reconciliation: [[report-260627-issue-reconciliation]].
 
 > **Roadmap amendment (user ruling 2026-08-03)** — the **P2P social layer (turn-taking, presence, queue) and the session-message channel it needs are post-MVP**, re-sequencing `CLAUDE.md` §Development Roadmap Phase 1's "Social layer" line. The social layer serves the moment WhatNext decouples from Spotify; that moment needs *proven* P2P playlist and library sharing first. Reactions and comments are unaffected — they ride RxDB replication and stay in Phase 1. Rationale: [[epic-session-liveness-fixes]] §WB5.
 
@@ -107,7 +105,7 @@ cd app && npm run build                 # Production build
 
 ---
 
-__Last Updated__: 2026-08-01
-__Documentation Version__: v0.6.0 (vault-wide link/tag pass; pre-merge review indexed)
+__Last Updated__: 2026-08-05
+__Documentation Version__: v0.7.0 (status list re-verified against post-wave-2 `mvp`; stale wave-1-era claims corrected)
 
 
