@@ -97,8 +97,27 @@ cd app && npm run build:preload  # Build preload script only
 ```bash
 cd app && npm run lint      # ESLint
 cd app && npm run typecheck # TypeScript type checking (no emit)
-cd app && npm test          # Vitest unit/integration suites
+cd app && npm test          # Vitest unit/integration suites (app + relay)
 cd app && npm run test:e2e  # Playwright E2E (needs built app + display)
+```
+
+Formatting is repo-wide and lives in the root package, which holds prettier and
+nothing else — run `npm install` at the root once:
+
+```bash
+npm run format        # Prettier --write across app, relay, service, test-peer,
+                      # scripts/*.mjs and top-level *.md
+npm run format:check  # The CI gate; must exit 0
+```
+
+`relay/`, `service/` and `test-peer/` install and run on their own:
+
+```bash
+cd relay && npm run lint        # ESLint (plain ESM JS — no typecheck)
+cd test-peer && npm run lint    # ESLint (plain ESM JS — no typecheck)
+cd service && npm run lint      # ESLint
+cd service && npm run typecheck # tsc --noEmit, source and suites
+cd service && npm test          # Vitest downloader suites
 ```
 
 ### Packaging
