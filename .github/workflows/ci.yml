@@ -86,10 +86,84 @@ jobs:
         run: npm ci
         working-directory: app
 
-      # Vitest only. The suite also covers ../relay and ../service (see
-      # app/vitest.config.ts `include`), which resolve their imports out of
-      # app/node_modules. Playwright e2e is deliberately absent: it needs a
-      # built app and a display.
+      # Vitest only. The suite also covers ../relay (see app/vitest.config.ts
+      # `include`), which resolves its imports out of app/node_modules. service
+      # has its own runner and its own job below. Playwright e2e is deliberately
+      # absent: it needs a built app and a display.
       - name: Test
         run: npm test
         working-directory: app
+
+  # ── Workspaces that gained tooling in the format-standards cycle ──────────
+  # Each installs and runs on its own; none of them share a lockfile with app.
+  # relay and test-peer are plain ESM JavaScript with no TypeScript, so eslint
+  # is their only gate — there is no typecheck to run.
+
+  relay:
+    name: Relay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: relay/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: relay
+
+      - name: Lint
+        run: npm run lint
+        working-directory: relay
+
+  test-peer:
+    name: Test Peer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: test-peer/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: test-peer
+
+      - name: Lint
+        run: npm run lint
+        working-directory: test-peer
+
+  service:
+    name: Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: service/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: service
+
+      - name: Lint
+        run: npm run lint
+        working-directory: service
+
+      - name: TypeCheck
+        run: npm run typecheck
+        working-directory: service
+
+      # The 99 downloader suites that used to ride along in app's run.
+      - name: Test
+        run: npm test
+        working-directory: service
