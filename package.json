@@ -1,0 +1,16 @@
+{
+    "name": "whatnext",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Repo-wide tooling holder. NOT an npm workspace root — each of app/, relay/, service/ and test-peer/ still installs and runs on its own. This package exists only so prettier is pinned once and `format`/`format:check` can be run from the repo root.",
+    "scripts": {
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    },
+    "devDependencies": {
+        "prettier": "3.9.6"
+    },
+    "engines": {
+        "node": ">=20.19.0"
+    }
+}
