@@ -5,7 +5,8 @@
     "private": true,
     "scripts": {
         "start": "node relay-server.mjs",
-        "dev": "node --watch relay-server.mjs"
+        "dev": "node --watch relay-server.mjs",
+        "lint": "eslint ."
     },
     "dependencies": {
         "@chainsafe/libp2p-noise": "^17.0.0",
@@ -20,5 +21,10 @@
     },
     "engines": {
         "node": ">=20.19.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.39.5",
+        "eslint": "^9.39.5",
+        "globals": "^16.5.0"
     }
 }
