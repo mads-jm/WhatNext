@@ -15,10 +15,15 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import type { ActiveTransfer, FileEntry } from '../../../shared/core/file-transfer-types';
+import type {
+    ActiveTransfer,
+    FileEntry,
+    FileManifest,
+} from '../../../shared/core/file-transfer-types';
 import {
     IPC_CHANNELS,
     MainToUtilityMessageType,
@@ -45,6 +50,7 @@ import {
 } from '../file-transfer-ipc';
 
 const audioDir = path.join(docsDir, 'WhatNext', 'audio');
+const artworkDir = path.join(docsDir, 'WhatNext', 'artwork');
 const partialDir = path.join(audioDir, '.partial');
 
 /** Distinct valid hashes — one per fixture, so tests cannot leak state into each other. */
@@ -61,6 +67,33 @@ const SHA = {
 
 const PEER = 'peer-we-asked';
 const TOTAL = 64;
+
+/**
+ * Serve-path fixture: three real files, one per FileEntry type, already present in a
+ * *persisted* `hashes.json` before startup.
+ *
+ * That is the shape of the exposure this guard closes — the hash cache survives
+ * restarts and accumulates every file this install ever hashed (plus everything peers
+ * sent us), while sharing intent does not survive at all. Seeding it here means the
+ * "refused" assertions below prove the allowlist is doing the work, not that the file
+ * merely happened to be unknown.
+ */
+const PLAYLIST = 'playlist-served';
+const TRACK = 'track-served';
+const serveFiles = {
+    audio: { path: path.join(audioDir, 'served-song.mp3'), body: Buffer.from('audio bytes for the serve fixture') },
+    artwork: { path: path.join(artworkDir, 'served-art.jpg'), body: Buffer.from('artwork bytes') },
+    cover: { path: path.join(artworkDir, 'served-cover.jpg'), body: Buffer.from('cover art bytes') },
+};
+const serveHash = {
+    audio: sha256Of(serveFiles.audio.body),
+    artwork: sha256Of(serveFiles.artwork.body),
+    cover: sha256Of(serveFiles.cover.body),
+};
+
+function sha256Of(body: Buffer): string {
+    return crypto.createHash('sha256').update(body).digest('hex');
+}
 
 const utility = { postMessage: vi.fn() };
 const win = { webContents: { send: vi.fn() } };
@@ -137,6 +170,21 @@ beforeAll(async () => {
         ]),
         'utf8'
     );
+
+    // Serve fixture: files on disk *and* in a persisted hash cache, as they would be
+    // after any previous session — before sharing has ever been enabled in this run.
+    fs.mkdirSync(artworkDir, { recursive: true });
+    const hashIndex: Record<string, { sha256: string; mtimeMs: number; size: number }> = {};
+    for (const [kind, file] of Object.entries(serveFiles)) {
+        fs.writeFileSync(file.path, file.body);
+        const stat = fs.statSync(file.path);
+        hashIndex[file.path] = {
+            sha256: serveHash[kind as keyof typeof serveHash],
+            mtimeMs: stat.mtimeMs,
+            size: stat.size,
+        };
+    }
+    fs.writeFileSync(path.join(audioDir, 'hashes.json'), JSON.stringify(hashIndex), 'utf8');
 
     await registerFileTransferHandlers(win as never, () => utility as never);
 });
@@ -284,6 +332,123 @@ describe('cancel releases its concurrency slot', () => {
     });
 });
 
+describe('serving files — sharing authorization', () => {
+    it('refuses a file the hash cache holds but no manifest ever published', async () => {
+        // The pre-guard behaviour: knowing the hash was enough. Now it is not.
+        utility.postMessage.mockClear();
+
+        handleFileTransferUtilityMessage(fileRequest(serveHash.audio));
+        await flush();
+
+        expect(serveMessages().map((m) => m.type)).toEqual(['file-error']);
+        expect(fs.existsSync(serveFiles.audio.path)).toBe(true); // we do hold it
+    });
+
+    it('answers a refusal exactly as it answers a hash we have never held', async () => {
+        // Otherwise refusals are an oracle: a probe could enumerate the user's library
+        // by which error it gets back.
+        const neverHeld = '9'.repeat(64);
+        utility.postMessage.mockClear();
+
+        handleFileTransferUtilityMessage(fileRequest(serveHash.audio));
+        handleFileTransferUtilityMessage(fileRequest(neverHeld));
+        await flush();
+
+        const [refused, unknown] = serveMessages();
+        expect(refused).toEqual({
+            type: 'file-error',
+            sha256: serveHash.audio,
+            error: `No file found for sha256: ${serveHash.audio}`,
+        });
+        expect(unknown).toEqual({
+            type: 'file-error',
+            sha256: neverHeld,
+            error: `No file found for sha256: ${neverHeld}`,
+        });
+    });
+
+    it('serves every entry type once a manifest went out under active sharing', async () => {
+        await setSharing(true);
+        await registerServeTracks();
+
+        utility.postMessage.mockClear();
+        handleFileTransferUtilityMessage(manifestRequest());
+        await settled(() => expect(lastManifest()?.files.length).toBe(3));
+
+        // The manifest itself must carry all three types — a gap here would silently
+        // become a gap in the allowlist.
+        expect(lastManifest()!.files.map((f) => f.type).sort()).toEqual([
+            'artwork',
+            'audio',
+            'cover-art',
+        ]);
+
+        for (const [kind, hash] of Object.entries(serveHash)) {
+            utility.postMessage.mockClear();
+            handleFileTransferUtilityMessage(fileRequest(hash));
+
+            await settled(() => {
+                expect(serveMessages().map((m) => m.type)).toEqual([
+                    'file-header',
+                    'file-chunk',
+                    'file-complete',
+                ]);
+            });
+            const chunk = serveMessages()[1];
+            expect(Buffer.from(chunk.data ?? '', 'base64')).toEqual(
+                serveFiles[kind as keyof typeof serveFiles].body
+            );
+        }
+    });
+
+    it('refuses again once sharing is toggled off', async () => {
+        await setSharing(false);
+
+        for (const hash of Object.values(serveHash)) {
+            utility.postMessage.mockClear();
+            handleFileTransferUtilityMessage(fileRequest(hash));
+            await flush();
+
+            expect(serveMessages().map((m) => m.type)).toEqual(['file-error']);
+        }
+    });
+
+    it('keeps manifests deny-by-default when sharing is off', async () => {
+        utility.postMessage.mockClear();
+        handleFileTransferUtilityMessage(manifestRequest());
+
+        await settled(() => expect(lastManifest()?.files).toEqual([]));
+    });
+
+    it('does not re-authorize a playlist whose sharing was revoked mid-manifest-build', async () => {
+        // The race: `buildManifest` stats and hashes every file, so it yields for real
+        // I/O; `set-sharing` is synchronous and runs to completion inside that window.
+        // Without a post-build re-check, the build's `record()` silently re-authorizes
+        // the playlist the host just withdrew — and the peer gets real file data too.
+        await setSharing(true);
+        await registerServeTracks();
+        utility.postMessage.mockClear();
+
+        // No await between these two lines: the request runs up to its first real
+        // I/O yield inside buildManifest, so the revoke lands strictly mid-build.
+        handleFileTransferUtilityMessage(manifestRequest());
+        await setSharing(false);
+
+        await settled(() => expect(lastManifest()).toBeDefined());
+        // The peer is answered — never left hanging — but with deny-by-default.
+        expect(lastManifest()!.files).toEqual([]);
+
+        // …and nothing that build hashed became servable.
+        for (const hash of Object.values(serveHash)) {
+            utility.postMessage.mockClear();
+            handleFileTransferUtilityMessage(fileRequest(hash));
+            await flush();
+
+            expect(serveMessages().map((m) => m.type)).toEqual(['file-error']);
+        }
+    });
+});
+
 // ---------------------------------------------------------------------------
 // Handler shims — the renderer-facing half, as `ipcMain.handle` registered it.
 // ---------------------------------------------------------------------------
@@ -301,4 +466,71 @@ async function requestFiles(files: FileEntry[]): Promise<void> {
 
 async function cancel(sha256: string): Promise<void> {
     await ipcHandlers.get(IPC_CHANNELS.FILE_TRANSFER_CANCEL)!(null, { sha256 } as never);
+}
+
+async function setSharing(enabled: boolean): Promise<void> {
+    await ipcHandlers.get(IPC_CHANNELS.FILE_TRANSFER_SET_SHARING)!(null, {
+        playlistId: PLAYLIST,
+        enabled,
+    } as never);
+}
+
+async function registerServeTracks(): Promise<void> {
+    await ipcHandlers.get(IPC_CHANNELS.FILE_TRANSFER_REGISTER_TRACKS)!(null, {
+        playlistId: PLAYLIST,
+        coverArtPath: serveFiles.cover.path,
+        tracks: [
+            {
+                trackId: TRACK,
+                audioPath: serveFiles.audio.path,
+                artworkPath: serveFiles.artwork.path,
+            },
+        ],
+    } as never);
+}
+
+// ---------------------------------------------------------------------------
+// Serve-path message shims — as the utility process would deliver them.
+// ---------------------------------------------------------------------------
+
+function fileRequest(sha256: string) {
+    return createIPCMessage(UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST, {
+        subtype: 'file-request',
+        peerId: PEER,
+        sha256,
+        offsetBytes: 0,
+    });
+}
+
+function manifestRequest() {
+    return createIPCMessage(UtilityToMainMessageType.FILE_TRANSFER_INCOMING_REQUEST, {
+        subtype: 'manifest-request',
+        requestId: 'req-1',
+        peerId: PEER,
+        playlistId: PLAYLIST,
+        trackIds: [],
+    });
+}
+
+/** Every `file-header` / `file-chunk` / `file-complete` / `file-error` we sent, in order. */
+interface ServeMessage {
+    type: string;
+    sha256: string;
+    error?: string;
+    /** base64 body, on `file-chunk` only */
+    data?: string;
+}
+
+function serveMessages(): ServeMessage[] {
+    return utility.postMessage.mock.calls
+        .map((c) => c[0])
+        .filter((m) => m.type === MainToUtilityMessageType.FILE_TRANSFER_SERVE_CHUNK)
+        .map((m) => (m.payload as { message: ServeMessage }).message);
+}
+
+function lastManifest(): FileManifest | undefined {
+    const responses = utility.postMessage.mock.calls
+        .map((c) => c[0])
+        .filter((m) => m.type === MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE);
+    return responses.at(-1)?.payload.manifest as FileManifest | undefined;
 }

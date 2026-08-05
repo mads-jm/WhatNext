@@ -36,6 +36,7 @@ import {
 import { HashCache, computeFileSha256 } from './hash-cache'
 import { buildManifest } from './manifest-builder'
 import { evaluateInboundChunk } from './chunk-guards'
+import { ServedHashRegistry, evaluateServeRequest } from './serve-guards'
 // Filename sanitisation / containment helpers used to live here; they are now
 // shared with the renderer-facing IPC guards. Behaviour is unchanged.
 import { sanitizeFilename, isValidSha256, assertPathContained } from '../utils/path-safety'
@@ -54,6 +55,12 @@ let ownPeerId: string = ''
 
 /** playlistId → sharing enabled */
 const sharingState = new Map<string, boolean>()
+
+/**
+ * What we may serve: the hashes our manifests published while sharing was enabled.
+ * Sharing intent, not hash knowledge, authorizes a serve — see serve-guards.ts.
+ */
+const servedHashes = new ServedHashRegistry()
 
 /** trackId → local file paths registered by the renderer */
 const trackFileMap = new Map<string, { audioPath?: string; artworkPath?: string }>()
@@ -504,6 +511,12 @@ export async function registerFileTransferHandlers(
         IPC_CHANNELS.FILE_TRANSFER_SET_SHARING,
         (_e, { playlistId, enabled }: { playlistId: string; enabled: boolean }) => {
             sharingState.set(playlistId, enabled)
+            if (!enabled) {
+                // Consent is per-exchange: withdrawing sharing withdraws what this
+                // playlist's manifests published. Requests arriving after this point
+                // are refused; serves already streaming are not aborted.
+                servedHashes.revoke(playlistId)
+            }
         },
     )
 
@@ -680,6 +693,34 @@ export function handleFileTransferUtilityMessage(message: IPCMessage): boolean {
 // ========================================
 
 /**
+ * The deny-by-default manifest response: explicitly empty, never silence.
+ *
+ * Sent both when sharing was off on arrival and when it was turned off while the
+ * manifest was being built — the requesting peer must not be able to tell those
+ * apart, and must not be left waiting either way.
+ */
+function sendEmptyManifest(
+    utility: UtilityProcess,
+    requestId: string,
+    peerId: string,
+    playlistId: string,
+): void {
+    const emptyManifest: FileManifest = {
+        peerId: ownPeerId,
+        playlistId,
+        files: [],
+        generatedAt: new Date().toISOString(),
+    }
+    utility.postMessage(
+        createIPCMessage(MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE, {
+            requestId,
+            peerId,
+            manifest: emptyManifest,
+        }),
+    )
+}
+
+/**
  * Handles a manifest-request from a remote peer.
  *
  * The remote peer sends FILE_TRANSFER_INCOMING_REQUEST with subtype 'manifest-request'.
@@ -712,19 +753,7 @@ async function handleManifestRequest(payload: {
         console.log(
             `[FileTransfer] Manifest request denied for playlist ${playlistId} from peer ${peerId}: sharing not enabled`,
         )
-        const emptyManifest: FileManifest = {
-            peerId: ownPeerId,
-            playlistId,
-            files: [],
-            generatedAt: new Date().toISOString(),
-        }
-        utility.postMessage(
-            createIPCMessage(MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE, {
-                requestId,
-                peerId,
-                manifest: emptyManifest,
-            }),
-        )
+        sendEmptyManifest(utility, requestId, peerId, playlistId)
         return
     }
 
@@ -749,6 +778,24 @@ async function handleManifestRequest(payload: {
         return
     }
 
+    // Re-check sharing after the build. `buildManifest` stats and hashes every file,
+    // so it yields for real I/O, and the `set-sharing` handler is synchronous — a host
+    // who toggles sharing off during the build runs `revoke()` to completion inside
+    // that window. Without this the `record()` below would silently re-authorize the
+    // playlist the host just withdrew, and the peer would get real file data for it.
+    // Nothing awaits between here and the postMessage, so the decision cannot go stale.
+    if (!sharingState.get(playlistId)) {
+        console.log(
+            `[FileTransfer] Manifest for playlist ${playlistId} discarded: sharing was disabled while it was being built`,
+        )
+        sendEmptyManifest(utility, requestId, peerId, playlistId)
+        return
+    }
+
+    // Authorize exactly what we are about to publish, and nothing else: this is the
+    // one point where sharing has been confirmed and the servable set is known.
+    servedHashes.record(playlistId, manifest.files)
+
     utility.postMessage(
         createIPCMessage(MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE, {
             requestId,
@@ -765,16 +812,30 @@ async function handleIncomingRequest(payload: {
 }): Promise<void> {
     const { peerId, sha256, offsetBytes } = payload
 
-    if (!hashCache) {
-        sendServeError(peerId, sha256, 'File transfer not initialised')
+    const cache = hashCache
+    if (!cache) {
+        // Unreachable in practice (`_utilityGetter` is set after `hashCache`, so no
+        // peer request can reach us first), but it answers like every other serve-path
+        // refusal regardless: one message for all of them, no oracle by omission.
+        console.warn('[FileTransfer] Serve request arrived before initialisation — refusing')
+        refuseServe(peerId, sha256)
         return
     }
 
-    const filePath = hashCache.getPathBySha256(sha256)
-    if (!filePath) {
-        sendServeError(peerId, sha256, `No file found for sha256: ${sha256}`)
+    // Trust boundary: nothing below this point may read a file, or admit that we
+    // hold one, unless sharing published its hash to a peer. See serve-guards.ts.
+    const verdict = evaluateServeRequest(sha256, servedHashes, (h) =>
+        cache.getPathBySha256(h),
+    )
+    if (!verdict.ok) {
+        console.log(
+            `[FileTransfer] Refusing file request from ${peerId.slice(0, 12)}... ` +
+            `for ${sha256.slice(0, 8)}... — ${verdict.reason}`,
+        )
+        refuseServe(peerId, sha256)
         return
     }
+    const filePath = verdict.filePath
 
     let stat: fs.Stats
     try {
@@ -832,6 +893,17 @@ async function handleIncomingRequest(payload: {
         console.error('[FileTransfer] Error serving file:', error)
         sendServeError(peerId, sha256, error)
     }
+}
+
+/**
+ * The single answer every serve-path refusal gets — "we don't have that file" —
+ * whether we hold it and sharing never published it, or we genuinely have never
+ * seen it. One message for all refusals is what stops a peer from using them to
+ * enumerate the user's library, so this exists to make divergence impossible
+ * rather than merely unlikely.
+ */
+function refuseServe(peerId: string, sha256: string): void {
+    sendServeError(peerId, sha256, `No file found for sha256: ${sha256}`)
 }
 
 function sendServeError(peerId: string, sha256: string, error: string): void {
