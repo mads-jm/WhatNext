@@ -5,7 +5,7 @@ tags:
   - mvp
 status: active
 date created: 2026-08-01
-date modified: 2026-08-04
+date modified: 2026-08-05
 ---
 
 # Pre-Merge Review: `qa/wave1` (mvp + wave-1 lanes) → `main` — 2026-08-01
@@ -58,6 +58,8 @@ Walk the path: a peer opens a stream whose *first* message is `file-chunk`; the 
 **issue (blocking, trivial fix):** `app/package-lock.json` (ws 8.19.0), `relay/package-lock.json` (ws 8.20.0)
 CVE-2026-45736 (information disclosure) is fixed in ws **8.20.1**; both lockfiles pin below it even though the ranges (`^8.19.0` / `^8.20.0`) allow the fix. The companion server and relay tunnel are network-listening consumers of this library. Direction: `npm update ws` in both workspaces before merge. Links in [[#Dependency review]].
 
+> ✅ **Closed 2026-08-05** ([[epic-quality-gates]] cycle 1). All three lockfiles resolve **8.21.2**, ranges untouched. **This finding undercounted the consumers:** `service/src/server.ts` runs a third `WebSocketServer` (:3001) on ws 8.18.3 and was bumped with the other two. Residuals, both unreachable: rxdb pins ws to the *exact* version 8.18.3 in its own nested tree (nothing imports `rxdb/plugins/replication-websocket`), and `test-peer` carries a transitive ws 6.2.3 (different major, dev-only harness). Verified by real smoke starts of the relay tunnel and the helper service, not just by reading the lockfile.
+
 ---
 
 ## 2. High-priority debt (ticket before or immediately after merge)
@@ -79,6 +81,12 @@ CVE-2026-45736 (information disclosure) is fixed in ws **8.20.1**; both lockfile
 **issue:** `app/src/main/companion/companion-server.ts:431-436` vs `:565-616` — **Relay phones never receive time-request acks.** Relay-side joins register callbacks with ids `relay-${displayName}` / `'relay-phone'`, but `sendTimeRequestAck(clientId)` looks up the `clients` map, which only contains local-LAN clients — the ack silently vanishes for tunneled phones. Either register relay phones as tracked clients or route acks through `sendToRelay`.
 
 **issue:** `cd app && npm run typecheck` is red on `qa/wave1` — every error is environmental (`node_modules` `.d.ts` resolution + `vite.config.ts` under the current `moduleResolution`), zero source errors. That's arguably worse than a real failure: the gate trains people to ignore red. `"skipLibCheck": true` plus `moduleResolution: "bundler"` for the vite config context should turn the gate green and trustworthy. Similarly `npm run lint` now runs (thank you, lint lane) but reports **59 errors / 16 warnings** — mostly `no-explicit-any` and unused vars across ~28 files. Burn this down or the gate stays decorative.
+
+> 🟡 **Partially closed 2026-08-05** ([[epic-quality-gates]] cycle 1) — **typecheck half done, lint half pending.**
+> - **Typecheck: green (0 errors, was 16 — this review's count stands).** This review's read of the cause was right but its prescription was half right. `skipLibCheck` accounts for 15 of the 16 errors (all *reported* inside `node_modules` `.d.ts`); the 16th is in `vite.config.ts` itself, which `skipLibCheck` cannot touch. **One of the 16 was not stable:** with `allowJs` on and no `include`, `tsc` swept in the minified renderer bundle `app/dist/assets/index-*.js` when one existed, whose mangled global `gc` collided with `@types/node`'s — so the count was 16 after a build and 15 without. Narrowing `include` to `["src", "e2e"]` removes the dependence on build state; full derivation in [[epic-quality-gates]] work item 2. That one is fixed by giving the root-level build configs their own program — the already-present-but-**orphaned** `app/tsconfig.node.json`, now wired into the `typecheck` script (`tsc --noEmit && tsc -p tsconfig.node.json`) — rather than by excluding the file. Its sibling `tsconfig.app.json` was **deleted**: adopting it would have cascaded 28 errors across `src/`.
+> - Also found and fixed while in there: the gate was writing a **tracked** build artifact (`app/.erb/dll/tsconfig.tsbuildinfo`) on every run, so running it dirtied `git status`. Build-info moved to `node_modules/.tmp/`; the artifact is untracked and `.gitignore` updated.
+> - **CI now runs all three gates** — a `test` job (vitest only) joined the existing typecheck/lint jobs, verified locally at 553/553 with the sibling workspaces' `node_modules` removed to match what CI installs.
+> - **Lint is untouched and still red** (re-measured at mvp `413e6bf`: **55 errors / 16 warnings**, not 59). Deferred to cycle 2 on purpose — a ~28-file sweep would collide with the in-flight `receive-path-lifecycle` lane. Consequence: CI shows one red check (Lint) by design until that lands.
 
 ---
 
@@ -143,7 +151,7 @@ New/changed since `main` (lockfile-verified). Per the hard rule, each got a rese
 
 | Package | Where | Health | Call |
 |---|---|---|---|
-| `ws` ^8.19.0 / ^8.20.0 | app, relay | Healthy, massive usage; **CVE-2026-45736 fixed in 8.20.1 — both lockfiles below it** | **Buy, but bump now** (§1.6). No platform-native alternative for a Node WS *server* |
+| `ws` ^8.19.0 / ^8.20.0 / ^8.18.3 | app, relay, **service** | Healthy, massive usage; ~~**CVE-2026-45736 fixed in 8.20.1 — both lockfiles below it**~~ → **all three lockfiles at 8.21.2 as of 2026-08-05** | **Buy, but bump now** (§1.6) — ✅ done. No platform-native alternative for a Node WS *server* |
 | `music-metadata` ^11.12.3 | app | Healthy — 11.14.0 released days ago, active maintainer (Borewit) | **Buy.** Hand-rolling tag parsing across MP3/FLAC/M4A is a multi-month trap; this is the ecosystem standard |
 | `qrcode` ^1.5.4 | app | Stale-ish — 1.5.4 is ~2 years old, though QR encoding is a frozen spec | **Buy, watch.** Tiny surface (one invite QR). If it ever bites, `uqr` or server-side generation are drop-ins; not worth churn now |
 | `@libp2p/dcutr` ^3.0.13 | app | Part of the maintained js-libp2p suite (same release train as existing deps) | **Buy.** Hole-punching via existing relay connection is exactly the NAT story the relay architecture wants; hand-rolling DCUtR is a non-starter |
@@ -162,8 +170,8 @@ Sources: [ws advisory/CVE-2026-45736](https://www.sentinelone.com/vulnerability-
 | Gate | Result | Detail |
 |---|---|---|
 | `npm test` (vitest) | ✅ **340/340**, 23 files | Includes all lane suites; purchase-resolver suite is slow (~7.5s) due to real throttle sleeps — consider injecting the clock |
-| `npm run lint` | ⚠️ runs; **59 errors / 16 warnings** | Config fixed by lint lane; errors are pre-existing debt (`no-explicit-any`, unused vars) across ~28 files |
-| `npm run typecheck` | ❌ | All failures environmental (node_modules `.d.ts` + `vite.config.ts` under current `moduleResolution`); zero source errors. Fix config so the gate means something (§2) |
+| `npm run lint` | ⚠️ runs; **59 errors / 16 warnings** | Config fixed by lint lane; errors are pre-existing debt (`no-explicit-any`, unused vars) across ~28 files. *Re-measured at mvp `413e6bf` 2026-08-05: **55 / 16**. Burn-down is [[epic-quality-gates]] cycle 2 — deferred until `receive-path-lifecycle` lands* |
+| `npm run typecheck` | ❌ → ✅ **2026-08-05** | All failures environmental (node_modules `.d.ts` + `vite.config.ts` under current `moduleResolution`); zero source errors — re-measured at mvp `413e6bf` as **16** errors (15 with no renderer build on disk; the config's `allowJs` + missing `include` made the count depend on build state) and **confirmed zero in `src/`**. Now 0; see §2 (§7 lint row still red pending cycle 2) |
 | `npm run test:e2e` (playwright) | not run | Requires a built app + display; left to the parallel manual-QA track |
 | Merge inspection | ✅ | 5 merges, zero conflict-resolution hunks; no semantic conflicts found between lanes (preload merged disjointly; resilience fetch changes compose with mvp IPC handlers; replication LWW composes with mvp session code) |
 | Migration check | ✅ | `trackSchema` v3 / `playlistSchema` v5 match their strategy chains (`database.ts:88-190`); v2 track backfill `source: spotifyId ? 'spotify' : 'manual'` is sane; new-field-as-`undefined` writes are correct for docs that predate the fields |
@@ -181,7 +189,7 @@ The five lanes are all mergeable (replication pending its required human P2P sig
 3. ✅ **closed 2026-08-03** — **Gate `file:write`** to dialog-approved paths — `main.ts:781-788` (§1.3). One-shot approval recorded by `dialog:save-file` in main. The suggested `documents/WhatNext` containment fallback was **not** used: it would have violated sovereignty (#1/#2) by capping where a user may export. See [[epic-ipc-trust-boundary]] "Authority model".
 4. ✅ **closed 2026-08-04** — **Validate downloader URLs + add `--` separator** before yt-dlp/spotdl argv — `downloader-ipc.ts`, both backends (§1.4). `download:resolve`/`download:start` now reject anything that is not an `http(s)` URL (or, on the live `spotify-ids` branch, a base62 Spotify id) before a backend is constructed — `app/src/main/downloader/downloader-guards.ts`. Correction to this review's wording: the `--` separator lands on **yt-dlp only**. Real spotDL 4.5.2 answers `spotdl save --save-file - -- <url>` with `unrecognized arguments: --` (all three placements fail), so its second layer is an `http(s)` shape check on the query argument instead. Closed alongside it: `set-backend-path`, listed below as a post-merge ticket — the renderer can no longer choose which executable main spawns without either a main-process file dialog or a native confirmation.
 5. ✅ **closed 2026-08-04** — **Reject unsolicited/out-of-bounds file chunks** before disk writes — `file-transfer-ipc.ts` + utility handler (§1.5). Chunks are now evaluated against our own transfer registry *before* anything opens or writes a `.partial/*.tmp` (`app/src/main/file-transfer/chunk-guards.ts`): unknown hash, wrong status, or a sender that is not the peer we asked → dropped with zero filesystem effects; a chunk that would write past the peer's own declared `totalBytes` → transfer failed, partial discarded, peer told to stop. Corrections to this review's wording: (a) the utility layer's inbound first-message `file-chunk` branch was **deleted, not guarded** — no known peer implementation ever produced one (the app and `test-peer` both serve chunks back on the *requester's* stream), and a design-review issue on stream-opening semantics stands in its place (filed 2026-08-05 as #65); (b) the utility-layer drop is a real guard, not best-effort, because `requestFile` registers what it asked for. Closed alongside it: the §2 cancel slot leak, below. See [[epic-file-transfer-guards]].
-6. **Bump `ws` to ≥8.20.1** in app + relay lockfiles (§1.6)
+6. ✅ **closed 2026-08-05** — **Bump `ws` to ≥8.20.1** in app + relay lockfiles (§1.6). All three lockfiles now resolve **8.21.2** (ranges unchanged — they already admitted the fix), verified by smoke-starting the relay tunnel and the helper service, not just by reading the lockfile. Correction to this review's wording: the finding named app and relay, but `service/` is a **third** network-listening consumer (`service/src/server.ts`, `WebSocketServer` on :3001) and was bumped too. Two unreachable residuals stay: rxdb pins ws to the *exact* version 8.18.3 in its nested tree, and `test-peer` carries a transitive ws 6.2.3. See [[epic-quality-gates]] work item 1.
 
 Then, first tickets after merge: [[epic-session-liveness-fixes|companion auth/host-secret]] (§2), the `useTrackSource` syncingRef deadlock (§2), ~~[[epic-file-transfer-guards|the cancel-path slot leak]] (§2)~~ (pulled forward and closed 2026-08-04 with item 5), the local-only playback mutex (§2 — or relabel the UI), ~~`set-backend-path` validation (§2)~~ (pulled forward and closed 2026-08-04 with item 4), and [[epic-quality-gates|the typecheck/lint gate repair]] (§2).
 
