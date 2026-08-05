@@ -42,6 +42,7 @@ import type {
     DownloadResolveRequest,
     BackendPathMap,
     SetBackendPathPayload,
+    SetBackendPathResult,
     PurchaseResolvePayload,
     PurchaseLinkResult,
 } from '../shared/core/ipc-protocol';
@@ -461,7 +462,7 @@ const electronHandler = {
         getBackendPaths: (): Promise<BackendPathMap> =>
             ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_GET_BACKEND_PATHS),
 
-        setBackendPath: (payload: SetBackendPathPayload): Promise<BackendPathMap> =>
+        setBackendPath: (payload: SetBackendPathPayload): Promise<SetBackendPathResult> =>
             ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_SET_BACKEND_PATH, payload),
 
         onProgress: (cb: (event: DownloadEvent) => void) => {

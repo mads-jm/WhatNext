@@ -55,6 +55,7 @@ import {
     resolveArtworkPath,
     recordApprovedSaveTarget,
     consumeApprovedSaveTarget,
+    recordApprovedOpenFile,
 } from './ipc-guards';
 import { killAll as killDownloadProcesses } from '../../../service/downloader/subprocess';
 import type { SpotifyRuntimeEvent } from './spotify/spotify-events';
@@ -772,10 +773,16 @@ ipcMain.handle('dialog:open-file', async (_event, options) => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
 
     const { dialog } = await import('electron');
-    return dialog.showOpenDialog(mainWindow, {
+    const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openFile'],
         ...options,
     });
+    // The user picking a file here is what lets a later handler act on it without a
+    // second prompt (download:set-backend-path). Nothing else consults this today.
+    if (!result.canceled) {
+        for (const file of result.filePaths) recordApprovedOpenFile(file);
+    }
+    return result;
 });
 
 ipcMain.handle('dialog:open-directory', async (_event, options) => {

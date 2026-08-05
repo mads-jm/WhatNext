@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -7,7 +7,7 @@ import type {
     BackendStatusResult,
     DownloadResolveRequest,
     BackendPathMap,
-    SetBackendPathPayload,
+    SetBackendPathResult,
 } from '../../shared/core/ipc-protocol';
 import {
     getBackendPath,
@@ -16,6 +16,7 @@ import {
 } from './downloader-config-store';
 import {
     DownloadInputError,
+    validateBackendPathRequest,
     validateResolveInput,
     validateSourceUrl,
 } from './downloader-guards';
@@ -87,6 +88,33 @@ async function getBackend(
 }
 
 /**
+ * Ask the user, in a native main-process dialog, to confirm a hand-typed executable.
+ *
+ * Only reached for paths main has no dialog record of (see `validateBackendPathRequest`).
+ * The dialog is modal and blocks main, which is why it sits on the accept path only —
+ * a path that does not `stat` as a regular file is refused before we get here.
+ */
+async function confirmBackendExecutable(
+    win: BrowserWindow,
+    executablePath: string,
+): Promise<boolean> {
+    const { response } = await dialog.showMessageBox(win, {
+        type: 'warning',
+        buttons: ['Cancel', 'Use this program'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+        title: 'Confirm download tool',
+        message: 'Run this program as a download tool?',
+        detail:
+            `WhatNext will run:\n\n${executablePath}\n\n` +
+            'It runs with your user account\'s permissions. Only continue if you ' +
+            'installed this program yourself and trust it.',
+    });
+    return response === 1;
+}
+
+/**
  * Register all download IPC handlers.
  * Must be called after the BrowserWindow is created so we can send events back.
  */
@@ -129,13 +157,29 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
         async (): Promise<BackendPathMap> => getBackendPaths(),
     );
 
+    // The renderer picks *which executable main spawns* here, so a bare string is not
+    // enough authority: the path must either be one a main-process file dialog returned
+    // or one the user confirms in a native prompt. Nothing is persisted (and nothing is
+    // spawned by the `checkInstalled()` re-probe that follows) until it is accepted.
     ipcMain.handle(
         IPC_CHANNELS.DOWNLOAD_SET_BACKEND_PATH,
-        async (_e, payload: SetBackendPathPayload): Promise<BackendPathMap> => {
-            const updated = setBackendPath(payload.id, payload.path);
+        async (_e, payload: unknown): Promise<SetBackendPathResult> => {
+            const decision = await validateBackendPathRequest(payload, (exe) =>
+                confirmBackendExecutable(win, exe),
+            );
+
+            if (!decision.ok) {
+                return {
+                    status: decision.reason === 'declined' ? 'declined' : 'rejected',
+                    paths: getBackendPaths(),
+                    error: decision.reason === 'invalid' ? decision.error : undefined,
+                };
+            }
+
+            const updated = setBackendPath(decision.id, decision.path);
             // Invalidate the cached instance so the next call rebuilds with the new path.
-            backends[payload.id] = null;
-            return updated;
+            backends[decision.id] = null;
+            return { status: 'saved', paths: updated };
         },
     );
 

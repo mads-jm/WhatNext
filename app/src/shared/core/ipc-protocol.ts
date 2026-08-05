@@ -587,6 +587,21 @@ export interface SetBackendPathPayload {
     path: string | null;
 }
 
+/**
+ * Outcome of `download:set-backend-path`.
+ *
+ * A hand-typed path needs a native confirmation before main will spawn it, so the
+ * renderer has to tell three cases apart: it was saved, the user cancelled the
+ * confirmation (`declined` — not an error, say nothing loud), or main refused the
+ * path outright (`rejected` — show `error`). `paths` is always the current map, so
+ * the UI can re-render from it regardless of outcome.
+ */
+export interface SetBackendPathResult {
+    status: 'saved' | 'declined' | 'rejected';
+    paths: BackendPathMap;
+    error?: string;
+}
+
 export interface DownloadResolveRequest {
     backend: string;
     input: { type: 'url' | 'spotify-ids'; url?: string; spotifyIds?: string[] };

@@ -58,6 +58,7 @@ export function DownloadSettings() {
     const [paths, setPaths] = useState<BackendPathMap>({});
     const [pathDrafts, setPathDrafts] = useState<Partial<Record<DownloaderBackendId, string>>>({});
     const [savingPath, setSavingPath] = useState<DownloaderBackendId | null>(null);
+    const [pathErrors, setPathErrors] = useState<Partial<Record<DownloaderBackendId, string>>>({});
     const [audioDir, setAudioDir] = useState('');
     const [defaultFormat, setDefaultFormat] = useState(
         () => localStorage.getItem(FORMAT_KEY) || 'best_audio',
@@ -102,17 +103,44 @@ export function DownloadSettings() {
 
     const savePath = async (id: DownloaderBackendId, value: string | null) => {
         setSavingPath(id);
+        setPathErrors((e) => ({ ...e, [id]: undefined }));
         try {
-            const updated = await window.electron?.download.setBackendPath({
+            const result = await window.electron?.download.setBackendPath({
                 id,
                 path: value && value.trim() ? value.trim() : null,
             });
-            if (updated) setPaths(updated);
-            setPathDrafts((d) => ({ ...d, [id]: undefined }));
-            await loadBackends();
+            if (!result) return;
+            setPaths(result.paths);
+
+            if (result.status === 'saved') {
+                setPathDrafts((d) => ({ ...d, [id]: undefined }));
+                await loadBackends();
+                return;
+            }
+            // 'declined' — the user cancelled main's confirmation dialog. That is an
+            // answer, not a fault: keep their draft and say nothing loud. 'rejected'
+            // means main refused the path outright, so show why.
+            if (result.status === 'rejected') {
+                setPathErrors((e) => ({ ...e, [id]: result.error ?? 'Path not accepted' }));
+            }
         } finally {
             setSavingPath(null);
         }
+    };
+
+    /**
+     * Browse… is the primary way to set a path: main records what its own file dialog
+     * returned, so the value comes back accepted without a confirmation prompt.
+     */
+    const browseForPath = async (id: DownloaderBackendId, name: string) => {
+        const picked = await window.electron?.dialog.openFile({
+            title: `Select the ${name} program`,
+            properties: ['openFile'],
+        });
+        const filePath = picked?.filePaths?.[0];
+        if (!picked || picked.canceled || !filePath) return;
+        setPathDrafts((d) => ({ ...d, [id]: filePath }));
+        await savePath(id, filePath);
     };
 
     return (
@@ -235,31 +263,50 @@ export function DownloadSettings() {
                                         platform.
                                     </p>
                                 ) : (
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="text"
-                                            value={draftValue}
-                                            placeholder={`Custom ${info.name} path (leave blank to use PATH)`}
-                                            onChange={(e) =>
-                                                setPathDrafts((d) => ({ ...d, [info.id]: e.target.value }))
-                                            }
-                                            className="flex-1 min-w-0 bg-surface border border-outline-variant/20 rounded-md px-2.5 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-primary/50"
-                                        />
-                                        <button
-                                            onClick={() => savePath(info.id, draftValue)}
-                                            disabled={savingPath === info.id}
-                                            className="text-xs px-2.5 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 shrink-0"
-                                        >
-                                            Save
-                                        </button>
-                                        {configuredPath && (
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={draftValue}
+                                                placeholder={`Custom ${info.name} path (leave blank to use PATH)`}
+                                                onChange={(e) =>
+                                                    setPathDrafts((d) => ({ ...d, [info.id]: e.target.value }))
+                                                }
+                                                className="flex-1 min-w-0 bg-surface border border-outline-variant/20 rounded-md px-2.5 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-primary/50"
+                                            />
                                             <button
-                                                onClick={() => savePath(info.id, null)}
+                                                onClick={() => browseForPath(info.id, info.name)}
+                                                disabled={savingPath === info.id}
+                                                className="text-xs px-2.5 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 shrink-0"
+                                            >
+                                                Browse…
+                                            </button>
+                                            <button
+                                                onClick={() => savePath(info.id, draftValue)}
                                                 disabled={savingPath === info.id}
                                                 className="text-xs px-2.5 py-1.5 rounded-md bg-surface hover:bg-outline-variant/20 text-on-surface-variant disabled:opacity-50 shrink-0"
                                             >
-                                                Clear
+                                                Save
                                             </button>
+                                            {configuredPath && (
+                                                <button
+                                                    onClick={() => savePath(info.id, null)}
+                                                    disabled={savingPath === info.id}
+                                                    className="text-xs px-2.5 py-1.5 rounded-md bg-surface hover:bg-outline-variant/20 text-on-surface-variant disabled:opacity-50 shrink-0"
+                                                >
+                                                    Clear
+                                                </button>
+                                            )}
+                                        </div>
+                                        {pathErrors[info.id] ? (
+                                            <p className="text-xs text-error break-all">
+                                                {pathErrors[info.id]}
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs text-on-surface-variant">
+                                                Browse… picks the program directly. A typed path is
+                                                confirmed once before WhatNext will run it.
+                                            </p>
                                         )}
                                     </div>
                                 )}
