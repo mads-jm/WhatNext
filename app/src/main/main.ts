@@ -31,13 +31,10 @@ import {
     UtilityToMainMessageType,
     IPC_CHANNELS,
     type IPCMessage,
-    type PeerMetadata,
     type NodeStartedPayload,
     type PeerDiscoveredPayload,
     type ConnectionEstablishedPayload,
-    type ConnectionFailedPayload,
     type ConnectionClosedPayload,
-    type NodeErrorPayload,
     type HandshakeCompletePayload,
     type P2PStatusPayload,
     type ReplicationPullRequestPayload,
@@ -837,6 +834,12 @@ ipcMain.handle(
 /** Strip filesystem-illegal characters and trim to a safe length. */
 function sanitizePathSegment(str: string): string {
     return str
+        // Matching C0 control characters is the entire point of the class:
+        // they are illegal in filenames on every platform we ship to. The rule
+        // guards against *accidental* control characters, so there is no real
+        // fix here — same deliberate exception as `path-safety.ts` and the two
+        // URL guards; rewriting the range in \u escape form does not silence it.
+        // eslint-disable-next-line no-control-regex
         .replace(/[<>:"/\\|?*\x00-\x1f]/g, '')
         .trim()
         .slice(0, 80);
@@ -989,7 +992,7 @@ let _fileTransferSetOwnPeerId: ((peerId: string) => void) | null = null;
 let _fileTransferResume: ((peerId: string) => Promise<void>) | null = null;
 
 // Store P2P state that the renderer can pull
-let p2pState: P2PStatusPayload = {
+const p2pState: P2PStatusPayload = {
     nodeStarted: false,
     peerId: '',
     multiaddrs: [],
@@ -1114,7 +1117,7 @@ async function ensureSpotifyModules(): Promise<void> {
             setSpotifyEventListener(forwardSpotifyEvent);
             loadStoredTokens();
             spotifyInitialized = true;
-        } catch (e) {
+        } catch (_e) {
             console.log('[Main] Spotify modules not ready yet');
         }
     }
