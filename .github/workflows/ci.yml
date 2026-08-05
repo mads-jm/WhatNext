@@ -44,3 +44,27 @@ jobs:
       - name: Lint
         run: npm run lint
         working-directory: app
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+
+      # Vitest only. The suite also covers ../relay and ../service (see
+      # app/vitest.config.ts `include`), which resolve their imports out of
+      # app/node_modules. Playwright e2e is deliberately absent: it needs a
+      # built app and a display.
+      - name: Test
+        run: npm test
+        working-directory: app
