@@ -10,6 +10,22 @@ const DEFAULT_EXE = 'spotdl';
 const RAW_EXCERPT_CHARS = 200;
 
 /**
+ * spotDL's query is an argparse positional, so a leading-dash value would be read as an
+ * option. The usual fix — a `--` separator before the positional — is *not available*
+ * here: spotDL (4.5.2) answers `spotdl save --save-file - -- <url>` with
+ * "unrecognized arguments: --", and the other placements fail too. yt-dlp takes `--`
+ * and uses it; this shape check is the equivalent second layer for spotDL.
+ *
+ * The first layer remains input validation at the IPC boundary
+ * (`app/src/main/downloader/downloader-guards.ts`); nothing here should ever fire.
+ */
+function assertSafeQueryArg(url: string): void {
+    if (!/^https?:\/\//i.test(url)) {
+        throw new Error(`spotdl refused a non-http(s) query argument: "${url}"`);
+    }
+}
+
+/**
  * Thrown when `spotdl save` exits 0 but its stdout cannot be read as a track
  * list. Previously this case produced a stub `ResolvedTrack` whose title was
  * the URL — a junk library entry that looked like a successful import (#56).
@@ -90,6 +106,9 @@ export class SpotdlBackend implements DownloadBackend {
         if (urls.length === 0) {
             throw new Error('SpotdlBackend: no resolvable URLs in input');
         }
+        // Up front, before any spawn: a bad URL half-way down the list must not leave
+        // a partially-resolved batch behind.
+        for (const url of urls) assertSafeQueryArg(url);
 
         const tracks: ResolvedTrack[] = [];
 
@@ -131,6 +150,7 @@ export class SpotdlBackend implements DownloadBackend {
             let hadError = false;
 
             try {
+                assertSafeQueryArg(track.sourceUrl);
                 const args = [
                     'download',
                     track.sourceUrl,
@@ -217,6 +237,9 @@ export class SpotdlBackend implements DownloadBackend {
             return [input.url];
         }
         if (input.type === 'spotify-ids' && input.spotifyIds) {
+            // The constant https:// prefix means assertSafeQueryArg always passes for
+            // these — it is NOT defense-in-depth here. The only gate on this branch is
+            // the base62 id-shape check at the IPC boundary (downloader-guards.ts).
             return input.spotifyIds.map(
                 (id) => `https://open.spotify.com/track/${id}`,
             );

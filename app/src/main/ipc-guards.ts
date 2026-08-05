@@ -12,8 +12,12 @@
  * Each entry point gets one exported check here, so the validation is importable and
  * testable on its own rather than buried inside a handler closure.
  *
+ * It also records what the main-process dialogs handed back (`dialog:save-file`,
+ * `dialog:open-file`), which is the authority other guards consult — see below.
+ *
  * Authority model: for anything the user must be free to point anywhere (export
- * targets, the folder the "Open" button reveals), authority comes from the user's own
+ * targets, the folder the "Open" button reveals, the downloader binary to spawn),
+ * authority comes from the user's own
  * *main-process* dialog choice — recorded here at dialog time — not from a hardcoded
  * allowlist of app directories. That keeps sovereignty (CLAUDE.md #1/#2) intact while
  * still refusing paths the renderer invented on its own.
@@ -164,6 +168,43 @@ export function consumeApprovedSaveTarget(raw: unknown): boolean {
     if (typeof raw !== 'string' || !raw.trim()) return false;
     const key = normalisePath(raw);
     return pendingSaveTargets.delete(key);
+}
+
+// ========================================
+// dialog:open-file (files the user picked)
+// ========================================
+
+/**
+ * Files the user selected in a main-process *open* dialog this session.
+ *
+ * Same doctrine as `approved-dirs-store` — authority comes from the user's own dialog
+ * choice, recorded in main — but for files, and deliberately session-scoped: the one
+ * consumer (`download:set-backend-path`) uses it to skip a confirmation prompt, and a
+ * grant that silently outlives a restart buys nothing there.
+ *
+ * Unlike `pendingSaveTargets` this is *not* one-shot. Picking a binary and then saving
+ * it twice (or re-saving after a "Clear") is a normal thing to do, and nothing is
+ * written to the file the entry names — it only spares the user a second prompt.
+ */
+const approvedOpenFiles = new Set<string>();
+
+/** Bounds the set if a user opens file dialogs repeatedly in one session. */
+const MAX_APPROVED_OPEN_FILES = 32;
+
+/** Record a file the user just chose in a main-process open dialog. */
+export function recordApprovedOpenFile(filePath: string): void {
+    if (typeof filePath !== 'string' || !filePath.trim()) return;
+    if (approvedOpenFiles.size >= MAX_APPROVED_OPEN_FILES) {
+        const oldest = approvedOpenFiles.values().next().value;
+        if (oldest !== undefined) approvedOpenFiles.delete(oldest);
+    }
+    approvedOpenFiles.add(normalisePath(filePath));
+}
+
+/** True when this exact path came back from a main-process open dialog this session. */
+export function wasApprovedOpenFile(raw: unknown): boolean {
+    if (typeof raw !== 'string' || !raw.trim()) return false;
+    return approvedOpenFiles.has(normalisePath(raw));
 }
 
 // ========================================

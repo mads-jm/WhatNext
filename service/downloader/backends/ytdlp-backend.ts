@@ -73,6 +73,10 @@ export class YtdlpBackend implements DownloadBackend {
             '--flat-playlist',
             '--dump-json',
             '--no-download',
+            // Everything after `--` is a positional, so a URL that somehow got past the
+            // IPC guard cannot be read as an option (`--exec=…` would be command
+            // execution). Second layer only — validation at the boundary is the first.
+            '--',
             input.url,
         ]);
 
@@ -116,6 +120,8 @@ export class YtdlpBackend implements DownloadBackend {
                     '--progress',
                     '--newline',
                     '--print', `after_move:${FILEPATH_MARKER}%(filepath)s`,
+                    // See resolve(): `--` forces the URL to be read as a positional.
+                    '--',
                     track.sourceUrl,
                 ];
 

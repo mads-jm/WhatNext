@@ -14,6 +14,11 @@ import {
     getBackendPaths,
     setBackendPath,
 } from './downloader-config-store';
+import {
+    DownloadInputError,
+    validateResolveInput,
+    validateSourceUrl,
+} from './downloader-guards';
 import { killAll as killDownloadProcesses } from '../../../../service/downloader/subprocess';
 
 export { killDownloadProcesses };
@@ -144,6 +149,11 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
             _e,
             req: DownloadResolveRequest,
         ): Promise<import('../../../../service/downloader/types').ResolvedTrack[]> => {
+            // Rejected before the backend is even constructed: the input becomes argv
+            // for a spawned downloader, which reads a leading-dash token as an option.
+            const check = validateResolveInput(req?.input);
+            if (!check.ok) throw new DownloadInputError(check.error);
+
             const backend = await getBackend(req.backend);
             return backend.resolve(req.input);
         },
@@ -160,12 +170,45 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
             _e,
             req: import('../../../../service/downloader/types').DownloadStartRequest,
         ): Promise<void> => {
+            if (!req || !Array.isArray(req.tracks)) {
+                throw new DownloadInputError('no tracks were supplied');
+            }
             const store = await ensureStore();
+
+            // Auto-generate a downloadId if the caller did not provide one.
+            // This ID is threaded through all events so the renderer can correlate
+            // progress/complete/error events from concurrent downloads.
+            const downloadId: string = req.downloadId ?? crypto.randomUUID();
+
+            // Rejections must be *visible*: the renderer keys its progress map by the
+            // exact sourceUrl it sent, so an error event has to carry that same string
+            // or the track sits at "pending" forever.
+            const reject = (sourceUrl: string, error: string) => {
+                safeSend(win, IPC_CHANNELS.DOWNLOAD_ERROR, {
+                    downloadId,
+                    type: 'error',
+                    sourceUrl,
+                    error,
+                });
+            };
+
+            // Each sourceUrl ends up as a positional argument to yt-dlp/spotDL, where a
+            // leading dash is read as an option (`--exec=…` is command execution). One
+            // bad URL fails its own track; the rest of the batch still runs.
+            const acceptedTracks = req.tracks.filter((t) => {
+                const check = validateSourceUrl(t.sourceUrl);
+                if (!check.ok) {
+                    reject(String(t.sourceUrl), new DownloadInputError(check.error).message);
+                }
+                return check.ok;
+            });
+            if (acceptedTracks.length === 0) return;
+
             const backend = await getBackend(req.backend);
 
             // Resolve each requested track to a ResolvedTrack if we only have URLs.
             // The request carries tracks with sourceUrl already set.
-            const resolvedTracks = req.tracks.map(
+            const resolvedTracks = acceptedTracks.map(
                 (t): import('../../../../service/downloader/types').ResolvedTrack => ({
                     sourceId: '',
                     sourceUrl: t.sourceUrl,
@@ -177,11 +220,6 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
                     availableFormats: [],
                 }),
             );
-
-            // Auto-generate a downloadId if the caller did not provide one.
-            // This ID is threaded through all events so the renderer can correlate
-            // progress/complete/error events from concurrent downloads.
-            const downloadId: string = req.downloadId ?? crypto.randomUUID();
 
             // Security: validate outputDir is within the allowed AudioStore base directory.
             //
@@ -204,12 +242,14 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
             const isContained = !relative.startsWith('..') && !path.isAbsolute(relative);
             const outputDir = resolved;
             if (!isContained) {
-                safeSend(win, IPC_CHANNELS.DOWNLOAD_ERROR, {
-                    downloadId,
-                    type: 'error',
-                    sourceUrl: '',
-                    error: `Download rejected: outputDir "${rawOutputDir}" is outside the allowed audio directory.`,
-                });
+                // Per-track (not sourceUrl: '') so the renderer can actually match it —
+                // see the `reject` note above.
+                for (const t of acceptedTracks) {
+                    reject(
+                        t.sourceUrl,
+                        `Download rejected: outputDir "${rawOutputDir}" is outside the allowed audio directory.`,
+                    );
+                }
                 return;
             }
 
@@ -220,7 +260,7 @@ export async function registerDownloadHandlers(win: BrowserWindow): Promise<void
                 try {
                     for (let i = 0; i < resolvedTracks.length; i++) {
                         const singleTrack = resolvedTracks[i];
-                        const format = req.tracks[i]?.preferredFormat ?? 'best_audio';
+                        const format = acceptedTracks[i]?.preferredFormat ?? 'best_audio';
 
                         // Dedup check — skip backend if we already have this file on disk.
                         const existingPath = store.getExisting(singleTrack.sourceUrl);

@@ -117,6 +117,45 @@ describe('SpotdlBackend.resolve', () => {
     });
 });
 
+describe('SpotdlBackend argv hygiene', () => {
+    // spotDL cannot take a `--` separator: `spotdl save --save-file - -- <url>` answers
+    // "unrecognized arguments: --" (verified against the real spotDL 4.5.2), and the
+    // alternative placements fail too. So the second layer behind the IPC guard is a
+    // shape check on the query argument instead. These tests pin both halves.
+    it('keeps the argv shape spotDL actually accepts (no -- separator)', async () => {
+        vi.mocked(runCommand).mockResolvedValue(
+            makeRunResult({ code: 0, stdout: loadFixtureText('spotdl-save.json') }),
+        );
+
+        await new SpotdlBackend().resolve({ type: 'url', url: SPOTIFY_URL });
+
+        const args = vi.mocked(runCommand).mock.calls[0][1];
+        expect(args).toEqual(['save', SPOTIFY_URL, '--save-file', '-']);
+        expect(args).not.toContain('--');
+    });
+
+    it('refuses an option-looking query argument before spawning (resolve)', async () => {
+        await expect(
+            new SpotdlBackend().resolve({ type: 'url', url: '--exec=touch /tmp/pwned' }),
+        ).rejects.toThrow('non-http(s) query argument');
+        // Nothing was spawned: the batch is refused up front, not half-resolved.
+        expect(vi.mocked(runCommand)).not.toHaveBeenCalled();
+    });
+
+    it('refuses an option-looking query argument before spawning (download)', async () => {
+        const hostile = { ...spotifyTrack(), sourceUrl: '--config-location=/tmp/evil.conf' };
+
+        const events = await collect(
+            new SpotdlBackend().download([hostile], { outputDir: OUT, preferredFormat: 'mp3' }),
+        );
+
+        expect(events).toHaveLength(1);
+        expect(events[0].type).toBe('error');
+        expect(events[0].error).toContain('non-http(s) query argument');
+        expect(vi.mocked(spawnLines)).not.toHaveBeenCalled();
+    });
+});
+
 describe('SpotdlBackend.download', () => {
     it('parses progress and the Downloaded path on success', async () => {
         vi.mocked(spawnLines).mockReturnValue(

@@ -127,6 +127,41 @@ describe('YtdlpBackend.download', () => {
     });
 });
 
+describe('YtdlpBackend argv hygiene', () => {
+    // Second layer behind the IPC guard: yt-dlp reads a leading-dash positional as an
+    // option (`--exec=…` is command execution), and everything after `--` is a
+    // positional. Verified against the real yt-dlp 2026.07.04 CLI — the subprocess
+    // seam is mocked here, so this test can only prove the ordering, not acceptance.
+    it('places -- immediately before the URL when resolving', async () => {
+        vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 0, stdout: '' }));
+
+        await new YtdlpBackend().resolve({ type: 'url', url: 'https://youtu.be/abc' });
+
+        const args = vi.mocked(runCommand).mock.calls[0][1];
+        expect(args).toEqual([
+            '--flat-playlist',
+            '--dump-json',
+            '--no-download',
+            '--',
+            'https://youtu.be/abc',
+        ]);
+    });
+
+    it('places -- immediately before the URL when downloading', async () => {
+        vi.mocked(spawnLines).mockReturnValue(makeSpawnLines([], { exitCode: 0 }));
+
+        await collect(
+            new YtdlpBackend().download([track], { outputDir: OUT, preferredFormat: 'mp3' }),
+        );
+
+        const args = vi.mocked(spawnLines).mock.calls[0][1];
+        expect(args.at(-1)).toBe(track.sourceUrl);
+        expect(args.at(-2)).toBe('--');
+        // No option may follow the separator, or yt-dlp would take it as a URL.
+        expect(args.indexOf('--')).toBe(args.length - 2);
+    });
+});
+
 describe('YtdlpBackend.checkInstalled', () => {
     it('reports installed with the trimmed version on clean exit', async () => {
         vi.mocked(runCommand).mockResolvedValue(makeRunResult({ code: 0, stdout: '2024.08.06\n' }));
