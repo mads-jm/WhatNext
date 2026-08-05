@@ -71,6 +71,8 @@ describe('mapYtdlpEntry', () => {
     });
 
     it('falls back to url when webpage_url is absent', () => {
+        // Omit-by-rest: `_` exists only to keep `webpage_url` out of `raw`.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { webpage_url: _, ...raw } = base;
         const withUrl = { ...raw, url: 'https://direct.url' };
         expect(mapYtdlpEntry(withUrl).sourceUrl).toBe('https://direct.url');
@@ -87,16 +89,22 @@ describe('mapYtdlpEntry', () => {
     });
 
     it('defaults to 0ms when duration is missing', () => {
+        // Omit-by-rest: `_` exists only to keep `duration` out of `raw`.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { duration: _, ...raw } = base;
         expect(mapYtdlpEntry(raw).durationMs).toBe(0);
     });
 
     it('omits thumbnailUrl when thumbnail is absent', () => {
+        // Omit-by-rest: `_` exists only to keep `thumbnail` out of `raw`.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { thumbnail: _, ...raw } = base;
         expect(mapYtdlpEntry(raw).thumbnailUrl).toBeUndefined();
     });
 
     it('defaults title to "Unknown Title" when absent', () => {
+        // Omit-by-rest: `_` exists only to keep `title` out of `raw`.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { title: _, ...raw } = base;
         expect(mapYtdlpEntry(raw).title).toBe('Unknown Title');
     });

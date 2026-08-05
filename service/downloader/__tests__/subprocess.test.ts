@@ -63,6 +63,9 @@ describe('spawnLines', () => {
         const r = spawnLines('node', ['-e', 'setTimeout(() => {}, 10000)'], 50);
         await expect(
             (async () => {
+                // The binding is required by for-await syntax; the point of
+                // the loop is to drain until the timeout rejects.
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 for await (const _line of r.lines) {
                     /* drain */
                 }
