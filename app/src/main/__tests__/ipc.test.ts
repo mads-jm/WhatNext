@@ -17,7 +17,33 @@ import type { SpotifyTrackItem } from '../types';
 // uuid is called inside mapSpotifyTrack; we mock it to get deterministic IDs.
 vi.mock('uuid', () => ({ v4: () => 'test-uuid' }));
 
-import { mapSpotifyTrack, mapSpotifyTracks } from '../spotify/spotify-mapper';
+import {
+    mapSpotifyTrack,
+    mapSpotifyTracks,
+    type MappedTrack,
+} from '../spotify/spotify-mapper';
+
+/**
+ * The wire shape Spotify actually sends: `track` is `null` for removed or
+ * region-unavailable playlist entries, which is exactly why `mapSpotifyTracks`
+ * filters on `item.track && item.track.id`. The app-side `SpotifyTrackItem`
+ * models only the well-formed case, so those degenerate entries are not
+ * expressible in it — a design smell worth fixing at the source one day, but
+ * out of scope for a lint burn-down.
+ *
+ * Rather than casting each malformed fixture, the guard tests describe their
+ * input precisely with this type and call the mapper through the local view of
+ * its signature below. That keeps the fixtures fully typed and confines the
+ * widening to one documented place.
+ */
+type RawSpotifyTrackItem = Omit<SpotifyTrackItem, 'track'> & {
+    track: SpotifyTrackItem['track'] | null;
+};
+
+/** `mapSpotifyTracks` drops null/idless tracks, so it is safe on raw wire items. */
+const mapRawSpotifyTracks = mapSpotifyTracks as (
+    items: RawSpotifyTrackItem[],
+) => MappedTrack[];
 
 // ---------------------------------------------------------------------------
 // Spotify resilience / auth / client suites (#44, #33)
@@ -146,7 +172,7 @@ describe('mapSpotifyTrack', () => {
     });
 
     it('falls back addedAt to a current ISO string when added_at is falsy', () => {
-        const item = makeTrackItem({ added_at: '' } as any);
+        const item = makeTrackItem({ added_at: '' });
         const before = Date.now();
         const result = mapSpotifyTrack(item);
         const after = Date.now();
@@ -180,16 +206,16 @@ describe('mapSpotifyTracks', () => {
     });
 
     it('filters out items whose track is null (null-track guard)', () => {
-        const items = [
+        const items: RawSpotifyTrackItem[] = [
             makeTrackItem(),
-            { track: null, added_at: '2024-01-01T00:00:00Z', added_by: { id: 'x' } } as any,
+            { track: null, added_at: '2024-01-01T00:00:00Z', added_by: { id: 'x' } },
         ];
-        const result = mapSpotifyTracks(items);
+        const result = mapRawSpotifyTracks(items);
         expect(result).toHaveLength(1);
     });
 
     it('filters out local tracks that have no track.id (local-file guard)', () => {
-        const localTrack = makeTrackItem({ track: { ...makeTrackItem().track, id: '' } } as any);
+        const localTrack = makeTrackItem({ track: { ...makeTrackItem().track, id: '' } });
         const validTrack = makeTrackItem();
         const result = mapSpotifyTracks([localTrack, validTrack]);
         expect(result).toHaveLength(1);
@@ -197,11 +223,11 @@ describe('mapSpotifyTracks', () => {
     });
 
     it('returns an empty array when all items are filtered out', () => {
-        const items = [
-            { track: null, added_at: '', added_by: { id: '' } } as any,
-            { track: null, added_at: '', added_by: { id: '' } } as any,
+        const items: RawSpotifyTrackItem[] = [
+            { track: null, added_at: '', added_by: { id: '' } },
+            { track: null, added_at: '', added_by: { id: '' } },
         ];
-        expect(mapSpotifyTracks(items)).toEqual([]);
+        expect(mapRawSpotifyTracks(items)).toEqual([]);
     });
 
     it('returns an empty array for an empty input', () => {
@@ -215,7 +241,37 @@ describe('mapSpotifyTracks', () => {
 // The handlers in main.ts use dynamic import() to load Spotify modules.
 // We test the *logic* (input → output shape) by extracting that logic into
 // helper functions that mirror what the handlers do, with dependencies mocked.
+//
+// Each extracted handler is annotated with the IPC result shape it mirrors —
+// a success flag plus optional payload/error fields, the same "one object with
+// optional members" convention the preload surface uses (see section 3). The
+// annotation is what lets the assertions read `response.error` directly instead
+// of narrowing (or casting away) an inferred two-branch union.
 // ---------------------------------------------------------------------------
+
+/** Result of the `spotify:get-tracks` / `spotify:sync-playlist` handlers. */
+interface TracksResult {
+    success: boolean;
+    tracks?: MappedTrack[];
+    total?: number;
+    error?: string;
+}
+
+/** Result of the `artwork:download` handler. */
+interface ArtworkResult {
+    success: boolean;
+    localPath?: string;
+    error?: string;
+}
+
+/** Result of the `spotify:get-profile` handler. */
+interface ProfileResult {
+    success: boolean;
+    userId?: string;
+    displayName?: string;
+    avatarUrl?: string;
+    error?: string;
+}
 
 describe('spotify:get-tracks handler logic', () => {
     it('returns { success: true, tracks, total } on success', async () => {
@@ -223,7 +279,7 @@ describe('spotify:get-tracks handler logic', () => {
         const mockGetPlaylistTracks = vi.fn().mockResolvedValue({ items: fakeItems, total: 1 });
 
         // Simulate the handler logic
-        const handler = async (playlistId: string) => {
+        const handler = async (playlistId: string): Promise<TracksResult> => {
             try {
                 const result = await mockGetPlaylistTracks(playlistId);
                 const mapped = mapSpotifyTracks(result.items);
@@ -243,7 +299,7 @@ describe('spotify:get-tracks handler logic', () => {
     it('returns { success: false, error } when getPlaylistTracks throws', async () => {
         const mockGetPlaylistTracks = vi.fn().mockRejectedValue(new Error('Network failure'));
 
-        const handler = async (playlistId: string) => {
+        const handler = async (playlistId: string): Promise<TracksResult> => {
             try {
                 const result = await mockGetPlaylistTracks(playlistId);
                 const mapped = mapSpotifyTracks(result.items);
@@ -255,7 +311,7 @@ describe('spotify:get-tracks handler logic', () => {
 
         const response = await handler('playlist-xyz');
         expect(response.success).toBe(false);
-        expect((response as any).error).toContain('Network failure');
+        expect(response.error).toContain('Network failure');
     });
 });
 
@@ -270,7 +326,7 @@ describe('spotify:sync-playlist handler logic', () => {
             .mockResolvedValueOnce({ items: page1Items, total: 2 })
             .mockResolvedValueOnce({ items: page2Items, total: 2 });
 
-        const handler = async (linkedSpotifyId: string) => {
+        const handler = async (linkedSpotifyId: string): Promise<TracksResult> => {
             try {
                 const allItems: SpotifyTrackItem[] = [];
                 let offset = 0;
@@ -295,7 +351,7 @@ describe('spotify:sync-playlist handler logic', () => {
         const response = await handler('playlist-abc');
         expect(response.success).toBe(true);
         // Both items from page1 should be present (page2 is empty → loop breaks after page1)
-        expect((response as any).total).toBe(2);
+        expect(response.total).toBe(2);
     });
 
     it('paginates correctly when a full page is returned (continues to next page)', async () => {
@@ -308,7 +364,7 @@ describe('spotify:sync-playlist handler logic', () => {
             .mockResolvedValueOnce({ items: page1Items, total: 102 })
             .mockResolvedValueOnce({ items: page2Items, total: 102 });
 
-        const handler = async (linkedSpotifyId: string) => {
+        const handler = async (linkedSpotifyId: string): Promise<TracksResult> => {
             try {
                 const allItems: SpotifyTrackItem[] = [];
                 let offset = 0;
@@ -331,7 +387,7 @@ describe('spotify:sync-playlist handler logic', () => {
 
         const response = await handler('playlist-big');
         expect(response.success).toBe(true);
-        expect((response as any).total).toBe(102);
+        expect(response.total).toBe(102);
         expect(mockGetPlaylistTracks).toHaveBeenCalledTimes(2);
         // Second call should use offset = 100
         expect(mockGetPlaylistTracks).toHaveBeenNthCalledWith(2, 'playlist-big', limit, 100);
@@ -340,7 +396,7 @@ describe('spotify:sync-playlist handler logic', () => {
     it('returns { success: false, error } when getPlaylistTracks throws', async () => {
         const mockGetPlaylistTracks = vi.fn().mockRejectedValue(new Error('Auth expired'));
 
-        const handler = async (linkedSpotifyId: string) => {
+        const handler = async (linkedSpotifyId: string): Promise<TracksResult> => {
             try {
                 const allItems: SpotifyTrackItem[] = [];
                 let offset = 0;
@@ -364,7 +420,7 @@ describe('spotify:sync-playlist handler logic', () => {
 
         const response = await handler('playlist-abc');
         expect(response.success).toBe(false);
-        expect((response as any).error).toContain('Auth expired');
+        expect(response.error).toContain('Auth expired');
     });
 });
 
@@ -389,7 +445,7 @@ describe('artwork:download handler logic', () => {
         userDataPath: string;
         join: (...parts: string[]) => string;
     }) {
-        return async (url: string) => {
+        return async (url: string): Promise<ArtworkResult> => {
             try {
                 // Replicate handler logic from main.ts
                 const artworkDir = deps.join(deps.userDataPath, 'artwork');
@@ -433,7 +489,7 @@ describe('artwork:download handler logic', () => {
 
         const result = await handler('https://cdn.spotify.com/image/abc123');
         expect(result.success).toBe(true);
-        expect((result as any).localPath).toContain('abc123');
+        expect(result.localPath).toContain('abc123');
     });
 
     it('downloads and writes file when not yet cached, returns { success: true, localPath }', async () => {
@@ -456,7 +512,7 @@ describe('artwork:download handler logic', () => {
         const result = await handler('https://cdn.spotify.com/image/abc123');
         expect(result.success).toBe(true);
         expect(writeFile).toHaveBeenCalledOnce();
-        expect((result as any).localPath).toContain('abc123.jpg');
+        expect(result.localPath).toContain('abc123.jpg');
     });
 
     it('returns { success: false, error } when fetch returns non-ok status', async () => {
@@ -471,7 +527,7 @@ describe('artwork:download handler logic', () => {
 
         const result = await handler('https://cdn.spotify.com/image/abc123');
         expect(result.success).toBe(false);
-        expect((result as any).error).toContain('HTTP 403');
+        expect(result.error).toContain('HTTP 403');
     });
 
     it('returns { success: false, error } when fetch throws', async () => {
@@ -486,7 +542,7 @@ describe('artwork:download handler logic', () => {
 
         const result = await handler('https://cdn.spotify.com/image/abc123');
         expect(result.success).toBe(false);
-        expect((result as any).error).toContain('Connection refused');
+        expect(result.error).toContain('Connection refused');
     });
 
     it('uses base64url fallback as imageId when URL path segment is empty', async () => {
@@ -511,7 +567,7 @@ describe('artwork:download handler logic', () => {
         const result = await handler(url);
         expect(result.success).toBe(true);
         // localPath should be a .jpg file (fallback id was generated)
-        expect((result as any).localPath).toMatch(/\.jpg$/);
+        expect(result.localPath).toMatch(/\.jpg$/);
     });
 });
 
@@ -523,7 +579,7 @@ describe('spotify:get-profile handler logic', () => {
             images: [{ url: 'https://cdn/avatar.jpg', height: 128, width: 128 }],
         });
 
-        const handler = async () => {
+        const handler = async (): Promise<ProfileResult> => {
             try {
                 const profile = await mockGetCurrentUser();
                 return {
@@ -551,7 +607,7 @@ describe('spotify:get-profile handler logic', () => {
             images: [],
         });
 
-        const handler = async () => {
+        const handler = async (): Promise<ProfileResult> => {
             try {
                 const profile = await mockGetCurrentUser();
                 return {
@@ -573,7 +629,7 @@ describe('spotify:get-profile handler logic', () => {
     it('returns { success: false, error } when getCurrentUser throws', async () => {
         const mockGetCurrentUser = vi.fn().mockRejectedValue(new Error('Not authenticated'));
 
-        const handler = async () => {
+        const handler = async (): Promise<ProfileResult> => {
             try {
                 const profile = await mockGetCurrentUser();
                 return {
@@ -589,7 +645,7 @@ describe('spotify:get-profile handler logic', () => {
 
         const result = await handler();
         expect(result.success).toBe(false);
-        expect((result as any).error).toContain('Not authenticated');
+        expect(result.error).toContain('Not authenticated');
     });
 });
 
