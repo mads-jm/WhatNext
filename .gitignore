@@ -1,6 +1,8 @@
 # Node
 node_modules/
 dist/
+*.tsbuildinfo
+app/.erb/
 dist-electron/
 release/
 .npm/
@@ -21,13 +23,15 @@ Thumbs.db
 *.cursorrules
 *.cursorignore
 
-# agent-cycle scratch — process residue, never project source. The vault
+# agent scratch — process residue, never project source. The vault
 # ("WhatNext - docs/") is the single source of truth: durable outcomes land
 # there as reports/ADRs/specs and as PR records on merge. Only
-# .claude/settings.json stays tracked.
-.claude/worktrees/
-.claude/cycle/
-.claude/cycle-archive/
+# .claude/settings.json stays tracked; everything else under .claude/ is
+# cycle/worktree/session residue or machine-local config, so this ignores the
+# directory wholesale and opts that one file back in — no pattern to update
+# when the tooling renames its scratch dirs again.
+.claude/*
+!.claude/settings.json
 
 # local
 TODO.md
