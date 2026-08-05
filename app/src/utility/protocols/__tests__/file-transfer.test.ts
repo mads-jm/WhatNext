@@ -88,6 +88,67 @@ describe('sendFileChunk', () => {
     });
 });
 
+describe('inbound stream guards', () => {
+    it('does not accept a file-chunk as an inbound stream\'s first message', async () => {
+        // The branch that used to handle this was dead code with no producer in any
+        // known peer, and it let an arbitrary peer push bytes straight at main.
+        // A chunk-first stream is now just an unexpected first message: logged, closed.
+        const node = new MockLibp2p();
+        const callbacks = noopCallbacks();
+        registerFileTransferProtocol(asLibp2p(node), callbacks);
+        const handler = node.handlers.get(PROTOCOL)!;
+
+        const stream = new MockStream([
+            encodeFrame({
+                type: 'file-chunk',
+                sha256: 'a'.repeat(64),
+                offset: 0,
+                data: Buffer.from('unsolicited').toString('base64'),
+            } satisfies FileTransferMessage),
+            // A follow-up chunk must not be picked up by a continuation loop either.
+            encodeFrame({
+                type: 'file-chunk',
+                sha256: 'a'.repeat(64),
+                offset: 11,
+                data: Buffer.from('more').toString('base64'),
+            } satisfies FileTransferMessage),
+        ]);
+
+        await handler(stream, new MockConnection('hostile-peer'));
+
+        expect(callbacks.onFileChunkReceived).not.toHaveBeenCalled();
+        expect(stream.closed).toBe(true);
+    });
+
+    it('drops chunks for a sha256 we never requested on this stream', async () => {
+        // The provider answers our request for `wanted` but also sprays chunks for a
+        // file we never asked for. Only the requested one reaches main.
+        const wanted = 'b'.repeat(64);
+        const unwanted = 'c'.repeat(64);
+
+        const providerStream = new MockStream([
+            encodeFrame({ type: 'file-header', sha256: wanted, totalBytes: 4, chunkSize: 4 } satisfies FileTransferMessage),
+            encodeFrame({ type: 'file-chunk', sha256: unwanted, offset: 0, data: 'AAAA' } satisfies FileTransferMessage),
+            encodeFrame({ type: 'file-chunk', sha256: wanted, offset: 0, data: 'BBBB' } satisfies FileTransferMessage),
+            encodeFrame({ type: 'file-complete', sha256: wanted } satisfies FileTransferMessage),
+        ]);
+
+        const seen: string[] = [];
+        await new Promise<void>((resolve) => {
+            const callbacks = noopCallbacks({
+                onFileChunkReceived: (_peer, sha) => {
+                    seen.push(sha);
+                },
+                onFileComplete: () => resolve(),
+            });
+            const node = { dialProtocol: vi.fn(async () => providerStream) };
+            void requestFile(node as never, { toString: () => 'provider-peer' } as never, wanted, 0, callbacks);
+        });
+
+        expect(seen).toEqual([wanted]);
+    });
+});
+
 describe('file-transfer integrity over the receive path (#47)', () => {
     it('reassembles chunks to a byte-identical file with matching sha256', async () => {
         // Build a >10MB payload so the test exercises the large-file path.

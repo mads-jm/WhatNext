@@ -218,10 +218,18 @@ export interface FileTransferCallbacks {
  * Incoming stream message dispatch:
  *   manifest-request → resolve manifest → send manifest-response on same stream
  *   file-request     → register stream in activeServeStreams, notify main to start serving
- *   file-chunk       → forward to main (writing to disk happens there)
  *   file-complete    → notify main, clean up receive stream
  *   file-error       → notify main, clean up receive stream
  *   transfer-cancel  → notify main, clean up both stream registries
+ *   anything else    → logged and the stream is closed
+ *
+ * Note there is deliberately no `file-chunk` case here. Chunks only ever arrive on a
+ * stream *we* opened with a file-request (see `requestFile`), which is read by
+ * `handleIncomingFileStream`, never by this handler. The branch that used to accept a
+ * chunk as an inbound stream's first message had no producer in any known peer and let
+ * an arbitrary peer push bytes at us; it was deleted rather than guarded. Whether a
+ * peer should ever be able to open a stream and lead with a chunk is a protocol
+ * question — see the stream-opening-semantics design-review issue.
  */
 export function registerFileTransferProtocol(
     libp2p: Libp2p,
@@ -244,7 +252,7 @@ export function registerFileTransferProtocol(
                 return
             }
 
-            const { message, rest } = firstRead
+            const { message } = firstRead
 
             switch (message.type) {
                 case 'manifest-request': {
@@ -281,19 +289,6 @@ export function registerFileTransferProtocol(
 
                     // The stream stays open until main closes it via sendFileChunk (file-complete/error)
                     // We intentionally do NOT await here — the stream lifetime is managed externally
-                    break
-                }
-
-                case 'file-chunk': {
-                    // We are receiving a file; this is a chunk arriving on the receive stream
-                    // (This path fires when the provider sends chunks back on the same stream
-                    //  that we opened with file-request. The handler is re-entered per message
-                    //  via the looped read below.)
-                    const { sha256, offset, data } = message
-                    callbacks.onFileChunkReceived(remotePeerId, sha256, offset, data)
-
-                    // Continue reading more messages on this same stream
-                    await handleIncomingFileStream(iter, rest, remotePeerId, callbacks, stream)
                     break
                 }
 
@@ -339,8 +334,13 @@ export function registerFileTransferProtocol(
 }
 
 /**
- * Read subsequent framed messages off a receive stream (after the initial file-chunk).
- * Called in a loop for the provider→requester side of a file transfer.
+ * Read framed messages off a receive stream — the provider→requester half of a file
+ * transfer, on the stream `requestFile` opened. Called in a loop until the transfer
+ * ends or the stream does.
+ *
+ * Chunks are accepted only for a `peerId:sha256` whose registered receive stream *is*
+ * this stream, so bytes for a file we never requested (or for a transfer already
+ * cancelled/completed/cleaned up) are dropped here and never reach main.
  */
 async function handleIncomingFileStream(
     iter: AsyncIterator<Uint8Array | { subarray(): Uint8Array }>,
@@ -378,9 +378,18 @@ async function handleIncomingFileStream(
                 break
             }
 
-            case 'file-chunk':
+            case 'file-chunk': {
+                // Outstanding-request check: only bytes for a file we asked this peer
+                // for, on the very stream we opened for it, are forwarded to main.
+                if (activeReceiveStreams.get(serveKey(remotePeerId, message.sha256)) !== stream) {
+                    console.warn(
+                        `[FileTransfer] Dropping chunk for ${String(message.sha256).slice(0, 8)}... from ${remotePeerId.slice(0, 12)}...: no outstanding request on this stream`
+                    )
+                    break
+                }
                 callbacks.onFileChunkReceived(remotePeerId, message.sha256, message.offset, message.data)
                 break
+            }
 
             case 'file-complete':
                 console.log(`[FileTransfer] File complete: ${message.sha256.slice(0, 8)}...`)
