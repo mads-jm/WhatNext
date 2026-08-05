@@ -445,7 +445,8 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
                 // load the file-transfer module on every app start rather than
                 // on the first file-transfer message.
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
-                _fileTransferHandler = require('./file-transfer/file-transfer-ipc').handleFileTransferUtilityMessage;
+                const ftIpc = require('./file-transfer/file-transfer-ipc');
+                _fileTransferHandler = ftIpc.handleFileTransferUtilityMessage;
             }
             if (!_fileTransferHandler?.(message)) {
                 console.warn('[Main] Unknown utility message type:', message.type);

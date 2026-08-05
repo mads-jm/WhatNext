@@ -92,11 +92,14 @@ function useDebouncedCallback<T extends (...args: any[]) => void>(
     // Justification: the forwarding closure has to accept whatever `T` accepts,
     // which is only expressible as `any[]` here for the same contravariance
     // reason as the constraint above; the result is re-typed as `T` on return.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return useCallback((...args: any[]) => {
-        if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => fnRef.current(...args), delayMs);
-    }, [delayMs]) as unknown as T;
+    return useCallback(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (...args: any[]) => {
+            if (timer.current) clearTimeout(timer.current);
+            timer.current = setTimeout(() => fnRef.current(...args), delayMs);
+        },
+        [delayMs],
+    ) as unknown as T;
 }
 
 // ========================================
