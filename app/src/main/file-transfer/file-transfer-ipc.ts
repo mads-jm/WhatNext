@@ -74,8 +74,21 @@ const playlistTrackMap = new Map<string, Set<string>>()
 /** sha256 → ActiveTransfer (download state, peer → us) */
 const activeTransfers = new Map<string, ActiveTransfer>()
 
-/** sha256 → open file handle (for partial writes) */
-const partialHandles = new Map<string, fs.promises.FileHandle>()
+/**
+ * sha256 → the *promise* of the open file handle for that transfer's `.tmp`.
+ *
+ * A promise, not a handle: chunks are dispatched concurrently (`void
+ * handleChunkReceived`), so two chunks for one sha256 both used to find the map
+ * empty, both open a descriptor, and the second `set` orphaned the first — a leak
+ * for the process's lifetime, and on Windows an open descriptor that can block the
+ * rename in `handleTransferComplete`. Storing the in-flight open synchronously means
+ * the second chunk awaits the first chunk's open instead of racing it.
+ *
+ * The map entry is also the transfer's *liveness token* for the receive path: it is
+ * deleted synchronously by `closePartialHandle`, so anything awaiting an entry can
+ * tell teardown ran under it by re-checking identity after its await.
+ */
+const partialHandles = new Map<string, Promise<fs.promises.FileHandle>>()
 
 /** sha256 → bytes-per-second tracker */
 const speedTrackers = new Map<string, { startMs: number; startBytes: number }>()
@@ -87,8 +100,22 @@ let persistTimer: NodeJS.Timeout | null = null
 // Download queue (concurrency control)
 // ========================================
 
+/**
+ * A download waiting for a concurrency slot.
+ *
+ * Only what dispatch and accounting need: fresh requests come from a `FileEntry`,
+ * resumes come from an `ActiveTransfer`, and neither carries anything else the queue
+ * uses — so the queue holds neither shape rather than making one masquerade as the other.
+ */
+interface QueuedDownload {
+    peerId: string
+    sha256: string
+    type: FileEntry['type']
+    offsetBytes: number
+}
+
 /** Pending download requests not yet dispatched to the utility process */
-const downloadQueue: Array<{ peerId: string; file: FileEntry; offsetBytes: number }> = []
+const downloadQueue: QueuedDownload[] = []
 
 /** Number of audio transfers currently in-flight */
 let activeAudioCount = 0
@@ -118,7 +145,7 @@ const slotHolders = new Map<string, 'audio' | 'artwork'>()
  */
 function removeQueuedRequests(sha256: string): void {
     for (let i = downloadQueue.length - 1; i >= 0; i--) {
-        if (downloadQueue[i].file.sha256 === sha256) {
+        if (downloadQueue[i].sha256 === sha256) {
             downloadQueue.splice(i, 1)
         }
     }
@@ -154,7 +181,7 @@ function processQueue(): void {
     let i = 0
     while (i < downloadQueue.length) {
         const item = downloadQueue[i]
-        const isAudio = item.file.type === 'audio'
+        const isAudio = item.type === 'audio'
 
         if (isAudio) {
             if (activeAudioCount >= FILE_TRANSFER_CONFIG.MAX_CONCURRENT_AUDIO) {
@@ -172,12 +199,12 @@ function processQueue(): void {
         }
 
         downloadQueue.splice(i, 1)
-        slotHolders.set(item.file.sha256, isAudio ? 'audio' : 'artwork')
+        slotHolders.set(item.sha256, isAudio ? 'audio' : 'artwork')
 
         utility.postMessage(
             createIPCMessage(
                 MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE,
-                { peerId: item.peerId, sha256: item.file.sha256, offsetBytes: item.offsetBytes },
+                { peerId: item.peerId, sha256: item.sha256, offsetBytes: item.offsetBytes },
             ),
         )
         // Don't increment i — the splice shifted the array
@@ -297,10 +324,26 @@ async function cleanupStalePartials(): Promise<void> {
 /**
  * Resume any pending/transferring transfers for the given peer.
  * Call this when a peer's handshake completes with file-transfer capability.
+ *
+ * Resumes are *queued*, not dispatched: they used to post FILE_TRANSFER_REQUEST_FILE
+ * straight to the utility, so they never entered `slotHolders` and the
+ * `MAX_CONCURRENT_*` limits simply did not apply to them — a peer reconnecting with
+ * twenty incomplete audio files started all twenty at once, and a transfer still
+ * sitting in `downloadQueue` was requested here *and* dispatched again by
+ * `processQueue`, orphaning one of the two receive streams in the utility.
+ *
+ * Each resumable transfer is re-queued at the *front* (finish partials before starting
+ * anything new) and its previous slot, if any, is released first so the re-dispatch
+ * re-takes exactly one. See impl-notes for why a slot-holding transfer is re-requested
+ * rather than skipped: a peer that vanishes mid-transfer is never reported to us (the
+ * utility closes the receive stream silently on `peer:disconnect`), so resume is the
+ * only path that can un-stick it, and skipping would hold its slot forever.
  */
 export async function resumeIncompleteTransfers(peerId: string): Promise<void> {
     const utility = _utilityGetter?.()
     if (!utility) return
+
+    const resumed: QueuedDownload[] = []
 
     for (const [sha256, transfer] of activeTransfers) {
         if (transfer.peerId !== peerId) continue
@@ -317,19 +360,29 @@ export async function resumeIncompleteTransfers(peerId: string): Promise<void> {
             transfer.bytesReceived = 0
         }
 
-        transfer.status = 'transferring'
+        // Queued, not in flight: the status the renderer shows must match where the
+        // transfer actually is, and it flips back to 'transferring' on the first chunk.
+        transfer.status = 'pending'
         speedTrackers.set(sha256, { startMs: Date.now(), startBytes: offsetBytes })
 
         console.log(
-            `[FileTransfer] Resuming transfer ${sha256} for peer ${peerId} at offset ${offsetBytes}`,
+            `[FileTransfer] Queueing resume of ${sha256} for peer ${peerId} at offset ${offsetBytes}`,
         )
 
-        utility.postMessage(
-            createIPCMessage(
-                MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE,
-                { peerId, sha256, offsetBytes },
-            ),
-        )
+        // Idempotence: whatever this transfer already had in the queue is dropped, and
+        // whatever slot it already held is given back, so N handshakes for one peer
+        // leave exactly one queue entry and at most one slot per transfer.
+        removeQueuedRequests(sha256)
+        releaseSlot(sha256)
+        resumed.push({ peerId, sha256, type: transfer.type, offsetBytes })
+    }
+
+    // Unshift as a block so the resumed transfers keep their own relative order
+    // while collectively jumping ahead of not-yet-dispatched fresh requests.
+    if (resumed.length > 0) {
+        downloadQueue.unshift(...resumed)
+        processQueue()
+        persistTransferState()
     }
 }
 
@@ -460,7 +513,12 @@ export async function registerFileTransferHandlers(
                 })
 
                 // Task B: Enqueue instead of dispatching immediately
-                downloadQueue.push({ peerId, file, offsetBytes })
+                downloadQueue.push({
+                    peerId,
+                    sha256: file.sha256,
+                    type: file.type,
+                    offsetBytes,
+                })
             }
 
             // Task B: Drain the queue now that all items are enqueued
@@ -949,25 +1007,48 @@ async function handleChunkReceived(payload: {
     const chunkBuf = verdict.chunk
     const partialPath = path.join(partialDir, `${sha256}.tmp`)
 
-    // Open (or reuse) file handle.
-    // We need positional writes (offset-based chunks), so we must use 'r+'.
-    // First ensure the file exists, then open with 'r+' which supports pwrite semantics.
-    let handle = partialHandles.get(sha256)
-    if (!handle) {
-        try {
-            // Create the file if it doesn't exist, then open for random-access writing
-            await fs.promises.open(partialPath, 'a').then((h) => h.close())
-            handle = await fs.promises.open(partialPath, 'r+')
-            partialHandles.set(sha256, handle)
-        } catch (err) {
-            console.error('[FileTransfer] Cannot open partial file:', err)
-            return
-        }
+    // Open (or join) this transfer's single file handle. The promise goes into the map
+    // *before* the first await, so a concurrent chunk for the same sha256 waits on this
+    // open rather than starting a second one.
+    let opening = partialHandles.get(sha256)
+    if (!opening) {
+        opening = openPartial(partialPath)
+        partialHandles.set(sha256, opening)
+    }
+
+    let handle: fs.promises.FileHandle
+    try {
+        handle = await opening
+    } catch (err) {
+        // A failed open must not be cached, or every later chunk inherits the failure.
+        if (partialHandles.get(sha256) === opening) partialHandles.delete(sha256)
+        console.error('[FileTransfer] Cannot open partial file:', err)
+        return
+    }
+
+    // Re-check after the await, the way `handleManifestRequest` re-checks sharing after
+    // its build: completion, abort or cancel may have torn this transfer down while we
+    // were opening. `closePartialHandle` drops the map entry synchronously, so a lost
+    // identity means the handle we hold is closed and the `.tmp` is being renamed or
+    // unlinked right now — writing here would resurrect a partial we just finished with.
+    if (partialHandles.get(sha256) !== opening) {
+        console.warn(
+            `[FileTransfer] Dropped chunk for ${sha256.slice(0, 8)}... — transfer was closed while opening its partial`,
+        )
+        return
     }
 
     try {
         await handle.write(chunkBuf, 0, chunkBuf.length, offset)
     } catch (err) {
+        // Same re-check: if teardown closed the handle under this write, the transfer is
+        // over, not broken — failing it here would delete a `.tmp` mid-rename.
+        if (partialHandles.get(sha256) !== opening) {
+            console.warn(
+                `[FileTransfer] Dropped chunk for ${sha256.slice(0, 8)}... — transfer was closed mid-write`,
+            )
+            return
+        }
         const errMsg = err instanceof Error ? err.message : String(err)
         console.error('[FileTransfer] Failed to write chunk:', errMsg)
         // Task D: abort transfer — corrupt partial is useless; stop the peer sending more chunks
@@ -1019,19 +1100,25 @@ async function handleTransferComplete(payload: {
         return
     }
 
+    const transfer = activeTransfers.get(sha256)
+
+    // Flip the status before anything is awaited, exactly as `abortTransfer` does: from
+    // here on the file belongs to verification and the rename, so a chunk still in
+    // flight must be dropped by the guard rather than reopening the partial underneath
+    // us. Doing this after the close (as it used to be) left a window in which a late
+    // chunk saw 'transferring', reopened a descriptor and recreated the `.tmp`.
+    if (transfer) transfer.status = 'verifying'
+
     // Task B: release the in-flight slot before draining the queue
     releaseSlot(sha256)
     processQueue()
 
     await closePartialHandle(sha256)
 
-    const transfer = activeTransfers.get(sha256)
     if (!transfer) {
         console.warn('[FileTransfer] complete received for unknown transfer:', sha256)
         return
     }
-
-    transfer.status = 'verifying'
 
     const partialPath = path.join(partialDir, `${sha256}.tmp`)
 
@@ -1133,15 +1220,37 @@ function handleTransferError(payload: {
 // Helpers
 // ========================================
 
+/**
+ * Open a partial file for random-access writing.
+ *
+ * We need positional writes (offset-based chunks), so we must use 'r+', which will not
+ * create the file — hence the 'a' open first. Unchanged behaviour; it lives in its own
+ * function only so the whole open can be handed to `partialHandles` as one promise.
+ */
+async function openPartial(partialPath: string): Promise<fs.promises.FileHandle> {
+    // Create the file if it doesn't exist, then open for random-access writing
+    await fs.promises.open(partialPath, 'a').then((h) => h.close())
+    return fs.promises.open(partialPath, 'r+')
+}
+
+/**
+ * Close a transfer's partial handle and forget it. Idempotent: a second call (complete
+ * then a late error, cancel then complete, …) finds nothing and returns without throwing.
+ *
+ * The map entry is dropped *synchronously*, before awaiting the open — that is what
+ * makes the identity re-checks in `handleChunkReceived` correct. Awaiting the open (as
+ * opposed to ignoring an in-flight one) is what stops an open that started before
+ * teardown from recreating the `.tmp` after the rename or unlink.
+ */
 async function closePartialHandle(sha256: string): Promise<void> {
-    const handle = partialHandles.get(sha256)
-    if (handle) {
-        try {
-            await handle.close()
-        } catch {
-            // best effort
-        }
-        partialHandles.delete(sha256)
+    const opening = partialHandles.get(sha256)
+    if (!opening) return
+    partialHandles.delete(sha256)
+    try {
+        const handle = await opening
+        await handle.close()
+    } catch {
+        // best effort — a failed open has nothing to close, a double close is a no-op
     }
 }
 
@@ -1150,11 +1259,17 @@ async function closePartialHandle(sha256: string): Promise<void> {
  * the bytes arriving from the peer we asked cannot be written (bad offset, oversize
  * chunk, disk error).
  *
- * `failTransfer` runs first so the status flips to `error` synchronously — any chunk
- * still in flight for this transfer is dropped by the guard rather than recreating
- * the file we are about to delete.
+ * The whole prologue is synchronous: the handle is detached and the status flips to
+ * `error` before anything is awaited, so a chunk still in flight for this transfer is
+ * dropped — by the guard if it has not started yet, by the identity re-check if it is
+ * mid-open — rather than recreating the file we are about to delete.
+ *
+ * The close is started *here* rather than left to `failTransfer`, which fires it off
+ * with `void`: only a close we can await tells us that an open still in flight has
+ * finished, and the unlink below must not overtake one (`open(path, 'a')` creates).
  */
 async function abortTransfer(peerId: string, sha256: string, error: string): Promise<void> {
+    const closed = closePartialHandle(sha256)
     failTransfer(sha256, error)
 
     const utility = _utilityGetter?.()
@@ -1164,7 +1279,7 @@ async function abortTransfer(peerId: string, sha256: string, error: string): Pro
         )
     }
 
-    await closePartialHandle(sha256)
+    await closed
     // A peer that oversteps its own declared size is not a peer whose partial we want
     // to resume from, and a partial we failed to write to is useless anyway.
     await fs.promises.unlink(path.join(partialDir, `${sha256}.tmp`)).catch(() => undefined)
