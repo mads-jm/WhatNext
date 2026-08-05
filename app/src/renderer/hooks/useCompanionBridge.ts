@@ -69,6 +69,11 @@ interface UseCompanionBridgeResult {
 // Debounce helper
 // ========================================
 
+// Justification: `(...args: any[]) => void` is the constraint idiom for "any
+// function" and cannot be `unknown[]`. Parameters are contravariant, so a
+// concrete handler such as `(id: string) => void` does not satisfy
+// `(...args: unknown[]) => void` — the constraint would reject every real
+// caller. Callers still get `T` back, so no `any` escapes this helper.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function useDebouncedCallback<T extends (...args: any[]) => void>(
     fn: T,
@@ -84,6 +89,9 @@ function useDebouncedCallback<T extends (...args: any[]) => void>(
         };
     }, []);
 
+    // Justification: the forwarding closure has to accept whatever `T` accepts,
+    // which is only expressible as `any[]` here for the same contravariance
+    // reason as the constraint above; the result is re-typed as `T` on return.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return useCallback((...args: any[]) => {
         if (timer.current) clearTimeout(timer.current);

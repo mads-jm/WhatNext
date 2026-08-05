@@ -571,7 +571,6 @@ const electronHandler = {
 if (typeof window.electron === 'undefined') {
     contextBridge.exposeInMainWorld('electron', electronHandler);
 } else {
-    // eslint-disable-next-line no-console
     console.error(
         'Cannot bind `electron` API: property already exists on the window object.'
     );

@@ -51,6 +51,9 @@ const APP_URI_PATTERNS: Record<string, RegExp> = {
 const MAX_URL_LENGTH = 2048;
 
 /** C0/C1 control characters — never valid inside a URL we open. */
+// Justification: this pattern's whole job is to detect control characters, so
+// the rule can only ever be wrong here. Already written with \u escapes, which
+// does not satisfy it either.
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/;
 

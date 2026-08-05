@@ -113,6 +113,12 @@ export function SessionView({ playlistId }: SessionViewProps) {
             alive = false;
             sub?.unsubscribe();
         };
+    // Justification: the dependency is a computed value-key, not an identity.
+    // `playlist` is a fresh object on every RxDB emission, so depending on it
+    // would resubscribe the track query constantly; joining the id list makes
+    // the effect re-run only when the membership actually changes. The rule
+    // cannot statically verify a computed dependency, and the alternatives
+    // (depend on `playlist`, or memoise it) both change when this resubscribes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playlist?.trackIds.join(',')]);
 
@@ -138,6 +144,10 @@ export function SessionView({ playlistId }: SessionViewProps) {
         });
 
         return () => { alive = false; };
+    // Justification: same computed value-key pattern as the effect above —
+    // `sessionState` is replaced wholesale on every session update, so the
+    // participant list is keyed by value to avoid refetching users on every
+    // unrelated session change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionState?.participantIds.join(',')]);
 

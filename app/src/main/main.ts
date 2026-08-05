@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 /*
 Main Process (main.ts): Node.js context. Manages lifecycle, windows, and OS-level capabilities.
 
@@ -156,6 +155,10 @@ function spawnP2PUtilityProcess(): void {
     console.log('[Main] ========================================');
     console.log('[Main] Starting P2P utility process...');
     console.log('[Main] Utility path:', utilityPath);
+    // Justification: a startup diagnostic in a CommonJS module. Converting it
+    // to a top-level `import` would add a module-load-time dependency for one
+    // log line; changing it to `await import()` would make this function async.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     console.log('[Main] File exists:', require('fs').existsSync(utilityPath));
     console.log('[Main] ========================================');
 
@@ -436,6 +439,11 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
         default: {
             // Delegate file-transfer messages before warning
             if (!_fileTransferHandler) {
+                // Justification: deliberately lazy and synchronous. This runs
+                // inside a synchronous message dispatcher, so `await import()`
+                // is not available, and hoisting it to a static import would
+                // load the file-transfer module on every app start rather than
+                // on the first file-transfer message.
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
                 _fileTransferHandler = require('./file-transfer/file-transfer-ipc').handleFileTransferUtilityMessage;
             }

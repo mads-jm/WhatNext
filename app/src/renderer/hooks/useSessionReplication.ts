@@ -54,7 +54,13 @@ export function useSessionReplication(enabled: boolean) {
             // 1. Subscribe to local RxDB changes → push to peers
             // ------------------------------------------------------------------
             for (const col of SESSION_COLLECTIONS) {
-                // RxDB collection change$ emits on any insert/update/delete
+                // RxDB collection change$ emits on any insert/update/delete.
+                // Justification: `db[col]` does type-check (SESSION_COLLECTIONS
+                // is `as const`), but it yields a *union* of RxCollection types
+                // whose `.$.subscribe` overloads are mutually incompatible —
+                // "This expression is not callable" (TS2349, verified). Making
+                // it work needs a generic per-collection helper, i.e. a real
+                // refactor of the replication path, not a lint fix.
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const collection = (db as any)[col];
                 if (!collection) continue;
@@ -129,6 +135,11 @@ export function useSessionReplication(enabled: boolean) {
                     if (!alive) return;
                     const { requestId, collection: col, checkpoint, limit = 500 } = payload;
 
+                    // Justification: `col` arrives off the wire as a plain
+                    // string, so no static index type applies — and the
+                    // `if (!collection)` branch below is precisely the runtime
+                    // check that makes an unknown name safe. Same union-of-
+                    // signatures obstacle as the change$ subscription above.
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const collection = (db as any)[col];
                     if (!collection) {

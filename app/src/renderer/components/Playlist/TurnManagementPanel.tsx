@@ -152,7 +152,6 @@ export function TurnManagementPanel({ playlist, participants, tracks, totalDurat
         if (turnQuotaFull && !isComplete) {
             advanceTurn(playlist.id);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [turnQuotaFull, isComplete, playlist.id]);
 
     const [confirmComplete, setConfirmComplete] = useState(false);

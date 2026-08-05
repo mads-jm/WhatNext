@@ -55,6 +55,10 @@ beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getDatabase).mockResolvedValue({
         playlists: { findOne: () => ({ exec: async () => ({ trackIds: [] }) }) },
+        // Justification: this stands in for a whole `RxDatabase<WhatNextCollections>`
+        // while implementing the one query under test. Typing it honestly means
+        // constructing five real RxCollections (or a deep Partial that RxDB's
+        // types reject), which would be more mock than test.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     Object.assign(window, {

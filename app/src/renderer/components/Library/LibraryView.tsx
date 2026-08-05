@@ -84,7 +84,6 @@ export function LibraryView() {
                 t.album.toLowerCase().includes(q)
             );
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tracks, search, sourceFilter]);
 
     const spotifyCount = tracks.filter((t) => resolveSource(t) === 'spotify').length;

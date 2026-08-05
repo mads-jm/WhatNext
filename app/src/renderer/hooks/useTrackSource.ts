@@ -342,6 +342,12 @@ export function useTrackSource(options: UseTrackSourceOptions): UseTrackSourceRe
             pollRef.current = null;
             clearInterval(id);
         };
+    // Justification: the dependency list is deliberately narrower than what the
+    // rule computes. `poll` closes over `config` and `onNewTracks`, which
+    // callers pass as fresh object/function literals each render — including
+    // them would tear down and restart the polling interval on every render.
+    // That is a behaviour change, not a correctness fix; widening this list
+    // safely requires memoising the caller's props first.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enabled, config.type, playlistId]);
 

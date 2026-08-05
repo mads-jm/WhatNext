@@ -35,6 +35,9 @@ export function sanitizeFilename(filename: string, sha256: string): string {
 
     // Step 3: strip OS-illegal characters (Windows superset — safe on all platforms)
     // Illegal: < > : " | ? * \x00-\x1f and leading/trailing dots/spaces
+    // Justification: matching control characters is the point — the rule exists
+    // to catch them appearing by accident, and there is no rewrite of this
+    // class (\u escapes included) that both keeps the range and satisfies it.
     // eslint-disable-next-line no-control-regex
     safe = safe.replace(/[<>:"|?*\x00-\x1f]/g, '');
     safe = safe.trim().replace(/^\.+/, '').replace(/\.+$/, '');
