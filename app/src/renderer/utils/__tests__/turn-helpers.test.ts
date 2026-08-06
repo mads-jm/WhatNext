@@ -183,3 +183,71 @@ describe('computeEffectiveTurn', () => {
         });
     });
 });
+
+describe('concurrent adds mis-attribute the turn — KNOWN BUG, pinned for #43', () => {
+    /*
+     * This describe pins WRONG behaviour on purpose. Do not "fix" the
+     * expectations; fix the race and then update them.
+     *
+     * The race (map for whoever fixes #43), line numbers as of 2026-08-06:
+     *  - Write-path trigger: `renderer/db/services/playlist-service.ts`
+     *    `addTrackToPlaylist:136` increments `turnTracksAdded` and calls
+     *    `advanceTurn:203` — two peers adding concurrently interleave those
+     *    steps, and LWW merges the two track lists without merging the counters.
+     *  - Two independent auto-advance effects can each fire on the merged state:
+     *    `components/Playlist/TurnManagementPanel.tsx:206-210` and
+     *    `components/Session/SessionView.tsx:212-216`.
+     *  - The derivation is triplicated: `computeEffectiveTurn` here, an inline
+     *    copy in `TurnManagementPanel.tsx:163-189`, and `SessionView.tsx:205-210`
+     *    which calls the helper. All three must agree for any fix to hold — and
+     *    they do not start from the same order: the panel resolves it through
+     *    `resolvedOrder(playlist, participants)` (`TurnManagementPanel.tsx:143`),
+     *    the helper through `resolvedTurnOrder(playlist)`.
+     *
+     * The pins below use the derivation layer only — no db, no components — so
+     * they show the *consequence* of the interleaving without touching the
+     * racy write path (owned by the parallel db-services cycle).
+     */
+
+    it('loses a concurrent add: a foreign trailing track resets the turn user to 0 tracks', () => {
+        // Turn is stored as OWNER. OWNER adds a track; COLLAB_A adds one at the
+        // same moment (their client thought it was their turn). The merged list
+        // ends with COLLAB_A's track, so the backwards walk breaks immediately.
+        const playlist = makePlaylist({ currentTurnUserId: OWNER });
+
+        const result = computeEffectiveTurn(
+            playlist,
+            tracksBy(OWNER, COLLAB_A),
+        );
+
+        // WRONG: OWNER already used their turn, but the quota reads as unfilled
+        // and the turn stays with OWNER — COLLAB_A's add bought them nothing.
+        expect(result).toEqual({
+            effectiveTurnUserId: OWNER,
+            turnTracksAdded: 0,
+            turnQuotaFull: false,
+        });
+    });
+
+    it('undercounts a split run: an interleaved track hides earlier adds this turn', () => {
+        // tracksPerTurn 2, OWNER added two tracks this turn but COLLAB_A's
+        // concurrent add landed between them.
+        const playlist = makePlaylist({
+            currentTurnUserId: OWNER,
+            tracksPerTurn: 2,
+        });
+
+        const result = computeEffectiveTurn(
+            playlist,
+            tracksBy(OWNER, COLLAB_A, OWNER),
+        );
+
+        // WRONG: OWNER has added 2 of 2 this turn; the derivation sees 1 and
+        // grants them a third add.
+        expect(result).toEqual({
+            effectiveTurnUserId: OWNER,
+            turnTracksAdded: 1,
+            turnQuotaFull: false,
+        });
+    });
+});
