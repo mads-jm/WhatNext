@@ -19,6 +19,10 @@
  * Concurrency is exercised by *interleaving*, never by timing: `handleChunkReceived`
  * is dispatched fire-and-forget and runs synchronously up to its first `await`, so
  * two messages pushed back-to-back are genuinely overlapped by construction.
+ *
+ * Envelope builders and settle helpers shared with `file-transfer-ipc.test.ts` live
+ * in `./harness.ts`; the temp dir, the electron mock and the fixtures stay here, so
+ * the isolation described above is real and not just textual.
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
@@ -36,6 +40,15 @@ import {
     UtilityToMainMessageType,
     createIPCMessage,
 } from '../../../shared/core/ipc-protocol';
+import {
+    TOTAL,
+    audioEntry,
+    flush,
+    makeChunkMessage,
+    makePartialPath,
+    payloadsOfType,
+    settled,
+} from './harness';
 
 const docsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wn-receive-lifecycle-'));
 type IpcHandler = (event: unknown, args: never) => unknown;
@@ -67,8 +80,6 @@ const PEER_C = 'peer-resume-inflight';
 const PEER_D = 'peer-resume-queued';
 const PEER_E = 'peer-resume-freshqueued';
 const PEER_FRESH = 'peer-fresh-requests';
-
-const TOTAL = 64;
 
 /** A real body + its real hash — the completion path verifies before it renames. */
 const FINISHED_BODY = Buffer.concat([
@@ -118,6 +129,10 @@ function opensFor(sha256: string, flags?: string): OpenRecord[] {
     );
 }
 
+/**
+ * Kept local rather than shared with `file-transfer-ipc.test.ts`: resume is
+ * per-peer and per-status, so every fixture here overrides a different field.
+ */
 function seeded(
     overrides: Partial<ActiveTransfer> & { sha256: string; peerId: string },
 ): ActiveTransfer {
@@ -133,22 +148,7 @@ function seeded(
     };
 }
 
-function chunkMessage(
-    sha256: string,
-    offset: number,
-    body: Buffer,
-    peerId = PEER_CHUNK,
-) {
-    return createIPCMessage(
-        UtilityToMainMessageType.FILE_TRANSFER_CHUNK_RECEIVED,
-        {
-            peerId,
-            sha256,
-            offset,
-            data: body.toString('base64'),
-        },
-    );
-}
+const chunkMessage = makeChunkMessage(PEER_CHUNK);
 
 function completeMessage(sha256: string, peerId = PEER_CHUNK) {
     return createIPCMessage(UtilityToMainMessageType.FILE_TRANSFER_COMPLETE, {
@@ -157,34 +157,14 @@ function completeMessage(sha256: string, peerId = PEER_CHUNK) {
     });
 }
 
-const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
-const settled = (assertion: () => void) =>
-    vi.waitFor(assertion, { timeout: 5000, interval: 10 });
-
-function partialPath(sha256: string): string {
-    return path.join(partialDir, `${sha256}.tmp`);
-}
+const partialPath = makePartialPath(partialDir);
 
 /** The sha256 of every FILE_TRANSFER_REQUEST_FILE we have posted, in dispatch order. */
 function dispatched(): string[] {
-    return utility.postMessage.mock.calls
-        .map((c) => c[0])
-        .filter(
-            (m) =>
-                m.type === MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE,
-        )
-        .map((m) => (m.payload as { sha256: string }).sha256);
-}
-
-function audioEntry(sha256: string): FileEntry {
-    return {
-        trackId: `track-${sha256.slice(0, 4)}`,
-        type: 'audio',
-        sha256,
-        sizeBytes: TOTAL,
-        mimeType: 'audio/mpeg',
-        filename: `${sha256.slice(0, 4)}.mp3`,
-    };
+    return payloadsOfType<{ sha256: string }>(
+        utility.postMessage,
+        MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE,
+    ).map((payload) => payload.sha256);
 }
 
 beforeAll(async () => {

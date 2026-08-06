@@ -12,6 +12,10 @@
  *     (the resume path), so they never touch the download queue;
  *   - queue tests go through `file-transfer:request-files`, so their slot accounting
  *     is not perturbed by the chunk tests.
+ *
+ * Envelope builders and settle helpers shared with `receive-lifecycle.test.ts` live
+ * in `./harness.ts`; the temp dir, the electron mock and the fixtures stay here, so
+ * that separation is real and not just textual.
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
@@ -30,6 +34,15 @@ import {
     UtilityToMainMessageType,
     createIPCMessage,
 } from '../../../shared/core/ipc-protocol';
+import {
+    TOTAL,
+    audioEntry,
+    flush,
+    makeChunkMessage,
+    makePartialPath,
+    payloadsOfType,
+    settled,
+} from './harness';
 
 const docsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wn-filetransfer-'));
 type IpcHandler = (event: unknown, args: never) => unknown;
@@ -66,7 +79,6 @@ const SHA = {
 };
 
 const PEER = 'peer-we-asked';
-const TOTAL = 64;
 
 /**
  * Serve-path fixture: three real files, one per FileEntry type, already present in a
@@ -107,6 +119,11 @@ function sha256Of(body: Buffer): string {
 const utility = { postMessage: vi.fn() };
 const win = { webContents: { send: vi.fn() } };
 
+/**
+ * Kept local rather than shared with `receive-lifecycle.test.ts`: that suite seeds
+ * per-peer, per-status fixtures and takes an overrides object, this one only ever
+ * needs "another transferring file from the one peer we asked".
+ */
 function seeded(sha256: string): ActiveTransfer {
     return {
         sha256,
@@ -121,60 +138,19 @@ function seeded(sha256: string): ActiveTransfer {
     };
 }
 
-function chunkMessage(
-    sha256: string,
-    offset: number,
-    body: Buffer,
-    peerId = PEER,
-) {
-    return createIPCMessage(
-        UtilityToMainMessageType.FILE_TRANSFER_CHUNK_RECEIVED,
-        {
-            peerId,
-            sha256,
-            offset,
-            data: body.toString('base64'),
-        },
-    );
-}
-
-/**
- * Let the `void`-dispatched async handlers settle.
- *
- * Rejections are synchronous (the guard returns before the first `await`), so only
- * the accepted-chunk assertions need to wait for the disk write to land.
- */
-const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
-const settled = (assertion: () => void) =>
-    vi.waitFor(assertion, { timeout: 5000, interval: 10 });
-
-function partialPath(sha256: string): string {
-    return path.join(partialDir, `${sha256}.tmp`);
-}
+const chunkMessage = makeChunkMessage(PEER);
+const partialPath = makePartialPath(partialDir);
 
 function tmpFiles(): string[] {
     return fs.readdirSync(partialDir).filter((f) => f.endsWith('.tmp'));
 }
 
+/** Kept as payload objects here; `receive-lifecycle.test.ts` wants the shas alone. */
 function requestFileMessages(): Array<{ sha256: string }> {
-    return utility.postMessage.mock.calls
-        .map((c) => c[0])
-        .filter(
-            (m) =>
-                m.type === MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE,
-        )
-        .map((m) => m.payload as { sha256: string });
-}
-
-function audioEntry(sha256: string): FileEntry {
-    return {
-        trackId: `track-${sha256.slice(0, 4)}`,
-        type: 'audio',
-        sha256,
-        sizeBytes: TOTAL,
-        mimeType: 'audio/mpeg',
-        filename: `${sha256.slice(0, 4)}.mp3`,
-    };
+    return payloadsOfType<{ sha256: string }>(
+        utility.postMessage,
+        MainToUtilityMessageType.FILE_TRANSFER_REQUEST_FILE,
+    );
 }
 
 beforeAll(async () => {
@@ -622,22 +598,15 @@ interface ServeMessage {
 }
 
 function serveMessages(): ServeMessage[] {
-    return utility.postMessage.mock.calls
-        .map((c) => c[0])
-        .filter(
-            (m) =>
-                m.type === MainToUtilityMessageType.FILE_TRANSFER_SERVE_CHUNK,
-        )
-        .map((m) => (m.payload as { message: ServeMessage }).message);
+    return payloadsOfType<{ message: ServeMessage }>(
+        utility.postMessage,
+        MainToUtilityMessageType.FILE_TRANSFER_SERVE_CHUNK,
+    ).map((payload) => payload.message);
 }
 
 function lastManifest(): FileManifest | undefined {
-    const responses = utility.postMessage.mock.calls
-        .map((c) => c[0])
-        .filter(
-            (m) =>
-                m.type ===
-                MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE,
-        );
-    return responses.at(-1)?.payload.manifest as FileManifest | undefined;
+    return payloadsOfType<{ manifest: FileManifest }>(
+        utility.postMessage,
+        MainToUtilityMessageType.FILE_TRANSFER_MANIFEST_RESPONSE,
+    ).at(-1)?.manifest;
 }
