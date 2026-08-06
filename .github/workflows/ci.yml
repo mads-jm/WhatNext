@@ -86,18 +86,18 @@ jobs:
         run: npm ci
         working-directory: app
 
-      # Vitest only. The suite also covers ../relay (see app/vitest.config.ts
-      # `include`), which resolves its imports out of app/node_modules. service
-      # has its own runner and its own job below. Playwright e2e is deliberately
-      # absent: it needs a built app and a display.
+      # Vitest only, and app's own suites only — relay and service each own a
+      # runner and a job below, so neither rides along here. Playwright e2e is
+      # deliberately absent: it needs a built app and a display.
       - name: Test
         run: npm test
         working-directory: app
 
   # ── Workspaces that gained tooling in the format-standards cycle ──────────
   # Each installs and runs on its own; none of them share a lockfile with app.
-  # relay and test-peer are plain ESM JavaScript with no TypeScript, so eslint
-  # is their only gate — there is no typecheck to run.
+  # relay and test-peer are plain ESM JavaScript with no TypeScript, so there is
+  # no typecheck to run; relay also owns the two .mjs suites that used to ride
+  # along in app's vitest run.
 
   relay:
     name: Relay
@@ -117,6 +117,10 @@ jobs:
 
       - name: Lint
         run: npm run lint
+        working-directory: relay
+
+      - name: Test
+        run: npm test
         working-directory: relay
 
   test-peer:

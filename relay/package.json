@@ -6,7 +6,8 @@
     "scripts": {
         "start": "node relay-server.mjs",
         "dev": "node --watch relay-server.mjs",
-        "lint": "eslint ."
+        "lint": "eslint .",
+        "test": "vitest run"
     },
     "dependencies": {
         "@chainsafe/libp2p-noise": "^17.0.0",
@@ -25,6 +26,7 @@
     "devDependencies": {
         "@eslint/js": "^9.39.5",
         "eslint": "^9.39.5",
-        "globals": "^16.5.0"
+        "globals": "^16.5.0",
+        "vitest": "^2.1.9"
     }
 }
