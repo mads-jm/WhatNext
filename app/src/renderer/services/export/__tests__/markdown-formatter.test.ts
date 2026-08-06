@@ -1,60 +1,8 @@
 import { describe, it, expect } from 'vitest';
 
 import { formatAsMarkdown } from '../markdown-formatter';
-import type {
-    ExportPlaylist,
-    ExportTrack,
-    ExportComment,
-} from '../export-types';
 import type { ReactionEmoji } from '../../../../shared/core/reactions';
-
-function makeTrack(overrides: Partial<ExportTrack> = {}): ExportTrack {
-    return {
-        title: 'Test Track',
-        artists: ['Artist A'],
-        album: 'Test Album',
-        durationMs: 200000,
-        addedBy: 'user-1',
-        addedAt: '2024-01-15T12:00:00Z',
-        reactions: {
-            fire: 0,
-            heart: 0,
-            thumbsdown: 0,
-            mindblown: 0,
-            sleeping: 0,
-            party: 0,
-        } as Record<ReactionEmoji, number>,
-        comments: [],
-        ...overrides,
-    };
-}
-
-function makePlaylist(overrides: Partial<ExportPlaylist> = {}): ExportPlaylist {
-    return {
-        name: 'My Playlist',
-        owner: 'Alice',
-        collaborators: [],
-        tags: [],
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-15T12:00:00Z',
-        trackCount: 1,
-        totalDurationMs: 200000,
-        tracks: [makeTrack()],
-        comments: [],
-        isCollaborative: false,
-        ...overrides,
-    };
-}
-
-function makeComment(overrides: Partial<ExportComment> = {}): ExportComment {
-    return {
-        author: 'Bob',
-        body: 'Great track!',
-        createdAt: '2024-01-15T12:00:00Z',
-        replies: [],
-        ...overrides,
-    };
-}
+import { makeTrack, makePlaylist, makeComment } from './fixtures';
 
 describe('formatAsMarkdown — YAML frontmatter', () => {
     it('includes title in frontmatter', () => {
