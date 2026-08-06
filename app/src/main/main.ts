@@ -59,6 +59,7 @@ import {
     handleSpotifyCallbackUrl,
     registerSpotifyHandlers,
 } from './spotify/spotify-ipc';
+import { registerCompanionHandlers } from './companion/companion-ipc';
 
 let mainWindow: BrowserWindow | null = null;
 let p2pUtilityProcess: UtilityProcess | null = null;
@@ -1155,139 +1156,10 @@ ipcMain.handle(IPC_CHANNELS.REPLICATION_PULL_RESPONSE, (_event, payload) => {
 // Companion Server
 // ========================================
 
-ipcMain.handle(IPC_CHANNELS.COMPANION_START, async () => {
-    const { startCompanionServer, isCompanionServerRunning } =
-        await import('./companion/companion-server');
-
-    if (isCompanionServerRunning()) {
-        const { getCompanionServerInfo } =
-            await import('./companion/companion-server');
-        const info = getCompanionServerInfo();
-        return {
-            port: info?.port ?? 0,
-            localIp: info?.localIp ?? '127.0.0.1',
-            joinPin: info?.joinPin ?? '',
-        };
-    }
-
-    const { port, localIp, joinPin } = await startCompanionServer({
-        onClientJoined: (client) => {
-            mainWindow?.webContents.send(IPC_CHANNELS.COMPANION_CLIENT_JOINED, {
-                clientId: client.id,
-                displayName: client.displayName,
-            });
-        },
-        onClientLeft: (client) => {
-            mainWindow?.webContents.send(IPC_CHANNELS.COMPANION_CLIENT_LEFT, {
-                clientId: client.id,
-                displayName: client.displayName,
-            });
-        },
-        onReaction: (clientId, displayName, emoji, trackId) => {
-            mainWindow?.webContents.send(IPC_CHANNELS.COMPANION_REACTION, {
-                clientId,
-                displayName,
-                emoji,
-                trackId,
-            });
-        },
-        onTimeRequest: (clientId, displayName, trackId) => {
-            mainWindow?.webContents.send(IPC_CHANNELS.COMPANION_TIME_REQUEST, {
-                clientId,
-                displayName,
-                trackId,
-            });
-        },
-    });
-
-    return { port, localIp, joinPin };
-});
-
-ipcMain.handle(IPC_CHANNELS.COMPANION_STOP, async () => {
-    const { stopCompanionServer } =
-        await import('./companion/companion-server');
-    stopCompanionServer();
-});
-
-ipcMain.handle(IPC_CHANNELS.COMPANION_QR_CODE, async (_event, url: string) => {
-    const QRCode = await import('qrcode');
-    return QRCode.toDataURL(url, {
-        width: 256,
-        margin: 2,
-        color: { dark: '#e5e7ebff', light: '#11182700' },
-    });
-});
-
-ipcMain.handle(IPC_CHANNELS.COMPANION_GET_INFO, async () => {
-    const { getCompanionServerInfo } =
-        await import('./companion/companion-server');
-    return getCompanionServerInfo();
-});
-
-ipcMain.handle(
-    IPC_CHANNELS.COMPANION_RELAY_START,
-    async (_event, relayHost: string) => {
-        const { startRelayTunnel } =
-            await import('./companion/companion-server');
-        return startRelayTunnel(relayHost);
-    },
-);
-
-ipcMain.handle(IPC_CHANNELS.COMPANION_RELAY_STOP, async () => {
-    const { stopRelayTunnel } = await import('./companion/companion-server');
-    stopRelayTunnel();
-});
-
-ipcMain.handle(IPC_CHANNELS.COMPANION_RELAY_INFO, async () => {
-    const { getRelayTunnelInfo } = await import('./companion/companion-server');
-    return getRelayTunnelInfo();
-});
-
-ipcMain.handle(
-    IPC_CHANNELS.COMPANION_TIME_REQUEST_RESPOND,
-    async (
-        _event,
-        payload: { clientId: string; action: 'seen' | 'granted' },
-    ) => {
-        const { sendTimeRequestAck } =
-            await import('./companion/companion-server');
-        sendTimeRequestAck(payload.clientId, payload.action);
-    },
-);
-
-// Companion state push (renderer → main → phone clients via WebSocket)
-ipcMain.on(IPC_CHANNELS.COMPANION_PUSH_PLAYBACK, async (_event, state) => {
-    const { pushPlaybackUpdate } = await import('./companion/companion-server');
-    pushPlaybackUpdate(state);
-});
-
-ipcMain.on(IPC_CHANNELS.COMPANION_PUSH_TRACKS, async (_event, tracks) => {
-    const { pushTracksUpdate } = await import('./companion/companion-server');
-    pushTracksUpdate(tracks);
-});
-
-ipcMain.on(
-    IPC_CHANNELS.COMPANION_PUSH_PARTICIPANTS,
-    async (_event, participants) => {
-        const { pushParticipantsUpdate } =
-            await import('./companion/companion-server');
-        pushParticipantsUpdate(participants);
-    },
-);
-
-ipcMain.on(IPC_CHANNELS.COMPANION_PUSH_TURN, async (_event, turnState) => {
-    const { pushTurnUpdate } = await import('./companion/companion-server');
-    pushTurnUpdate(turnState);
-});
-
-ipcMain.on(
-    IPC_CHANNELS.COMPANION_PUSH_SESSION_SNAPSHOT,
-    async (_event, snapshot) => {
-        const { pushSessionSnapshot } =
-            await import('./companion/companion-server');
-        pushSessionSnapshot(snapshot);
-    },
-);
+// Lifecycle, relay tunnel, QR code and the five state-push channels all live in
+// ./companion/companion-ipc. Registered here, at the same point in module
+// evaluation they occupied when they were inline.
+registerCompanionHandlers(() => mainWindow);
 
 // ========================================
 // Media / Local File Import
