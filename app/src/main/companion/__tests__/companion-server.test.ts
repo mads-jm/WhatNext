@@ -4,6 +4,12 @@
  * These are integration tests: they stand up a fake relay (HTTP + WS) on
  * localhost and drive the real `companion-server` module against it, because
  * the behaviour under test lives entirely in the wire handshake.
+ *
+ * This owns the *host* end of the companion contract: the real app-side server,
+ * with the relay faked. The relay end — the real tunnel, with the host and the
+ * phone faked — is `relay/__tests__/companion-tunnel.test.mjs`. The overlap is
+ * deliberate: each file asserts the side it actually runs, so a wire-format
+ * change has to be made true twice, once from each direction.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';

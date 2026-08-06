@@ -5,6 +5,13 @@
  * is why this file lives beside the relay source but has no runner of its own.
  * The tunnel module is a singleton, so the suite starts it once on an
  * OS-assigned port and drives it with real WebSocket clients.
+ *
+ * This owns the *relay* end of the companion contract: the real tunnel, with
+ * the host and the phone faked. The host end — the real `companion-server`
+ * driven against a fake relay — is
+ * `app/src/main/companion/__tests__/companion-server.test.ts`. The overlap is
+ * deliberate: each file asserts the side it actually runs, so a wire-format
+ * change has to be made true twice, once from each direction.
  */
 
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
