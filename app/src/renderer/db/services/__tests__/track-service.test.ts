@@ -39,6 +39,7 @@ import {
     getTracksByIds,
     bulkImportTracks,
 } from '../track-service';
+import type { CreateTrackInput } from '../../types';
 
 beforeEach(async () => {
     freezeClock();
@@ -94,6 +95,22 @@ describe('createTrack', () => {
         expect(doc.audioFormat).toBe('opus');
         expect(doc.audioBitrate).toBe(160);
         expect(doc.userPurchased).toBe(true);
+    });
+
+    it('requires addedBy at the type level', () => {
+        // See the matching note in `playlist-service.crud.test.ts`: `addedBy`
+        // used to be optional behind a non-null assertion, so the "omitting it
+        // fails" case can no longer be written as a runtime test. An unused
+        // `@ts-expect-error` is itself a typecheck error, so this fails the
+        // gate if `addedBy` ever goes back to optional.
+        // @ts-expect-error addedBy is non-optional on CreateTrackInput
+        const input: CreateTrackInput = {
+            title: 'Unattributed',
+            artists: [],
+            album: '',
+            durationMs: 0,
+        };
+        expect(input.title).toBe('Unattributed');
     });
 
     it('gives each track a distinct id', async () => {

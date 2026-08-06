@@ -35,6 +35,7 @@ import {
     updatePlaylist,
     deletePlaylist,
 } from '../playlist-service';
+import type { CreatePlaylistInput } from '../../types';
 
 beforeEach(async () => {
     freezeClock();
@@ -126,6 +127,19 @@ describe('createPlaylist', () => {
 
         expect(doc.turnOrder).toEqual(['user-b', OWNER_ID]);
         expect(doc.tracksPerTurn).toBe(3);
+    });
+
+    it('requires ownerId at the type level', () => {
+        // `ownerId` used to be optional, compensated for by a non-null
+        // assertion in the service — so an attribution-less playlist was
+        // constructible and only failed at schema-validation time. Now the
+        // compiler rejects it, which means the old "omitting ownerId fails"
+        // runtime test is no longer expressible. This is its replacement:
+        // `tsc --noEmit` fails on an unused `@ts-expect-error`, so making
+        // `ownerId` optional again breaks the typecheck gate.
+        // @ts-expect-error ownerId is non-optional on CreatePlaylistInput
+        const input: CreatePlaylistInput = { playlistName: 'No owner' };
+        expect(input.playlistName).toBe('No owner');
     });
 
     it('ignores turn config supplied for a non-turn-taking queue mode', async () => {

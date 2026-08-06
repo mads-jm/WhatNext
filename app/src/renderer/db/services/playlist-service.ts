@@ -35,7 +35,7 @@ export async function createPlaylist(
         trackIds: [],
         createdAt: now,
         updatedAt: now,
-        ownerId: input.ownerId!,
+        ownerId: input.ownerId,
         collaboratorIds: input.collaboratorIds || [],
         isCollaborative: input.isCollaborative ?? false,
         isPublic: input.isPublic ?? false,

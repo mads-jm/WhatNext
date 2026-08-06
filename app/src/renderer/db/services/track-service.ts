@@ -25,7 +25,6 @@ export async function createTrack(
     const track: TrackDocType = {
         id: uuidv4(),
         ...input,
-        addedBy: input.addedBy!,
         addedAt: input.addedAt ?? now,
         updatedAt: input.updatedAt ?? now,
     };
@@ -140,7 +139,6 @@ export async function bulkImportTracks(
         return {
             id: uuidv4(),
             ...track,
-            addedBy: track.addedBy!,
             addedAt: track.addedAt ?? now,
             updatedAt: track.updatedAt ?? now,
         };

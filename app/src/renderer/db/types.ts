@@ -54,7 +54,8 @@ export interface CreatePlaylistInput {
     tags?: string[];
     linkedSpotifyId?: string;
     spotifySyncMode?: 'accessory' | 'true_collaborate' | 'proxy_owner';
-    ownerId?: string;
+    /** Required: a playlist with no owner has no turn order and no attribution. */
+    ownerId: string;
     collaboratorIds?: string[];
     isCollaborative?: boolean;
     isPublic?: boolean;
@@ -99,7 +100,8 @@ export interface CreateTrackInput {
     spotifyId?: string;
     albumArtUrl?: string;
     notes?: string;
-    addedBy?: string;
+    /** Required: attribution is what the collaborative UI renders "added by" from. */
+    addedBy: string;
     addedAt?: string;
     updatedAt?: string;
     // Audio Acquisition Service fields (v2)
