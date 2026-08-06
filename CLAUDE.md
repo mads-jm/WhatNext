@@ -97,7 +97,7 @@ cd app && npm run build:preload  # Build preload script only
 ```bash
 cd app && npm run lint      # ESLint
 cd app && npm run typecheck # TypeScript type checking (no emit)
-cd app && npm test          # Vitest unit/integration suites (app + relay)
+cd app && npm test          # Vitest unit/integration suites
 cd app && npm run test:e2e  # Playwright E2E (needs built app + display)
 ```
 
@@ -114,6 +114,7 @@ npm run format:check  # The CI gate; must exit 0
 
 ```bash
 cd relay && npm run lint        # ESLint (plain ESM JS — no typecheck)
+cd relay && npm test            # Vitest relay + companion-tunnel suites
 cd test-peer && npm run lint    # ESLint (plain ESM JS — no typecheck)
 cd service && npm run lint      # ESLint
 cd service && npm run typecheck # tsc --noEmit, source and suites
