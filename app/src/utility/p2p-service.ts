@@ -12,6 +12,23 @@
  *
  * LEARNING NOTE: This runs in a Node.js utility process, not the main process
  * or renderer. It has full Node.js capabilities but no window/UI access.
+ *
+ * TEST SEAM (#32): this module is both the process entry point and the home of
+ * the handshake/replication/routing coordination logic, so importing it used to
+ * be impossible from a test — the module tail constructed the service, which
+ * called `process.exit(1)` when `process.parentPort` was absent. Two minimal
+ * changes open it up, and nothing more:
+ *   1. `P2PService` is exported, so a suite can construct its own instance
+ *      against a stub `parentPort` and stub libp2p/protocol modules.
+ *   2. The singleton at the tail is only constructed when `process.parentPort`
+ *      exists — i.e. only in the real utility-process path, where Electron
+ *      always provides it.
+ * Runtime behaviour therefore differs only in the context that previously could
+ * not run at all: invoking the bundle standalone (`node dist/p2p-service.mjs`)
+ * is now an inert no-op instead of an error log plus exit(1). The in-class guard
+ * in `setupMessageListener` is untouched, so a service constructed without a
+ * parentPort still fails loudly. No wire format, IPC message type, or protocol
+ * behaviour is affected.
  */
 
 import process from 'node:process';
@@ -76,7 +93,7 @@ import type {
  * P2P Service class
  * Manages libp2p node lifecycle and connections
  */
-class P2PService {
+export class P2PService {
     private libp2pNode: Libp2p | null = null;
     private isStarted = false;
     private connectedPeerNames: Map<string, string> = new Map();
@@ -1295,7 +1312,10 @@ class P2PService {
 
 // Create and start the service
 // TODO : Should this be a singleton?
-const service = new P2PService();
+// Only when spawned as a utility process (see TEST SEAM in the header): under a
+// test runner there is no parentPort, and constructing here would exit(1) before
+// the first assertion ran.
+const service = process.parentPort ? new P2PService() : null;
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
