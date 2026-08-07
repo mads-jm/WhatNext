@@ -106,8 +106,10 @@ const createMainWindow = (): BrowserWindow => {
         mainWindow.loadURL('http://localhost:1313');
     } else {
         // Vite build outputs to app/dist by default; __dirname points to that folder at runtime.
-        // loadFile handles "file://" and escaping for local HTML.
-        mainWindow.loadFile(path.join(__dirname, 'index.ejs'));
+        // loadFile handles "file://" and escaping for local HTML. index.html's own
+        // asset refs are relative (vite.config.ts sets base: './'), so they resolve
+        // next to this file instead of against the filesystem root.
+        mainWindow.loadFile(path.join(__dirname, 'index.html'));
     }
 
     // Prevent visual flash
