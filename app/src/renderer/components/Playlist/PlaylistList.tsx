@@ -1,98 +1,179 @@
-interface Playlist {
-    id: string;
-    name: string;
-    trackCount: number;
-    updatedAt: string;
-    isCollaborative?: boolean;
+import { useRxDBQuery } from '../../hooks/useRxDBCollection';
+import { useDatabase } from '../../hooks/useDatabase';
+import { useNavigationStore } from '../../stores/navigation-store';
+import { formatTimeAgo } from '../../utils/format';
+import { artSrc } from '../../utils/artSrc';
+import type { PlaylistDocType } from '../../db/schemas';
+import { deletePlaylist } from '../../db/services/playlist-service';
+import { exportAndSave } from '../../services/export/export-service';
+import { ContextMenu, type ContextMenuItem } from '../shared/ContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
+
+function buildPlaylistMenuItems(playlist: PlaylistDocType): ContextMenuItem[] {
+    return [
+        {
+            id: 'quick-export',
+            label: 'Quick Export',
+            icon: 'fa-solid fa-download',
+            subItems: [
+                {
+                    id: 'export-md',
+                    label: 'Markdown',
+                    icon: 'fa-solid fa-file-lines',
+                    action: () => exportAndSave(playlist.id, 'markdown'),
+                },
+                {
+                    id: 'export-html',
+                    label: 'HTML',
+                    icon: 'fa-solid fa-file-code',
+                    action: () => exportAndSave(playlist.id, 'html'),
+                },
+            ],
+        },
+        { separator: true },
+        {
+            id: 'delete',
+            label: 'Delete Playlist',
+            icon: 'fa-solid fa-trash',
+            variant: 'danger',
+            requiresConfirm: true,
+            confirmLabel: `Delete "${playlist.playlistName}"?`,
+            action: () => deletePlaylist(playlist.id),
+        },
+    ];
 }
 
-// Placeholder data for UI demonstration
-const mockPlaylists: Playlist[] = [
-    {
-        id: '1',
-        name: 'Summer Vibes 2024',
-        trackCount: 42,
-        updatedAt: '2 hours ago',
-        isCollaborative: true,
-    },
-    {
-        id: '2',
-        name: 'Focus Flow',
-        trackCount: 28,
-        updatedAt: '1 day ago',
-    },
-    {
-        id: '3',
-        name: 'Late Night Coding',
-        trackCount: 156,
-        updatedAt: '3 days ago',
-    },
-];
+export function PlaylistList() {
+    const { db } = useDatabase();
+    const selectedPlaylistId = useNavigationStore((s) => s.selectedPlaylistId);
+    const selectPlaylist = useNavigationStore((s) => s.selectPlaylist);
+    const openCreateDialog = useNavigationStore((s) => s.openCreateDialog);
+    const { menuState, openMenu, closeMenu } = useContextMenu();
 
-interface PlaylistListProps {
-    onPlaylistSelect?: (playlistId: string) => void;
-}
+    const { data: playlists, loading } = useRxDBQuery<PlaylistDocType>(
+        () => (db ? db.playlists.find().sort({ updatedAt: 'desc' }) : null),
+        [db],
+    );
 
-export function PlaylistList({ onPlaylistSelect }: PlaylistListProps) {
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="text-on-surface-variant text-sm">
+                    Loading playlists...
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-3">
-            {mockPlaylists.map((playlist) => (
-                <div
-                    key={playlist.id}
-                    onClick={() => onPlaylistSelect?.(playlist.id)}
-                    className="card cursor-pointer hover:border-primary-600 transition-colors"
+        <>
+            <div className="space-y-3">
+                {/* Create Playlist Button */}
+                <button
+                    onClick={openCreateDialog}
+                    className="w-full btn-primary flex items-center justify-center gap-2 py-3"
                 >
-                    <div className="card-body">
-                        <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="font-semibold text-gray-100">
-                                        {playlist.name}
-                                    </h3>
-                                    {playlist.isCollaborative && (
-                                        <span className="badge-accent">
-                                            <i className="fa-solid fa-users text-xs mr-1" />
-                                            Shared
-                                        </span>
+                    <i className="fa-solid fa-plus" />
+                    Create Playlist
+                </button>
+
+                {/* Playlist Cards */}
+                {playlists.map((playlist) => (
+                    <button
+                        key={playlist.id}
+                        onClick={() => selectPlaylist(playlist.id)}
+                        onContextMenu={(e) =>
+                            openMenu(e, buildPlaylistMenuItems(playlist))
+                        }
+                        className={`card w-full text-left cursor-pointer transition-colors ${
+                            selectedPlaylistId === playlist.id
+                                ? 'border-primary bg-primary/10'
+                                : 'hover:border-outline-variant'
+                        }`}
+                    >
+                        <div className="card-body">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-md shrink-0 overflow-hidden bg-gradient-to-br from-primary-dim to-primary flex items-center justify-center">
+                                    {playlist.coverArtLocalPath ||
+                                    playlist.coverArtUrl ? (
+                                        <img
+                                            src={artSrc(
+                                                playlist.coverArtLocalPath,
+                                                playlist.coverArtUrl,
+                                            )}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                if (playlist.coverArtUrl)
+                                                    e.currentTarget.src =
+                                                        playlist.coverArtUrl;
+                                            }}
+                                        />
+                                    ) : (
+                                        <i className="fa-solid fa-music text-on-surface text-xs opacity-50" />
                                     )}
                                 </div>
-                                <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
-                                    <span>
-                                        <i className="fa-solid fa-music mr-1.5" />
-                                        {playlist.trackCount} tracks
-                                    </span>
-                                    <span>
-                                        <i className="fa-solid fa-clock mr-1.5" />
-                                        {playlist.updatedAt}
-                                    </span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-semibold text-on-surface truncate">
+                                            {playlist.playlistName}
+                                        </h3>
+                                        {playlist.isCollaborative && (
+                                            <span className="badge-accent shrink-0">
+                                                <i className="fa-solid fa-users text-xs mr-1" />
+                                                Shared
+                                            </span>
+                                        )}
+                                        {playlist.queueMode ===
+                                            'turn_taking' && (
+                                            <span className="px-1.5 py-0.5 bg-secondary/15 text-secondary rounded text-[10px] font-semibold shrink-0">
+                                                Turns
+                                            </span>
+                                        )}
+                                    </div>
+                                    {playlist.description && (
+                                        <p className="text-xs text-on-surface-variant mt-0.5 truncate">
+                                            {playlist.description}
+                                        </p>
+                                    )}
+                                    <div className="flex items-center gap-3 mt-1 text-xs text-on-surface-variant">
+                                        <span>
+                                            <i className="fa-solid fa-music mr-1.5" />
+                                            {playlist.trackIds.length} tracks
+                                        </span>
+                                        <span>
+                                            <i className="fa-solid fa-clock mr-1.5" />
+                                            {formatTimeAgo(playlist.updatedAt)}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                            <button className="btn-ghost text-xs">
-                                <i className="fa-solid fa-ellipsis" />
-                            </button>
+                        </div>
+                    </button>
+                ))}
+
+                {/* Empty State */}
+                {playlists.length === 0 && (
+                    <div className="card">
+                        <div className="card-body text-center py-12">
+                            <i className="fa-solid fa-headphones text-4xl text-outline-variant mb-4" />
+                            <h3 className="text-lg font-medium text-on-surface-variant mb-2">
+                                No Playlists Yet
+                            </h3>
+                            <p className="text-sm text-outline-variant mb-4">
+                                Create your first playlist to get started
+                            </p>
                         </div>
                     </div>
-                </div>
-            ))}
-
-            {/* Empty State */}
-            {mockPlaylists.length === 0 && (
-                <div className="card">
-                    <div className="card-body text-center py-12">
-                        <i className="fa-solid fa-list-music text-4xl text-gray-700 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-400 mb-2">
-                            No Playlists Yet
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                            Create your first playlist or import from Spotify
-                        </p>
-                        <button className="btn-primary">
-                            <i className="fa-solid fa-plus" />
-                            Create Playlist
-                        </button>
-                    </div>
-                </div>
+                )}
+            </div>
+            {menuState.visible && (
+                <ContextMenu
+                    items={menuState.items}
+                    position={menuState.position}
+                    onClose={closeMenu}
+                />
             )}
-        </div>
+        </>
     );
 }

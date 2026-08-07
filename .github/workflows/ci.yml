@@ -1,0 +1,203 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [mvp, main]
+  workflow_dispatch:
+
+jobs:
+  # Prettier lives in the root package, not in app/, because its scope spans
+  # app/, relay/, service/, test-peer/, scripts/ and the top-level markdown.
+  # That root install is this job's only dependency — the other jobs still
+  # install in app/ and are unaffected by it.
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+  typecheck:
+    name: TypeCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+
+      - name: TypeCheck
+        run: npm run typecheck
+        working-directory: app
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+
+      - name: Lint
+        run: npm run lint
+        working-directory: app
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+
+      # Vitest only, and app's own suites only — relay and service each own a
+      # runner and a job below, so neither rides along here. Playwright e2e is
+      # deliberately absent: it needs a built app and a display.
+      - name: Test
+        run: npm test
+        working-directory: app
+
+  # The only job that produces build output. It exists because nothing else did:
+  # `dist/` is gitignored and no job built it, so main.ts could go on loading a
+  # renderer entry the build has not emitted since the ERB->Vite migration while
+  # every gate stayed green. Vite + tsup only — no electron-builder, no display.
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+
+      - name: Build
+        run: npm run build
+        working-directory: app
+
+      # Asserts main.ts's production load target exists in dist/, and that the
+      # entry's asset refs resolve relative to it — root-absolute refs resolve
+      # against the filesystem root under file:// and render a blank window.
+      - name: Verify build output
+        run: node scripts/check-build-output.mjs
+
+  # ── Workspaces that gained tooling in the format-standards cycle ──────────
+  # Each installs and runs on its own; none of them share a lockfile with app.
+  # relay and test-peer are plain ESM JavaScript with no TypeScript, so there is
+  # no typecheck to run; relay also owns the two .mjs suites that used to ride
+  # along in app's vitest run.
+
+  relay:
+    name: Relay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: relay/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: relay
+
+      - name: Lint
+        run: npm run lint
+        working-directory: relay
+
+      - name: Test
+        run: npm test
+        working-directory: relay
+
+  test-peer:
+    name: Test Peer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: test-peer/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: test-peer
+
+      - name: Lint
+        run: npm run lint
+        working-directory: test-peer
+
+  service:
+    name: Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: service/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: service
+
+      - name: Lint
+        run: npm run lint
+        working-directory: service
+
+      - name: TypeCheck
+        run: npm run typecheck
+        working-directory: service
+
+      # The 99 downloader suites that used to ride along in app's run.
+      - name: Test
+        run: npm test
+        working-directory: service

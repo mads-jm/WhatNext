@@ -30,6 +30,9 @@ export interface PeerMetadata {
     avatarUrl?: string;
     lastSeenAt: string; // ISO timestamp
     discovered: 'manual' | 'mdns' | 'relay' | 'dht';
+    multiaddrs?: string[];
+    protocols?: string[];
+    discoveredAt?: string; // ISO timestamp
 }
 
 /**
@@ -108,6 +111,7 @@ export interface P2PMessage<T = unknown> {
 export interface HandshakePayload {
     displayName: string;
     avatarUrl?: string;
+    userId: string; // WhatNext user ID (UUID)
     version: string; // WhatNext protocol version
     capabilities: string[]; // Supported features
 }
@@ -140,3 +144,16 @@ export interface FileTransferMetadata {
     mimeType: string;
     chunks: number;
 }
+
+/**
+ * Replication sink: pushes local changes to remote peers.
+ * Services accept this as an optional dependency to stay decoupled from IPC/window.electron.
+ */
+export type ReplicationSink = (
+    collection: string,
+    documents: Array<{
+        id: string;
+        data: Record<string, unknown>;
+        updatedAt: string;
+    }>,
+) => Promise<void>;

@@ -1,0 +1,75 @@
+name: P2P Protocol Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # The P2P protocol surface as it actually exists. `app/src/main/p2p/**` and
+    # `app/src/main/handshake.ts` were listed here from a layout the utility
+    # process refactor replaced, so the gate matched nothing and never fired.
+    # app/src/ci/__tests__/p2p-gate-paths.test.ts fails CI if any entry below
+    # goes back to matching zero tracked files.
+    paths:
+      - 'app/src/utility/**'
+      - 'app/src/renderer/db/replication*.ts'
+      - 'app/src/shared/core/ipc-protocol.ts'
+      - 'app/src/shared/lww/**'
+      - 'app/src/shared/p2p-config.ts'
+
+jobs:
+  warn:
+    name: P2P scope gate warning
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Post warning comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `## ⚠️ P2P Protocol Files Modified
+
+            This PR touches files in the P2P scope gate:
+
+            > The P2P protocol is off-limits for fully autonomous agentic work without explicit human approval.
+
+            **Before merging, a human reviewer must explicitly confirm:**
+            - [ ] Changes are intentional and understood
+            - [ ] Backward compatibility with existing peers considered
+            - [ ] No unintended side effects on session stability or replication
+
+            _See [[workflow-story-to-pr]] §3 Agentic Scope Gates._`;
+
+            // Only post the comment once (avoid duplicates on re-runs)
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const alreadyPosted = comments.some(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.includes('P2P Protocol Files Modified')
+            );
+
+            if (!alreadyPosted) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+            // Add label
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['needs-p2p-review'],
+              });
+            } catch (e) {
+              // Label may not exist yet — non-fatal
+              console.warn('Could not add label:', e.message);
+            }

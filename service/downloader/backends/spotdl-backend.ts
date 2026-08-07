@@ -1,0 +1,323 @@
+import type {
+    DownloadBackend,
+    BackendStatus,
+    DownloadOptions,
+} from '../backend';
+import type { DownloadInput, ResolvedTrack, DownloadEvent } from '../types';
+import {
+    runCommand,
+    spawnLines,
+    killProcess,
+    parseYtdlpProgress,
+} from '../subprocess';
+import type { ChildProcess } from 'child_process';
+
+/** Bare command name resolved via PATH when no custom path is configured. */
+const DEFAULT_EXE = 'spotdl';
+
+/** How much of the offending output is quoted in the error message. */
+const RAW_EXCERPT_CHARS = 200;
+
+/**
+ * spotDL's query is an argparse positional, so a leading-dash value would be read as an
+ * option. The usual fix — a `--` separator before the positional — is *not available*
+ * here: spotDL (4.5.2) answers `spotdl save --save-file - -- <url>` with
+ * "unrecognized arguments: --", and the other placements fail too. yt-dlp takes `--`
+ * and uses it; this shape check is the equivalent second layer for spotDL.
+ *
+ * The first layer remains input validation at the IPC boundary
+ * (`app/src/main/downloader/downloader-guards.ts`); nothing here should ever fire.
+ */
+function assertSafeQueryArg(url: string): void {
+    if (!/^https?:\/\//i.test(url)) {
+        throw new Error(
+            `spotdl refused a non-http(s) query argument: "${url}"`,
+        );
+    }
+}
+
+/**
+ * Thrown when `spotdl save` exits 0 but its stdout cannot be read as a track
+ * list. Previously this case produced a stub `ResolvedTrack` whose title was
+ * the URL — a junk library entry that looked like a successful import (#56).
+ *
+ * The full stdout is retained on `rawOutput` for main-process logging, and an
+ * excerpt is inlined in the message because only the message survives the
+ * `ipcMain.handle` rejection boundary on its way to the renderer.
+ */
+export class SpotdlResolveError extends Error {
+    readonly rawOutput: string;
+
+    constructor(url: string, rawOutput: string) {
+        const trimmed = rawOutput.trim();
+        const excerpt = trimmed
+            ? `${trimmed.slice(0, RAW_EXCERPT_CHARS)}${trimmed.length > RAW_EXCERPT_CHARS ? '…' : ''}`
+            : '(no output)';
+        super(`spotdl returned unreadable metadata for ${url}: ${excerpt}`);
+        this.name = 'SpotdlResolveError';
+        this.rawOutput = rawOutput;
+    }
+}
+
+/**
+ * spotDL backend.
+ *
+ * Primary use-case: given a Spotify track URL (built from a stored spotifyId),
+ * spotDL finds matching audio on YouTube and downloads it with full Spotify
+ * metadata (album art, lyrics, correct ID3 tags).
+ *
+ * Supports:
+ *   - 'url'         — any Spotify URL (playlist, album, track)
+ *   - 'spotify-ids' — WhatNext-held spotifyId values; resolved to Spotify track URLs internally
+ */
+export class SpotdlBackend implements DownloadBackend {
+    readonly id = 'spotdl';
+    readonly name = 'spotDL';
+    readonly supportedInputs = ['url', 'spotify-ids'] as const;
+
+    private activeProcess: ChildProcess | null = null;
+
+    /** Executable actually invoked: a user-configured path, or the bare command. */
+    private readonly exe: string;
+    /** The configured custom path (undefined when relying on PATH lookup). */
+    private readonly customPath?: string;
+
+    /**
+     * @param executablePath Optional path to the spotdl binary. When omitted
+     *   (or blank), the bare command `spotdl` is resolved via PATH.
+     */
+    constructor(executablePath?: string) {
+        const trimmed = executablePath?.trim();
+        this.exe = trimmed || DEFAULT_EXE;
+        this.customPath = trimmed || undefined;
+    }
+
+    async checkInstalled(): Promise<BackendStatus> {
+        try {
+            const result = await runCommand(this.exe, ['--version']);
+            if (result.code === 0) {
+                return {
+                    installed: true,
+                    version: result.stdout.trim(),
+                    path: this.customPath,
+                };
+            }
+            return {
+                installed: false,
+                path: this.customPath,
+                error: `spotdl exited with code ${result.code}: ${result.stderr.trim()}`,
+            };
+        } catch (err) {
+            return {
+                installed: false,
+                path: this.customPath,
+                error: err instanceof Error ? err.message : String(err),
+            };
+        }
+    }
+
+    async resolve(input: DownloadInput): Promise<ResolvedTrack[]> {
+        const urls = this._inputToUrls(input);
+        if (urls.length === 0) {
+            throw new Error('SpotdlBackend: no resolvable URLs in input');
+        }
+        // Up front, before any spawn: a bad URL half-way down the list must not leave
+        // a partially-resolved batch behind.
+        for (const url of urls) assertSafeQueryArg(url);
+
+        const tracks: ResolvedTrack[] = [];
+
+        for (const url of urls) {
+            // spotdl save --save-file - --output /dev/null prints JSON metadata to stdout
+            const result = await runCommand(this.exe, [
+                'save',
+                url,
+                '--save-file',
+                '-',
+            ]);
+            if (result.code !== 0) {
+                // Non-fatal per-track: skip and continue
+                continue;
+            }
+
+            // A save-file payload we cannot read is a resolve *failure*, not a
+            // track. Writing a stub here (title = URL) is what made #56 lie to
+            // the user; surface it instead so the UI can show the real reason.
+            let parsed: unknown;
+            try {
+                parsed = JSON.parse(result.stdout);
+            } catch {
+                throw new SpotdlResolveError(url, result.stdout);
+            }
+            if (!Array.isArray(parsed)) {
+                throw new SpotdlResolveError(url, result.stdout);
+            }
+
+            for (const entry of parsed as Array<Record<string, unknown>>) {
+                tracks.push(this._mapEntry(entry, url));
+            }
+        }
+
+        return tracks;
+    }
+
+    async *download(
+        tracks: ResolvedTrack[],
+        opts: DownloadOptions,
+    ): AsyncGenerator<DownloadEvent> {
+        const fmt =
+            opts.preferredFormat === 'best_audio'
+                ? 'mp3'
+                : opts.preferredFormat;
+
+        for (const track of tracks) {
+            let completedPath: string | undefined;
+            let lastStderr = '';
+            let hadError = false;
+
+            try {
+                assertSafeQueryArg(track.sourceUrl);
+                const args = [
+                    'download',
+                    track.sourceUrl,
+                    '--output',
+                    opts.outputDir,
+                    '--format',
+                    fmt,
+                    '--print-errors',
+                ];
+
+                const result = spawnLines(this.exe, args, opts.timeoutMs);
+                this.activeProcess = result.proc;
+
+                for await (const line of result.lines) {
+                    // spotdl uses similar [download] progress format as yt-dlp internally
+                    const progress = parseYtdlpProgress(line);
+                    if (progress) {
+                        yield {
+                            type: 'progress' as const,
+                            sourceUrl: track.sourceUrl,
+                            percent: progress.percent,
+                            speed: progress.speed,
+                            eta: progress.eta,
+                        };
+                    }
+
+                    // Detect saved file: "Downloaded "Artist - Title": /path/to/file.mp3"
+                    const savedMatch = line.match(/Downloaded .+?: (.+)$/);
+                    if (savedMatch) {
+                        completedPath = savedMatch[1].trim();
+                    }
+
+                    // Detect "Skipping" (already downloaded)
+                    if (
+                        line.includes('Skipping') &&
+                        line.includes(opts.outputDir)
+                    ) {
+                        const skipMatch = line.match(/["'](.+?)["']/);
+                        if (skipMatch) completedPath = skipMatch[1];
+                    }
+                }
+
+                const exitCode = await result.exitCode;
+                lastStderr = result.stderr();
+                // Do NOT check stderr for "error" — spotDL writes benign warnings
+                // containing "error" (e.g. "LookupError handled"). Rely on exit code.
+                if (exitCode !== 0) hadError = true;
+
+                this.activeProcess = null;
+
+                if (hadError) {
+                    yield {
+                        type: 'error' as const,
+                        sourceUrl: track.sourceUrl,
+                        error: lastStderr.trim() || 'spotdl download failed',
+                    };
+                } else {
+                    yield {
+                        type: 'complete' as const,
+                        sourceUrl: track.sourceUrl,
+                        localFilePath: completedPath,
+                    };
+                }
+            } catch (err) {
+                this.activeProcess = null;
+                yield {
+                    type: 'error' as const,
+                    sourceUrl: track.sourceUrl,
+                    error: err instanceof Error ? err.message : String(err),
+                };
+            }
+        }
+    }
+
+    async cancel(): Promise<void> {
+        if (this.activeProcess) {
+            killProcess(this.activeProcess);
+            this.activeProcess = null;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal helpers
+    // -------------------------------------------------------------------------
+
+    /** Convert a DownloadInput to a list of Spotify URLs. */
+    private _inputToUrls(input: DownloadInput): string[] {
+        if (input.type === 'url' && input.url) {
+            return [input.url];
+        }
+        if (input.type === 'spotify-ids' && input.spotifyIds) {
+            // The constant https:// prefix means assertSafeQueryArg always passes for
+            // these — it is NOT defense-in-depth here. The only gate on this branch is
+            // the base62 id-shape check at the IPC boundary (downloader-guards.ts).
+            return input.spotifyIds.map(
+                (id) => `https://open.spotify.com/track/${id}`,
+            );
+        }
+        return [];
+    }
+
+    /** Extract a Spotify track ID from a Spotify URL. */
+    private _extractSpotifyId(url: string): string | null {
+        const match = url.match(/spotify\.com\/track\/([A-Za-z0-9]+)/);
+        return match ? match[1] : null;
+    }
+
+    /** Map a spotdl save-file entry to ResolvedTrack. */
+    private _mapEntry(
+        entry: Record<string, unknown>,
+        fallbackUrl: string,
+    ): ResolvedTrack {
+        const url =
+            (entry['url'] as string) ||
+            (entry['spotify_url'] as string) ||
+            fallbackUrl;
+        const spotifyId = this._extractSpotifyId(url) ?? undefined;
+        const artists = Array.isArray(entry['artists'])
+            ? (entry['artists'] as string[])
+            : entry['artist']
+              ? [entry['artist'] as string]
+              : [];
+
+        return {
+            sourceId: spotifyId ?? url,
+            sourceUrl: url,
+            sourceProvider: 'spotify',
+            title:
+                (entry['name'] as string) || (entry['title'] as string) || url,
+            artists,
+            album:
+                (entry['album_name'] as string) ||
+                (entry['album'] as string) ||
+                '',
+            durationMs:
+                typeof entry['duration'] === 'number'
+                    ? (entry['duration'] as number) * 1000
+                    : 0,
+            thumbnailUrl: (entry['cover_url'] as string) || undefined,
+            availableFormats: [],
+            spotifyId,
+        };
+    }
+}

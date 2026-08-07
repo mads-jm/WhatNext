@@ -1,6 +1,10 @@
 {
     "compilerOptions": {
         "incremental": true,
+        // Keep the incremental build-info out of the repo tree. It used to land
+        // in the tracked path ".erb/dll/tsconfig.tsbuildinfo" (via outDir), so
+        // every `npm run typecheck` dirtied `git status`.
+        "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
         "target": "es2022",
         "module": "commonjs",
         "lib": ["dom", "es2022"],
@@ -8,6 +12,13 @@
         "strict": true,
         "sourceMap": true,
         "moduleResolution": "node",
+        // On because our dependencies ship .d.ts files authored against newer
+        // resolution modes and libs than this project targets (vite's
+        // "#types/*" subpath imports, "rollup/parseAst", yamux's
+        // PromiseWithResolvers) — none of which we compile. It also silences
+        // genuine lib-boundary errors, so it is not a free win: revisit it if
+        // this project's moduleResolution/lib ever move forward to match.
+        "skipLibCheck": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
         "resolveJsonModule": true,
@@ -16,8 +27,18 @@
         "baseUrl": "./",
         "paths": {
             "@models/*": ["src/main/models/*"],
-            "@renderer/*": ["src/renderer/*"]
+            "@renderer/*": ["src/renderer/*"],
+            "@assets/*": ["../assets/*"]
         }
     },
+    // Our own code only. The root-level build configs (vite/vitest/playwright)
+    // are authored for a bundler resolution context and are checked separately
+    // by tsconfig.node.json — see the "typecheck" script in package.json.
+    // Keeping this positive list also keeps build output out of the program:
+    // with "allowJs" on and no "include", tsc pulled in dist/assets/index-*.js
+    // (the minified renderer bundle), whose mangled top-level names collided
+    // with global declarations — so the gate's result depended on whether
+    // someone had run `npm run build`.
+    "include": ["src", "e2e"],
     "exclude": ["test", "release/build", "release/app/dist", ".erb/dll"]
 }

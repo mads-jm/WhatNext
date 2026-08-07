@@ -7,38 +7,26 @@
 
 import { getDatabase } from '../database';
 import type { TrackDocType, TrackDocument } from '../schemas';
+import type { CreateTrackInput, UpdateTrackInput } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
-export interface CreateTrackInput {
-    title: string;
-    artists: string[];
-    album: string;
-    durationMs: number;
-    spotifyId?: string;
-    notes?: string;
-}
-
-export interface UpdateTrackInput {
-    title?: string;
-    artists?: string[];
-    album?: string;
-    durationMs?: number;
-    spotifyId?: string;
-    notes?: string;
-}
+// Re-export for consumers that imported from here
+export type { CreateTrackInput, UpdateTrackInput };
 
 /**
  * Create a new track
  */
 export async function createTrack(
-    input: CreateTrackInput
+    input: CreateTrackInput,
 ): Promise<TrackDocument> {
     const db = await getDatabase();
 
+    const now = new Date().toISOString();
     const track: TrackDocType = {
         id: uuidv4(),
         ...input,
-        addedAt: new Date().toISOString(),
+        addedAt: input.addedAt ?? now,
+        updatedAt: input.updatedAt ?? now,
     };
 
     return db.tracks.insert(track);
@@ -62,11 +50,20 @@ export async function getAllTracks() {
 }
 
 /**
+ * Escapes all regex special characters in a string so it can be safely
+ * interpolated into a $regex query without unintended pattern matching or ReDoS.
+ */
+function escapeRegex(str: string): string {
+    return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+}
+
+/**
  * Search tracks by title or artist
  */
 export async function searchTracks(query: string) {
     const db = await getDatabase();
 
+    const safeQuery = escapeRegex(query);
     // Note: For production, consider adding full-text search index
     // Using $regex with string pattern for RxDB compatibility
     return db.tracks.find({
@@ -74,7 +71,7 @@ export async function searchTracks(query: string) {
             $or: [
                 {
                     title: {
-                        $regex: `.*${query}.*`,
+                        $regex: `.*${safeQuery}.*`,
                     },
                 },
             ],
@@ -87,7 +84,7 @@ export async function searchTracks(query: string) {
  */
 export async function updateTrack(
     id: string,
-    updates: UpdateTrackInput
+    updates: UpdateTrackInput,
 ): Promise<TrackDocument | null> {
     const db = await getDatabase();
     const track = await db.tracks.findOne(id).exec();
@@ -97,7 +94,7 @@ export async function updateTrack(
     }
 
     await track.update({
-        $set: updates,
+        $set: { ...updates, updatedAt: new Date().toISOString() },
     });
 
     return track;
@@ -121,29 +118,32 @@ export async function deleteTrack(id: string): Promise<boolean> {
 /**
  * Get tracks by IDs (for playlist display)
  */
-export async function getTracksByIds(
-    ids: string[]
-): Promise<TrackDocument[]> {
+export async function getTracksByIds(ids: string[]): Promise<TrackDocument[]> {
     const db = await getDatabase();
-    return db.tracks
+    const map: Map<string, TrackDocument> = await db.tracks
         .findByIds(ids)
-        .exec()
-        .then((map) => Array.from(map.values()));
+        .exec();
+    return Array.from(map.values());
 }
 
 /**
  * Bulk import tracks
  */
 export async function bulkImportTracks(
-    tracks: CreateTrackInput[]
-): Promise<void> {
+    tracks: CreateTrackInput[],
+): Promise<string[]> {
     const db = await getDatabase();
 
-    const trackDocs: TrackDocType[] = tracks.map((track) => ({
-        id: uuidv4(),
-        ...track,
-        addedAt: new Date().toISOString(),
-    }));
+    const now = new Date().toISOString();
+    const trackDocs: TrackDocType[] = tracks.map((track) => {
+        return {
+            id: uuidv4(),
+            ...track,
+            addedAt: track.addedAt ?? now,
+            updatedAt: track.updatedAt ?? now,
+        };
+    });
 
     await db.tracks.bulkInsert(trackDocs);
+    return trackDocs.map((t) => t.id);
 }

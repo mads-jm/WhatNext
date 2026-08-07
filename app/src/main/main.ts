@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 /*
 Main Process (main.ts): Node.js context. Manages lifecycle, windows, and OS-level capabilities.
 
@@ -7,21 +6,67 @@ Why this shape:
 - Works with our scripts: tsup builds main/preload into app/dist; Vite serves renderer on 1313 in dev.
 */
 
-import { app, BrowserWindow, globalShortcut, ipcMain, shell, utilityProcess } from 'electron';
+import {
+    app,
+    BrowserWindow,
+    globalShortcut,
+    ipcMain,
+    Menu,
+    protocol,
+    shell,
+    utilityProcess,
+} from 'electron';
 import type { UtilityProcess } from 'electron';
+import * as fs from 'fs';
 import * as path from 'path';
 import { isDev } from './utils/environment';
+import { getAssetPath } from './utils/path';
 import {
     parseProtocolUrl,
+    createConnectUrl,
+    generateShortCode,
     createIPCMessage,
     MainToUtilityMessageType,
     UtilityToMainMessageType,
     IPC_CHANNELS,
     type IPCMessage,
+    type NodeStartedPayload,
+    type PeerDiscoveredPayload,
+    type ConnectionEstablishedPayload,
+    type ConnectionClosedPayload,
+    type HandshakeCompletePayload,
+    type P2PStatusPayload,
+    type ReplicationPullRequestPayload,
+    FILE_TRANSFER_CAPABILITY,
 } from '../shared/core';
+import {
+    getRelayAddresses,
+    addRelayAddress,
+    removeRelayAddress,
+} from './relay-config-store';
+import { recordApprovedDirectory } from './approved-dirs-store';
+import {
+    validateExternalUrl,
+    validateOpenPathRequest,
+    resolveArtworkPath,
+    recordApprovedSaveTarget,
+    consumeApprovedSaveTarget,
+    recordApprovedOpenFile,
+} from './ipc-guards';
+import { killAll as killDownloadProcesses } from '../../../service/downloader/subprocess';
+import {
+    ensureSpotifyModules,
+    handleSpotifyCallbackUrl,
+    registerSpotifyHandlers,
+} from './spotify/spotify-ipc';
+import { registerCompanionHandlers } from './companion/companion-ipc';
+import { registerArtworkHandlers } from './artwork-ipc';
 
 let mainWindow: BrowserWindow | null = null;
 let p2pUtilityProcess: UtilityProcess | null = null;
+
+// Lazily resolved file-transfer dispatch function (avoids re-requiring on every message)
+let _fileTransferHandler: ((msg: IPCMessage) => boolean) | null = null;
 
 /**
  * Prefer a single preload path in both dev/prod.
@@ -36,9 +81,16 @@ const preloadPath = path.join(__dirname, 'preload.js');
  * - In prod, loads the built index.html from app/dist.
  */
 const createMainWindow = (): BrowserWindow => {
+    // Remove default application menu (File/Edit/View/etc.)
+    Menu.setApplicationMenu(null);
+
     mainWindow = new BrowserWindow({
-        width: 1280,
-        height: 720,
+        width: 1440,
+        height: 900,
+        minWidth: 800,
+        minHeight: 500,
+        icon: getAssetPath('png', 'wnorb.png'),
+        frame: false,
         webPreferences: {
             // Security posture: no Node APIs in renderer; use preload + contextBridge.
             nodeIntegration: false,
@@ -54,8 +106,10 @@ const createMainWindow = (): BrowserWindow => {
         mainWindow.loadURL('http://localhost:1313');
     } else {
         // Vite build outputs to app/dist by default; __dirname points to that folder at runtime.
-        // loadFile handles "file://" and escaping for local HTML.
-        mainWindow.loadFile(path.join(__dirname, 'index.ejs'));
+        // loadFile handles "file://" and escaping for local HTML. index.html's own
+        // asset refs are relative (vite.config.ts sets base: './'), so they resolve
+        // next to this file instead of against the filesystem root.
+        mainWindow.loadFile(path.join(__dirname, 'index.html'));
     }
 
     // Prevent visual flash
@@ -109,6 +163,10 @@ function spawnP2PUtilityProcess(): void {
     console.log('[Main] ========================================');
     console.log('[Main] Starting P2P utility process...');
     console.log('[Main] Utility path:', utilityPath);
+    // Justification: a startup diagnostic in a CommonJS module. Converting it
+    // to a top-level `import` would add a module-load-time dependency for one
+    // log line; changing it to `await import()` would make this function async.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     console.log('[Main] File exists:', require('fs').existsSync(utilityPath));
     console.log('[Main] ========================================');
 
@@ -116,6 +174,7 @@ function spawnP2PUtilityProcess(): void {
         p2pUtilityProcess = utilityProcess.fork(utilityPath, [], {
             stdio: 'pipe',
             env: {
+                ...process.env,
                 NODE_ENV: process.env.NODE_ENV || 'production',
             },
         });
@@ -126,10 +185,19 @@ function spawnP2PUtilityProcess(): void {
         p2pUtilityProcess.on('message', (message: IPCMessage) => {
             console.log('[Main] ← Received from utility:', message.type);
 
-            // When utility process is ready, start the P2P node
+            // When utility process is ready, start the P2P node with relay addresses
             if (message.type === UtilityToMainMessageType.READY) {
-                console.log('[Main] ✓ Utility process is READY, sending START_NODE');
-                sendToUtilityProcess(MainToUtilityMessageType.START_NODE, {});
+                console.log(
+                    '[Main] ✓ Utility process is READY, sending START_NODE',
+                );
+                const relayAddresses = getRelayAddresses();
+                console.log(
+                    '[Main] Relay addresses from settings:',
+                    relayAddresses.length,
+                );
+                sendToUtilityProcess(MainToUtilityMessageType.START_NODE, {
+                    relayAddresses,
+                });
                 return;
             }
 
@@ -142,13 +210,15 @@ function spawnP2PUtilityProcess(): void {
         });
 
         p2pUtilityProcess.on('exit', (code) => {
-            console.error(`[Main] ✗ P2P utility process exited with code ${code}`);
+            console.error(
+                `[Main] ✗ P2P utility process exited with code ${code}`,
+            );
             p2pUtilityProcess = null;
 
             // Notify renderer of error
             if (mainWindow) {
                 mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_ERROR, {
-                    error: `Utility process exited with code ${code}`
+                    error: `Utility process exited with code ${code}`,
                 });
             }
         });
@@ -169,12 +239,14 @@ function spawnP2PUtilityProcess(): void {
         // Note: We no longer send START_NODE here.
         // We wait for the READY message from the utility process first.
         console.log('[Main] Waiting for utility process READY signal...');
-
     } catch (error) {
-        console.error('[Main] ✗ FATAL: Failed to spawn utility process:', error);
+        console.error(
+            '[Main] ✗ FATAL: Failed to spawn utility process:',
+            error,
+        );
         if (mainWindow) {
             mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_ERROR, {
-                error: `Failed to spawn utility process: ${error}`
+                error: `Failed to spawn utility process: ${error}`,
             });
         }
     }
@@ -183,7 +255,10 @@ function spawnP2PUtilityProcess(): void {
 /**
  * Send message to utility process
  */
-function sendToUtilityProcess(type: string, payload: any): void {
+function sendToUtilityProcess(
+    type: string,
+    payload: Record<string, unknown>,
+): void {
     if (!p2pUtilityProcess) {
         console.error('[Main] Cannot send to utility process: not spawned');
         return;
@@ -199,7 +274,9 @@ function sendToUtilityProcess(type: string, payload: any): void {
 function handleUtilityProcessMessage(message: IPCMessage): void {
     // Relay utility process events to renderer
     if (!mainWindow) {
-        console.warn('[Main] mainWindow not available, cannot send to renderer');
+        console.warn(
+            '[Main] mainWindow not available, cannot send to renderer',
+        );
         return;
     }
 
@@ -216,66 +293,198 @@ function handleUtilityProcessMessage(message: IPCMessage): void {
 
     console.log('[Main] → Relaying to renderer:', message.type);
     console.log('[Main] Renderer URL:', mainWindow.webContents.getURL());
-    console.log('[Main] Renderer is loading:', mainWindow.webContents.isLoading());
+    console.log(
+        '[Main] Renderer is loading:',
+        mainWindow.webContents.isLoading(),
+    );
 
     switch (message.type) {
-        case UtilityToMainMessageType.NODE_STARTED:
-            console.log('[Main] Sending NODE_STARTED to renderer:', message.payload);
-            // Store state
+        case UtilityToMainMessageType.NODE_STARTED: {
+            const payload = message.payload as NodeStartedPayload;
+            console.log('[Main] Sending NODE_STARTED to renderer:', payload);
             p2pState.nodeStarted = true;
-            p2pState.peerId = message.payload.peerId;
-            p2pState.multiaddrs = message.payload.multiaddrs;
-            // Send event
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_STARTED, message.payload);
+            p2pState.peerId = payload.peerId;
+            p2pState.multiaddrs = payload.multiaddrs;
+            _fileTransferSetOwnPeerId?.(payload.peerId);
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_STARTED, payload);
             break;
+        }
 
-        case UtilityToMainMessageType.PEER_DISCOVERED:
-            console.log('[Main] Sending PEER_DISCOVERED to renderer:', message.payload);
-            // Store state
-            const exists = p2pState.discoveredPeers.some(p => p.peerId === message.payload.peer.peerId);
+        case UtilityToMainMessageType.PEER_DISCOVERED: {
+            const payload = message.payload as PeerDiscoveredPayload;
+            console.log('[Main] Sending PEER_DISCOVERED to renderer:', payload);
+            const exists = p2pState.discoveredPeers.some(
+                (p) => p.peerId === payload.peer.peerId,
+            );
             if (!exists) {
-                p2pState.discoveredPeers.push(message.payload.peer);
+                p2pState.discoveredPeers.push(payload.peer);
             }
-            // Send event
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_PEER_DISCOVERED, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_PEER_DISCOVERED,
+                payload,
+            );
             break;
+        }
 
         case UtilityToMainMessageType.CONNECTION_REQUEST:
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_REQUEST, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_CONNECTION_REQUEST,
+                message.payload,
+            );
             break;
 
-        case UtilityToMainMessageType.CONNECTION_ESTABLISHED:
-            // Track connected peer
-            if (!p2pState.connectedPeers.includes(message.payload.peerId)) {
-                p2pState.connectedPeers.push(message.payload.peerId);
+        case UtilityToMainMessageType.CONNECTION_ESTABLISHED: {
+            const payload = message.payload as ConnectionEstablishedPayload;
+            if (!p2pState.connectedPeers.includes(payload.peerId)) {
+                p2pState.connectedPeers.push(payload.peerId);
             }
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_CONNECTION_ESTABLISHED,
+                payload,
+            );
             break;
+        }
 
         case UtilityToMainMessageType.CONNECTION_FAILED:
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_FAILED, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_CONNECTION_FAILED,
+                message.payload,
+            );
             break;
 
-        case UtilityToMainMessageType.CONNECTION_CLOSED:
-            // Remove from connected peers
-            p2pState.connectedPeers = p2pState.connectedPeers.filter(id => id !== message.payload.peerId);
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_CONNECTION_CLOSED, message.payload);
+        case UtilityToMainMessageType.CONNECTION_CLOSED: {
+            const payload = message.payload as ConnectionClosedPayload;
+            p2pState.connectedPeers = p2pState.connectedPeers.filter(
+                (id) => id !== payload.peerId,
+            );
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_CONNECTION_CLOSED,
+                payload,
+            );
             break;
+        }
 
         case UtilityToMainMessageType.NODE_ERROR:
-            mainWindow.webContents.send(IPC_CHANNELS.P2P_NODE_ERROR, message.payload);
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_NODE_ERROR,
+                message.payload,
+            );
             break;
 
-        default:
-            console.warn('[Main] Unknown utility message type:', message.type);
+        case UtilityToMainMessageType.REPLICATION_CHANGES:
+            console.log('[Main] Relaying replication changes to renderer');
+            mainWindow.webContents.send(
+                IPC_CHANNELS.REPLICATION_CHANGES,
+                message.payload,
+            );
+            break;
+
+        case UtilityToMainMessageType.REPLICATION_STATE:
+            mainWindow.webContents.send(
+                IPC_CHANNELS.REPLICATION_STATE,
+                message.payload,
+            );
+            break;
+
+        case UtilityToMainMessageType.HANDSHAKE_COMPLETE: {
+            const payload = message.payload as HandshakeCompletePayload;
+            console.log('[Main] Handshake complete:', payload);
+            const discoveredPeer = p2pState.discoveredPeers.find(
+                (p) => p.peerId === payload.peerId,
+            );
+            if (discoveredPeer) {
+                discoveredPeer.displayName = payload.displayName;
+            }
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_HANDSHAKE_COMPLETE,
+                payload,
+            );
+
+            // Resume incomplete file transfers if peer supports it
+            if (payload.capabilities?.includes(FILE_TRANSFER_CAPABILITY)) {
+                _fileTransferResume?.(payload.peerId).catch((err) =>
+                    console.warn(
+                        '[Main] Failed to resume transfers for peer:',
+                        err,
+                    ),
+                );
+            }
+            break;
+        }
+
+        case UtilityToMainMessageType.RELAY_CONNECTED: {
+            const payload = message.payload as {
+                connected: boolean;
+                relayMultiaddr: string | null;
+                relayPeerId: string | null;
+            };
+            activeRelayMultiaddr = payload.relayMultiaddr;
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_RELAY_STATUS, payload);
+            break;
+        }
+
+        case UtilityToMainMessageType.RELAY_DISCONNECTED: {
+            activeRelayMultiaddr = null;
+            mainWindow.webContents.send(IPC_CHANNELS.P2P_RELAY_STATUS, {
+                connected: false,
+                relayMultiaddr: null,
+                relayPeerId: null,
+            });
+            break;
+        }
+
+        case UtilityToMainMessageType.PEER_PRESENCE_UPDATE:
+            mainWindow.webContents.send(
+                IPC_CHANNELS.P2P_PEER_PRESENCE,
+                message.payload,
+            );
+            break;
+
+        case UtilityToMainMessageType.REPLICATION_PULL_REQUEST: {
+            // Utility needs data from renderer's RxDB — forward the request
+            const req = message.payload as ReplicationPullRequestPayload;
+            mainWindow.webContents.send(
+                IPC_CHANNELS.REPLICATION_PULL_REQUEST,
+                req,
+            );
+            break;
+        }
+
+        default: {
+            // Delegate file-transfer messages before warning
+            if (!_fileTransferHandler) {
+                // Justification: deliberately lazy and synchronous. This runs
+                // inside a synchronous message dispatcher, so `await import()`
+                // is not available, and hoisting it to a static import would
+                // load the file-transfer module on every app start rather than
+                // on the first file-transfer message.
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const ftIpc = require('./file-transfer/file-transfer-ipc');
+                _fileTransferHandler = ftIpc.handleFileTransferUtilityMessage;
+            }
+            if (!_fileTransferHandler?.(message)) {
+                console.warn(
+                    '[Main] Unknown utility message type:',
+                    message.type,
+                );
+            }
+        }
     }
 }
 
 /**
  * Handle whtnxt:// protocol URLs
  */
+// TODO : just do a match in the try{} here or route in a more extensible way.
+// Protocol should be a clear API boundary and structurally documented in /docs for easy consumption and provider implementation.
 function handleProtocolUrl(url: string): void {
     console.log('[Main] Handling protocol URL:', url);
+
+    // Handle Spotify callback
+    if (url.startsWith('whtnxt://spotify-callback')) {
+        handleSpotifyCallbackUrl(url);
+        return;
+    }
 
     try {
         const parsed = parseProtocolUrl(url);
@@ -299,12 +508,32 @@ function handleProtocolUrl(url: string): void {
 
 /**
  * Register whtnxt:// protocol handler
+ *
+ * In dev mode, Electron is launched as: electron dist/main.js
+ * setAsDefaultProtocolClient must be told the full launch command,
+ * otherwise Windows registers just "electron.exe" with no app path,
+ * and protocol URLs get interpreted as the app entry point.
  */
 function registerProtocolHandler(): void {
-    // Set as default protocol client
-    if (!app.isDefaultProtocolClient('whtnxt')) {
-        app.setAsDefaultProtocolClient('whtnxt');
-        console.log('[Main] Registered as handler for whtnxt:// protocol');
+    if (isDev) {
+        // In dev: process.execPath = electron.exe, process.argv[1] = dist/main.js
+        // We need to register both so Windows re-launches correctly.
+        const appPath = path.resolve(process.argv[1]);
+        if (
+            !app.isDefaultProtocolClient('whtnxt', process.execPath, [appPath])
+        ) {
+            app.setAsDefaultProtocolClient('whtnxt', process.execPath, [
+                appPath,
+            ]);
+            console.log('[Main] Registered whtnxt:// protocol (dev mode)');
+            console.log('[Main]   execPath:', process.execPath);
+            console.log('[Main]   appPath:', appPath);
+        }
+    } else {
+        if (!app.isDefaultProtocolClient('whtnxt')) {
+            app.setAsDefaultProtocolClient('whtnxt');
+            console.log('[Main] Registered as handler for whtnxt:// protocol');
+        }
     }
 
     // Handle protocol URLs on startup (Windows/Linux)
@@ -317,17 +546,109 @@ function registerProtocolHandler(): void {
 }
 
 /**
+ * Single Instance Lock
+ * On Windows/Linux, clicking a whtnxt:// link launches a second app instance.
+ * We grab the lock so only one instance runs; the second instance's argv
+ * (containing the protocol URL) is forwarded to us via 'second-instance'.
+ */
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    // We are the second instance — the first instance will handle our argv.
+    app.quit();
+} else {
+    app.on('second-instance', (_event, argv) => {
+        // On Windows/Linux the protocol URL arrives as a command-line argument
+        const url = argv.find((arg) => arg.startsWith('whtnxt://'));
+        if (url) {
+            handleProtocolUrl(url);
+        }
+
+        // Bring existing window to front
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+        }
+    });
+}
+
+// Must be called before app is ready
+protocol.registerSchemesAsPrivileged([
+    {
+        scheme: 'wn-art',
+        privileges: { secure: true, standard: true, supportFetchAPI: true },
+    },
+]);
+
+/**
  * App lifecycle
  * - Recreate a window on macOS when activating from the dock with no windows open.
  * - Quit on all windows closed (except macOS).
  * - Clean up global shortcuts on quit.
  */
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    // Serve local artwork files via wn-art:// to work around renderer file:// restrictions.
+    // Path is passed as a query param to avoid Chromium mangling Windows absolute paths in URL segments.
+    protocol.handle('wn-art', async (request) => {
+        const requested = new URL(request.url).searchParams.get('path');
+        if (!requested) return new Response(null, { status: 400 });
+        // Only files inside the artwork roots are servable — this protocol is otherwise
+        // an arbitrary-file-read primitive for the renderer.
+        const filePath = resolveArtworkPath(requested);
+        if (!filePath) {
+            console.warn('[wn-art] Rejected out-of-tree path:', requested);
+            return new Response(null, { status: 403 });
+        }
+        try {
+            const data = await fs.promises.readFile(filePath);
+            const ext = path.extname(filePath).toLowerCase();
+            const mime: Record<string, string> = {
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.webp': 'image/webp',
+            };
+            return new Response(data, {
+                headers: { 'content-type': mime[ext] ?? 'image/jpeg' },
+            });
+        } catch {
+            console.warn('[wn-art] File not found:', filePath);
+            return new Response(null, { status: 404 });
+        }
+    });
+
     // Register protocol handler
     registerProtocolHandler();
 
     // Create main window FIRST so it's ready to receive P2P events
     createMainWindow();
+
+    // Register download IPC handlers (requires mainWindow for renderer event forwarding)
+    if (mainWindow) {
+        const { registerDownloadHandlers } =
+            await import('./downloader/downloader-ipc');
+        await registerDownloadHandlers(mainWindow);
+    }
+
+    // Register file-transfer IPC handlers (P2P file serving/receiving)
+    if (mainWindow) {
+        const {
+            registerFileTransferHandlers,
+            setOwnPeerId,
+            resumeIncompleteTransfers,
+        } = await import('./file-transfer/file-transfer-ipc');
+        await registerFileTransferHandlers(mainWindow, () => p2pUtilityProcess);
+        _fileTransferSetOwnPeerId = setOwnPeerId;
+        _fileTransferResume = resumeIncompleteTransfers;
+    }
+
+    // Register purchase link resolution handlers (background enrichment, no window needed)
+    const { registerPurchaseHandlers } =
+        await import('./downloader/purchase-ipc');
+    await registerPurchaseHandlers();
+
+    // Hydrate Spotify client with stored tokens so auth persists across restarts
+    await ensureSpotifyModules();
 
     // THEN spawn P2P utility process after window is created
     // Wait for the window to be ready AND give React time to mount
@@ -361,6 +682,9 @@ app.on('will-quit', () => {
         p2pUtilityProcess.kill();
         p2pUtilityProcess = null;
     }
+
+    // Kill any active download child processes (yt-dlp, spotdl, etc.)
+    killDownloadProcesses();
 });
 
 // Harden: block window creation from renderer unless explicitly allowed
@@ -388,7 +712,7 @@ ipcMain.handle('app:get-platform', () => {
 
 ipcMain.handle('app:get-path', (_event, name: string) => {
     // Returns paths like 'userData', 'documents', 'downloads', etc.
-    return app.getPath(name as any);
+    return app.getPath(name as Parameters<typeof app.getPath>[0]);
 });
 
 // ========================================
@@ -426,68 +750,141 @@ ipcMain.handle('dialog:open-file', async (_event, options) => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
 
     const { dialog } = await import('electron');
-    return dialog.showOpenDialog(mainWindow, {
+    const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openFile'],
         ...options,
     });
+    // The user picking a file here is what lets a later handler act on it without a
+    // second prompt (download:set-backend-path). Nothing else consults this today.
+    if (!result.canceled) {
+        for (const file of result.filePaths) recordApprovedOpenFile(file);
+    }
+    return result;
 });
 
 ipcMain.handle('dialog:open-directory', async (_event, options) => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
 
     const { dialog } = await import('electron');
-    return dialog.showOpenDialog(mainWindow, {
+    const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openDirectory'],
         ...options,
     });
+    // The user picking a directory here is the only thing that grants the renderer
+    // permission to ask us to open it later (shell:open-path).
+    if (!result.canceled) {
+        for (const dir of result.filePaths) recordApprovedDirectory(dir);
+    }
+    return result;
 });
 
 ipcMain.handle('dialog:save-file', async (_event, options) => {
     if (!mainWindow) return { canceled: true, filePath: undefined };
 
     const { dialog } = await import('electron');
-    return dialog.showSaveDialog(mainWindow, options);
+    const result = await dialog.showSaveDialog(mainWindow, options);
+    // Approve exactly this path for one subsequent file:write.
+    if (!result.canceled && result.filePath) {
+        recordApprovedSaveTarget(result.filePath);
+    }
+    return result;
 });
+
+// ========================================
+// File Write (for export)
+// ========================================
+ipcMain.handle(
+    'file:write',
+    async (_event, filePath: string, content: string) => {
+        // One-shot: the path must be one the user just chose in dialog:save-file.
+        if (!consumeApprovedSaveTarget(filePath)) {
+            console.warn('[file:write] Rejected unapproved path:', filePath);
+            return { success: false, error: 'Path not approved for writing' };
+        }
+        const fs = await import('fs/promises');
+        await fs.writeFile(filePath, content, 'utf-8');
+        return { success: true };
+    },
+);
+
+// ========================================
+// Artwork Caching
+// ========================================
+
+// The cache, its filename helpers and the index.json bookkeeping live in
+// ./artwork-ipc. Registered here, at the same point in module evaluation the
+// handler occupied when it was inline. Reads go back out over wn-art://,
+// registered in app.whenReady() above.
+registerArtworkHandlers();
 
 // ========================================
 // External Links
 // ========================================
+// Renderer strings never reach a shell here: shell.openExternal hands the URI to the
+// OS via an API call, and validateExternalUrl enforces the protocol/shape allowlist
+// (http, https, and well-formed spotify: URIs) before we get that far.
 ipcMain.handle('shell:open-external', async (_event, url: string) => {
-    // Security: validate URL before opening
-    try {
-        const parsedUrl = new URL(url);
-        if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
-            await shell.openExternal(url);
-            return { success: true };
-        }
-        return { success: false, error: 'Invalid protocol' };
-    } catch (error) {
-        return { success: false, error: 'Invalid URL' };
+    const check = validateExternalUrl(url);
+    if (!check.ok) {
+        return { success: false, error: check.error };
     }
+    try {
+        // Custom protocols (spotify:) resolve to the OS-registered handler. When none is
+        // registered this rejects, and callers fall back to the equivalent web URL.
+        await shell.openExternal(check.url);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: String(error) };
+    }
+});
+
+ipcMain.handle('shell:open-path', async (_event, dirPath: string) => {
+    // Directories only, and only app-owned ones or ones the user picked in a
+    // main-process dialog — shell.openPath on a file is an execution primitive.
+    const check = await validateOpenPathRequest(dirPath);
+    if (!check.ok) {
+        console.warn('[shell:open-path] Rejected:', dirPath, '-', check.error);
+        return { success: false, error: check.error };
+    }
+    const result = await shell.openPath(check.path);
+    return { success: result === '', error: result || undefined };
 });
 
 // ========================================
 // P2P Connection Management
 // ========================================
 
+// Callback populated when file-transfer module is initialised.
+// Used to forward our own peer ID once the P2P node starts.
+let _fileTransferSetOwnPeerId: ((peerId: string) => void) | null = null;
+let _fileTransferResume: ((peerId: string) => Promise<void>) | null = null;
+
 // Store P2P state that the renderer can pull
-let p2pState = {
+const p2pState: P2PStatusPayload = {
     nodeStarted: false,
     peerId: '',
-    multiaddrs: [] as string[],
-    discoveredPeers: [] as any[],
-    connectedPeers: [] as string[],
-    protocols: [] as string[],
+    multiaddrs: [],
+    discoveredPeers: [],
+    connectedPeers: [],
+    protocols: [],
 };
 
+// Active relay info (populated when relay connects in utility process)
+let activeRelayMultiaddr: string | null = null;
+
 ipcMain.handle(IPC_CHANNELS.P2P_CONNECT, async (_event, peerId: string) => {
-    console.log('[Main] Renderer requested connection to peer:', peerId.slice(0, 20) + '...');
+    console.log(
+        '[Main] Renderer requested connection to peer:',
+        peerId.slice(0, 20) + '...',
+    );
     sendToUtilityProcess(MainToUtilityMessageType.CONNECT_TO_PEER, { peerId });
     return { success: true };
 });
 
 ipcMain.handle(IPC_CHANNELS.P2P_DISCONNECT, async (_event, peerId: string) => {
-    sendToUtilityProcess(MainToUtilityMessageType.DISCONNECT_FROM_PEER, { peerId });
+    sendToUtilityProcess(MainToUtilityMessageType.DISCONNECT_FROM_PEER, {
+        peerId,
+    });
     return { success: true };
 });
 
@@ -501,6 +898,184 @@ ipcMain.handle('p2p:get-status', async () => {
     console.log('[Main] Renderer requesting P2P status:', p2pState);
     return p2pState;
 });
+
+// ========================================
+// User Identity Relay (renderer → utility)
+// ========================================
+
+ipcMain.handle(
+    'user:set-identity',
+    async (
+        _event,
+        identity: { displayName: string; avatarUrl?: string; userId: string },
+    ) => {
+        console.log(
+            '[Main] Setting user identity for P2P:',
+            identity.displayName,
+        );
+        sendToUtilityProcess(
+            MainToUtilityMessageType.SET_USER_IDENTITY,
+            identity,
+        );
+        return { success: true };
+    },
+);
+
+// ========================================
+// Replication Relay (renderer ↔ utility)
+// ========================================
+
+ipcMain.handle(IPC_CHANNELS.REPLICATION_PUSH, async (_event, payload) => {
+    console.log(
+        '[Main] Replication push:',
+        payload.collection,
+        payload.documents?.length,
+        'docs',
+    );
+    sendToUtilityProcess(MainToUtilityMessageType.REPLICATION_PUSH, payload);
+    return { success: true };
+});
+
+ipcMain.handle(IPC_CHANNELS.REPLICATION_PULL, async (_event, payload) => {
+    console.log('[Main] Replication pull:', payload.collection);
+    sendToUtilityProcess(MainToUtilityMessageType.REPLICATION_PULL, payload);
+    return { success: true };
+});
+
+// ========================================
+// Spotify Integration
+// ========================================
+
+// Handlers, the OAuth-callback arm of the protocol router and the runtime-event
+// bridge all live in ./spotify/spotify-ipc. Registered here, at the same point
+// in module evaluation they occupied when they were inline.
+registerSpotifyHandlers(() => mainWindow);
+
+// ========================================
+// Relay Configuration
+// ========================================
+
+ipcMain.handle(IPC_CHANNELS.P2P_RELAY_GET, () => {
+    return { addresses: getRelayAddresses() };
+});
+
+ipcMain.handle(
+    IPC_CHANNELS.P2P_RELAY_ADD,
+    async (_event, multiaddr: string) => {
+        const addresses = addRelayAddress(multiaddr);
+        // Notify utility process to attempt connection to the new relay
+        sendToUtilityProcess(MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES, {
+            addresses,
+        });
+        return { success: true, addresses };
+    },
+);
+
+ipcMain.handle(
+    IPC_CHANNELS.P2P_RELAY_REMOVE,
+    async (_event, multiaddr: string) => {
+        const addresses = removeRelayAddress(multiaddr);
+        sendToUtilityProcess(MainToUtilityMessageType.UPDATE_RELAY_ADDRESSES, {
+            addresses,
+        });
+        return { success: true, addresses };
+    },
+);
+
+// ========================================
+// Session Invite URL
+// ========================================
+
+ipcMain.handle(
+    IPC_CHANNELS.P2P_GET_INVITE_URL,
+    (_event, sessionId?: string) => {
+        const peerId = p2pState.peerId;
+        if (!peerId) {
+            return { success: false, error: 'P2P node not started' };
+        }
+
+        const url = createConnectUrl(peerId, {
+            relay: activeRelayMultiaddr ?? undefined,
+            sessionId,
+        });
+
+        const shortCode = generateShortCode(sessionId ?? peerId);
+
+        return {
+            success: true,
+            url,
+            shortCode,
+            peerId,
+            relayAddr: activeRelayMultiaddr,
+        };
+    },
+);
+
+// Join a session by parsing a whtnxt:// URL or a short code
+ipcMain.handle(IPC_CHANNELS.P2P_JOIN_SESSION, (_event, urlOrCode: string) => {
+    const trimmed = urlOrCode.trim();
+    if (trimmed.startsWith('whtnxt://')) {
+        handleProtocolUrl(trimmed);
+        return { success: true };
+    }
+    // Short codes can't be resolved without a rendezvous server (Phase 2).
+    // For now, return a helpful error.
+    return {
+        success: false,
+        error: 'Short codes require a rendezvous server (coming in Phase 2). Please use the full whtnxt:// link.',
+    };
+});
+
+// ========================================
+// Replication Pull Response (renderer → utility bridge)
+// ========================================
+
+// Renderer responds to a REPLICATION_PULL_REQUEST with the data from its RxDB
+ipcMain.handle(IPC_CHANNELS.REPLICATION_PULL_RESPONSE, (_event, payload) => {
+    // Forward the response to the utility process so it can serve the data
+    // to the remote peer's pull-request stream
+    sendToUtilityProcess(
+        MainToUtilityMessageType.REPLICATION_PULL_RESPONSE,
+        payload,
+    );
+    return { success: true };
+});
+
+// ========================================
+// Companion Server
+// ========================================
+
+// Lifecycle, relay tunnel, QR code and the five state-push channels all live in
+// ./companion/companion-ipc. Registered here, at the same point in module
+// evaluation they occupied when they were inline.
+registerCompanionHandlers(() => mainWindow);
+
+// ========================================
+// Media / Local File Import
+// ========================================
+
+ipcMain.handle(
+    IPC_CHANNELS.MEDIA_SCAN_DIRECTORY,
+    async (_event, dirPath: string) => {
+        try {
+            const { scanDirectory } = await import('./media/scanner');
+            const { mapLocalFiles } =
+                await import('./media/local-media-mapper');
+
+            const scanResult = await scanDirectory(dirPath);
+            const tracks = await mapLocalFiles(scanResult.files);
+
+            return {
+                success: true,
+                tracks,
+                stats: scanResult.stats,
+            };
+        } catch (error) {
+            console.error('[Main] media:scan-directory failed:', error);
+            return { success: false, error: String(error) };
+        }
+    },
+);
 
 // Handle protocol URLs on macOS (open-url event)
 app.on('open-url', (event, url) => {

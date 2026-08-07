@@ -84,14 +84,18 @@ export const P2P_CONFIG = {
      * Where the libp2p node will accept incoming connections.
      *
      * Format: multiaddr string
-     * - /ip4/0.0.0.0/tcp/0 = Listen on all IPv4 interfaces, random TCP port
-     * - /ip4/0.0.0.0/tcp/0/ws = Listen on all IPv4 interfaces, random TCP port with WebSocket
+     * - /ip4/127.0.0.1/tcp/0 = Listen on localhost, random TCP port
+     * - /ip4/127.0.0.1/tcp/0/ws = Listen on localhost, random TCP port with WebSocket
      *
      * Port 0 = OS assigns random available port (avoids conflicts)
+     *
+     * NOTE: We bind to 127.0.0.1 instead of 0.0.0.0 because Electron's
+     * utility process on Windows restricts binding to all interfaces.
+     * Remote peers connect via WebRTC/relay, not direct TCP.
      */
     LISTEN_ADDRESSES: [
-        '/ip4/0.0.0.0/tcp/0',           // TCP transport
-        '/ip4/0.0.0.0/tcp/0/ws',        // WebSocket transport
+        '/ip4/127.0.0.1/tcp/0', // TCP transport (localhost only; remote peers use WebRTC/relay)
+        '/ip4/127.0.0.1/tcp/0/ws', // WebSocket transport (localhost only)
     ],
 
     /**
@@ -103,6 +107,64 @@ export const P2P_CONFIG = {
         name: 'WhatNext',
         version: '0.1.0', // TODO: Read from package.json
         protocolVersion: '1.0.0',
+    },
+
+    /**
+     * Relay Server Configuration
+     *
+     * Relay addresses are NOT stored here — they live in the user's settings
+     * (relay-config-store.ts) and are loaded at runtime. This preserves user
+     * sovereignty: users configure which relay infrastructure their sessions
+     * use. The relay code (relay/relay-server.mjs) can be self-hosted.
+     *
+     * At startup, main.ts reads addresses from relay-config-store and passes
+     * them to the utility process via the START_NODE or UPDATE_RELAY_ADDRESSES
+     * message payload.
+     */
+    RELAY: {
+        /** Auto-connect to configured relays on startup */
+        AUTO_CONNECT: true,
+        /**
+         * @deprecated Superseded by exponential backoff (RETRY_BASE_DELAY /
+         * RETRY_MAX_DELAY / BACKOFF_FACTOR). Retained only for backward compat
+         * with any external consumer of P2P_CONFIG; RelayManager no longer reads it.
+         */
+        RETRY_INTERVAL: 10000,
+        /** Maximum number of connection attempts per relay address before falling back */
+        MAX_RETRIES: 5,
+        /** Base delay (ms) for exponential reconnect backoff: delay = BASE * FACTOR^attempt */
+        RETRY_BASE_DELAY: 1000,
+        /** Ceiling (ms) for a single backoff delay, regardless of attempt count */
+        RETRY_MAX_DELAY: 30000,
+        /** Multiplier applied per attempt for exponential backoff */
+        BACKOFF_FACTOR: 2,
+        /**
+         * Jitter fraction in [0, 1]. "Equal jitter": the delay is randomized in
+         * [d/2, d] where d is the computed backoff. Spreads reconnect storms so
+         * many peers don't hammer a recovering relay in lockstep.
+         */
+        BACKOFF_JITTER: 0.5,
+        /**
+         * Heartbeat interval (ms) for proactive relay-liveness checks. Detects
+         * half-open links that never emit a 'close' event by verifying the active
+         * relay is still among the node's live connections; if not, reconnect.
+         */
+        HEARTBEAT_INTERVAL: 15000,
+    },
+
+    /**
+     * RxDB Replication Settings
+     */
+    REPLICATION: {
+        /**
+         * How long (ms) a pull responder waits for the renderer to supply its
+         * documents before giving up. On timeout the responder does NOT advance
+         * the requester's checkpoint (it echoes the incoming checkpoint back) so
+         * the missed changes are re-pulled on the next attempt — this replaces
+         * the old hardcoded 5s "resolve empty + fresh checkpoint" that silently
+         * dropped changes (#41). Longer than 5s to tolerate slow/large collections.
+         */
+        PULL_TIMEOUT: 15000,
     },
 } as const;
 

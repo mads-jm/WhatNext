@@ -1,0 +1,108 @@
+name: Schema Migration Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'app/src/renderer/db/schemas.ts'
+
+jobs:
+  check:
+    name: Verify migrations exist for schema version bumps
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The detection used to live inline here as two greps, and both were
+      # wrong: `sort -u` over the whole file collapsed five independent
+      # collections into one set (bumping users 1 -> 3 while tracks already sat
+      # at 3 produced no "new" version at all), and `grep -q "$VERSION:"` was
+      # satisfied by the `// v0 -> v1:` doc comments. It now lives in a script so
+      # that app/src/ci/__tests__/schema-migration-guard.test.ts can hold it to
+      # the real per-collection semantics on every PR, not just on schema PRs.
+      - name: Check for migrations
+        id: check
+        continue-on-error: true
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git show "$BASE:app/src/renderer/db/schemas.ts" > /tmp/schemas-base.ts 2>/dev/null \
+            || : > /tmp/schemas-base.ts
+
+          node scripts/check-schema-migrations.mjs \
+            /tmp/schemas-base.ts \
+            app/src/renderer/db/schemas.ts \
+            app/src/renderer/db/database.ts
+
+      - name: Post warning if migrations missing
+        if: steps.check.outputs.has_missing == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Tokens are "<collection>:<version>" — the guard reports per
+            // collection, because that is the granularity RxDB migrates at.
+            const missing = '${{ steps.check.outputs.missing }}'.trim().split(' ').filter(Boolean);
+            const byCollection = new Map();
+            for (const token of missing) {
+              const [collection, version] = token.split(':');
+              if (!byCollection.has(collection)) byCollection.set(collection, []);
+              byCollection.get(collection).push(version);
+            }
+
+            const summary = [...byCollection]
+              .map(([collection, versions]) => `- \`${collection}\` → ${versions.map(v => `v${v}`).join(', ')}`)
+              .join('\n            ');
+
+            const snippets = [...byCollection]
+              .map(([collection, versions]) => [
+                `${collection}: {`,
+                `  schema: ${collection}Schema,`,
+                `  migrationStrategies: {`,
+                ...versions.map(v => `    ${v}(oldDoc) { return { ...oldDoc }; }, // TODO: transform`),
+                `  },`,
+                `},`,
+              ].join('\n            '))
+              .join('\n            ');
+
+            const body = `## ⚠️ Schema Version Bump Without Migration
+
+            These collections bumped their schema version without a matching migration strategy in \`database.ts\`:
+
+            ${summary}
+
+            **RxDB will refuse to open the database** if existing users have data at the previous schema version.
+
+            \`\`\`ts
+            ${snippets}
+            \`\`\`
+
+            _See [[RxDB]] — Schema Migrations._`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const alreadyPosted = comments.some(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.includes('Schema Version Bump Without Migration')
+            );
+
+            if (!alreadyPosted) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Summary (no issues)
+        if: steps.check.outputs.has_missing != 'true'
+        run: echo "Every schema version reachable from the base branch has a migration strategy."

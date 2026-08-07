@@ -31,6 +31,7 @@ export const P2P_CONFIG = {
         HANDSHAKE: '/whatnext/handshake/1.0.0',
         PLAYLIST_SYNC: '/whatnext/playlist-sync/1.0.0',
         RXDB_REPLICATION: '/whatnext/rxdb-replication/1.0.0',
+        FILE_TRANSFER: '/whatnext/file-transfer/1.0.0',
     },
 
     /**
@@ -45,8 +46,8 @@ export const P2P_CONFIG = {
      * Listen Addresses
      */
     LISTEN_ADDRESSES: [
-        '/ip4/0.0.0.0/tcp/0',       // TCP transport
-        '/ip4/0.0.0.0/tcp/0/ws',    // WebSocket transport
+        '/ip4/127.0.0.1/tcp/0', // TCP transport (localhost only; remote peers use WebRTC/relay)
+        '/ip4/127.0.0.1/tcp/0/ws', // WebSocket transport (localhost only)
     ],
 
     /**

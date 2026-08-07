@@ -1,31 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useP2PStatus } from '../../hooks/useP2PStatus';
 
 type ConnectionState = 'offline' | 'connecting' | 'connected';
 
 export function ConnectionStatus() {
-    const [state, setState] = useState<ConnectionState>('offline');
-    const [peerCount, setPeerCount] = useState(0);
+    const p2p = useP2PStatus();
 
-    // Placeholder - will be driven by P2P state in future
-    useEffect(() => {
-        // Simulate connection state for UI demonstration
-        // In production, this will subscribe to actual P2P connection state
-    }, []);
+    const state: ConnectionState = !p2p.nodeStarted
+        ? 'offline'
+        : p2p.connectedPeers.length > 0
+          ? 'connected'
+          : 'connecting';
+    const peerCount = p2p.connectedPeers.length;
 
     const stateConfig = {
         offline: {
             icon: 'fa-circle',
-            color: 'text-gray-500',
+            color: 'text-on-surface-variant',
             label: 'Offline',
         },
         connecting: {
             icon: 'fa-circle-notch fa-spin',
-            color: 'text-yellow-500',
+            color: 'text-secondary',
             label: 'Connecting',
         },
         connected: {
             icon: 'fa-circle',
-            color: 'text-green-500',
+            color: 'text-primary',
             label: 'Connected',
         },
     };
@@ -33,9 +33,9 @@ export function ConnectionStatus() {
     const config = stateConfig[state];
 
     return (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-900 border border-gray-800">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-outline-variant">
             <i className={`fa-solid ${config.icon} ${config.color} text-xs`} />
-            <span className="text-sm text-gray-300">{config.label}</span>
+            <span className="text-sm text-on-surface">{config.label}</span>
             {state === 'connected' && peerCount > 0 && (
                 <span className="badge-primary ml-1">{peerCount}</span>
             )}

@@ -1,7 +1,7 @@
 {
     "name": "app",
     "private": true,
-    "version": "0.0.0",
+    "version": "0.0.1",
     "type": "commonjs",
     "main": "dist/main.js",
     "scripts": {
@@ -9,7 +9,7 @@
         "watch:main": "tsup src/main/main.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist --watch",
         "watch:preload": "tsup src/main/preload.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist --watch",
         "watch:utility": "tsup src/utility/p2p-service.ts --format esm --platform node --target node18 --sourcemap --out-dir dist --watch",
-        "dev:electron": "wait-on dist/main.js dist/preload.js dist/p2p-service.mjs && cross-env NODE_ENV=development electron dist/main.js",
+        "dev:electron": "wait-on dist/main.js dist/preload.js dist/p2p-service.mjs && cross-env NODE_ENV=development ELECTRON_OZONE_PLATFORM_HINT=x11 electron dist/main.js",
         "build": "npm run build:renderer && npm run build:main && npm run build:preload && npm run build:utility",
         "build:renderer": "vite build",
         "build:main": "tsup src/main/main.ts --external electron --format cjs --platform node --target node18 --sourcemap --out-dir dist",
@@ -17,30 +17,18 @@
         "build:utility": "tsup src/utility/p2p-service.ts --format esm --platform node --target node18 --sourcemap --out-dir dist",
         "start": "electron dist/main.js",
         "lint": "eslint .",
-        "typecheck": "tsc --noEmit",
-        "postinstall": "echo skipping electron-builder install-app-deps (no native deps yet)",
+        "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json",
+        "test": "vitest run",
+        "test:e2e": "playwright test",
+        "postinstall": "echo 'skipping electron-builder install-app-deps (no native deps yet)'",
         "package": "npm run build && electron-builder build --publish never"
     },
     "browserslist": [],
-    "prettier": {
-        "singleQuote": true,
-        "tabWidth": 4,
-        "overrides": [
-            {
-                "files": [
-                    ".prettierrc",
-                    ".eslintrc"
-                ],
-                "options": {
-                    "parser": "json"
-                }
-            }
-        ]
-    },
     "dependencies": {
         "@chainsafe/libp2p-noise": "^17.0.0",
         "@chainsafe/libp2p-yamux": "^8.0.1",
         "@libp2p/circuit-relay-v2": "^4.1.0",
+        "@libp2p/dcutr": "^3.0.13",
         "@libp2p/identify": "^4.0.7",
         "@libp2p/mdns": "^12.0.8",
         "@libp2p/tcp": "^11.0.7",
@@ -48,40 +36,47 @@
         "@libp2p/websockets": "^10.1.0",
         "dexie": "^4.2.1",
         "libp2p": "^3.1.0",
+        "music-metadata": "^11.12.3",
+        "qrcode": "^1.5.4",
         "react": "^19.1.0",
         "react-dom": "^19.2.0",
         "rxdb": "^16.20.0",
         "rxjs": "^7.8.2",
-        "simple-peer": "^9.11.1",
         "uuid": "^11.1.0",
-        "webrtc-adapter": "^9.0.3",
+        "ws": "^8.19.0",
         "zustand": "^5.0.6"
     },
     "devDependencies": {
         "@eslint/js": "^9.29.0",
         "@fortawesome/fontawesome-free": "^7.0.0",
+        "@playwright/test": "^1.58.2",
         "@tailwindcss/postcss": "^4.0.0",
         "@tailwindcss/vite": "^4.1.17",
+        "@testing-library/react": "^16.3.2",
         "@types/node": "^24.1.0",
+        "@types/qrcode": "^1.5.6",
         "@types/react": "^19.1.8",
         "@types/react-dom": "^19.1.6",
         "@types/uuid": "^10.0.0",
+        "@types/ws": "^8.18.1",
         "@vitejs/plugin-react": "^4.5.2",
         "autoprefixer": "^10.4.21",
         "concurrently": "^9.0.1",
         "cross-env": "^7.0.3",
         "electron": "^37.4.0",
-        "electron-builder": "^25.1.8",
+        "electron-builder": "^26.7.0",
         "eslint": "^9.29.0",
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.20",
         "globals": "^16.2.0",
+        "jsdom": "^25.0.1",
         "postcss": "^8.5.6",
         "tailwindcss": "^4.0.0",
         "tsup": "^8.3.5",
         "typescript": "~5.8.3",
         "typescript-eslint": "^8.34.1",
         "vite": "^7.0.0",
+        "vitest": "^2.0.0",
         "wait-on": "^8.0.2"
     },
     "engines": {
@@ -109,7 +104,13 @@
             "output": "release/build"
         },
         "extraResources": [
-            "./assets/**"
+            {
+                "from": "../assets",
+                "to": "assets"
+            }
         ]
+    },
+    "allowScripts": {
+        "electron@37.10.3": true
     }
 }

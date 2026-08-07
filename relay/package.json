@@ -1,0 +1,32 @@
+{
+    "name": "whatnext-relay",
+    "version": "0.1.0",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "start": "node relay-server.mjs",
+        "dev": "node --watch relay-server.mjs",
+        "lint": "eslint .",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@chainsafe/libp2p-noise": "^17.0.0",
+        "@chainsafe/libp2p-yamux": "^8.0.1",
+        "@libp2p/circuit-relay-v2": "^4.1.0",
+        "@libp2p/crypto": "^5.0.0",
+        "@libp2p/identify": "^4.0.7",
+        "@libp2p/tcp": "^11.0.7",
+        "@libp2p/websockets": "^10.1.0",
+        "libp2p": "^3.1.0",
+        "ws": "^8.20.0"
+    },
+    "engines": {
+        "node": ">=20.19.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.39.5",
+        "eslint": "^9.39.5",
+        "globals": "^16.5.0",
+        "vitest": "^2.1.9"
+    }
+}

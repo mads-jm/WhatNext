@@ -1,0 +1,33 @@
+# Prettier's format scope is app/, relay/, service/, test-peer/,
+# scripts/*.mjs and top-level *.md. Everything below is deliberately outside
+# it. gitignore syntax; a leading "/" anchors to the repo root.
+
+# ── Not ours to format ──────────────────────────────────────────────────────
+# Obsidian vault. Markdown authored for Obsidian (WikiLinks, .base files,
+# callouts); prettier's markdown printer would rewrap and reflow prose that is
+# read in Obsidian, not in a diff.
+/WhatNext - docs/
+# Generated documentation site — "do not edit directly" (CLAUDE.md).
+/docs/
+# CI workflow YAML: explicitly ruled out of format scope.
+/.github/
+# Agent process residue, gitignored except settings.json.
+/.claude/
+/.agents/
+# Recorded stdout/stderr from yt-dlp, spotDL and Spytify. These are captures of
+# third-party CLI output replayed verbatim by the downloader tests; reformatting
+# them would destroy the fidelity that makes them fixtures.
+/service/downloader/__tests__/fixtures/
+
+# ── Generated ───────────────────────────────────────────────────────────────
+node_modules/
+dist/
+release/
+playwright-report/
+test-results/
+package-lock.json
+
+# ── Top-level scope is *.md only ────────────────────────────────────────────
+# Root config JSON (including this package's own package.json) is authored by
+# hand or by npm and sits outside the formatted scope.
+/*.json

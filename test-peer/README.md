@@ -5,6 +5,7 @@ A minimal libp2p node for testing P2P connections with the WhatNext Electron app
 ## Purpose
 
 This test peer makes development easier by:
+
 - ✅ Running standalone without Electron overhead
 - ✅ Using EXACT same libp2p config as Electron app
 - ✅ Auto-discovering Electron app via mDNS
@@ -27,6 +28,7 @@ npm start
 ```
 
 You'll see:
+
 ```
 ╔════════════════════════════════════════════════════════════╗
 ║          WhatNext Barebones Test Peer v1.0                ║
@@ -53,6 +55,7 @@ whatnext>
 ### 3. Start Electron App
 
 In another terminal:
+
 ```bash
 cd ../app
 npm run dev
@@ -63,6 +66,7 @@ Navigate to "P2P Network" view in the Electron app.
 ### 4. Watch for Discovery
 
 **Test Peer Terminal:**
+
 ```
 🔍 Peer discovered!
    Peer ID: 12D3KooWElectronApp...
@@ -76,6 +80,7 @@ Should show "Discovered Peers (1)" with the test peer listed.
 ### 5. Test Connection
 
 **Option A - Connect from Test Peer:**
+
 ```bash
 whatnext> connect 1
 ```
@@ -86,6 +91,7 @@ Click "Connect" button next to the test peer.
 ### 6. Verify Connection
 
 **Test Peer Terminal:**
+
 ```
 ✅ CONNECTED to peer!
    Peer ID: 12D3KooWElectronApp...
@@ -99,14 +105,14 @@ Should show "Active Connections (1)" with green "Connected" status.
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `help` | Show available commands |
-| `list` | List all discovered peers |
-| `connect <n>` | Connect to peer number `<n>` |
-| `connections` | Show active connections |
-| `status` | Show node status (Peer ID, multiaddrs, etc.) |
-| `exit` | Stop the node and exit |
+| Command       | Description                                  |
+| ------------- | -------------------------------------------- |
+| `help`        | Show available commands                      |
+| `list`        | List all discovered peers                    |
+| `connect <n>` | Connect to peer number `<n>`                 |
+| `connections` | Show active connections                      |
+| `status`      | Show node status (Peer ID, multiaddrs, etc.) |
+| `exit`        | Stop the node and exit                       |
 
 ---
 
@@ -164,6 +170,7 @@ whatnext> status
 **Problem**: Test peer doesn't discover Electron app.
 
 **Solutions**:
+
 1. ✅ Ensure both are on same WiFi network
 2. ✅ Check firewall isn't blocking mDNS (port 5353/UDP)
 3. ✅ Verify Electron app is running and P2P node started
@@ -174,6 +181,7 @@ whatnext> status
 **Problem**: `connect` command fails with error.
 
 **Solutions**:
+
 1. ✅ Verify peer is in list (`list` command)
 2. ✅ Check peer is reachable on network
 3. ✅ Try connecting from Electron app instead
@@ -185,6 +193,7 @@ whatnext> status
 **Problem**: mDNS discovers peer but WebRTC connection fails.
 
 **Possible Causes**:
+
 - **NAT Traversal**: WebRTC requires STUN/relay for some networks
 - **Firewall**: Blocking WebRTC ports
 - **Configuration Mismatch**: Ensure test peer config matches Electron app
@@ -204,12 +213,14 @@ PEER_NAME="MyTestPeer" npm start
 ### Modify P2P Configuration
 
 Edit `src/p2p-config.js` to change P2P settings:
+
 - mDNS service name (for peer filtering)
 - Connection limits
 - Listen addresses
 - Protocol versions
 
 **⚠️ IMPORTANT**: `src/p2p-config.js` mirrors `app/src/shared/p2p-config.ts`
+
 - Any changes should be made to BOTH files
 - Configs must match for peers to discover each other
 - The TypeScript file is the source of truth
@@ -248,8 +259,8 @@ createLibp2p({
     transports: [webRTC(), circuitRelayTransport()],
     peerDiscovery: [mdns()],
     services: { identify: identify() },
-    connectionManager: { maxConnections: 10 }
-})
+    connectionManager: { maxConnections: 10 },
+});
 ```
 
 **Why it matters**: Any bugs discovered with test peer will apply to Electron app, and vice versa.
@@ -317,10 +328,10 @@ transports: [
     webRTC(),
     circuitRelayTransport({
         reservationManager: {
-            maxReservations: 10
-        }
-    })
-]
+            maxReservations: 10,
+        },
+    }),
+];
 ```
 
 ### Phase 3: RxDB Replication Testing
@@ -350,6 +361,7 @@ await node.handle('/whatnext/rxdb/1.0.0', async ({ stream }) => {
 When updating the Electron app's P2P config, **always update this test peer** to match.
 
 Files to keep in sync:
+
 - `app/src/utility/p2p-service.ts` (Electron)
 - `test-peer/src/index.js` (This file)
 

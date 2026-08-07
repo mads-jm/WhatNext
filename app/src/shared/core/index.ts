@@ -16,3 +16,9 @@ export * from './protocol';
 
 // IPC protocol definitions
 export * from './ipc-protocol';
+
+// File transfer types
+export * from './file-transfer-types';
+
+// Session provider interfaces
+export * from '../session-interfaces';
