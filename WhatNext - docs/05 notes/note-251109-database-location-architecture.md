@@ -5,7 +5,10 @@ tags:
   - architecture/decisions
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:47 am
+status: archived
 ---
+
+> **ARCHIVED** — consolidated into [[adr-251109-database-storage-location]] on 2026-08-06. Kept for historical context; code paths, line numbers, and status claims herein reflect November 2025 and may be stale.
 
 # Database Location: Renderer Vs Main Process
 

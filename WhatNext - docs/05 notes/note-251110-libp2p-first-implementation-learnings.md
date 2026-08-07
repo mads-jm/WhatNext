@@ -5,7 +5,10 @@ tags:
   - core/net/p2p/transports/webrtc
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:38 am
+status: archived
 ---
+
+> **ARCHIVED** — consolidated into [[libp2p]] (Key Patterns / Common Pitfalls) on 2026-08-06. Kept for historical context; code paths, line numbers, and status claims herein reflect November 2025 and may be stale.
 
 # libp2p First Implementation - Early Learnings
 

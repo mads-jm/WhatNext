@@ -6,7 +6,10 @@ tags:
   - ux/react
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:34 am
+status: archived
 ---
+
+> **ARCHIVED** — consolidated into [[milestone-v0.0.0]] on 2026-08-06. Kept for historical context; code paths, line numbers, and status claims herein reflect November 2025 and may be stale.
 
 # Issues 2-6 Completion Summary
 

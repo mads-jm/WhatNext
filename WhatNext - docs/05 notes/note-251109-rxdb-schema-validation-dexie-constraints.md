@@ -4,7 +4,10 @@ tags:
   - data/rxdb/dexie
 date created: Thursday, November 13th 2025, 4:59:13 am
 date modified: Monday, March 9th 2026, 12:20:48 am
+status: archived
 ---
+
+> **ARCHIVED** — consolidated into [[RxDB]] (Dexie constraints, Common Pitfalls) on 2026-08-06. Kept for historical context; code paths, line numbers, and status claims herein reflect November 2025 and may be stale.
 
 # RxDB Schema Validation & Dexie Storage Constraints
 
