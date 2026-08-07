@@ -26,7 +26,7 @@ __Critical security principle__: `nodeIntegration: false` and `contextIsolation:
 
 ## How It Works
 
-### Three-Process Architecture
+### Four-Process Architecture
 
 ```ts
 ┌──────────────────┐
@@ -412,7 +412,7 @@ All channel names are defined in `IPC_CHANNELS` in `app/src/shared/core/ipc-prot
 - [[RxDB-Replication]] - The replication traffic that crosses this IPC boundary
 - [[Companion-Client]] - Companion server state push rides the same renderer→main bridge
 - [[epic-ipc-trust-boundary]] - Hardening spec for validating input at the IPC boundary
-- [[adr-251110-electron-process-model]] - Decision record for the three-process split
+- [[adr-251110-electron-process-model]] - Decision record for the four-process split (main + preload + renderer + P2P utility process)
 
 ## References
 

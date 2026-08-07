@@ -3,14 +3,14 @@ tags:
   - specs/p2p
   - core/net/p2p/protocols/replication
   - data/rxdb/replication
-status: draft
+status: shipped
 date created: 2026-06-27
-date modified: 2026-06-27
+date modified: 2026-08-06
 ---
 
 # Epic: Replication Reliability
 
-**Status**: Draft
+**Status**: Shipped — merged to `mvp` as PR #54 (2026-08-01)
 **GitHub**: #40, #41, #42, #47, #32
 **Depends on**: none (foundational — other epics depend on this)
 **Source audit**: [[report-260627-mvp-state-of-the-union]] §3

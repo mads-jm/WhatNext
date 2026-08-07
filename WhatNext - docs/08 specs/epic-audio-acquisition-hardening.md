@@ -2,14 +2,14 @@
 tags:
   - specs/downloader
   - integrations/acquisition
-status: draft
+status: shipped
 date created: 2026-06-27
-date modified: 2026-06-27
+date modified: 2026-08-06
 ---
 
 # Epic: Audio Acquisition Hardening
 
-**Status**: Draft
+**Status**: Shipped — merged to `mvp` as PR #53 (2026-08-01)
 **GitHub**: #45, #46
 **Depends on**: none
 **Source audit**: [[report-260627-mvp-state-of-the-union]] §4

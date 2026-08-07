@@ -10,7 +10,7 @@ tags:
 
 A lightweight web page served by the coordinator's Electron main process over local WiFi (and eventually via relay). Participants open it on their phone browser to view and interact with an active session without installing anything.
 
-> ⚠️ **Reliability status (2026-06-27)** — the **server + snapshot/playback viewing path is live**, but the **phone→server control path below is stubbed** (see [[report-260627-mvp-state-of-the-union]] §3, issue N4). Specifically: `reaction` and `time-request` messages are defined in the protocol but not wired into app logic, and the renderer bridge `useCompanionBridge.ts` is currently **orphaned/never imported** ([[dead-code-audit-260322]]). Treat the "Phone → Server" rows and the "renderer pushes" pattern below as **designed-but-not-yet-functional.**
+> ⚠️ **Reliability status (2026-06-27)** — the **server + snapshot/playback viewing path is live**, but the **phone→server control path below is stubbed** (see [[report-260627-mvp-state-of-the-union]] §3, issue N4). Specifically: `reaction` and `time-request` messages are defined in the protocol but not wired into app logic, and the renderer bridge `useCompanionBridge.ts` was orphaned/never imported ([[dead-code-audit-260322]]) and **deleted 2026-08-06** (commit `ad6a117`; recovery ref `fe94fa6:app/src/renderer/hooks/useCompanionBridge.ts` — #39's implementer starts from [[companion-client-spec]], not the hook). Treat the "Phone → Server" rows and the "renderer pushes" pattern below as **designed-but-not-yet-functional.**
 
 ## Why We Use It
 
@@ -69,7 +69,7 @@ Phone↔relay traffic stays raw companion JSON — the phone client is unaware o
 
 ## Key Patterns
 
-- **Renderer pushes, main broadcasts**: Main process has no [[RxDB]] access, so the renderer's `useCompanionBridge` hook subscribes to RxDB changes and pushes them to main via `ipcRenderer.send()`. Main fans out to WebSocket clients.
+- **Renderer pushes, main broadcasts**: Main process has no [[RxDB]] access, so a renderer bridge hook subscribes to RxDB changes and pushes them to main via `ipcRenderer.send()`. Main fans out to WebSocket clients. *(The `useCompanionBridge` implementation of this was deleted 2026-08-06, never having been imported; the pattern stands and will be rebuilt for #39.)*
 - **Cached snapshot**: The server caches the last full snapshot so new/reconnecting clients get state instantly.
 - **Heartbeat + exponential backoff**: Phone sends heartbeat every 15s. On disconnect, reconnects with backoff (1s, 2s, 4s, max 10s). After reconnect, re-sends `join` — PIN *and* token — to reclaim its identity and get a fresh snapshot.
 - **Identity outlives the socket, the roster does not**: a dropped client leaves the roster immediately but its id + token are parked for 5 minutes, so a suspended tab that comes back is the same participant rather than a second one.
@@ -102,4 +102,4 @@ Phone↔relay traffic stays raw companion JSON — the phone client is unaware o
 - `app/src/main/companion/companion-protocol.ts` — message types + host↔relay envelope
 - `relay/companion-tunnel.mjs` — relay-side tunnel (host auth, per-phone addressing)
 - `app/src/companion-web/` — mobile web UI
-- `app/src/renderer/hooks/useCompanionBridge.ts` — renderer state bridge
+- `app/src/renderer/hooks/useCompanionBridge.ts` — renderer state bridge *(deleted 2026-08-06; recovery ref `fe94fa6:app/src/renderer/hooks/useCompanionBridge.ts`)*

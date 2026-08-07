@@ -7,8 +7,10 @@ tags:
 
 # Local File Import Adapter
 
+> **SUPERSEDED** — this spec was absorbed into [[audio-acquisition-service]] (Phase A) and is retained for TapeC-specific porting history only. Phase A has since **shipped**. Do not implement from this document; refer to [[audio-acquisition-service]].
+
 **Date**: 2026-03-22
-**Status**: Absorbed into [[audio-acquisition-service]] (Phase A)
+**Status**: Superseded — absorbed into [[audio-acquisition-service]] (Phase A, shipped)
 **Origin**: [[tapec-integration-analysis]] (Approach 2: Cherry-Pick Scanner + Parser)
 
 > **Note**: This spec has been merged into the broader [[audio-acquisition-service]] spec, which unifies local file import and cloud playlist downloading under a single schema migration (track v1→v2). The scanner, parser, and mapper defined here are delivered as Phase A of that spec. Refer to [[audio-acquisition-service]] for the current implementation plan.

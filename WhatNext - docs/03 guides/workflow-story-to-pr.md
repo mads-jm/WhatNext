@@ -415,32 +415,33 @@ In both cases: the human is the author of record for the PR.
 
 ### Scope Gates
 
-__The P2P protocol is off-limits for fully autonomous agentic work__ without explicit human approval. This covers:
+__The P2P protocol is off-limits for fully autonomous agentic work__ without explicit human approval. The enforced surface is what `.github/workflows/p2p-gate.yml` watches (as of commit `8f7a0ad`; the workflow file is the source of truth — a CI guard fails if its filters go dead):
 
-- `app/src/main/p2p/` and any [[libp2p]] stream handlers
+- `app/src/utility/**` — the P2P utility process, including all [[libp2p]] stream handlers and the [[Handshake-Protocol|handshake protocol]] (`app/src/utility/protocols/handshake.ts`)
 - `app/src/renderer/db/replication*.ts` (see [[RxDB-Replication]])
-- The [[Handshake-Protocol|handshake protocol]] (`app/src/main/handshake.ts`)
-- Any changes to `app/src/shared/core/ipc-protocol.ts` that affect P2P message types
+- `app/src/shared/core/ipc-protocol.ts` (P2P message types)
+- `app/src/shared/lww/**` (conflict-resolution semantics)
+- `app/src/shared/p2p-config.ts`
 
 Everything else may be implemented autonomously, subject to normal review.
 
 ### Staging for Agentic Work
 
-If agentic output outpaces human review capacity, use intermediate staging branches above `dev`:
+If agentic output outpaces human review capacity, use intermediate staging branches above the working branch (today that is `mvp` — there is no `dev` branch; only `main` and `mvp` exist):
 
 ```ts
-agent/feature-x  →  (human reviews, approves, merges)  →  dev
+cycle/feature-x  →  (human reviews, approves, merges)  →  mvp
 ```
 
-Do not accumulate unreviewed agentic PRs against `dev` or `main`.
+Do not accumulate unreviewed agentic PRs against the working branch or `main`.
 
 ### Worktree Cleanup
 
-After a worktree-based branch is merged, Claude Code cleans up immediately in the same session:
+Current practice: agentic cycles run in worktrees under `../whatnext.cycles/<slug>` on branches named `cycle/<slug>` (the older `worktree-agent-<hash>` auto-naming is no longer used). After a cycle branch is merged, Claude Code cleans up immediately in the same session:
 
 ```bash
-git worktree remove <path>
-git branch -d worktree-agent-<hash>
+git worktree remove ../whatnext.cycles/<slug>
+git branch -d cycle/<slug>
 ```
 
 ---

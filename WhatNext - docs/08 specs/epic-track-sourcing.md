@@ -2,14 +2,14 @@
 tags:
   - specs/sessions
   - architecture/patterns/adapters
-status: draft
+status: shipped
 date created: 2026-06-27
-date modified: 2026-06-27
+date modified: 2026-08-06
 ---
 
 # Epic: Track Sourcing Completion
 
-**Status**: Draft
+**Status**: Shipped — merged to `mvp` as PR #51 (2026-08-01). The Manual source (#37) landed; the P2P source arm (#38) remains open/stubbed.
 **GitHub**: #37, #38
 **Depends on**: [[epic-replication-reliability]] (the P2P source rides on trustworthy replication)
 **Source audit**: [[report-260627-mvp-state-of-the-union]] §3

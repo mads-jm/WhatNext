@@ -186,7 +186,7 @@ No `useState` for anything with more than 4 possible values or complex transitio
 | **State machine** | Complex flow with useReducer | `useSpotifyImport` |
 | **Polling** | Interval-based refresh with cleanup | `usePlaybackState` |
 | **Derived state** | Thin computation over store/db state | `useSessionState` |
-| **Side-effect bridge** | IPC calls + event listener setup | `useP2PDevStatus`, `useCompanionBridge` |
+| **Side-effect bridge** | IPC calls + event listener setup | `useP2PDevStatus` (`useCompanionBridge` was the other example until its deletion 2026-08-06 — never imported) |
 
 ### Data Access Rule
 

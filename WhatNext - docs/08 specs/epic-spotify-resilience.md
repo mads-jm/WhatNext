@@ -3,14 +3,14 @@ tags:
   - specs/spotify
   - integrations/spotify
   - core/net/oauth
-status: draft
+status: shipped
 date created: 2026-06-27
-date modified: 2026-06-27
+date modified: 2026-08-06
 ---
 
 # Epic: Spotify Resilience
 
-**Status**: Draft
+**Status**: Shipped — merged to `mvp` as PR #52 (2026-08-01)
 **GitHub**: #44, #33
 **Depends on**: none
 **Source audit**: [[report-260627-mvp-state-of-the-union]] §2

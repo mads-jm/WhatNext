@@ -8,7 +8,7 @@ tags:
 # Audio Acquisition Service
 
 **Date**: 2026-03-22
-**Status**: Spec — not yet implemented
+**Status**: Implemented (updated 2026-08-06) — Phases A–F landed: local import (scanner/parser/mapper), the `/service/downloader/` engine with yt-dlp, spotDL, and Spytify backends, download UI, and purchase-link enrichment. Hardening follow-through (execution tests #45, binary discoverability #46) shipped via [[epic-audio-acquisition-hardening]] (PR #53, 2026-08-01). Remaining deltas from this text: the schema migration landed as **v1→v3**, not v1→v2; Spytify stays a Windows-only PoC.
 **Supersedes**: [[local-file-import-adapter]] (absorbed into Phase A of this spec)
 
 ---

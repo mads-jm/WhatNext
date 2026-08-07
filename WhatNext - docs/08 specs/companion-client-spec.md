@@ -146,11 +146,13 @@ Types live in `app/src/main/companion/companion-protocol.ts` and are hand-mirror
 
 ## State Bridge Architecture
 
-[[RxDB]] lives in the renderer process. The companion server runs in the main process. The `useCompanionBridge` hook bridges them:
+[[RxDB]] lives in the renderer process. The companion server runs in the main process. A renderer bridge hook connects them:
 
 ```
-RxDB (renderer) → useCompanionBridge hook → ipcRenderer.send() → main process → WebSocket broadcast
+RxDB (renderer) → bridge hook → ipcRenderer.send() → main process → WebSocket broadcast
 ```
+
+> **Note (2026-08-06)**: the `useCompanionBridge` hook that implemented this bridge was deleted (unimported since March; commit `ad6a117`, recovery ref `fe94fa6:app/src/renderer/hooks/useCompanionBridge.ts`). The bridge architecture below remains the design of record — #39's implementer starts from this spec, not the deleted hook.
 
 ### Observed Collections
 
@@ -229,7 +231,7 @@ Server sends playback updates every 3s. Between updates, the phone client increm
 | `app/src/companion-web/index.html` | Mobile web UI |
 | `app/src/companion-web/companion.js` | WebSocket client + DOM updates |
 | `app/src/companion-web/companion.css` | Animations + mobile styles |
-| `app/src/renderer/hooks/useCompanionBridge.ts` | RxDB → IPC state bridge |
+| `app/src/renderer/hooks/useCompanionBridge.ts` | RxDB → IPC state bridge *(deleted 2026-08-06, never imported — recovery ref `fe94fa6:app/src/renderer/hooks/useCompanionBridge.ts`)* |
 
 ### Modified Files
 | File | Changes |

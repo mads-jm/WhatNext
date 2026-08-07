@@ -222,7 +222,7 @@ Companion participants connect via the [[Companion-Client]] — a lightweight we
 - Playback bar: `app/src/renderer/components/Session/PlaybackBar.tsx`
 - Navigation store: `app/src/renderer/stores/navigation-store.ts`
 - User service: `app/src/renderer/db/services/user-service.ts`
-- Companion bridge hook: `app/src/renderer/hooks/useCompanionBridge.ts`
+- Companion bridge hook: deleted 2026-08-06 (was `app/src/renderer/hooks/useCompanionBridge.ts`, never imported; recovery ref `fe94fa6:app/src/renderer/hooks/useCompanionBridge.ts` — #39 rebuilds from [[companion-client-spec]])
 - Companion server: `app/src/main/companion/companion-server.ts`
 - Milestone note: [[note-260307-sessions-v1-implementation]]
 

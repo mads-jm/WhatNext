@@ -14,7 +14,7 @@ Electron is a framework for building cross-platform desktop applications using w
 
 ## Process Model
 
-WhatNext runs three Electron processes (see [[adr-251110-electron-process-model]] for the decision record):
+WhatNext runs the four-process Electron model — main, preload, renderer, and the P2P utility process (`utilityProcess.fork`) — per [[adr-251110-electron-process-model]]. The preload script is the contextBridge boundary on the renderer↔main arrow below:
 
 ```ts
 ┌──────────────────────────────────────────┐
@@ -39,8 +39,9 @@ WhatNext runs three Electron processes (see [[adr-251110-electron-process-model]
 └──────────────────────────────────────────┘
 ```
 
-__Why three processes?__
+__Why four processes?__
 - Renderer is sandboxed for security (`nodeIntegration: false`, `contextIsolation: true`)
+- Preload is the narrow, explicit `contextBridge` surface between renderer and main
 - Utility process isolates P2P networking from the UI thread and main process
 - Main process has full OS access, acts as trusted broker
 
@@ -76,7 +77,7 @@ In development, Vite runs a hot-reload dev server and the main/preload are rebui
 - [[Electron-IPC]] — Full IPC patterns: preload API surface, handlers, event-based push
 - [[libp2p]] — What runs in the utility process
 - [[React-Patterns]] — Renderer-side patterns
-- [[adr-251110-electron-process-model]] — Why the three-process split
+- [[adr-251110-electron-process-model]] — Why the four-process split
 - [[note-251110-p2p-utility-process-architecture]] — Historical note on moving P2P into the utility process
 
 ## References

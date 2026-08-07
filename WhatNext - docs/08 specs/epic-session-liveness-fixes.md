@@ -3,15 +3,15 @@ tags:
   - specs/sessions
   - specs/downloader
   - architecture/companion
-status: draft
+status: complete — live QA pending
 date created: 2026-08-01
-date modified: 2026-08-03
+date modified: 2026-08-06
 ---
 
 # Epic: Session & Downloader Liveness Fixes
 
-**Status**: Draft
-**GitHub**: #56, #57 (downloader); companion/playback items to be filed (plan-first)
+**Status**: Complete — all cycles (1, 2, 2b, 3) landed on `mvp`; only the human live-QA passes remain (see DoD)
+**GitHub**: #56, #57 (downloader; fixed); follow-ups re-ticketed as #59, #60
 **Depends on**: none for code; coordinate with [[epic-ipc-trust-boundary]] on `downloader-ipc.ts` (that lane owns handler-entry validation; this lane owns event/import flow)
 **Source audit**: live QA 2026-08-01 (#56, #57); [[report-260801-mvp-premerge-review]] §2
 
@@ -148,9 +148,9 @@ Automated tests cover the decision points; the two-peer assertion is visual.
 
 ## Epic Acceptance Criteria (Definition of Done)
 
-- [ ] #56, #57 closed; review §2 items (deadlock, companion auth, relay acks, playback mutex, poll cadence, name adoption) closed or explicitly re-ticketed with rationale.
-- [ ] All fixes covered by tests where the harness allows; live QA pass for companion (LAN + relay) and a 2-peer playback-ownership check.
-- [ ] `npm test` green; no new lint/typecheck failures; concept docs updated where behavior changed (companion auth flow, playback ownership contract).
+- [x] #56, #57 closed; review §2 items (deadlock, companion auth, relay acks, playback mutex, poll cadence, name adoption) closed or explicitly re-ticketed with rationale. *(Re-ticketed follow-ups filed as #59/#60; playback mutex resolved by removal per the WB5 decision.)*
+- [ ] All fixes covered by tests where the harness allows *(done — every cycle shipped with tests)*; live QA pass for companion (LAN + relay) and a 2-peer playback-ownership check. **Remains open: the human live-QA passes only** — WB4's phone-browser script and WB5's two-peer script cannot be automated.
+- [x] `npm test` green; no new lint/typecheck failures; concept docs updated where behavior changed (companion auth flow, playback ownership contract).
 
 ## Risks & Open Questions
 

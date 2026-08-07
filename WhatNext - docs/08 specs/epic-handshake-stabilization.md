@@ -3,14 +3,14 @@ tags:
   - specs/p2p
   - core/net/p2p/protocols
   - data/rxdb/replication
-status: draft
+status: complete — live QA pending
 date created: 2026-08-01
-date modified: 2026-08-01
+date modified: 2026-08-06
 ---
 
 # Epic: Handshake Stabilization
 
-**Status**: Draft
+**Status**: Complete — landed on `mvp` (commits `b14e13f..8fc4ccc`); live 2-peer QA still pending
 **GitHub**: #58
 **Depends on**: none (test-peer framing fix already landed on mvp: `5534cd9`)
 **Source audit**: live QA 2026-08-01 (issue #58); [[report-260801-mvp-premerge-review]] §3 (test-peer LWW note)

@@ -19,8 +19,9 @@ date modified: Monday, March 9th 2026, 12:20:42 am
 
 | Version | Date       | Author       | Description                              |
 |---------|------------|--------------|------------------------------------------|
-| v0.1.0  | 2026-02-14 | WhatNext Dev | MVP baseline -- three-process Electron model, RxDB local-first data, libp2p P2P networking, Spotify import adapter |
+| v0.1.0  | 2026-02-14 | WhatNext Dev | MVP baseline -- four-process Electron model, RxDB local-first data, libp2p P2P networking, Spotify import adapter |
 | v0.2.0  | 2026-03-07 | WhatNext Dev | Sessions v1 -- provider abstraction (TrackSource / PlaybackProvider), Spotify playback IPC, artwork caching, comments collection, schema migrations to v1 |
+| v0.2.1  | 2026-08-06 | WhatNext Dev | Correction: the process model is **four**-process (main + preload + renderer + P2P utility process via `utilityProcess.fork`), aligning this document with [[adr-251110-electron-process-model]]; "three-process" wording fixed throughout |
 
 ---
 
@@ -34,7 +35,7 @@ This document defines the software architecture of WhatNext, a resilient, user-c
 
 This architecture covers the MVP (Phase 1: Collaborative Playlist Accessory), including:
 
-- The Electron desktop application and its three-process model
+- The Electron desktop application and its four-process model (main, preload, renderer, P2P utility process)
 - Local-first data storage with RxDB over IndexedDB (Dexie adapter)
 - P2P networking via libp2p for peer discovery and data replication
 - Spotify integration as the first import adapter via OAuth PKCE
@@ -56,7 +57,7 @@ This architecture covers the MVP (Phase 1: Collaborative Playlist Accessory), in
 ### 1.4 Related Documents
 
 - [[whtnxt-nextspec]] -- Technical specification (source of truth)
-- [[adr-251110-electron-process-model]] -- Three-process architecture decision
+- [[adr-251110-electron-process-model]] -- Four-process architecture decision
 - [[adr-251110-libp2p-vs-simple-peer]] -- Why libp2p over simple-peer
 - [[adr-251109-database-storage-location]] -- RxDB storage location decision
 - [[adr-260307-session-architecture-provider-abstraction]] -- Session provider abstraction decision
@@ -122,7 +123,7 @@ Rel(whatnext, musicbrainz, "Metadata enrichment (future)", "HTTPS")
 
 ## 4. Process Architecture
 
-WhatNext uses a three-process Electron architecture, chosen to isolate the P2P networking stack from both the UI and the main process. See [[adr-251110-electron-process-model]] for the full decision record.
+WhatNext uses a four-process Electron architecture — main, preload, renderer, and a dedicated utility process (`p2p-service` forked via `utilityProcess.fork`) — chosen to isolate the P2P networking stack from both the UI and the main process. See [[adr-251110-electron-process-model]] for the full decision record.
 
 ```plantuml
 @startuml Electron Process Model
@@ -1284,7 +1285,7 @@ WhatNext - docs/                       # Project documentation (Obsidian vault)
 ## References
 
 - [[whtnxt-nextspec]] -- Full technical specification
-- [[adr-251110-electron-process-model]] -- Three-process architecture decision
+- [[adr-251110-electron-process-model]] -- Four-process architecture decision
 - [[adr-251110-libp2p-vs-simple-peer]] -- libp2p selection rationale
 - [[adr-251109-database-storage-location]] -- RxDB/IndexedDB storage decision
 - [[adr-260307-session-architecture-provider-abstraction]] -- Session provider abstraction (TrackSource / PlaybackProvider)

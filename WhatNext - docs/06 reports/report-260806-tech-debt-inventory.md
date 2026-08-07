@@ -12,7 +12,7 @@ status: active
 
 Workstream 4 of the v0.1.0 pre-merge touch-up. Consolidates every debt item carried out of the wave-1/wave-2 cycles, the two pre-merge reviews, and a fresh repo-wide sweep at `mvp` HEAD `ceb4ebd`. Sweep coverage: TODO markers, deprecated APIs, dependency staleness, config debt, error handling, type debt, duplication/dead code, store rot, scripts health, and the service skeleton.
 
-GitHub writes are plan-first per project policy: §5 lists proposed issues awaiting sign-off. Nothing in this report has been filed or fixed except where an issue number is already cited.
+GitHub writes were plan-first per project policy; the §5 proposals have since been **filed as issues #67–#79 (2026-08-06, after user sign-off)** — §5 records the filings and their numbers.
 
 ---
 

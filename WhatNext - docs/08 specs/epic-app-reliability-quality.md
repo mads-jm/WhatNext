@@ -3,14 +3,14 @@ tags:
   - specs/quality
   - architecture/review
   - ux/react
-status: draft
+status: in progress
 date created: 2026-06-27
-date modified: 2026-06-27
+date modified: 2026-08-06
 ---
 
 # Epic: App Reliability & Quality
 
-**Status**: Draft
+**Status**: In progress — #26 (service-layer CRUD tests) closed 2026-08-06; #49, #50, #48, #22 remain open
 **GitHub**: #49, #50, #48, #26, #22
 **Depends on**: none (cross-cutting; do alongside feature epics)
 **Source audit**: [[report-260627-mvp-state-of-the-union]] §5, [[mvp-reality-react-quality]]
@@ -114,10 +114,10 @@ Test infrastructure already exists to build on: **Vitest** is the unit runner (`
 - Pin the non-null-assertion footguns: add tests asserting `createPlaylist` requires `ownerId` (`playlist-service.ts:34`, `input.ownerId!`) and `createTrack` requires `addedBy` (`track-service.ts:28` and `:143`, `input.addedBy!`). Then tighten the input types — make `CreatePlaylistInput.ownerId` and `CreateTrackInput.addedBy` non-optional in `app/src/renderer/db/types.ts` and drop the `!` assertions.
 
 **Acceptance criteria.**
-- [ ] Vitest suites for `playlist-service.ts` and `track-service.ts` against in-memory RxDB.
-- [ ] `addTrackToPlaylist` dedup, turn-quota advance, and duration auto-complete each covered.
-- [ ] `CreatePlaylistInput.ownerId` / `CreateTrackInput.addedBy` made required; the four `!` assertions removed; `typecheck` passes.
-- [ ] Suites run under `npm test` in CI.
+- [x] Vitest suites for `playlist-service.ts` and `track-service.ts` against in-memory RxDB. *(Landed 2026-08-06, db-service-tests workstream; #26 closed.)*
+- [x] `addTrackToPlaylist` dedup, turn-quota advance, and duration auto-complete each covered.
+- [x] `CreatePlaylistInput.ownerId` / `CreateTrackInput.addedBy` made required; the **three** `!` assertions removed (`ownerId!` ×1, `addedBy!` ×2 — the original "four" count was wrong, verified by grep 2026-08-06); `typecheck` passes. *(Tightening landed in commit `91323e0`.)*
+- [x] Suites run under `npm test` in CI.
 
 ### #22 — Packaging smoke-test
 
@@ -144,13 +144,13 @@ Test infrastructure already exists to build on: **Vitest** is the unit runner (`
 - [ ] `StrictMode` enabled; surfaced warnings resolved (#49).
 - [ ] `SessionView` data layer lives in `useSessionData`; no direct `getDatabase()` or mirrored reactive `useState` in the component (#50).
 - [ ] Five critical flows have passing E2E specs (replication spec may be a gated lane) (#48).
-- [ ] `playlist-service` and `track-service` covered by Vitest; the four `!` footguns eliminated at the type level (#26).
+- [x] `playlist-service` and `track-service` covered by Vitest; the three `!` footguns eliminated at the type level (#26 — closed 2026-08-06, commit `91323e0`).
 - [ ] Packaged installers built and smoke-tested on mac/win/linux, including the companion-web resources fix (#22).
 - [ ] `lint`, `typecheck`, `npm test` all green; `test:e2e` wired into CI.
 
 ## Risks & Open Questions
 
-- **RxDB in-memory for tests** — does the project already bundle a memory storage adapter, or must one be added as a devDependency? (Current deps use the default storage; confirm before #26.)
+- ~~**RxDB in-memory for tests**~~ — **resolved 2026-08-06**: `storage-memory` ships with the core `rxdb` package (16.20.0+), no extra devDependency needed; the db-service test harness uses it.
 - **Electron + Playwright in CI** — Electron E2E needs a virtual display (xvfb) on Linux CI; the replication spec additionally needs `test-peer` running. Expect this lane to be the flakiest; tag accordingly.
 - **StrictMode fallout** — double-invoked effects may expose latent bugs in the manual RxDB subscriptions; budget time to fix rather than suppress.
 - **Cross-platform packaging** — building mac artifacts typically requires macOS hardware/CI; win/linux can cross-build. Signing is disabled (`package.json:115`), so notarisation is out of scope for the smoke-test.
