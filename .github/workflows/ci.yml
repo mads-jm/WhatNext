@@ -93,6 +93,36 @@ jobs:
         run: npm test
         working-directory: app
 
+  # The only job that produces build output. It exists because nothing else did:
+  # `dist/` is gitignored and no job built it, so main.ts could go on loading a
+  # renderer entry the build has not emitted since the ERB->Vite migration while
+  # every gate stayed green. Vite + tsup only — no electron-builder, no display.
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+
+      - name: Build
+        run: npm run build
+        working-directory: app
+
+      # Asserts main.ts's production load target exists in dist/, and that the
+      # entry's asset refs resolve relative to it — root-absolute refs resolve
+      # against the filesystem root under file:// and render a blank window.
+      - name: Verify build output
+        run: node scripts/check-build-output.mjs
+
   # ── Workspaces that gained tooling in the format-standards cycle ──────────
   # Each installs and runs on its own; none of them share a lockfile with app.
   # relay and test-peer are plain ESM JavaScript with no TypeScript, so there is
