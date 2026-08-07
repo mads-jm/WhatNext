@@ -131,26 +131,26 @@ Three themes explain most of the list:
 2. **Package boundaries were never drawn.** app↔service imports, test-peer's hand-synced protocol stack, companion-web ×2, three drifting lockfiles for one libp2p protocol — the repo behaves like a monorepo without monorepo tooling.
 3. **The guards outrank the gates.** Two CI safety workflows (p2p-gate, schema-guard) are silently broken while the ordinary gates (lint/typecheck/test/format) are healthy — enforcement debt is invisible precisely because nothing red appears.
 
-## 5. Proposed GitHub issues (plan-first — awaiting sign-off)
+## 5. Proposed GitHub issues — **all filed 2026-08-06 after user sign-off**
 
-| # | Title (proposed) | Covers | Label |
-|---|------------------|--------|-------|
-| P1 | fix(ui): packaged build loads deleted index.ejs — production boot broken | B1 (+ delete `resolveHtmlPath`, `menu.ts` in same lane) | bug, MVP |
-| P2 | ci: p2p-gate watches nonexistent paths; repoint at app/src/utility/** | B3 | bug, devops |
-| P3 | ci: schema-guard greps comments, not migrations; per-collection compare | B4 | bug, devops |
-| P4 | fix(p2p): add unhandledRejection/uncaughtException handlers to utility + relay processes | §3.3 | bug, p2p |
-| P5 | build(deps): Electron 37→43 (out of security support) | §3.5 | deps, MVP |
-| P6 | refactor: decide the app↔service boundary (workspace vs package vs absorb) | §3.1 | core, debt |
-| P7 | test(p2p): protocol-constant parity test app↔test-peer + fix PROTOCOLS registry | B5, §3.1 | p2p, testing |
-| P8 | fix(dev-env): start-service port ignored; dev-init installs 2/4 workspaces; retire proj-init.sh | B2, §3.9 | devops |
-| P9 | chore: finish the ERB→Vite migration cleanup (tsconfig, tailwind/postcss, tracked transcript, .gitattributes) | §3.6, §3.7 | debt, dev-env |
-| P10 | fix(p2p): handshake version constant lies (0.1.0 vs 0.0.1); wire release version | B6 | bug, p2p |
+| Issue | Title | Covers |
+|-------|-------|--------|
+| #70 | fix(ui): packaged build loads deleted index.ejs — production boot broken | B1 (+ delete `resolveHtmlPath`, `menu.ts` in same lane) |
+| #71 | ci: p2p-gate watches nonexistent paths — governance rule unenforced | B3 |
+| #72 | ci: schema-guard verifies comments, not migrations; collapses versions across collections | B4 |
+| #73 | fix(p2p): no unhandledRejection/uncaughtException handlers in any process | §3.3 |
+| #76 | build(deps): Electron 37→43 — out of security support (post-merge by design) | §3.5 |
+| #74 | refactor: decide the app↔service boundary (workspace, package, or absorb) | §3.1, §3.9/§10 |
+| #75 | test(p2p): protocol-constant parity app↔test-peer + complete PROTOCOLS registry | B5 |
+| #77 | fix(dev-env): scripts drift — service port, dev-init 2/4 workspaces, proj-init rotted | B2, §3.9 |
+| #78 | chore(dev-env): finish the ERB→Vite migration cleanup | §3.6, §3.7 |
+| #79 | fix(p2p): handshake advertises hardcoded 0.1.0 while app is 0.0.1 | B6 |
 
-Items deliberately **not** proposed as issues: everything already filed (#43…#69), accepted-risk rulings, the god-object splits (future org passes — the inventory is their record), and dependency minors.
+Items deliberately **not** filed: everything already on the board (#43…#69), accepted-risk rulings, the god-object splits (future org passes — this inventory is their record), and dependency minors.
 
 ## 6. Relation to the mvp→main merge
 
-Recommended **merge-gating** subset: **P1** (the app must boot packaged — or explicitly ship v0.1.0 as dev-mode-only with the fix as first post-merge work), **P2/P3** (broken safety gates should not cross into main unfixed), and the live-QA pass already planned. Everything else is post-merge backlog.
+Merge-gating subset per user ruling 2026-08-06: **#70** (the app must boot packaged), **#71/#72** (broken safety gates do not cross into main unfixed), and the live-QA pass already planned. Everything else is post-merge backlog.
 
 ---
 
