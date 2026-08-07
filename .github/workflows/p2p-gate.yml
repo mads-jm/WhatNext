@@ -3,11 +3,17 @@ name: P2P Protocol Gate
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    # The P2P protocol surface as it actually exists. `app/src/main/p2p/**` and
+    # `app/src/main/handshake.ts` were listed here from a layout the utility
+    # process refactor replaced, so the gate matched nothing and never fired.
+    # app/src/ci/__tests__/p2p-gate-paths.test.ts fails CI if any entry below
+    # goes back to matching zero tracked files.
     paths:
-      - 'app/src/main/p2p/**'
+      - 'app/src/utility/**'
       - 'app/src/renderer/db/replication*.ts'
-      - 'app/src/main/handshake.ts'
       - 'app/src/shared/core/ipc-protocol.ts'
+      - 'app/src/shared/lww/**'
+      - 'app/src/shared/p2p-config.ts'
 
 jobs:
   warn:
